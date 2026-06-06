@@ -1,21 +1,22 @@
+import { z } from "zod";
+
 /**
  * Стандартный формат ответа Server Action.
  *
  * Зачем: каждый Server Action возвращает одинаковую структуру.
  * Клиентский код всегда знает: есть error? → показать ошибку.
  * Нет error? → успех.
- *
- * Без стандарта:
- *   loginAction возвращает { success: true }
- *   registerAction возвращает { ok: true, message: "..." }
- *   createTodoAction возвращает { error: null }
- *   → хаос, каждый компонент обрабатывает по-своему
- *
- * Со стандартом:
- *   Все actions возвращают ActionResult
- *   → один useActionState обрабатывает все одинаково
  */
 export type ActionResult = {
   error?: string;
   fieldErrors?: Record<string, string[]>;
 };
+
+/**
+ * Валидатор UUID.
+ *
+ * Все ID в нашей системе — UUID. Валидируем на входе в каждый action,
+ * чтобы мусор не доходил до БД. Defense in depth:
+ * Zod (форма) → UUID (ID) → RLS (БД) = три барьера.
+ */
+export const uuidSchema = z.string().uuid("Invalid ID format");

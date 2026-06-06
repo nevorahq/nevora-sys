@@ -1,18 +1,46 @@
+import { createClient } from "@/lib/supabase/server";
+
 /**
  * Health Check endpoint — GET /api/health
  *
- * Зачем: любой production-сервис должен иметь health check.
- * Его используют:
- * - мониторинг (Uptime Robot, Datadog)
- * - load balancer (проверяет, жив ли инстанс)
- * - CI/CD (проверяет, что deploy успешен)
+ * Production health check должен проверять НЕ ТОЛЬКО что сервер жив,
+ * но и что зависимости доступны (БД, Auth и т.д.).
  *
- * Это Route Handler — единственный наш API route.
- * Все остальные мутации — через Server Actions.
+ * Два уровня:
+ * - "healthy" — всё работает
+ * - "degraded" — сервер жив, но БД недоступна
+ *
+ * Load balancer и мониторинг используют HTTP status code:
+ * - 200 → всё OK, направлять трафик
+ * - 503 → проблемы, не направлять трафик
  */
 export async function GET() {
-  return Response.json({
-    status: "ok",
-    timestamp: new Date().toISOString(),
-  });
+  const checks: Record<string, "ok" | "error"> = {
+    server: "ok",
+    database: "error",
+  };
+
+  try {
+    const supabase = await createClient();
+    // Простой запрос для проверки соединения с БД.
+    // count вместо select * — не тянем данные, только проверяем связь.
+    const { error } = await supabase
+      .from("todos")
+      .select("id", { count: "exact", head: true });
+
+    checks.database = error ? "error" : "ok";
+  } catch {
+    checks.database = "error";
+  }
+
+  const isHealthy = Object.values(checks).every((v) => v === "ok");
+
+  return Response.json(
+    {
+      status: isHealthy ? "healthy" : "degraded",
+      checks,
+      timestamp: new Date().toISOString(),
+    },
+    { status: isHealthy ? 200 : 503 },
+  );
 }

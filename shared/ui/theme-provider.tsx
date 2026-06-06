@@ -19,7 +19,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   /* Sync with what the anti-FOUC script already applied */
   useEffect(() => {
-    const stored = localStorage.getItem("taskflow_theme") as Theme | null;
+    const stored = localStorage.getItem("nevora_theme") as Theme | null;
     if (stored === "dark" || stored === "light") {
       setTheme(stored);
     } else {
@@ -30,7 +30,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("taskflow_theme", theme);
+    localStorage.setItem("nevora_theme", theme);
   }, [theme]);
 
   const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));

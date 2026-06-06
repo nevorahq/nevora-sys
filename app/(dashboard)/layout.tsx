@@ -1,14 +1,74 @@
+import { getDictionary } from "@/shared/i18n/get-dictionary";
+import { Sidebar } from "@/shared/ui/sidebar";
+import { LanguageSwitcher } from "@/shared/ui/language-switcher";
+import { ThemeToggle } from "@/shared/ui/theme-toggle";
+import { Notifications } from "@/shared/ui/notifications";
+import { LogoutButton } from "@/features/auth/components/logout-button";
+import { requireUser } from "@/lib/auth/require-user";
+import { getTaskSummary } from "@/features/todos/queries/get-task-summary";
+import { getUpcomingRenewals } from "@/modules/subtracker/queries/get-upcoming-renewals";
+
 /**
- * Layout для dashboard route group.
+ * Dashboard Layout — обёртка для ВСЕХ защищённых страниц.
  *
- * Все страницы внутри (dashboard)/ будут обёрнуты этим layout.
- * Сейчас просто пробрасывает children.
- * Позже здесь можно добавить sidebar, header, navigation.
+ * Структура:
+ * ┌─────────┬────────────────────────────────┐
+ * │         │  Header (user, theme, logout)   │
+ * │ Sidebar ├────────────────────────────────┤
+ * │         │  Content (page.tsx)             │
+ * │         │                                │
+ * └─────────┴────────────────────────────────┘
+ *
+ * Почему sidebar и header в layout, а не в каждой page:
+ * - DRY: не дублировать в /dashboard, /dashboard/tasks, /dashboard/money
+ * - Консистентность: одинаковая навигация на всех страницах
+ * - Производительность: layout НЕ перерендеривается при навигации
+ *   между страницами (Next.js App Router кеширует layouts)
+ *
+ * Server Component — читает user и dict на сервере.
+ * Sidebar — Client Component (usePathname), получает dict через props.
  */
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  const [user, { dict, locale }, taskSummary, renewals] = await Promise.all([
+    requireUser(),
+    getDictionary(),
+    getTaskSummary(),
+    getUpcomingRenewals(),
+  ]);
+
+  return (
+    <div className="flex h-full min-h-screen">
+      {/* Sidebar — навигация платформы */}
+      <Sidebar dict={dict} />
+
+      {/* Main content area */}
+      <div className="flex flex-1 flex-col min-w-0">
+        {/* Header — user info, controls */}
+        <header className="flex items-center justify-between border-b border-border-soft px-6 py-3.5">
+          <p className="text-sm text-text-muted">
+            {user.email?.split("@")[0]}
+          </p>
+          <div className="flex items-center gap-2">
+            <Notifications
+              overdueCount={taskSummary.overdue}
+              renewals={renewals}
+              dict={dict}
+            />
+            <LanguageSwitcher locale={locale} />
+            <ThemeToggle />
+            <LogoutButton label={dict.nav.logout} />
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
 }

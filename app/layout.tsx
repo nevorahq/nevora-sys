@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/shared/ui/theme-provider";
+import { StoreProvider } from "@/store/provider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -16,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TaskFlow",
-  description: "Simple task planner built with Next.js and Supabase",
+  title: "nevora-sys",
+  description: "Personal productivity system built with Next.js and Supabase",
 };
 
 /* Inline script that runs synchronously before React hydrates.
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
 const themeScript = `
   (function () {
     try {
-      var stored = localStorage.getItem("taskflow_theme");
+      var stored = localStorage.getItem("nevora_theme");
       var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       if (stored === "dark" || (!stored && prefersDark)) {
         document.documentElement.classList.add("dark");
@@ -51,7 +52,9 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-full flex flex-col bg-background text-text-primary">
-        <ThemeProvider>{children}</ThemeProvider>
+        <StoreProvider>
+          <ThemeProvider>{children}</ThemeProvider>
+        </StoreProvider>
       </body>
     </html>
   );

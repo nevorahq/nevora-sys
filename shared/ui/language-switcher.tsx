@@ -31,7 +31,7 @@ export function LanguageSwitcher({ locale, className }: LanguageSwitcherProps) {
       disabled={isPending}
       aria-label={`Switch to ${next.toUpperCase()}`}
       className={cn(
-        "soft-icon-button h-9 px-3 text-xs font-semibold tracking-wide uppercase",
+        "soft-icon-button w-9 h-9 text-xs font-semibold uppercase",
         "disabled:opacity-50 disabled:pointer-events-none",
         className,
       )}
