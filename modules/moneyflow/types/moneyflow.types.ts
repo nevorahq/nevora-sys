@@ -70,8 +70,35 @@ export type MoneyTransactionWithRelations = MoneyTransaction & {
 };
 
 // ── Summary (для Dashboard) ──
-export type MoneySummary = {
+/**
+ * Финансовое summary по ОДНОЙ валюте.
+ *
+ * Суммы НЕ конвертируются: USD-транзакции и MDL-транзакции считаются
+ * раздельно. Кросс-валютная нормализация в base_currency — отдельный
+ * FX-слой (exchange_rates + fn_get_exchange_rate), пока не внедрён.
+ */
+export type CurrencySummary = {
+  currency: string;
   balance: number;
   monthlyIncome: number;
   monthlyExpenses: number;
+};
+
+/**
+ * Итог, приведённый к базовой валюте организации через fn_get_exchange_rate.
+ */
+export type BaseSummary = {
+  currency: string;
+  balance: number;
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  /** false — если для какой-то валюты не нашёлся курс; итог неполный. */
+  complete: boolean;
+};
+
+export type MoneySummary = {
+  /** Разбивка по валютам. Пусто — если нет ни счетов, ни транзакций. */
+  byCurrency: CurrencySummary[];
+  /** Сводный итог в базовой валюте. */
+  base: BaseSummary;
 };

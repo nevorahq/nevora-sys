@@ -35,6 +35,9 @@ export async function getTransactions(
   const { data, error } = await supabase
     .from("money_transactions")
     .select("*, account:money_accounts(name), category:money_categories(name)")
+    // Recent Transactions — леджер фактов. Запланированные (planned)
+    // показываются отдельно в блоке «Предстоящие расходы».
+    .eq("status", "posted")
     .order("transaction_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);

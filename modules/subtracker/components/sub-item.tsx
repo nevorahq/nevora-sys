@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ExternalLinkIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { ExternalLinkIcon, Link2Icon, PencilIcon, RefreshCwIcon, Trash2Icon } from "lucide-react";
+import { ROUTES } from "@/shared/config/routes";
 import { deleteSubscriptionAction } from "../actions/delete-subscription.action";
+import { renewSubscriptionAction } from "../actions/renew-subscription.action";
 import { formatMoney } from "@/shared/utils/format-money";
 import { SubEditForm } from "./sub-edit-form";
 import { Modal } from "@/shared/ui/modal";
@@ -19,6 +22,8 @@ interface SubItemProps {
 export function SubItem({ subscription: sub, dict }: SubItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, startDelete] = useTransition();
+  const [isRenewing, startRenew] = useTransition();
+  const [renewError, setRenewError] = useState<string | null>(null);
 
   const cycles = dict.subscriptions.cycles;
   const categories = dict.subscriptions.categories;
@@ -29,12 +34,21 @@ export function SubItem({ subscription: sub, dict }: SubItemProps) {
     });
   }
 
+  const isDue = sub.next_billing_date <= new Date().toISOString().slice(0, 10);
+  function handleRenew() {
+    setRenewError(null);
+    startRenew(async () => {
+      const result = await renewSubscriptionAction(sub.id);
+      if (result.error) setRenewError(result.error);
+    });
+  }
+
   return (
     <>
       <div
         className={cn(
           "soft-card-sm flex items-center gap-3 p-4 transition-opacity",
-          isDeleting && "opacity-50 pointer-events-none",
+          (isDeleting || isRenewing) && "opacity-50 pointer-events-none",
         )}
       >
         {/* Avatar */}
@@ -78,6 +92,26 @@ export function SubItem({ subscription: sub, dict }: SubItemProps) {
           </p>
         </div>
 
+        {isDue && <button
+          type="button"
+          onClick={handleRenew}
+          className="soft-icon-button h-8 w-8 text-text-muted hover:text-accent-green"
+          aria-label="Renew subscription"
+          title="Renew subscription"
+        >
+          <RefreshCwIcon size={15} strokeWidth={1.75} className={isRenewing ? "animate-spin" : undefined} />
+        </button>}
+
+        {/* Open detail (linked entities) */}
+        <Link
+          href={`${ROUTES.subscriptions}/${sub.id}`}
+          className="soft-icon-button h-8 w-8 text-text-muted hover:text-text-primary"
+          aria-label="Open subscription"
+          title="Open subscription"
+        >
+          <Link2Icon size={15} strokeWidth={1.75} />
+        </Link>
+
         {/* Edit button */}
         <button
           type="button"
@@ -98,6 +132,8 @@ export function SubItem({ subscription: sub, dict }: SubItemProps) {
           <Trash2Icon size={15} strokeWidth={1.75} />
         </button>
       </div>
+
+      {renewError && <p className="mt-2 text-xs text-danger" role="alert">{renewError}</p>}
 
       {/* Edit Modal */}
       <Modal

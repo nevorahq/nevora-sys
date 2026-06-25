@@ -6,21 +6,28 @@ import { BILLING_CYCLES, SUB_CATEGORIES } from "../constants/subtracker.constant
 import { Input } from "@/shared/ui/input";
 import { Select } from "@/shared/ui/select";
 import { Button } from "@/shared/ui/button";
+import type { MoneyAccount } from "@/modules/moneyflow/types/moneyflow.types";
 import type { ActionResult } from "@/lib/validators/common";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 /**
  * onSuccess — callback, вызывается после успешного создания.
  * Используется для закрытия модалки снаружи.
+ *
+ * accounts — счета организации. При создании подписки автоматически
+ * создаётся транзакция-расход с выбранного счёта (поле «Счёт списания»).
+ * Без счёта подписку создать нельзя (транзакция требует account_id).
  */
 interface CreateSubscriptionFormProps {
   dict: Dictionary;
+  accounts: MoneyAccount[];
   onSuccess?: () => void;
 }
 
-export function CreateSubscriptionForm({ dict, onSuccess }: CreateSubscriptionFormProps) {
+export function CreateSubscriptionForm({ dict, accounts, onSuccess }: CreateSubscriptionFormProps) {
   const t = dict.subscriptions.form;
   const formRef = useRef<HTMLFormElement>(null);
+  const hasAccounts = accounts.length > 0;
 
   const [state, formAction, isPending] = useActionState<ActionResult, FormData>(
     async (prevState, formData) => {
@@ -44,6 +51,11 @@ export function CreateSubscriptionForm({ dict, onSuccess }: CreateSubscriptionFo
     label: dict.subscriptions.categories[cat],
   }));
 
+  const accountOptions = accounts.map((acc) => ({
+    value: acc.id,
+    label: acc.name,
+  }));
+
   const today = new Date().toISOString().split("T")[0];
 
   return (
@@ -51,6 +63,12 @@ export function CreateSubscriptionForm({ dict, onSuccess }: CreateSubscriptionFo
       {state.error && (
         <div className="mb-3 rounded-(--neu-radius-md) bg-danger-soft border border-danger/20 px-4 py-3 text-sm text-danger" role="alert">
           {state.error}
+        </div>
+      )}
+
+      {!hasAccounts && (
+        <div className="mb-3 rounded-(--neu-radius-md) bg-info-soft border border-info/20 px-4 py-3 text-sm text-info">
+          {t.noAccountWarning}
         </div>
       )}
 
@@ -62,6 +80,20 @@ export function CreateSubscriptionForm({ dict, onSuccess }: CreateSubscriptionFo
           placeholder={t.namePlaceholder}
           required
           error={state.fieldErrors?.name?.[0]}
+        />
+
+        <Select
+          id="sub-account"
+          name="account_id"
+          label={t.accountLabel}
+          options={
+            hasAccounts
+              ? accountOptions
+              : [{ value: "", label: `— ${t.selectAccount} —` }]
+          }
+          required
+          disabled={!hasAccounts}
+          error={state.fieldErrors?.account_id?.[0]}
         />
 
         <Input
@@ -125,7 +157,7 @@ export function CreateSubscriptionForm({ dict, onSuccess }: CreateSubscriptionFo
       </div>
 
       <div className="mt-4">
-        <Button type="submit" isLoading={isPending} className="w-full">
+        <Button type="submit" isLoading={isPending} disabled={!hasAccounts} className="w-full">
           {isPending ? dict.common.loading : t.addButton}
         </Button>
       </div>

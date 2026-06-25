@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth/require-user";
+import { requireOrg } from "@/lib/auth/require-org";
+import { emitDomainEvent } from "@/lib/events";
 import { getTransactionSchemas } from "../schemas/transaction.schema";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
@@ -15,7 +16,7 @@ export async function updateTransactionAction(
   const { dict } = await getDictionary();
   const { updateTransactionSchema } = getTransactionSchemas(dict.money.errors);
 
-  const user = await requireUser();
+  const ctx = await requireOrg();
 
   const rawData = {
     transactionId: formData.get("transactionId") as string,
@@ -42,7 +43,7 @@ export async function updateTransactionAction(
   try {
     const supabase = await createClient();
 
-    const { error } = await supabase
+    const { data: updatedTx, error } = await supabase
       .from("money_transactions")
       .update({
         title: parsed.data.title,
@@ -52,14 +53,31 @@ export async function updateTransactionAction(
         category_id: parsed.data.category_id,
         transaction_date: parsed.data.transaction_date,
         note: parsed.data.note,
+        updated_by: ctx.user.id,
       })
       .eq("id", parsed.data.transactionId)
-      .eq("user_id", user.id);
+      .eq("organization_id", ctx.org.id)
+      .select("id, organization_id, workspace_id")
+      .single();
 
-    if (error) {
+    if (error || !updatedTx) {
       console.error("updateTransaction error:", error);
       return { error: dict.money.errors.updateTransactionFailed };
     }
+
+    await emitDomainEvent({
+      organizationId: ctx.org.id,
+      workspaceId: (updatedTx.workspace_id as string | null) ?? undefined,
+      eventName: "money.transaction.updated",
+      aggregateType: "transaction",
+      aggregateId: updatedTx.id as string,
+      payload: {
+        amount: parsed.data.amount,
+        type: parsed.data.type,
+        account_id: parsed.data.account_id,
+        transaction_date: parsed.data.transaction_date ?? null,
+      },
+    });
   } catch (err) {
     console.error("updateTransaction unexpected error:", err);
     return { error: dict.money.errors.serverError };

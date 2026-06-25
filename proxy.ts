@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
-import { ROUTES, PUBLIC_ROUTES } from "@/shared/config/routes";
+import { ROUTES, isPublicRoute } from "@/shared/config/routes";
 
 /**
  * Proxy (бывший Middleware) — перехватывает КАЖДЫЙ запрос.
@@ -23,10 +23,8 @@ export async function proxy(request: NextRequest) {
   const { user, supabaseResponse } = await updateSession(request);
   const { pathname } = request.nextUrl;
 
-  const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname === route);
-
   // Неавторизован + protected route → на логин
-  if (!user && !isPublicRoute) {
+  if (!user && !isPublicRoute(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = ROUTES.login;
     return Response.redirect(url);

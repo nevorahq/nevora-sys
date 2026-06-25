@@ -1,21 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { PlusIcon, WalletIcon, ArrowRightLeftIcon } from "lucide-react";
+import { WalletIcon, ArrowRightLeftIcon } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Modal } from "@/shared/ui/modal";
 import { CreateAccountForm } from "./create-account-form";
 import { CreateTransactionForm } from "./create-transaction-form";
 import type { MoneyAccount, MoneyCategory } from "../types/moneyflow.types";
+import type { Subscription } from "@/modules/subtracker/types/subtracker.types";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface MoneyCreateButtonsProps {
   dict: Dictionary;
   accounts: MoneyAccount[];
   categories: MoneyCategory[];
+  subscriptions?: Subscription[];
 }
 
-export function MoneyCreateButtons({ dict, accounts, categories }: MoneyCreateButtonsProps) {
+export function MoneyCreateButtons({ dict, accounts, categories, subscriptions }: MoneyCreateButtonsProps) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [transactionOpen, setTransactionOpen] = useState(false);
 
@@ -64,6 +66,7 @@ export function MoneyCreateButtons({ dict, accounts, categories }: MoneyCreateBu
           dict={dict}
           accounts={accounts}
           categories={categories}
+          subscriptions={subscriptions}
           onSuccess={() => setTransactionOpen(false)}
         />
       </Modal>

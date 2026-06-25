@@ -5,6 +5,7 @@ import { PlusIcon } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Modal } from "@/shared/ui/modal";
 import { CreateSubscriptionForm } from "./create-subscription-form";
+import type { MoneyAccount } from "@/modules/moneyflow/types/moneyflow.types";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 /**
@@ -22,9 +23,10 @@ import type { Dictionary } from "@/shared/i18n/dictionaries/en";
  */
 interface SubCreateButtonProps {
   dict: Dictionary;
+  accounts: MoneyAccount[];
 }
 
-export function SubCreateButton({ dict }: SubCreateButtonProps) {
+export function SubCreateButton({ dict, accounts }: SubCreateButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -47,6 +49,7 @@ export function SubCreateButton({ dict }: SubCreateButtonProps) {
       >
         <CreateSubscriptionForm
           dict={dict}
+          accounts={accounts}
           onSuccess={() => setIsOpen(false)}
         />
       </Modal>

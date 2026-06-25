@@ -1,0 +1,62 @@
+"use client";
+
+import { ClockIcon, LinkIcon, SparklesIcon, UserIcon } from "lucide-react";
+import { ActionPriorityBadge } from "./action-priority-badge";
+import { TYPE_LABELS, SOURCE_LABELS } from "../constants/action-center.constants";
+import type { ActionFeedItem } from "../types/action-center.types";
+
+interface ActionCardProps {
+  item: ActionFeedItem;
+  onOpen: (id: string) => void;
+  muted?: boolean;
+}
+
+function formatDue(due: string): { label: string; overdue: boolean } {
+  const d = new Date(due);
+  const overdue = d.getTime() < Date.now();
+  return { label: d.toLocaleDateString(), overdue };
+}
+
+/** Карточка action item. Клик открывает Detail Drawer. */
+export function ActionCard({ item, onOpen, muted }: ActionCardProps) {
+  const due = item.due_at ? formatDue(item.due_at) : null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(item.id)}
+      className={`w-full rounded-(--neu-radius) bg-surface-sunken p-3.5 text-left transition-colors hover:bg-surface ${muted ? "opacity-60" : ""}`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 flex-1 text-sm font-medium text-text-primary">{item.title}</p>
+        <ActionPriorityBadge priority={item.priority} />
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-muted">
+        <span className="rounded-full bg-surface px-1.5 py-0.5">{SOURCE_LABELS[item.source_type]}</span>
+        <span>{TYPE_LABELS[item.type]}</span>
+        {due && (
+          <span className={`inline-flex items-center gap-1 ${due.overdue ? "text-accent-pink" : ""}`}>
+            <ClockIcon size={12} /> {due.label}
+          </span>
+        )}
+        {item.related_count > 0 && (
+          <span className="inline-flex items-center gap-1">
+            <LinkIcon size={12} /> {item.related_count}
+          </span>
+        )}
+        {item.assignee_name && (
+          <span className="inline-flex items-center gap-1">
+            <UserIcon size={12} /> {item.assignee_name}
+          </span>
+        )}
+        {item.ai_generated && (
+          <span className="inline-flex items-center gap-1 text-accent-lilac">
+            <SparklesIcon size={12} />
+            {typeof item.ai_confidence === "number" ? `${Math.round(item.ai_confidence * 100)}%` : "AI"}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}

@@ -12,6 +12,8 @@ export type Todo = {
   is_completed: boolean;
   priority: TodoPriority;
   due_date: string | null;
+  recurrence: "none" | "monthly";
+  recurrence_source_id: string | null;
   created_at: string;
   updated_at: string;
 };

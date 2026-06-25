@@ -5,8 +5,12 @@ import { ThemeToggle } from "@/shared/ui/theme-toggle";
 import { Notifications } from "@/shared/ui/notifications";
 import { LogoutButton } from "@/features/auth/components/logout-button";
 import { requireUser } from "@/lib/auth/require-user";
+import { requireOrg } from "@/lib/auth/require-org";
 import { getTaskSummary } from "@/features/todos/queries/get-task-summary";
 import { getUpcomingRenewals } from "@/modules/subtracker/queries/get-upcoming-renewals";
+import { getBookingRequests } from "@/modules/booking";
+import { getTrialState } from "@/modules/billing";
+import { TrialBanner } from "@/modules/billing/components/trial-banner";
 
 /**
  * Dashboard Layout — обёртка для ВСЕХ защищённых страниц.
@@ -33,11 +37,16 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [user, { dict, locale }, taskSummary, renewals] = await Promise.all([
+  const [user, context, { dict, locale }, taskSummary, renewals] = await Promise.all([
     requireUser(),
+    requireOrg(),
     getDictionary(),
     getTaskSummary(),
     getUpcomingRenewals(),
+  ]);
+  const [trial, bookingRequests] = await Promise.all([
+    getTrialState(context.org.id),
+    getBookingRequests(context.org.id, { status: "pending", limit: 5 }),
   ]);
 
   return (
@@ -56,6 +65,7 @@ export default async function DashboardLayout({
             <Notifications
               overdueCount={taskSummary.overdue}
               renewals={renewals}
+              bookingRequests={bookingRequests}
               dict={dict}
             />
             <LanguageSwitcher locale={locale} />
@@ -66,6 +76,7 @@ export default async function DashboardLayout({
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
+          <TrialBanner trial={trial} />
           {children}
         </main>
       </div>

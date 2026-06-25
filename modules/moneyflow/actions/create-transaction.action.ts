@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth/require-user";
+import { requireOrg } from "@/lib/auth/require-org";
+import { emitDomainEvent } from "@/lib/events";
+import { checkPlanLimit } from "@/lib/billing";
 import { getTransactionSchemas } from "../schemas/transaction.schema";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
@@ -22,7 +24,12 @@ export async function createTransactionAction(
   const { dict } = await getDictionary();
   const { createTransactionSchema } = getTransactionSchemas(dict.money.errors);
 
-  const user = await requireUser();
+  const { user, org, workspace } = await requireOrg();
+
+  const limitCheck = await checkPlanLimit(org.id, "money_transactions");
+  if (!limitCheck.allowed) {
+    return { error: limitCheck.reason ?? "Money transaction limit reached. Upgrade your plan." };
+  }
 
   const rawData = {
     title: formData.get("title") as string,
@@ -30,6 +37,8 @@ export async function createTransactionAction(
     amount: formData.get("amount") as string,
     account_id: formData.get("account_id") as string,
     category_id: (formData.get("category_id") as string) || null,
+    subscription_id: (formData.get("subscription_id") as string) || null,
+    status: (formData.get("status") as string) || undefined,
     transaction_date: (formData.get("transaction_date") as string) || undefined,
     note: (formData.get("note") as string) || null,
   };
@@ -48,22 +57,51 @@ export async function createTransactionAction(
   try {
     const supabase = await createClient();
 
-    const { error } = await supabase.from("money_transactions").insert({
-      user_id: user.id,
-      title: parsed.data.title,
-      type: parsed.data.type,
-      amount: parsed.data.amount,
-      account_id: parsed.data.account_id,
-      category_id: parsed.data.category_id,
-      transaction_date: parsed.data.transaction_date,
-      currency: parsed.data.currency,
-      note: parsed.data.note,
-    });
+    const { data: newTx, error } = await supabase
+      .from("money_transactions")
+      .insert({
+        organization_id: org.id,
+        workspace_id: workspace.id,
+        created_by: user.id,
+        updated_by: user.id,
+        title: parsed.data.title,
+        type: parsed.data.type,
+        amount: parsed.data.amount,
+        account_id: parsed.data.account_id,
+        category_id: parsed.data.category_id,
+        transaction_date: parsed.data.transaction_date,
+        currency: parsed.data.currency,
+        status: parsed.data.status,
+        note: parsed.data.note,
+      })
+      .select("id")
+      .single();
 
-    if (error) {
+    if (error || !newTx) {
       console.error("createTransaction error:", error);
       return { error: dict.money.errors.createTransactionFailed };
     }
+
+    await emitDomainEvent({
+      organizationId: org.id,
+      workspaceId: workspace.id,
+      eventName: "money.transaction.created",
+      aggregateType: "transaction",
+      aggregateId: newTx.id,
+      payload: {
+        amount: parsed.data.amount,
+        type: parsed.data.type,
+        currency: parsed.data.currency,
+        account_id: parsed.data.account_id,
+        category_id: parsed.data.category_id,
+        transaction_date: parsed.data.transaction_date ?? null,
+        status: parsed.data.status,
+        // Если задано — on-transaction-created создаст entity_link paid_by.
+        ...(parsed.data.subscription_id
+          ? { subscription_id: parsed.data.subscription_id }
+          : {}),
+      },
+    });
   } catch (err) {
     console.error("createTransaction unexpected error:", err);
     return { error: dict.money.errors.serverError };

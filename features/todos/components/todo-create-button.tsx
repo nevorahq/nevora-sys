@@ -31,7 +31,7 @@ export function TodoCreateButton({ dict }: TodoCreateButtonProps) {
         title={dict.todos.form.createButton}
         closeLabel={dict.common.close}
       >
-        <TodoForm dict={dict} onSuccess={() => setIsOpen(false)} />
+        {isOpen && <TodoForm dict={dict} onSuccess={() => setIsOpen(false)} />}
       </Modal>
     </>
   );

@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboardIcon, CheckSquareIcon, WalletIcon, RepeatIcon } from "lucide-react";
+import {
+  LayoutDashboardIcon, CheckSquareIcon, WalletIcon, RepeatIcon,
+  FileTextIcon, BarChart2Icon, SparklesIcon, CreditCardIcon,
+  CalendarCheckIcon, Users2Icon, ZapIcon,
+} from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ROUTES } from "@/shared/config/routes";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
@@ -40,26 +44,19 @@ export function Sidebar({ dict }: SidebarProps) {
   const pathname = usePathname();
 
   const navItems: NavItem[] = [
-    {
-      href: ROUTES.dashboard,
-      label: dict.nav.dashboard,
-      icon: LayoutDashboardIcon,
-    },
-    {
-      href: ROUTES.tasks,
-      label: dict.nav.tasks,
-      icon: CheckSquareIcon,
-    },
-    {
-      href: ROUTES.money,
-      label: dict.nav.money,
-      icon: WalletIcon,
-    },
-    {
-      href: ROUTES.subscriptions,
-      label: dict.nav.subscriptions,
-      icon: RepeatIcon,
-    },
+    { href: ROUTES.dashboard,     label: dict.nav.dashboard,     icon: LayoutDashboardIcon },
+    { href: ROUTES.actions,       label: dict.nav.actions,       icon: ZapIcon },
+    { href: ROUTES.tasks,         label: dict.nav.tasks,         icon: CheckSquareIcon },
+    // Временно скрыт CRM-модуль (вернуть — раскомментировать строку)
+    // { href: ROUTES.crm,           label: dict.nav.crm,           icon: UsersIcon },
+    { href: ROUTES.money,         label: dict.nav.money,         icon: WalletIcon },
+    { href: ROUTES.subscriptions, label: dict.nav.subscriptions, icon: RepeatIcon },
+    { href: ROUTES.documents,     label: dict.nav.documents,     icon: FileTextIcon },
+    { href: ROUTES.analytics,     label: dict.nav.analytics,     icon: BarChart2Icon },
+    { href: ROUTES.ai,            label: dict.nav.ai,            icon: SparklesIcon },
+    { href: ROUTES.billing,       label: dict.nav.billing,       icon: CreditCardIcon },
+    { href: ROUTES.booking,       label: dict.nav.booking,       icon: CalendarCheckIcon },
+    { href: ROUTES.members,       label: dict.nav.members,       icon: Users2Icon },
   ];
 
   function isActive(href: string): boolean {

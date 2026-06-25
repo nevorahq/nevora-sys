@@ -2,6 +2,7 @@ import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { getSubSummary } from "@/modules/subtracker/queries/get-sub-summary";
 import { getSubscriptions } from "@/modules/subtracker/queries/get-subscriptions";
 import { getUpcomingRenewals } from "@/modules/subtracker/queries/get-upcoming-renewals";
+import { getAccounts } from "@/modules/moneyflow/queries/get-accounts";
 import { SubSummaryCards } from "@/modules/subtracker/components/sub-summary-cards";
 import { SubUpcomingRenewals } from "@/modules/subtracker/components/sub-upcoming-renewals";
 import { SubList } from "@/modules/subtracker/components/sub-list";
@@ -16,10 +17,11 @@ import { SubEmptyState } from "@/modules/subtracker/components/sub-empty-state";
  * После успешного создания — модалка закрывается автоматически.
  */
 export default async function SubscriptionsPage() {
-  const [summary, subscriptions, upcoming, { dict }] = await Promise.all([
+  const [summary, subscriptions, upcoming, accounts, { dict }] = await Promise.all([
     getSubSummary(),
     getSubscriptions(),
     getUpcomingRenewals(),
+    getAccounts(),
     getDictionary(),
   ]);
 
@@ -35,7 +37,7 @@ export default async function SubscriptionsPage() {
             {dict.subscriptions.description}
           </p>
         </div>
-        <SubCreateButton dict={dict} />
+        <SubCreateButton dict={dict} accounts={accounts} />
       </div>
 
       {/* Summary Cards */}

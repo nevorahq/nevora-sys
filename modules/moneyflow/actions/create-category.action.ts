@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth/require-user";
+import { requireOrg } from "@/lib/auth/require-org";
 import { getCategorySchemas } from "../schemas/category.schema";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
@@ -23,7 +23,7 @@ export async function createCategoryInline(
     invalidType: dict.money.errors.invalidType,
   });
 
-  const user = await requireUser();
+  const { user, org } = await requireOrg();
 
   const parsed = createCategorySchema.safeParse({ name, type });
 
@@ -37,7 +37,9 @@ export async function createCategoryInline(
     const { data, error } = await supabase
       .from("money_categories")
       .insert({
-        user_id: user.id,
+        organization_id: org.id,
+        created_by: user.id,
+        updated_by: user.id,
         name: parsed.data.name,
         type: parsed.data.type,
       })
@@ -72,7 +74,7 @@ export async function createCategoryAction(
     invalidType: dict.money.errors.invalidType,
   });
 
-  const user = await requireUser();
+  const { user, org } = await requireOrg();
 
   const rawData = {
     name: formData.get("name") as string,
@@ -94,7 +96,9 @@ export async function createCategoryAction(
     const supabase = await createClient();
 
     const { error } = await supabase.from("money_categories").insert({
-      user_id: user.id,
+      organization_id: org.id,
+      created_by: user.id,
+      updated_by: user.id,
       name: parsed.data.name,
       type: parsed.data.type,
     });

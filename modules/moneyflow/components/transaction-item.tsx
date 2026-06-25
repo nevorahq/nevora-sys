@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ArrowUpRightIcon, ArrowDownLeftIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { ArrowUpRightIcon, ArrowDownLeftIcon, Link2Icon, PencilIcon, Trash2Icon } from "lucide-react";
+import { ROUTES } from "@/shared/config/routes";
 import { deleteTransactionAction } from "../actions/delete-transaction.action";
 import { formatMoney } from "@/shared/utils/format-money";
 import { TransactionEditForm } from "./transaction-edit-form";
@@ -79,6 +81,16 @@ export function TransactionItem({
           </p>
           <p className="text-xs text-text-muted">{formatDate(tx.transaction_date)}</p>
         </div>
+
+        {/* Open detail (linked entities) */}
+        <Link
+          href={`${ROUTES.money}/${tx.id}`}
+          className="soft-icon-button h-8 w-8 text-text-muted hover:text-text-primary"
+          aria-label="Open transaction"
+          title="Open transaction"
+        >
+          <Link2Icon size={15} strokeWidth={1.75} />
+        </Link>
 
         {/* Edit button */}
         <button

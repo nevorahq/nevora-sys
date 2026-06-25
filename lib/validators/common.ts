@@ -10,6 +10,7 @@ import { z } from "zod";
 export type ActionResult = {
   error?: string;
   fieldErrors?: Record<string, string[]>;
+  documentId?: string;
 };
 
 /**

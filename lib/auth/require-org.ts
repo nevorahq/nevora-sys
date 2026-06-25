@@ -1,0 +1,144 @@
+import { cache } from "react";
+import { redirect } from "next/navigation";
+import { requireUser } from "./require-user";
+import { createClient } from "@/lib/supabase/server";
+import { ROUTES } from "@/shared/config/routes";
+import type {
+  CurrentContext,
+  OrgContext,
+  WorkspaceContext,
+  RoleContext,
+  MembershipContext,
+} from "@/lib/context/current-context";
+import type { OrgRole } from "@/lib/context/organization-context";
+
+// Permissions derived from role — no separate DB table needed.
+// Matches RBAC model from 002_security_functions.sql.
+//
+// Automation Foundation (Phase 1) permissions — derived from role, same model:
+//   domain_event.read  — читать журнал бизнес-событий
+//   entity_link.*      — управлять кросс-модульными связями
+//   automation.read    — читать automation_audit_logs
+//   automation.manage  — управлять автоматизациями (зарезервировано на будущее)
+// Связи создаются writer-ролями, удаляются manager+ — зеркалит
+// can_write_data()/can_delete_data() из 002_security_functions.sql.
+//
+// Action Center (Phase 3) permissions — derived from role, same model:
+//   action_center.view              — открыть Action Center
+//   action_center.manage            — административное управление item'ами
+//   action_center.assign            — назначать ответственного
+//   action_center.resolve/.dismiss  — закрывать/отклонять (+ snooze под resolve)
+//   action_center.execute           — safe quick actions
+//   action_center.execute.financial / .subscription / .document_approval
+//                                   — sensitive executes (требуют confirmation)
+// Финансовый execute — только owner/admin. Members получают только safe-набор.
+const ROLE_PERMISSIONS: Record<OrgRole, string[]> = {
+  owner:   ["org.read", "org.update", "org.delete", "users.manage", "billing.manage", "workspace.manage", "data.write", "data.delete", "domain_event.read", "entity_link.read", "entity_link.create", "entity_link.delete", "automation.read", "automation.manage", "action_center.view", "action_center.manage", "action_center.assign", "action_center.resolve", "action_center.dismiss", "action_center.execute", "action_center.execute.financial", "action_center.execute.subscription", "action_center.execute.document_approval"],
+  admin:   ["org.read", "org.update", "users.manage", "workspace.manage", "data.write", "data.delete", "domain_event.read", "entity_link.read", "entity_link.create", "entity_link.delete", "automation.read", "automation.manage", "action_center.view", "action_center.manage", "action_center.assign", "action_center.resolve", "action_center.dismiss", "action_center.execute", "action_center.execute.financial", "action_center.execute.subscription", "action_center.execute.document_approval"],
+  manager: ["org.read", "data.write", "data.delete", "domain_event.read", "entity_link.read", "entity_link.create", "entity_link.delete", "automation.read", "action_center.view", "action_center.manage", "action_center.assign", "action_center.resolve", "action_center.dismiss", "action_center.execute", "action_center.execute.subscription", "action_center.execute.document_approval"],
+  member:  ["org.read", "data.write", "domain_event.read", "entity_link.read", "entity_link.create", "automation.read", "action_center.view", "action_center.resolve", "action_center.dismiss", "action_center.execute"],
+};
+
+/**
+ * Требовать активный org + workspace контекст — или redirect.
+ *
+ * Обёрнут в React cache() — дедупликация в рамках одного render pass.
+ * Layout и Page могут оба вызвать requireOrg() — только один DB-запрос.
+ *
+ * Phase 2 schema: memberships (role as TEXT) + organizations + workspaces.
+ * Permissions derived from role — no role_permissions table needed.
+ */
+export const requireOrg = cache(async (): Promise<CurrentContext> => {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  // ── 1. Membership + Organization ─────────────────────────────────────
+  const { data: memberData, error: memberError } = await supabase
+    .from("memberships")
+    .select(
+      `
+      id,
+      organization_id,
+      user_id,
+      role,
+      status,
+      created_at,
+      organizations (
+        id,
+        name,
+        slug,
+        plan,
+        base_currency
+      )
+    `,
+    )
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .single();
+
+  if (memberError || !memberData) {
+    redirect(ROUTES.onboarding);
+  }
+
+  const rawOrg = Array.isArray(memberData.organizations)
+    ? memberData.organizations[0]
+    : memberData.organizations;
+
+  if (!rawOrg) {
+    redirect(ROUTES.onboarding);
+  }
+
+  const org: OrgContext = {
+    id: rawOrg.id as string,
+    name: rawOrg.name as string,
+    slug: (rawOrg.slug as string | null) ?? "",
+    plan: rawOrg.plan as string,
+    logoUrl: null,
+    baseCurrency: (rawOrg.base_currency as string | null) ?? "EUR",
+  };
+
+  const roleName = memberData.role as OrgRole;
+
+  const role: RoleContext = {
+    id: roleName,
+    name: roleName,
+    isSystem: true,
+    organizationId: org.id,
+  };
+
+  const membership: MembershipContext = {
+    id: memberData.id as string,
+    organizationId: memberData.organization_id as string,
+    userId: memberData.user_id as string,
+    roleId: roleName,
+    status: memberData.status as MembershipContext["status"],
+    joinedAt: (memberData.created_at as string | null) ?? null,
+  };
+
+  // ── 2. Permissions ────────────────────────────────────────────────────
+  const permissions = new Set<string>(ROLE_PERMISSIONS[roleName] ?? []);
+
+  // ── 3. Workspace ──────────────────────────────────────────────────────
+  const { data: wsData } = await supabase
+    .from("workspaces")
+    .select("id, name")
+    .eq("organization_id", org.id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .single();
+
+  if (!wsData) {
+    redirect(ROUTES.onboarding);
+  }
+
+  const workspace: WorkspaceContext = {
+    id: wsData.id as string,
+    name: wsData.name as string,
+    slug: "",
+    description: null,
+  };
+
+  return { user, org, membership, role, permissions, workspace };
+});

@@ -31,6 +31,7 @@ export function getTodoSchemas(errors: {
       .string()
       .nullable()
       .default(null),
+    recurrence: z.enum(["none", "monthly"]).default("none"),
   });
 
   const updateTodoSchema = createTodoSchema.partial();

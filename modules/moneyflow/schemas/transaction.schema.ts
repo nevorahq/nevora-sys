@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   TRANSACTION_TYPES,
+  TRANSACTION_STATUSES,
   TRANSACTION_TITLE_MAX,
   TRANSACTION_NOTE_MAX,
   DEFAULT_CURRENCY,
@@ -48,6 +49,18 @@ export function getTransactionSchemas(errors: {
       .uuid()
       .nullable()
       .default(null),
+    // Опциональная связь «эта транзакция оплачивает подписку».
+    // Не хранится в money_transactions — уходит в payload события, а
+    // on-transaction-created создаёт entity_link transaction --paid_by--> subscription.
+    subscription_id: z
+      .string()
+      .uuid()
+      .nullable()
+      .default(null),
+    // posted = фактическая (в балансе), planned = запланированная (прогноз).
+    status: z
+      .enum(TRANSACTION_STATUSES)
+      .default("posted"),
     transaction_date: z
       .string()
       .min(1, errors.invalidDate)

@@ -1,0 +1,9 @@
+export { LandingHeader } from "./components/landing-header";
+export { HeroSection } from "./components/hero-section";
+export { ValueSection } from "./components/value-section";
+export { AboutSection } from "./components/about-section";
+export { PhilosophySection } from "./components/philosophy-section";
+export { PlansSection } from "./components/plans-section";
+export { TrialDetailsSection } from "./components/trial-details-section";
+export { ContactSection } from "./components/contact-section";
+export { LandingFooter } from "./components/landing-footer";

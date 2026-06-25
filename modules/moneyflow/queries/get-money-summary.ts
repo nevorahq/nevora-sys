@@ -1,21 +1,23 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import type { MoneySummary } from "../types/moneyflow.types";
+import { requireOrg } from "@/lib/auth/require-org";
+import { getRatesToBase } from "./fx-conversion";
+import type { CurrencySummary, MoneySummary } from "../types/moneyflow.types";
 
 /**
- * Query: получить финансовое summary пользователя.
+ * Query: получить финансовое summary пользователя — РАЗДЕЛЬНО ПО ВАЛЮТАМ.
  *
- * Возвращает:
- * - balance: общий баланс по ВСЕМ активным счетам
- *   (initial_balance + SUM(income) - SUM(expense))
- * - monthlyIncome: сумма доходов за текущий месяц
- * - monthlyExpenses: сумма расходов за текущий месяц
+ * Для каждой валюты возвращает:
+ * - balance: SUM(initial_balance этой валюты) + SUM(income) - SUM(expense)
+ * - monthlyIncome: доходы за текущий месяц
+ * - monthlyExpenses: расходы за текущий месяц
  *
- * Стратегия:
- * 1. Получаем все активные accounts (для initial_balance)
- * 2. Получаем все transactions текущего месяца (для income/expense)
- * 3. Считаем агрегаты на сервере (не в БД через SQL View)
+ * ВАЖНО (мультивалютность): суммы НЕ конвертируются. USD и MDL считаются
+ * как отдельные строки `byCurrency`. Складывать amount разных валют в одно
+ * число — финансово некорректно (1 USD ≠ 1 MDL). Конвертация в base_currency
+ * организации — отдельный FX-слой (exchange_rates + fn_get_exchange_rate),
+ * который пока не внедрён; до тех пор честнее показывать разбивку по валютам.
  *
  * Почему не SQL View / RPC:
  * Для MVP — проще и понятнее считать в коде.
@@ -25,6 +27,8 @@ import type { MoneySummary } from "../types/moneyflow.types";
  */
 export async function getMoneySummary(): Promise<MoneySummary> {
   const supabase = await createClient();
+  const { org } = await requireOrg();
+  const baseCurrency = org.baseCurrency;
 
   // Текущий месяц: первый и последний день
   const now = new Date();
@@ -35,61 +39,87 @@ export async function getMoneySummary(): Promise<MoneySummary> {
     .toISOString()
     .split("T")[0];
 
-  // Параллельно: accounts + transactions текущего месяца
-  const [accountsResult, transactionsResult] = await Promise.all([
+  // Параллельно: активные счета + все posted-транзакции + транзакции месяца.
+  // planned исключаем — они не влияют на баланс до проведения (см.
+  // getUpcomingExpenses).
+  const [accountsResult, allTxResult, monthTxResult] = await Promise.all([
     supabase
       .from("money_accounts")
-      .select("initial_balance")
+      .select("initial_balance, currency")
       .eq("is_active", true),
 
     supabase
       .from("money_transactions")
-      .select("type, amount")
+      .select("type, amount, currency")
+      .eq("status", "posted"),
+
+    supabase
+      .from("money_transactions")
+      .select("type, amount, currency")
+      .eq("status", "posted")
       .gte("transaction_date", monthStart)
       .lte("transaction_date", monthEnd),
   ]);
 
-  // Сумма initial_balance по всем активным счетам
-  const initialBalanceTotal = (accountsResult.data ?? []).reduce(
-    (sum, acc) => sum + Number(acc.initial_balance),
-    0,
+  // currency → агрегат. Map сохраняет каждую валюту изолированной.
+  const byCurrency = new Map<string, CurrencySummary>();
+  const bucket = (currency: string): CurrencySummary => {
+    let entry = byCurrency.get(currency);
+    if (!entry) {
+      entry = { currency, balance: 0, monthlyIncome: 0, monthlyExpenses: 0 };
+      byCurrency.set(currency, entry);
+    }
+    return entry;
+  };
+
+  // Стартовый баланс счетов — в валюте счёта.
+  for (const acc of accountsResult.data ?? []) {
+    bucket(acc.currency).balance += Number(acc.initial_balance);
+  }
+
+  // Полный баланс: все posted-транзакции, в валюте транзакции.
+  for (const tx of allTxResult.data ?? []) {
+    const entry = bucket(tx.currency);
+    const amount = Number(tx.amount);
+    entry.balance += tx.type === "income" ? amount : -amount;
+  }
+
+  // Доходы/расходы текущего месяца, в валюте транзакции.
+  for (const tx of monthTxResult.data ?? []) {
+    const entry = bucket(tx.currency);
+    const amount = Number(tx.amount);
+    if (tx.type === "income") {
+      entry.monthlyIncome += amount;
+    } else {
+      entry.monthlyExpenses += amount;
+    }
+  }
+
+  const rows = [...byCurrency.values()].sort((a, b) =>
+    a.currency.localeCompare(b.currency),
   );
 
-  // Доходы и расходы за месяц
-  let monthlyIncome = 0;
-  let monthlyExpenses = 0;
+  // Приведение к базовой валюте организации через fn_get_exchange_rate.
+  const { rates, complete } = await getRatesToBase(
+    supabase,
+    rows.map((r) => r.currency),
+    baseCurrency,
+  );
 
-  for (const tx of transactionsResult.data ?? []) {
-    const amount = Number(tx.amount);
-    if (tx.type === "income") {
-      monthlyIncome += amount;
-    } else {
-      monthlyExpenses += amount;
-    }
-  }
-
-  // Для полного баланса нужны ВСЕ транзакции (не только текущий месяц)
-  const allTransactionsResult = await supabase
-    .from("money_transactions")
-    .select("type, amount");
-
-  let allTimeIncome = 0;
-  let allTimeExpenses = 0;
-
-  for (const tx of allTransactionsResult.data ?? []) {
-    const amount = Number(tx.amount);
-    if (tx.type === "income") {
-      allTimeIncome += amount;
-    } else {
-      allTimeExpenses += amount;
-    }
-  }
-
-  const balance = initialBalanceTotal + allTimeIncome - allTimeExpenses;
-
-  return {
-    balance,
-    monthlyIncome,
-    monthlyExpenses,
+  const base = {
+    currency: baseCurrency,
+    balance: 0,
+    monthlyIncome: 0,
+    monthlyExpenses: 0,
+    complete,
   };
+  for (const row of rows) {
+    const rate = rates.get(row.currency);
+    if (rate == null) continue; // валюта без курса — уже учтено в complete
+    base.balance += row.balance * rate;
+    base.monthlyIncome += row.monthlyIncome * rate;
+    base.monthlyExpenses += row.monthlyExpenses * rate;
+  }
+
+  return { byCurrency: rows, base };
 }

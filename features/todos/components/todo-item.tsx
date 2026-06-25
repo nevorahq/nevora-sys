@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { PencilIcon, Trash2Icon } from "lucide-react";
+import Link from "next/link";
 import { toggleTodoAction } from "../actions/toggle-todo.action";
 import { deleteTodoAction } from "../actions/delete-todo.action";
 import { TodoEditForm } from "./todo-edit-form";
@@ -10,6 +11,7 @@ import { cn } from "@/shared/utils/cn";
 import { formatDate } from "@/shared/utils/format-date";
 import type { Todo } from "@/entities/todo/model";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
+import { ROUTES } from "@/shared/config/routes";
 
 interface TodoItemProps {
   todo: Todo;
@@ -71,7 +73,7 @@ export function TodoItem({ todo, dict }: TodoItemProps) {
         </button>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
+        <Link href={`${ROUTES.tasks}/${todo.id}`} className="min-w-0 flex-1 rounded-(--neu-radius-sm) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
           <p
             className={cn(
               "text-sm font-medium truncate",
@@ -87,7 +89,7 @@ export function TodoItem({ todo, dict }: TodoItemProps) {
               {todo.description}
             </p>
           )}
-        </div>
+        </Link>
 
         {/* Priority badge */}
         <span className={cn("soft-badge", priorityStyles[todo.priority])}>

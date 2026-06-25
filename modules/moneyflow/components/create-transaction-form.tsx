@@ -4,12 +4,13 @@ import { useActionState, useRef, useState, useTransition } from "react";
 import { PlusIcon, XIcon } from "lucide-react";
 import { createTransactionAction } from "../actions/create-transaction.action";
 import { createCategoryInline } from "../actions/create-category.action";
-import { TRANSACTION_TYPES, CATEGORY_TYPES } from "../constants/moneyflow.constants";
+import { TRANSACTION_TYPES, TRANSACTION_STATUSES, CATEGORY_TYPES } from "../constants/moneyflow.constants";
 import { Input } from "@/shared/ui/input";
 import { Select } from "@/shared/ui/select";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/utils/cn";
 import type { MoneyAccount, MoneyCategory } from "../types/moneyflow.types";
+import type { Subscription } from "@/modules/subtracker/types/subtracker.types";
 import type { ActionResult } from "@/lib/validators/common";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
@@ -34,6 +35,7 @@ interface CreateTransactionFormProps {
   dict: Dictionary;
   accounts: MoneyAccount[];
   categories: MoneyCategory[];
+  subscriptions?: Subscription[];
   onSuccess?: () => void;
 }
 
@@ -41,6 +43,7 @@ export function CreateTransactionForm({
   dict,
   accounts,
   categories: initialCategories,
+  subscriptions = [],
   onSuccess,
 }: CreateTransactionFormProps) {
   const t = dict.money.transactions;
@@ -112,6 +115,13 @@ export function CreateTransactionForm({
     label: t.types[type],
   }));
 
+  const statusOptions = TRANSACTION_STATUSES.filter((status) => status !== "planned").map(
+    (status) => ({
+      value: status,
+      label: t.statuses[status],
+    }),
+  );
+
   const accountOptions = accounts.map((acc) => ({
     value: acc.id,
     label: acc.name,
@@ -130,6 +140,12 @@ export function CreateTransactionForm({
     label: catDict.types[type],
   }));
 
+  // Опциональная привязка к подписке (формирует entity_link paid_by).
+  const subscriptionOptions = [
+    { value: "", label: `— ${t.subscriptionLabel} —` },
+    ...subscriptions.map((sub) => ({ value: sub.id, label: sub.name })),
+  ];
+
   const today = new Date().toISOString().split("T")[0];
   const hasAccounts = accounts.length > 0;
 
@@ -147,13 +163,14 @@ export function CreateTransactionForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="flex flex-col gap-3">
         <Input
           id="tx-title"
           name="title"
           label={t.titleLabel}
           placeholder={t.titlePlaceholder}
           required
+          className="h-11 py-0"
           error={state.fieldErrors?.title?.[0]}
         />
 
@@ -166,6 +183,7 @@ export function CreateTransactionForm({
           label={t.amountLabel}
           placeholder={t.amountPlaceholder}
           required
+          className="h-11 py-0"
           error={state.fieldErrors?.amount?.[0]}
         />
 
@@ -175,7 +193,18 @@ export function CreateTransactionForm({
           label={t.typeLabel}
           options={typeOptions}
           defaultValue="expense"
+          className="h-11 py-0"
           error={state.fieldErrors?.type?.[0]}
+        />
+
+        <Select
+          id="tx-status"
+          name="status"
+          label={t.statusLabel}
+          options={statusOptions}
+          defaultValue="posted"
+          className="h-11 py-0"
+          error={state.fieldErrors?.status?.[0]}
         />
 
         <Select
@@ -189,6 +218,7 @@ export function CreateTransactionForm({
           }
           required
           disabled={!hasAccounts}
+          className="h-11 py-0"
           error={state.fieldErrors?.account_id?.[0]}
         />
 
@@ -201,7 +231,7 @@ export function CreateTransactionForm({
             <select
               id="tx-category"
               name="category_id"
-              className="soft-control w-full px-4 py-2.5 text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236F6E70%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] bg-[position:right_0.75rem_center] bg-no-repeat pr-10"
+              className="soft-control h-11 w-full px-4 py-0 text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] bg-[position:right_0.75rem_center] bg-no-repeat pr-10"
             >
               {categoryOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -213,7 +243,7 @@ export function CreateTransactionForm({
               type="button"
               onClick={() => setShowNewCategory((v) => !v)}
               className={cn(
-                "soft-icon-button w-10 h-10 shrink-0",
+                "soft-icon-button h-11 w-11 shrink-0",
                 showNewCategory && "shadow-neu-inset text-text-primary",
               )}
               title={catDict.newCategory}
@@ -232,12 +262,25 @@ export function CreateTransactionForm({
           )}
         </div>
 
+        {subscriptions.length > 0 && (
+          <Select
+            id="tx-subscription"
+            name="subscription_id"
+            label={t.subscriptionLabel}
+            options={subscriptionOptions}
+            defaultValue=""
+            className="h-11 py-0"
+            error={state.fieldErrors?.subscription_id?.[0]}
+          />
+        )}
+
         <Input
           id="tx-date"
           name="transaction_date"
           type="date"
           label={t.dateLabel}
           defaultValue={today}
+          className="h-11 py-0"
           error={state.fieldErrors?.transaction_date?.[0]}
         />
 
@@ -246,19 +289,18 @@ export function CreateTransactionForm({
           name="note"
           label={t.noteLabel}
           placeholder={t.notePlaceholder}
+          className="h-11 py-0"
           error={state.fieldErrors?.note?.[0]}
         />
 
-        <div className="flex items-end">
-          <Button
-            type="submit"
-            isLoading={isPending}
-            disabled={!hasAccounts}
-            className="w-full"
-          >
-            {isPending ? dict.common.loading : t.add}
-          </Button>
-        </div>
+        <Button
+          type="submit"
+          isLoading={isPending}
+          disabled={!hasAccounts}
+          className="h-11 w-full py-0"
+        >
+          {isPending ? dict.common.loading : t.add}
+        </Button>
       </div>
 
       {/* ── Inline Category Creation ── */}
@@ -274,14 +316,14 @@ export function CreateTransactionForm({
             </div>
           )}
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-            <div className="flex-1">
+          <div className="flex flex-col gap-2">
+            <div className="w-full">
               <input
                 type="text"
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
                 placeholder={catDict.namePlaceholder}
-                className="soft-control w-full px-3 py-2 text-sm"
+                className="soft-control h-11 w-full px-3 py-0 text-sm"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -291,11 +333,11 @@ export function CreateTransactionForm({
               />
             </div>
 
-            <div className="w-full sm:w-32">
+            <div className="w-full">
               <select
                 value={newCatType}
                 onChange={(e) => setNewCatType(e.target.value as "income" | "expense")}
-                className="soft-control w-full px-3 py-2 text-sm appearance-none"
+                className="soft-control h-11 w-full px-3 py-0 text-sm appearance-none"
               >
                 {catTypeOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -311,7 +353,7 @@ export function CreateTransactionForm({
               disabled={isCreatingCat || !newCatName.trim()}
               className={cn(
                 "inline-flex items-center justify-center gap-1.5",
-                "rounded-(--neu-radius-pill) px-4 py-2",
+                "h-11 w-full rounded-(--neu-radius-pill) px-4 py-0",
                 "text-xs font-semibold",
                 "bg-text-primary text-text-inverse",
                 "shadow-neu-control hover:shadow-neu-card",

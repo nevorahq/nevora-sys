@@ -17,6 +17,11 @@ export type AccountType = (typeof ACCOUNT_TYPES)[number];
 export const TRANSACTION_TYPES = ["income", "expense"] as const;
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 
+// Статус транзакции: posted = фактическая (в балансе),
+// planned = запланированная (прогноз «Предстоящие расходы», вне баланса).
+export const TRANSACTION_STATUSES = ["posted", "planned"] as const;
+export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
+
 // ── Category Types (совпадают с transaction types) ──
 export const CATEGORY_TYPES = TRANSACTION_TYPES;
 export type CategoryType = TransactionType;

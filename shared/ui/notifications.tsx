@@ -1,25 +1,27 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BellIcon, CheckSquareIcon, RepeatIcon } from "lucide-react";
+import { BellIcon, CalendarCheckIcon, CheckSquareIcon, RepeatIcon } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/shared/utils/cn";
 import { ROUTES } from "@/shared/config/routes";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import type { UpcomingRenewal } from "@/modules/subtracker/types/subtracker.types";
+import type { BookingRequestWithDetails } from "@/modules/booking";
 
 interface NotificationsProps {
   overdueCount: number;
   renewals: UpcomingRenewal[];
+  bookingRequests: BookingRequestWithDetails[];
   dict: Dictionary;
 }
 
-export function Notifications({ overdueCount, renewals, dict }: NotificationsProps) {
+export function Notifications({ overdueCount, renewals, bookingRequests, dict }: NotificationsProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const n = dict.notifications;
-  const totalCount = (overdueCount > 0 ? 1 : 0) + renewals.length;
+  const totalCount = (overdueCount > 0 ? 1 : 0) + renewals.length + bookingRequests.length;
 
   /* Close on click outside */
   useEffect(() => {
@@ -122,6 +124,28 @@ export function Notifications({ overdueCount, renewals, dict }: NotificationsPro
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-text-primary">{renewal.name}</p>
                   <p className="text-xs text-text-muted">{getRenewalLabel(renewal.daysUntil, n)}</p>
+                </div>
+              </Link>
+            ))}
+
+            {/* Pending booking requests are new inbound client requests. */}
+            {bookingRequests.map((request) => (
+              <Link
+                key={request.id}
+                href={ROUTES.bookingRequests}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 border-b border-border-soft px-4 py-3 transition-colors hover:bg-surface-sunken last:border-none"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-(--neu-radius-md) bg-accent-green-soft">
+                  <CalendarCheckIcon size={15} className="text-accent-green" strokeWidth={2} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-text-primary">
+                    {request.client_name}
+                  </p>
+                  <p className="truncate text-xs text-text-muted">
+                    {n.bookingRequest} · {request.service_name}
+                  </p>
                 </div>
               </Link>
             ))}

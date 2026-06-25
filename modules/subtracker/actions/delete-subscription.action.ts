@@ -2,27 +2,58 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth/require-user";
+import { requireOrg } from "@/lib/auth/require-org";
+import { canDo } from "@/lib/context/current-context";
+import { emitDomainEvent } from "@/lib/events";
+import { uuidSchema } from "@/lib/validators/common";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 
 export async function deleteSubscriptionAction(id: string): Promise<{ error?: string }> {
   const { dict } = await getDictionary();
-  const user = await requireUser();
+  if (!uuidSchema.safeParse(id).success) {
+    return { error: dict.subscriptions.errors.deleteFailed };
+  }
+
+  const ctx = await requireOrg();
+  if (!canDo(ctx, "data.delete")) {
+    return { error: dict.subscriptions.errors.deleteFailed };
+  }
 
   try {
     const supabase = await createClient();
 
+    const { data: subscription, error: lookupError } = await supabase
+      .from("subscriptions")
+      .select("id, name, workspace_id")
+      .eq("id", id)
+      .eq("organization_id", ctx.org.id)
+      .single();
+
+    if (lookupError || !subscription) {
+      console.error("deleteSubscription lookup error:", lookupError);
+      return { error: dict.subscriptions.errors.deleteFailed };
+    }
+
     const { error } = await supabase
       .from("subscriptions")
       .delete()
-      .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("id", subscription.id)
+      .eq("organization_id", ctx.org.id);
 
     if (error) {
       console.error("deleteSubscription error:", error);
       return { error: dict.subscriptions.errors.deleteFailed };
     }
+
+    await emitDomainEvent({
+      organizationId: ctx.org.id,
+      workspaceId: (subscription.workspace_id as string | null) ?? undefined,
+      eventName: "subscription.deleted",
+      aggregateType: "subscription",
+      aggregateId: subscription.id as string,
+      payload: { name: subscription.name as string },
+    });
   } catch (err) {
     console.error("deleteSubscription unexpected error:", err);
     return { error: dict.subscriptions.errors.serverError };

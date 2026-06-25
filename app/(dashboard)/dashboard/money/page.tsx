@@ -3,6 +3,7 @@ import { getMoneySummary } from "@/modules/moneyflow/queries/get-money-summary";
 import { getAccounts } from "@/modules/moneyflow/queries/get-accounts";
 import { getCategories } from "@/modules/moneyflow/queries/get-categories";
 import { getTransactions } from "@/modules/moneyflow/queries/get-transactions";
+import { getSubscriptions } from "@/modules/subtracker/queries/get-subscriptions";
 import { MoneySummaryCards } from "@/modules/moneyflow/components/money-summary-cards";
 import { MoneyCreateButtons } from "@/modules/moneyflow/components/money-create-buttons";
 import { MoneyRecentTransactions } from "@/modules/moneyflow/components/money-recent-transactions";
@@ -10,12 +11,13 @@ import { MoneyAccountsList } from "@/modules/moneyflow/components/money-accounts
 import { MoneyEmptyState } from "@/modules/moneyflow/components/money-empty-state";
 
 export default async function MoneyPage() {
-  const [summary, accounts, categories, transactions, { dict }] =
+  const [summary, accounts, categories, transactions, subscriptions, { dict }] =
     await Promise.all([
       getMoneySummary(),
       getAccounts(),
       getCategories(),
       getTransactions({ limit: 20 }),
+      getSubscriptions(),
       getDictionary(),
     ]);
 
@@ -35,6 +37,7 @@ export default async function MoneyPage() {
           dict={dict}
           accounts={accounts}
           categories={categories}
+          subscriptions={subscriptions}
         />
       </div>
 

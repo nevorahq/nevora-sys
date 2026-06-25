@@ -11,9 +11,7 @@ import { MoneySummaryCards } from "@/modules/moneyflow/components/money-summary-
 import { MoneyRecentTransactions } from "@/modules/moneyflow/components/money-recent-transactions";
 import { MoneyEmptyState } from "@/modules/moneyflow/components/money-empty-state";
 import { SubSummaryCards } from "@/modules/subtracker/components/sub-summary-cards";
-import { SubUpcomingRenewals } from "@/modules/subtracker/components/sub-upcoming-renewals";
 import { ROUTES } from "@/shared/config/routes";
-import { cn } from "@/shared/utils/cn";
 
 /**
  * Dashboard Overview — /dashboard
