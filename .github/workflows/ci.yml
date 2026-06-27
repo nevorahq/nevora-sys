@@ -24,6 +24,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Next 16 typed routes: PageProps/RouteContext globals live in
+      # .next/dev/types (referenced by next-env.d.ts). They don't exist on a
+      # fresh checkout, so generate them before tsc or the type check fails.
+      - name: Generate route types
+        run: npx next typegen
+
       - name: Type check
         run: npx tsc --noEmit
 
