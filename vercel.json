@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/extraction-sweep",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}

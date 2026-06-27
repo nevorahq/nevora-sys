@@ -42,3 +42,5 @@ export { createCategoryAction, createCategoryInline } from "./actions/create-cat
 export { createTransactionAction } from "./actions/create-transaction.action";
 export { updateTransactionAction } from "./actions/update-transaction.action";
 export { deleteTransactionAction } from "./actions/delete-transaction.action";
+export { confirmDocumentTransactionAction } from "./actions/confirm-document-transaction.action";
+export { rejectDocumentTransactionAction } from "./actions/reject-document-transaction.action";

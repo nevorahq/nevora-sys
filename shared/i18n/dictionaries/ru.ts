@@ -216,6 +216,10 @@ export const ru: Dictionary = {
       editButton: "Редактировать",
       updateButton: "Сохранить",
       deleteButton: "Удалить",
+      deleteConfirmTitle: "Удалить транзакцию?",
+      deleteConfirmDescription: "Транзакция будет удалена без возможности восстановления:",
+      deleteCancelButton: "Отмена",
+      deletingButton: "Удаление…",
       types: {
         income: "Доход",
         expense: "Расход",

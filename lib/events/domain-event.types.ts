@@ -227,6 +227,48 @@ export interface DomainEventPayloadMap {
   "document.attachment_uploaded": { filename: string; size_bytes: number };
   "document.linked": { entity_type: string; entity_id: string };
 
+  // Document-to-Transaction Automation
+  "document.extraction.started": {
+    extraction_id: string;
+    provider: string;
+    doc_type: string;
+  };
+  "document.extraction.completed": {
+    extraction_id: string;
+    provider: string;
+    confidence: number;
+    created_transaction: boolean;
+    transaction_id?: string | null;
+  };
+  "document.extraction.failed": {
+    extraction_id?: string | null;
+    error_code: string;
+    error_message: string;
+  };
+  "money.transaction.draft_created": {
+    amount: number;
+    currency: string;
+    type: string;
+    merchant_name?: string | null;
+    source_document_id: string;
+    confidence: number;
+  };
+  "money.transaction.confirmed": {
+    amount: number;
+    type: string;
+    source_document_id?: string | null;
+  };
+  "money.transaction.rejected": {
+    source_document_id?: string | null;
+    reason?: string | null;
+  };
+  "action_center.item_created": {
+    type: string;
+    source_type: string;
+    source_id: string;
+    priority: string;
+  };
+
   "booking.requested": {
     client_name: string;
     service_name: string;

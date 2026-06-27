@@ -7,6 +7,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getDocumentById } from "@/modules/documents";
 import { DocumentPreviewCard, type DocumentAttachmentPreview } from "@/modules/documents/components/document-preview-card";
 import { DOCUMENT_STATUS_LABELS, DOCUMENT_TYPE_LABELS } from "@/modules/documents";
+import { isFinancialDocumentType } from "@/modules/documents/constants/document.constants";
+import { getDocumentExtractionState } from "@/modules/documents/queries/get-document-extraction";
+import { DocumentExtractionReview } from "@/modules/documents/components/document-extraction-review";
 import { UniversalRelationViewer } from "@/modules/relations";
 import { ROUTES } from "@/shared/config/routes";
 import { DocumentDetailActions } from "@/modules/documents/components/document-detail-actions";
@@ -24,6 +27,9 @@ export default async function DocumentPreviewPage({ params }: PageProps<"/dashbo
     return { ...attachment, signedUrl: data?.signedUrl ?? null };
   }));
 
+  const isFinancial = isFinancialDocumentType(document.doc_type);
+  const extractionState = isFinancial ? await getDocumentExtractionState(org.id, document.id) : null;
+
   return <>
     <div className="mb-6">
       <Link href={ROUTES.documents} className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-text-primary"><ArrowLeftIcon size={16} /> Documents</Link>
@@ -35,6 +41,9 @@ export default async function DocumentPreviewPage({ params }: PageProps<"/dashbo
 
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
       <main className="space-y-6">
+        {isFinancial && extractionState && (
+          <DocumentExtractionReview documentId={document.id} state={extractionState} canConfirm={canDo(ctx, "data.write")} />
+        )}
         <section className="soft-card p-5 sm:p-6"><div className="mb-3 flex items-center gap-2 text-text-secondary"><FileTextIcon size={18} /><h2 className="font-semibold">Notes</h2></div><p className="whitespace-pre-wrap text-sm leading-6 text-text-primary">{document.content || "No notes added."}</p></section>
         <section><h2 className="mb-3 text-base font-semibold text-text-primary">Attachments</h2>{attachments.length ? <div className="grid gap-4 lg:grid-cols-2">{attachments.map((attachment) => <DocumentPreviewCard key={attachment.id} attachment={attachment} />)}</div> : <div className="soft-card-sm p-5 text-sm text-text-muted">No files attached.</div>}</section>
         <UniversalRelationViewer entityType="document" entityId={document.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.documents}/${document.id}`} />
