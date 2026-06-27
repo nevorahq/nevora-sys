@@ -1,9 +1,9 @@
 "use client";
 
 import { useTransition } from "react";
-import { CalendarClockIcon, CheckIcon, Trash2Icon } from "lucide-react";
+import { CalendarClockIcon, CheckIcon } from "lucide-react";
 import { postPlannedTransactionAction } from "../actions/post-planned-transaction.action";
-import { deleteTransactionAction } from "../actions/delete-transaction.action";
+import { DeleteTransactionButton } from "./delete-transaction-button";
 import { formatMoney } from "@/shared/utils/format-money";
 import { formatDate } from "@/shared/utils/format-date";
 import { cn } from "@/shared/utils/cn";
@@ -13,6 +13,7 @@ import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 interface PlannedTransactionsProps {
   planned: MoneyTransactionWithRelations[];
   dict: Dictionary;
+  canDelete: boolean;
 }
 
 /**
@@ -20,7 +21,7 @@ interface PlannedTransactionsProps {
  * Действия: «Провести» (planned → posted, попадает в баланс) и «Удалить».
  * Рендерится только если есть planned-записи (контролируется страницей).
  */
-export function PlannedTransactions({ planned, dict }: PlannedTransactionsProps) {
+export function PlannedTransactions({ planned, dict, canDelete }: PlannedTransactionsProps) {
   const t = dict.money.planned;
 
   return (
@@ -30,7 +31,8 @@ export function PlannedTransactions({ planned, dict }: PlannedTransactionsProps)
           key={tx.id}
           tx={tx}
           t={t}
-          deleteLabel={dict.money.transactions.deleteButton}
+          dict={dict}
+          canDelete={canDelete}
         />
       ))}
     </div>
@@ -40,23 +42,19 @@ export function PlannedTransactions({ planned, dict }: PlannedTransactionsProps)
 function PlannedRow({
   tx,
   t,
-  deleteLabel,
+  dict,
+  canDelete,
 }: {
   tx: MoneyTransactionWithRelations;
   t: Dictionary["money"]["planned"];
-  deleteLabel: string;
+  dict: Dictionary;
+  canDelete: boolean;
 }) {
-  const [isPending, startTransition] = useTransition();
+  const [isPosting, startPost] = useTransition();
 
   function handlePost() {
-    startTransition(async () => {
+    startPost(async () => {
       await postPlannedTransactionAction(tx.id);
-    });
-  }
-
-  function handleDelete() {
-    startTransition(async () => {
-      await deleteTransactionAction(tx.id);
     });
   }
 
@@ -64,7 +62,7 @@ function PlannedRow({
     <div
       className={cn(
         "soft-card-sm flex items-center gap-3 p-4 transition-opacity",
-        isPending && "opacity-50 pointer-events-none",
+        isPosting && "opacity-50 pointer-events-none",
       )}
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-(--neu-radius-md) bg-accent-yellow-soft">
@@ -91,22 +89,21 @@ function PlannedRow({
       <button
         type="button"
         onClick={handlePost}
-        disabled={isPending}
+        disabled={isPosting}
         title={t.postButton}
         className="soft-icon-button h-9 w-9 shrink-0 text-accent-green"
       >
         <CheckIcon size={16} strokeWidth={2} />
       </button>
 
-      <button
-        type="button"
-        onClick={handleDelete}
-        disabled={isPending}
-        title={deleteLabel}
-        className="soft-icon-button h-9 w-9 shrink-0 text-text-muted"
-      >
-        <Trash2Icon size={16} strokeWidth={2} />
-      </button>
+      {canDelete && (
+        <DeleteTransactionButton
+          transactionId={tx.id}
+          transactionTitle={tx.title}
+          dict={dict}
+          className="h-9 w-9 shrink-0"
+        />
+      )}
     </div>
   );
 }

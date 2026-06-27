@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireOrg } from "@/lib/auth/require-org";
 import { createClient } from "@/lib/supabase/server";
@@ -10,6 +11,8 @@ import { hasDocumentPermission } from "@/modules/documents/services/document-per
 import { generateDocumentStoragePath, generateSafeFilename } from "@/modules/documents/services/generate-document-storage-path";
 import { validateDocumentFile, validateDocumentFiles } from "@/modules/documents/services/validate-document-file";
 import { createDocumentRecord } from "@/modules/documents/services/create-document-record";
+import { isFinancialDocumentType } from "@/modules/documents/constants/document.constants";
+import { enqueueDocumentExtraction, runDocumentExtraction } from "@/modules/documents/services/document-extraction-service";
 
 export const runtime = "nodejs";
 
@@ -122,6 +125,31 @@ export async function POST(request: Request) {
         emitAuditLog({ organizationId: ctx.org.id, entityType: "document_attachments", entityId: attachment.id, action: "create", newData: { document_id: document.id, file_name: attachment.original_filename }, metadata: { source: "dashboard" } }),
       ]),
     ]);
+
+    // Document-to-Transaction: a financial document with a file is queued for
+    // extraction. We claim the job ('pending') synchronously so the detail page
+    // shows a processing state, then run the heavy work (PDF/AI/DB) AFTER the
+    // response via Next `after()` — the upload request never blocks on it.
+    // Failures never break the upload; the document still exists and is retryable.
+    if (isFinancialDocumentType(input.data.doc_type) && attachments.length > 0) {
+      const documentId = document.id;
+      const enqueued = await enqueueDocumentExtraction(supabase, ctx, documentId);
+      if (enqueued.ok) {
+        const extractionId = enqueued.extractionId;
+        after(async () => {
+          try {
+            // Re-resolve request-scoped client + context inside the callback.
+            const bgSupabase = await createClient();
+            const bgCtx = await requireOrg();
+            await runDocumentExtraction(bgSupabase, bgCtx, documentId, extractionId);
+          } catch (extractionError) {
+            console.error("documents upload: background extraction failed", extractionError);
+          }
+        });
+      } else if (enqueued.reason !== "already_running") {
+        console.error("documents upload: could not enqueue extraction", enqueued.message);
+      }
+    }
 
     revalidatePath(ROUTES.documents);
     return NextResponse.json({ documentId: document.id, attachments });

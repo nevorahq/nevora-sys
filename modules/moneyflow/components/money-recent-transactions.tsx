@@ -11,6 +11,7 @@ interface MoneyRecentTransactionsProps {
   accounts?: MoneyAccount[];
   categories?: MoneyCategory[];
   dict: Dictionary;
+  canDelete?: boolean;
 }
 
 export function MoneyRecentTransactions({
@@ -18,6 +19,7 @@ export function MoneyRecentTransactions({
   accounts,
   categories,
   dict,
+  canDelete = false,
 }: MoneyRecentTransactionsProps) {
   const editable = accounts !== undefined && categories !== undefined;
 
@@ -36,6 +38,7 @@ export function MoneyRecentTransactions({
               accounts={accounts}
               categories={categories}
               dict={dict}
+              canDelete={canDelete}
             />
           ) : (
             <TransactionReadOnly key={tx.id} transaction={tx} />

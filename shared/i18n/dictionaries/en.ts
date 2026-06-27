@@ -214,6 +214,10 @@ export const en = {
       editButton: "Edit",
       updateButton: "Save Changes",
       deleteButton: "Delete",
+      deleteConfirmTitle: "Delete transaction?",
+      deleteConfirmDescription: "This transaction will be permanently deleted:",
+      deleteCancelButton: "Cancel",
+      deletingButton: "Deleting…",
       types: {
         income: "Income",
         expense: "Expense",

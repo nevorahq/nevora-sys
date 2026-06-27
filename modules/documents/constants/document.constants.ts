@@ -1,5 +1,20 @@
-export const DOCUMENT_TYPES = ["note", "template", "contract", "report", "sop", "other"] as const;
+export const DOCUMENT_TYPES = [
+  "note", "template", "contract", "report", "sop", "other",
+  // Financial document types (Document-to-Transaction Automation).
+  "receipt", "invoice", "payment_confirmation", "statement", "unknown",
+] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+
+/**
+ * Document types that trigger financial extraction → draft transaction.
+ * `statement`/`unknown` are accepted by the schema but not auto-extracted in MVP.
+ */
+export const FINANCIAL_DOCUMENT_TYPES = ["receipt", "invoice", "payment_confirmation"] as const;
+export type FinancialDocumentType = (typeof FINANCIAL_DOCUMENT_TYPES)[number];
+
+export function isFinancialDocumentType(value: string): value is FinancialDocumentType {
+  return (FINANCIAL_DOCUMENT_TYPES as readonly string[]).includes(value);
+}
 
 export const DOCUMENT_STATUSES = ["draft", "published", "archived"] as const;
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
@@ -36,12 +51,17 @@ export const DOCUMENT_MAX_TOTAL_SIZE_BYTES = 25 * 1024 * 1024;
 export const DOCUMENT_UPLOAD_ACCEPT = ".pdf,.docx,.png,.jpg,.jpeg,.webp,.heic,.heif,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp,image/heic,image/heif";
 
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
-  note:     "Note",
-  template: "Template",
-  contract: "Contract",
-  report:   "Report",
-  sop:      "SOP",
-  other:    "Other",
+  note:                 "Note",
+  template:             "Template",
+  contract:             "Contract",
+  report:               "Report",
+  sop:                  "SOP",
+  other:                "Other",
+  receipt:              "Receipt",
+  invoice:              "Invoice",
+  payment_confirmation: "Payment confirmation",
+  statement:            "Statement",
+  unknown:              "Unknown",
 };
 
 export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {

@@ -1,4 +1,6 @@
 import { getDictionary } from "@/shared/i18n/get-dictionary";
+import { requireOrg } from "@/lib/auth/require-org";
+import { canDo } from "@/lib/context/current-context";
 import { getMoneySummary } from "@/modules/moneyflow/queries/get-money-summary";
 import { getAccounts } from "@/modules/moneyflow/queries/get-accounts";
 import { getCategories } from "@/modules/moneyflow/queries/get-categories";
@@ -11,6 +13,7 @@ import { MoneyAccountsList } from "@/modules/moneyflow/components/money-accounts
 import { MoneyEmptyState } from "@/modules/moneyflow/components/money-empty-state";
 
 export default async function MoneyPage() {
+  const ctx = await requireOrg();
   const [summary, accounts, categories, transactions, subscriptions, { dict }] =
     await Promise.all([
       getMoneySummary(),
@@ -61,6 +64,7 @@ export default async function MoneyPage() {
             accounts={accounts}
             categories={categories}
             dict={dict}
+            canDelete={canDo(ctx, "data.delete")}
           />
         ) : (
           <MoneyEmptyState

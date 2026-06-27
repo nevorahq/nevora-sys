@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
-import { ArrowUpRightIcon, ArrowDownLeftIcon, Link2Icon, PencilIcon, Trash2Icon } from "lucide-react";
+import { useState } from "react";
+import { ArrowUpRightIcon, ArrowDownLeftIcon, Link2Icon, PencilIcon } from "lucide-react";
 import { ROUTES } from "@/shared/config/routes";
-import { deleteTransactionAction } from "../actions/delete-transaction.action";
 import { formatMoney } from "@/shared/utils/format-money";
+import { DeleteTransactionButton } from "./delete-transaction-button";
 import { TransactionEditForm } from "./transaction-edit-form";
 import { Modal } from "@/shared/ui/modal";
 import { cn } from "@/shared/utils/cn";
@@ -18,6 +18,7 @@ interface TransactionItemProps {
   accounts: MoneyAccount[];
   categories: MoneyCategory[];
   dict: Dictionary;
+  canDelete: boolean;
 }
 
 export function TransactionItem({
@@ -25,26 +26,15 @@ export function TransactionItem({
   accounts,
   categories,
   dict,
+  canDelete,
 }: TransactionItemProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [isDeleting, startDelete] = useTransition();
 
   const isIncome = tx.type === "income";
 
-  function handleDelete() {
-    startDelete(async () => {
-      await deleteTransactionAction(tx.id);
-    });
-  }
-
   return (
     <>
-      <div
-        className={cn(
-          "soft-card-sm flex items-center gap-3 p-4 transition-opacity",
-          isDeleting && "opacity-50 pointer-events-none",
-        )}
-      >
+      <div className="soft-card-sm flex items-center gap-3 p-4">
         {/* Type icon */}
         <div
           className={cn(
@@ -102,15 +92,13 @@ export function TransactionItem({
           <PencilIcon size={15} strokeWidth={1.75} />
         </button>
 
-        {/* Delete button */}
-        <button
-          type="button"
-          onClick={handleDelete}
-          className="soft-icon-button h-8 w-8 text-text-muted hover:text-danger"
-          aria-label={dict.money.transactions.deleteButton}
-        >
-          <Trash2Icon size={15} strokeWidth={1.75} />
-        </button>
+        {canDelete && (
+          <DeleteTransactionButton
+            transactionId={tx.id}
+            transactionTitle={tx.title}
+            dict={dict}
+          />
+        )}
       </div>
 
       {/* Edit Modal */}
