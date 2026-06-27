@@ -2,7 +2,6 @@
 
 import { useActionState } from "react";
 import { updateAccountAction } from "../actions/update-account.action";
-import { formatMoney } from "@/shared/utils/format-money";
 import { ACCOUNT_TYPES } from "../constants/moneyflow.constants";
 import { Input } from "@/shared/ui/input";
 import { Select } from "@/shared/ui/select";
@@ -66,12 +65,16 @@ export function AccountEditForm({ account, dict, onSuccess }: AccountEditFormPro
           error={state.fieldErrors?.type?.[0]}
         />
 
-        <div className="rounded-(--neu-radius-md) bg-surface-sunken px-4 py-3">
-          <p className="text-xs text-text-muted">{t.initialBalance}</p>
-          <p className="mt-0.5 text-sm font-semibold text-text-primary tabular-nums">
-            {formatMoney(account.initial_balance)} {account.currency}
-          </p>
-        </div>
+        <Input
+          id="edit-account-initial-balance"
+          name="initial_balance"
+          type="number"
+          step="0.01"
+          label={`${t.initialBalance} (${account.currency})`}
+          defaultValue={String(account.initial_balance)}
+          required
+          error={state.fieldErrors?.initial_balance?.[0]}
+        />
       </div>
 
       <div className="mt-4">

@@ -167,6 +167,7 @@ export const en = {
       typeLabel: "Account type",
       balanceLabel: "Initial balance",
       balancePlaceholder: "0.00",
+      currencyLabel: "Currency",
       editButton: "Edit",
       updateButton: "Save Changes",
       deactivateButton: "Deactivate",

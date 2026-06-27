@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { PencilIcon, PowerOffIcon, WalletIcon, CreditCardIcon, BuildingIcon, PiggyBankIcon } from "lucide-react";
 import { deactivateAccountAction } from "../actions/deactivate-account.action";
@@ -7,6 +8,7 @@ import { formatMoney } from "@/shared/utils/format-money";
 import { AccountEditForm } from "./account-edit-form";
 import { Modal } from "@/shared/ui/modal";
 import { cn } from "@/shared/utils/cn";
+import { ROUTES } from "@/shared/config/routes";
 import type { MoneyAccount } from "../types/moneyflow.types";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
@@ -34,13 +36,16 @@ export function MoneyAccountsList({ accounts, dict }: MoneyAccountsListProps) {
 
 function AccountItem({ account, dict }: { account: MoneyAccount; dict: Dictionary }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [isDeactivating, startDeactivate] = useTransition();
   const t = dict.money.accounts;
 
   function handleDeactivate() {
     if (!confirm(t.deactivateConfirm)) return;
+    setActionError(null);
     startDeactivate(async () => {
-      await deactivateAccountAction(account.id);
+      const result = await deactivateAccountAction(account.id);
+      if (result.error) setActionError(result.error);
     });
   }
 
@@ -58,28 +63,31 @@ function AccountItem({ account, dict }: { account: MoneyAccount; dict: Dictionar
     <>
       <div
         className={cn(
-          "soft-card-sm flex items-center gap-3 p-4 transition-opacity",
+          "soft-card-sm flex items-center gap-2 p-2 transition-opacity hover:shadow-neu-card",
           isDeactivating && "opacity-50 pointer-events-none",
         )}
       >
-        {/* Icon */}
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-(--neu-radius-md) bg-accent-lilac-soft">
-          <Icon size={18} className="text-accent-lilac" strokeWidth={2} />
-        </div>
+        <Link
+          href={`${ROUTES.money}/accounts/${account.id}`}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-(--neu-radius-md) p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          aria-label={`Open account: ${account.name}`}
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-(--neu-radius-md) bg-accent-lilac-soft">
+            <Icon size={18} className="text-accent-lilac" strokeWidth={2} />
+          </div>
 
-        {/* Name + type */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-text-primary truncate">{account.name}</p>
-          <p className="text-xs text-text-muted">{t.types[account.type]}</p>
-        </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-text-primary">{account.name}</p>
+            <p className="text-xs text-text-muted">{t.types[account.type]}</p>
+          </div>
 
-        {/* Initial balance */}
-        <div className="text-right shrink-0">
-          <p className="text-sm font-semibold text-text-primary tabular-nums">
-            {formatMoney(account.initial_balance)}
-          </p>
-          <p className="text-xs text-text-muted">{account.currency}</p>
-        </div>
+          <div className="shrink-0 text-right">
+            <p className="text-sm font-semibold text-text-primary tabular-nums">
+              {formatMoney(account.initial_balance)}
+            </p>
+            <p className="text-xs text-text-muted">{account.currency}</p>
+          </div>
+        </Link>
 
         {/* Edit button */}
         <button
@@ -101,6 +109,12 @@ function AccountItem({ account, dict }: { account: MoneyAccount; dict: Dictionar
           <PowerOffIcon size={15} strokeWidth={1.75} />
         </button>
       </div>
+
+      {actionError && (
+        <p role="alert" className="px-4 text-sm text-danger">
+          {actionError}
+        </p>
+      )}
 
       {/* Edit Modal */}
       <Modal

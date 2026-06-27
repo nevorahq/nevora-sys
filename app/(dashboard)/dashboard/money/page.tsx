@@ -38,6 +38,7 @@ export default async function MoneyPage() {
         </div>
         <MoneyCreateButtons
           dict={dict}
+          defaultCurrency={ctx.org.baseCurrency}
           accounts={accounts}
           categories={categories}
           subscriptions={subscriptions}

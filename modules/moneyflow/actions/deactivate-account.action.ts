@@ -2,24 +2,36 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth/require-user";
+import { requireOrg } from "@/lib/auth/require-org";
+import { canDo } from "@/lib/context/current-context";
+import { uuidSchema } from "@/lib/validators/common";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 
 export async function deactivateAccountAction(id: string): Promise<{ error?: string }> {
   const { dict } = await getDictionary();
-  const user = await requireUser();
+  if (!uuidSchema.safeParse(id).success) {
+    return { error: dict.money.errors.deactivateAccountFailed };
+  }
+
+  const ctx = await requireOrg();
+  if (!canDo(ctx, "data.write")) {
+    return { error: dict.money.errors.deactivateAccountFailed };
+  }
 
   try {
     const supabase = await createClient();
 
-    const { error } = await supabase
+    const { data: deactivatedAccount, error } = await supabase
       .from("money_accounts")
-      .update({ is_active: false })
+      .update({ is_active: false, updated_by: ctx.user.id })
       .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("organization_id", ctx.org.id)
+      .is("deleted_at", null)
+      .select("id")
+      .maybeSingle();
 
-    if (error) {
+    if (error || !deactivatedAccount) {
       console.error("deactivateAccount error:", error);
       return { error: dict.money.errors.deactivateAccountFailed };
     }

@@ -2,7 +2,14 @@
 
 import { useActionState, useRef } from "react";
 import { createAccountAction } from "../actions/create-account.action";
-import { ACCOUNT_TYPES } from "../constants/moneyflow.constants";
+import {
+  ACCOUNT_TYPES,
+  DEFAULT_CURRENCY,
+  MONEY_ACCOUNT_CURRENCIES,
+} from "../constants/moneyflow.constants";
+import {
+  CURRENCY_NAMES,
+} from "@/shared/config/currencies";
 import { Input } from "@/shared/ui/input";
 import { Select } from "@/shared/ui/select";
 import { Button } from "@/shared/ui/button";
@@ -11,10 +18,11 @@ import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface CreateAccountFormProps {
   dict: Dictionary;
+  defaultCurrency?: string;
   onSuccess?: () => void;
 }
 
-export function CreateAccountForm({ dict, onSuccess }: CreateAccountFormProps) {
+export function CreateAccountForm({ dict, defaultCurrency = DEFAULT_CURRENCY, onSuccess }: CreateAccountFormProps) {
   const t = dict.money.accounts;
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -34,6 +42,13 @@ export function CreateAccountForm({ dict, onSuccess }: CreateAccountFormProps) {
     value: type,
     label: t.types[type],
   }));
+  const currencyOptions = MONEY_ACCOUNT_CURRENCIES.map((currency) => ({
+    value: currency,
+    label: `${currency === "RUB" ? "RUR (RUB)" : currency} — ${CURRENCY_NAMES[currency]}`,
+  }));
+  const initialCurrency = MONEY_ACCOUNT_CURRENCIES.some((currency) => currency === defaultCurrency)
+    ? defaultCurrency
+    : DEFAULT_CURRENCY;
 
   return (
     <form ref={formRef} action={formAction}>
@@ -43,8 +58,8 @@ export function CreateAccountForm({ dict, onSuccess }: CreateAccountFormProps) {
         </div>
       )}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="flex-1">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2">
           <Input
             id="account-name"
             name="name"
@@ -55,7 +70,7 @@ export function CreateAccountForm({ dict, onSuccess }: CreateAccountFormProps) {
           />
         </div>
 
-        <div className="w-full sm:w-36">
+        <div>
           <Select
             id="account-type"
             name="type"
@@ -66,7 +81,18 @@ export function CreateAccountForm({ dict, onSuccess }: CreateAccountFormProps) {
           />
         </div>
 
-        <div className="w-full sm:w-36">
+        <div>
+          <Select
+            id="account-currency"
+            name="currency"
+            label={t.currencyLabel}
+            options={currencyOptions}
+            defaultValue={initialCurrency}
+            error={state.fieldErrors?.currency?.[0]}
+          />
+        </div>
+
+        <div>
           <Input
             id="account-balance"
             name="initial_balance"
@@ -79,7 +105,7 @@ export function CreateAccountForm({ dict, onSuccess }: CreateAccountFormProps) {
           />
         </div>
 
-        <Button type="submit" isLoading={isPending} className="w-full sm:w-auto">
+        <Button type="submit" isLoading={isPending} className="w-full self-end">
           {isPending ? dict.common.loading : t.add}
         </Button>
       </div>

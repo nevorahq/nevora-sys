@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { ArrowUpRightIcon, ArrowDownLeftIcon } from "lucide-react";
 import { TransactionItem } from "./transaction-item";
+import { ROUTES } from "@/shared/config/routes";
 import { cn } from "@/shared/utils/cn";
 import { formatDate } from "@/shared/utils/format-date";
 import { formatMoney } from "@/shared/utils/format-money";
@@ -53,7 +55,11 @@ function TransactionReadOnly({ transaction: tx }: { transaction: MoneyTransactio
   const isIncome = tx.type === "income";
 
   return (
-    <div className="soft-card-sm flex items-center gap-3 p-4">
+    <Link
+      href={`${ROUTES.money}/${tx.id}`}
+      className="soft-card-sm flex items-center gap-3 p-4 transition-shadow hover:shadow-neu-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+      aria-label={`Open transaction: ${tx.title}`}
+    >
       <div
         className={cn(
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-(--neu-radius-md)",
@@ -87,6 +93,6 @@ function TransactionReadOnly({ transaction: tx }: { transaction: MoneyTransactio
         </p>
         <p className="text-xs text-text-muted">{formatDate(tx.transaction_date)}</p>
       </div>
-    </div>
+    </Link>
   );
 }

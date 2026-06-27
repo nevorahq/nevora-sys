@@ -30,6 +30,11 @@ export type CategoryType = TransactionType;
 // MVP: одна валюта. При масштабировании — массив + user preference.
 export const DEFAULT_CURRENCY = "MDL" as const;
 
+// Валюты, которые можно выбрать при ручном создании Money account.
+// RUR в UI отображается как legacy-алиас, но в данных хранится актуальный ISO-код RUB.
+export const MONEY_ACCOUNT_CURRENCIES = ["EUR", "USD", "MDL", "RUB"] as const;
+export type MoneyAccountCurrency = (typeof MONEY_ACCOUNT_CURRENCIES)[number];
+
 // ── Validation Limits ──
 export const ACCOUNT_NAME_MAX = 100;
 export const CATEGORY_NAME_MAX = 50;

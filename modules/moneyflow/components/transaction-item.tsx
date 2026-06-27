@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowUpRightIcon, ArrowDownLeftIcon, Link2Icon, PencilIcon } from "lucide-react";
+import { ArrowUpRightIcon, ArrowDownLeftIcon, PencilIcon } from "lucide-react";
 import { ROUTES } from "@/shared/config/routes";
 import { formatMoney } from "@/shared/utils/format-money";
 import { DeleteTransactionButton } from "./delete-transaction-button";
@@ -34,55 +34,47 @@ export function TransactionItem({
 
   return (
     <>
-      <div className="soft-card-sm flex items-center gap-3 p-4">
-        {/* Type icon */}
-        <div
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-(--neu-radius-md)",
-            isIncome ? "bg-accent-green-soft" : "bg-accent-pink-soft",
-          )}
-        >
-          {isIncome ? (
-            <ArrowDownLeftIcon size={18} className="text-accent-green" strokeWidth={2} />
-          ) : (
-            <ArrowUpRightIcon size={18} className="text-accent-pink" strokeWidth={2} />
-          )}
-        </div>
-
-        {/* Title + category */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-text-primary truncate">{tx.title}</p>
-          <p className="text-xs text-text-muted truncate">
-            {tx.category?.name ?? "—"}
-            {tx.account?.name ? ` · ${tx.account.name}` : ""}
-          </p>
-        </div>
-
-        {/* Amount + date */}
-        <div className="text-right shrink-0">
-          <p
-            className={cn(
-              "text-sm font-semibold tabular-nums",
-              isIncome ? "text-accent-green" : "text-text-primary",
-            )}
-          >
-            {isIncome ? "+" : "−"}
-            {formatMoney(Number(tx.amount))}
-          </p>
-          <p className="text-xs text-text-muted">{formatDate(tx.transaction_date)}</p>
-        </div>
-
-        {/* Open detail (linked entities) */}
+      <div className="soft-card-sm flex items-center gap-2 p-2 transition-shadow hover:shadow-neu-card">
         <Link
           href={`${ROUTES.money}/${tx.id}`}
-          className="soft-icon-button h-8 w-8 text-text-muted hover:text-text-primary"
-          aria-label="Open transaction"
-          title="Open transaction"
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-(--neu-radius-md) p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          aria-label={`Open transaction: ${tx.title}`}
         >
-          <Link2Icon size={15} strokeWidth={1.75} />
+          <div
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-(--neu-radius-md)",
+              isIncome ? "bg-accent-green-soft" : "bg-accent-pink-soft",
+            )}
+          >
+            {isIncome ? (
+              <ArrowDownLeftIcon size={18} className="text-accent-green" strokeWidth={2} />
+            ) : (
+              <ArrowUpRightIcon size={18} className="text-accent-pink" strokeWidth={2} />
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-text-primary">{tx.title}</p>
+            <p className="truncate text-xs text-text-muted">
+              {tx.category?.name ?? "—"}
+              {tx.account?.name ? ` · ${tx.account.name}` : ""}
+            </p>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <p
+              className={cn(
+                "text-sm font-semibold tabular-nums",
+                isIncome ? "text-accent-green" : "text-text-primary",
+              )}
+            >
+              {isIncome ? "+" : "−"}
+              {formatMoney(Number(tx.amount))}
+            </p>
+            <p className="text-xs text-text-muted">{formatDate(tx.transaction_date)}</p>
+          </div>
         </Link>
 
-        {/* Edit button */}
         <button
           type="button"
           onClick={() => setIsEditing(true)}

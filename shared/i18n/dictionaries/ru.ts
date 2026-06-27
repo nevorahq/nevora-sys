@@ -169,6 +169,7 @@ export const ru: Dictionary = {
       typeLabel: "Тип счёта",
       balanceLabel: "Начальный баланс",
       balancePlaceholder: "0.00",
+      currencyLabel: "Валюта",
       editButton: "Редактировать",
       updateButton: "Сохранить",
       deactivateButton: "Деактивировать",

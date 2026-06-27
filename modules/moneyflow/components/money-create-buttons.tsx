@@ -12,12 +12,13 @@ import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface MoneyCreateButtonsProps {
   dict: Dictionary;
+  defaultCurrency: string;
   accounts: MoneyAccount[];
   categories: MoneyCategory[];
   subscriptions?: Subscription[];
 }
 
-export function MoneyCreateButtons({ dict, accounts, categories, subscriptions }: MoneyCreateButtonsProps) {
+export function MoneyCreateButtons({ dict, defaultCurrency, accounts, categories, subscriptions }: MoneyCreateButtonsProps) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [transactionOpen, setTransactionOpen] = useState(false);
 
@@ -52,7 +53,11 @@ export function MoneyCreateButtons({ dict, accounts, categories, subscriptions }
         title={dict.money.accounts.add}
         closeLabel={dict.common.close}
       >
-        <CreateAccountForm dict={dict} onSuccess={() => setAccountOpen(false)} />
+        <CreateAccountForm
+          dict={dict}
+          defaultCurrency={defaultCurrency}
+          onSuccess={() => setAccountOpen(false)}
+        />
       </Modal>
 
       {/* Transaction Modal */}

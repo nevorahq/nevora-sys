@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth/require-user";
+import { requireOrg } from "@/lib/auth/require-org";
+import { canDo } from "@/lib/context/current-context";
 import { getAccountSchemas } from "../schemas/account.schema";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
@@ -18,12 +19,16 @@ export async function updateAccountAction(
     invalidType: dict.money.errors.invalidType,
   });
 
-  const user = await requireUser();
+  const ctx = await requireOrg();
+  if (!canDo(ctx, "data.write")) {
+    return { error: dict.money.errors.updateAccountFailed };
+  }
 
   const parsed = updateAccountSchema.safeParse({
     accountId: formData.get("accountId") as string,
     name: formData.get("name") as string,
     type: formData.get("type") as string,
+    initial_balance: formData.get("initial_balance") as string,
   });
 
   if (!parsed.success) {
@@ -38,13 +43,21 @@ export async function updateAccountAction(
   try {
     const supabase = await createClient();
 
-    const { error } = await supabase
+    const { data: updatedAccount, error } = await supabase
       .from("money_accounts")
-      .update({ name: parsed.data.name, type: parsed.data.type })
+      .update({
+        name: parsed.data.name,
+        type: parsed.data.type,
+        initial_balance: parsed.data.initial_balance,
+        updated_by: ctx.user.id,
+      })
       .eq("id", parsed.data.accountId)
-      .eq("user_id", user.id);
+      .eq("organization_id", ctx.org.id)
+      .is("deleted_at", null)
+      .select("id")
+      .maybeSingle();
 
-    if (error) {
+    if (error || !updatedAccount) {
       console.error("updateAccount error:", error);
       return { error: dict.money.errors.updateAccountFailed };
     }

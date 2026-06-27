@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
+import { canDo } from "@/lib/context/current-context";
 import { getAccountSchemas } from "../schemas/account.schema";
+import { createMoneyAccount } from "../services/money-account-service";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
@@ -27,7 +29,10 @@ export async function createAccountAction(
     invalidType: dict.money.errors.invalidType,
   });
 
-  const { user, org, workspace } = await requireOrg();
+  const ctx = await requireOrg();
+  if (!canDo(ctx, "data.write")) {
+    return { error: dict.money.errors.createAccountFailed };
+  }
 
   const rawData = {
     name: formData.get("name") as string,
@@ -50,19 +55,15 @@ export async function createAccountAction(
   try {
     const supabase = await createClient();
 
-    const { error } = await supabase.from("money_accounts").insert({
-      organization_id: org.id,
-      workspace_id: workspace.id,
-      created_by: user.id,
-      updated_by: user.id,
+    const result = await createMoneyAccount(supabase, ctx, {
       name: parsed.data.name,
       type: parsed.data.type,
-      initial_balance: parsed.data.initial_balance,
+      initialBalance: parsed.data.initial_balance,
       currency: parsed.data.currency,
     });
 
-    if (error) {
-      console.error("createAccount error:", error);
+    if (!result.ok) {
+      console.error("createAccount error:", result.error);
       return { error: dict.money.errors.createAccountFailed };
     }
   } catch (err) {

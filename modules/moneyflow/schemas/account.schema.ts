@@ -3,6 +3,7 @@ import {
   ACCOUNT_TYPES,
   ACCOUNT_NAME_MAX,
   DEFAULT_CURRENCY,
+  MONEY_ACCOUNT_CURRENCIES,
 } from "../constants/moneyflow.constants";
 
 /**
@@ -27,15 +28,14 @@ export function getAccountSchemas(errors: {
       .coerce
       .number()
       .default(0),
-    currency: z
-      .string()
-      .default(DEFAULT_CURRENCY),
+    currency: z.enum(MONEY_ACCOUNT_CURRENCIES).default(DEFAULT_CURRENCY),
   });
 
   const updateAccountSchema = z.object({
     accountId: z.string().uuid(),
     name: z.string().min(1, errors.nameRequired).max(ACCOUNT_NAME_MAX),
     type: z.enum(ACCOUNT_TYPES, { error: errors.invalidType }),
+    initial_balance: z.coerce.number(),
   });
 
   return { createAccountSchema, updateAccountSchema };
