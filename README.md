@@ -1,13 +1,30 @@
-# Nevora
+# Nevora Business OS
 
-Nevora — мультитенантная SaaS-платформа для малого бизнеса: управление
-организацией и её рабочими пространствами, CRM, задачи, деньги, подписки,
-документы, публичный онлайн-booking, аналитика и AI-ассистент — в одном
-приложении с единой моделью прав и изоляцией данных по организациям.
+**Nevora Business OS** — мультитенантная SaaS-платформа для малого и среднего
+бизнеса: задачи, деньги, документы, подписки, аналитика и AI-ассистент
+в одной понятной системе. Не отдельные pet-проекты, а единая **Business OS** —
+модульный монолит, где модули работают вместе, а изоляция данных по организациям
+обеспечивается на уровне БД (PostgreSQL Row Level Security), а не только в коде.
 
 Каждый пользователь работает в контексте организации (`organization`) и
-рабочего пространства (`workspace`). Изоляция арендаторов обеспечивается на
-уровне БД через PostgreSQL Row Level Security, а не только в коде приложения.
+рабочего пространства (`workspace`).
+
+## Текущий статус проекта
+
+Платформа на стадии **MVP / стабилизации**. Сборка, типы и линт — зелёные
+(`npm run typecheck && npm run lint && npm test && npm run build`).
+
+| Модуль | Статус |
+| --- | --- |
+| Auth / Organizations / Workspaces | MVP Ready (ядро) |
+| Tasks · Money · Documents · Settings | MVP Ready |
+| Subscriptions · Members · Billing · Analytics · AI | Partial |
+| Relations · Action Center · Automation | In Progress |
+| Booking | Partial (скрыт из основной навигации) |
+| CRM / Clients | Paused |
+
+Полная честная разбивка по модулям — [`docs/MODULE_STATUS.md`](docs/MODULE_STATUS.md).
+AI — это **ассистент** (саммари, инсайты, рекомендации), а не автономный агент.
 
 ## Стек
 
@@ -58,8 +75,8 @@ npm run dev        # http://localhost:3000
 ## Миграции базы данных
 
 SQL-миграции лежат в `supabase/migrations/` и применяются по порядку номеров
-(`000_…` → `038_…`). Они описывают схему, RLS-политики, SECURITY DEFINER RPC и
-модель грантов.
+(`000_…` → `067_…`, нумерация продолжается). Они описывают схему, RLS-политики,
+SECURITY DEFINER RPC, индексы и модель грантов.
 
 ```bash
 # Локальный стек Supabase (Docker) — рекомендуемый способ:
@@ -94,13 +111,15 @@ supabase migration new <name>
 ## Проверки
 
 ```bash
-npx tsc --noEmit   # типы
+npm run typecheck  # next typegen + tsc --noEmit
 npm run lint       # ESLint
 npm test           # Vitest (бизнес-логика, права, public-route matching)
 npm run build      # production-сборка
 ```
 
-Те же шаги выполняет CI (`.github/workflows/ci.yml`) на каждый push/PR в `main`.
+Те же шаги выполняет CI (`.github/workflows/ci.yml`) на каждый push/PR в `main`:
+install → `next typegen` → typecheck → lint → test → build. Прогоняйте их
+локально перед commit.
 
 ## Структура
 
@@ -127,18 +146,23 @@ supabase/migrations/ # SQL-миграции (схема, RLS, RPC, гранты)
 Каждый модуль — самодостаточная вертикаль (actions / queries / services /
 schemas / components / types), экспортирующая публичный API через `index.ts`:
 
-- `booking` — публичный онлайн-booking: hosts, services, availability-правила,
-  расчёт слотов, заявки.
-- `crm` — клиенты, сделки, pipeline/стадии, активности.
-- `tasks` — задачи и их статусы (включая ежемесячные повторяющиеся).
-- `moneyflow` — счета, категории, транзакции, сводки.
+- `tasks` — задачи, статусы (3 состояния), проекты, повторяющиеся, история дедлайнов.
+- `moneyflow` — счета, категории, транзакции, переводы, мультивалютность, сводки.
+- `documents` — документы с версиями/снапшотами, приватные загрузки, AI-извлечение.
 - `subtracker` — подписки и предстоящие списания.
-- `documents` — документы с версиями/снапшотами.
+- `settings` — профиль, workspace, участники, billing, аватары.
 - `members` — приглашения и управление участниками организации.
 - `billing` — планы, trial-подписки, лимиты.
-- `analytics` — виджеты и метрики.
-- `ai` — инсайты и рекомендации на базе Anthropic.
+- `analytics` — метрики дашборда, таймлайн активности, статистика по модулям.
+- `ai` — инсайты и рекомендации на базе Anthropic (ассистент, не агент).
+- `relations` — связи между модулями через `entity_links` *(in progress)*.
+- `action-center` — оркестрация сигналов модулей в `action_items` *(in progress)*.
+- `automation` — диспетчер доменных событий + хендлеры *(foundation)*.
+- `booking` — публичный онлайн-booking *(скрыт из основной навигации)*.
+- `crm` — клиенты, сделки, pipeline, активности *(paused)*.
 - `landing` — публичная посадочная часть.
+
+Статусы модулей — [`docs/MODULE_STATUS.md`](docs/MODULE_STATUS.md).
 
 ## Безопасность и rate limiting
 
@@ -151,3 +175,23 @@ schemas / components / types), экспортирующая публичный A
   (клиент не задаёт их), `identifier` — SHA-256 hex от `IP (+ organization
   slug)`; raw IP/email/phone не хранятся и не логируются. При превышении —
   `429` + `Retry-After`.
+
+Полный чек-лист безопасности перед PR — [`docs/SECURITY.md`](docs/SECURITY.md).
+
+## Roadmap
+
+Дорожная карта начинается с **Phase 0 — Stabilization & Source of Truth** (этот
+этап) и далее: Core Foundation → Security Layer → стабилизация
+Tasks/Money/Documents/Subscriptions → Cross-Module Relations → Automation →
+Action Center → Documents Automation → Analytics → AI → SaaS Monetization.
+Подробно и со статусами — [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Документация
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — целевая архитектура и жёсткие правила.
+- [`docs/MODULE_STATUS.md`](docs/MODULE_STATUS.md) — честный статус каждого модуля.
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — фазы, начиная с Phase 0.
+- [`docs/PRODUCT_COPY.md`](docs/PRODUCT_COPY.md) — позиционирование и копирайт лендинга.
+- [`docs/SECURITY.md`](docs/SECURITY.md) — чек-лист безопасности и tenant-изоляция.
+- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — запуск, проверки, как добавлять модули.
+- [`docs/nevora-architect-prompt.md`](docs/nevora-architect-prompt.md) — system prompt архитектора.

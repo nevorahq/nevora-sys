@@ -55,6 +55,12 @@ export interface PricingPlan {
 
 // TODO(pricing): когда появится реальный flow выбора тарифа/чекаута —
 // заменить ROUTES.register на соответствующий маршрут с ?plan=<id>.
+//
+// CRM/Clients: модуль на паузе и скрыт из навигации (см. docs/MODULE_STATUS.md).
+// Поэтому он НЕ рекламируется как активная/доступная сейчас фича: убран из
+// value.items, из trial-фич и из trialDetails. В платных тарифах Start/Pro/
+// Business (cta: "Coming soon") CRM остаётся как часть будущего направления
+// продукта — это roadmap-тарифы, а не доступные сейчас планы.
 const enPlans: PricingPlan[] = [
   {
     id: "trial",
@@ -69,7 +75,6 @@ const enPlans: PricingPlan[] = [
     limits: [],
     features: [
       "Tasks preview",
-      "CRM preview",
       "Money tracking preview",
       "Documents preview",
       "Subscriptions preview",
@@ -210,7 +215,6 @@ const ruPlans: PricingPlan[] = [
     limits: [],
     features: [
       "Превью задач",
-      "Превью CRM",
       "Превью учёта денег",
       "Превью документов",
       "Превью подписок",
@@ -350,7 +354,7 @@ const en = {
   hero: {
     title: "A simple Business OS for focused work.",
     subtitle:
-      "Nevora Business OS helps small businesses keep tasks, clients, money, documents, subscriptions, analytics and AI in one clear system.",
+      "Nevora Business OS helps small businesses keep tasks, money, documents, subscriptions, analytics and AI in one clear system.",
     supporting: [
       "I'm building this product not for complex features and endless upgrades.",
     ],
@@ -364,9 +368,6 @@ const en = {
     text: "The system brings the key parts of your business into one place, so you understand faster what is happening and what needs attention.",
     items: [
       "Tasks",
-      "CRM",
-      "Clients",
-      "Deals",
       "Documents",
       "Subscriptions",
       "Money tracking",
@@ -374,7 +375,7 @@ const en = {
       "AI assistant",
     ],
     supporting:
-      "Open your workspace, see what matters, make a decision and move on.",
+      "Open your workspace, see what matters, make a decision and move on. Client and CRM workflows are part of the product direction; the current focus is tasks, money, documents, subscriptions, settings and the workflow automation foundation.",
   },
   about: {
     title: "About the project",
@@ -438,8 +439,8 @@ const en = {
   trialDetails: {
     title: "What's included in the trial?",
     intro: [
-      "The trial gives you 14 days of free access to Nevora Business OS. You can add up to 2 members, use 500 MB of storage and test the core modules: tasks, CRM, money tracking, documents, subscriptions, basic analytics and a limited AI assistant.",
-      "This is not a demo for the sake of a demo. The trial exists so you can check the system on a real workflow: add tasks, clients, deals, documents, subscriptions and basic financial data.",
+      "The trial gives you 14 days of free access to Nevora Business OS. You can add up to 2 members, use 500 MB of storage and test the core modules: tasks, money tracking, documents, subscriptions, basic analytics and a limited AI assistant.",
+      "This is not a demo for the sake of a demo. The trial exists so you can check the system on a real workflow: add tasks, documents, subscriptions and basic financial data.",
       "After 14 days you can calmly decide whether Start, Pro or Business fits you. No pressure, no forced upgrade and no marketing traps.",
     ],
     items: [
@@ -456,16 +457,12 @@ const en = {
         text: "Create tasks, assign owners and see whether the system helps keep work under control.",
       },
       {
-        title: "CRM preview",
-        text: "Add clients, contacts and deals to check how comfortable sales and communication feel.",
-      },
-      {
         title: "Money tracking preview",
         text: "Check basic income, expense and cashflow tracking without a complex accounting system.",
       },
       {
         title: "Documents preview",
-        text: "Store working materials and link them to tasks, clients and deals.",
+        text: "Store working materials and link them to tasks, money and subscriptions.",
       },
       {
         title: "Subscriptions preview",
@@ -473,7 +470,7 @@ const en = {
       },
       {
         title: "Basic analytics",
-        text: "Get a simple overview of tasks, clients, deals, expenses and upcoming actions.",
+        text: "Get a simple overview of tasks, expenses, subscriptions and upcoming actions.",
       },
       {
         title: "Limited AI assistant",
@@ -523,7 +520,7 @@ const ru: LandingContent = {
   hero: {
     title: "Простая Business OS для сфокусированной работы.",
     subtitle:
-      "Nevora Business OS помогает малому бизнесу держать задачи, клиентов, деньги, документы, подписки, аналитику и AI в одной понятной системе.",
+      "Nevora Business OS помогает малому бизнесу держать задачи, деньги, документы, подписки, аналитику и AI в одной понятной системе.",
     supporting: [
       "Я создаю этот продукт не ради сложных функций и бесконечных апгрейдов.",
     ],
@@ -537,9 +534,6 @@ const ru: LandingContent = {
     text: "Система собирает ключевые части бизнеса в одном месте, чтобы вы быстрее понимали, что происходит и что требует внимания.",
     items: [
       "Задачи",
-      "CRM",
-      "Клиенты",
-      "Сделки",
       "Документы",
       "Подписки",
       "Учёт денег",
@@ -547,7 +541,7 @@ const ru: LandingContent = {
       "AI-ассистент",
     ],
     supporting:
-      "Откройте workspace, посмотрите главное, примите решение и двигайтесь дальше.",
+      "Откройте workspace, посмотрите главное, примите решение и двигайтесь дальше. Работа с клиентами и CRM — часть направления продукта; текущий фокус — задачи, деньги, документы, подписки, настройки и фундамент автоматизации процессов.",
   },
   about: {
     title: "О проекте",
@@ -611,8 +605,8 @@ const ru: LandingContent = {
   trialDetails: {
     title: "Что входит в пробный период?",
     intro: [
-      "Пробный период даёт 14 дней бесплатного доступа к Nevora Business OS. Вы можете добавить до 2 участников, использовать 500 МБ хранилища и протестировать основные модули: задачи, CRM, учёт денег, документы, подписки, базовую аналитику и ограниченный AI-ассистент.",
-      "Это не демо ради демо. Пробный период создан, чтобы вы могли проверить систему на реальном рабочем процессе: добавить задачи, клиентов, сделки, документы, подписки и базовые финансовые данные.",
+      "Пробный период даёт 14 дней бесплатного доступа к Nevora Business OS. Вы можете добавить до 2 участников, использовать 500 МБ хранилища и протестировать основные модули: задачи, учёт денег, документы, подписки, базовую аналитику и ограниченный AI-ассистент.",
+      "Это не демо ради демо. Пробный период создан, чтобы вы могли проверить систему на реальном рабочем процессе: добавить задачи, документы, подписки и базовые финансовые данные.",
       "Через 14 дней вы сможете спокойно решить, подходит ли вам Start, Pro или Business. Без давления, без принудительного апгрейда и без маркетинговых ловушек.",
     ],
     items: [
@@ -629,16 +623,12 @@ const ru: LandingContent = {
         text: "Создавайте задачи, назначайте ответственных и проверяйте, помогает ли система держать работу под контролем.",
       },
       {
-        title: "Превью CRM",
-        text: "Добавьте клиентов, контакты и сделки, чтобы проверить удобство работы с продажами и коммуникацией.",
-      },
-      {
         title: "Превью учёта денег",
         text: "Проверьте базовый учёт доходов, расходов и cashflow без сложной бухгалтерской системы.",
       },
       {
         title: "Превью документов",
-        text: "Храните рабочие материалы и связывайте их с задачами, клиентами и сделками.",
+        text: "Храните рабочие материалы и связывайте их с задачами, деньгами и подписками.",
       },
       {
         title: "Превью подписок",
@@ -646,7 +636,7 @@ const ru: LandingContent = {
       },
       {
         title: "Базовая аналитика",
-        text: "Получите простой обзор задач, клиентов, сделок, расходов и ближайших действий.",
+        text: "Получите простой обзор задач, расходов, подписок и ближайших действий.",
       },
       {
         title: "Ограниченный AI-ассистент",

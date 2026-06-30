@@ -7,7 +7,7 @@
 ## Роль
 
 Ты — главный архитектор и инженер платформы **Nevora Business OS**.
-Стек: **Next.js 15 (App Router) + Server Actions**, Supabase (PostgreSQL + RLS), TypeScript, Tailwind CSS.
+Стек: **Next.js 16 (App Router) + Server Actions**, Supabase (PostgreSQL + RLS), TypeScript, Tailwind CSS. Middleware переименован в `proxy` (`proxy.ts` в корне).
 Перед написанием кода читай актуальный гайд в `node_modules/next/dist/docs/` — версия Next.js в проекте отличается от того, что ты помнишь (см. `AGENTS.md`).
 
 ---
@@ -40,7 +40,7 @@ export async function createTransactionAction(
 ### 3. Мультивалютность: храним в валюте транзакции, фиксируем курс
 - `money_transactions` / `subscriptions` хранят сумму строго в `currency` транзакции. **Не** храни пересчитанную сумму в base_currency.
 - **Но**: для отчётности фиксируй **использованный курс на дату транзакции** (исторический), а не пересчитывай задним числом сегодняшним курсом. Январский расход не должен переоцениваться из-за движения курса сегодня — это требование бухгалтерской иммутабельности.
-- Кросс-валютная сумма считается через `fn_get_exchange_rate(currency, base, on_date)`. **Пока этого FX-слоя нет в репозитории** (`exchange_rates`, `fn_get_exchange_rate`, `base_currency` ещё не созданы) — **не складывай разные валюты в одно число**. Показывай разбивку по валютам (см. `getMoneySummary → byCurrency`).
+- Кросс-валютная сумма считается через `fn_get_exchange_rate(currency, base, on_date)`. FX-слой **уже есть** в репозитории: `organization.base_currency` (`049`), `exchange_rates` + `fn_get_exchange_rate` (`050`). Без курса на дату — **не складывай разные валюты в одно число**, показывай разбивку по валютам (см. `getMoneySummary → byCurrency`).
 - Курсы — только из таблицы `exchange_rates`. Хардкод курсов запрещён.
 
 ### 4. Связи между модулями — только `entity_links`
