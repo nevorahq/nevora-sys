@@ -30,13 +30,14 @@ export {
 // Constants & types
 export {
   RELATION_ENTITY_KINDS,
+  RELATION_ENTITY_CONFIG,
   ENTITY_KIND_LABELS,
   ENTITY_KIND_SINGULAR,
   RELATION_TYPE_LABELS,
   MANUAL_RELATION_TYPES,
   isEntityKind,
 } from "./constants/relation.constants";
-export type { EntityKind } from "./constants/relation.constants";
+export type { EntityKind, RelationEntityMeta } from "./constants/relation.constants";
 export type {
   EntityRef,
   RelatedEntity,

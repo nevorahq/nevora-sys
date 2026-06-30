@@ -44,7 +44,9 @@ displays the related subscription on the document detail page.
 Relations scope currently covers active modules only: Tasks, Money, Documents and
 Subscriptions. CRM / Leads / Clients / Deals remain paused and out of scope.
 Future relation expansion must stay limited to active modules unless a paused
-module is explicitly reactivated by product decision.
+module is explicitly reactivated by product decision. Relation resolver metadata
+(entity kind → table / route / label) is centralized in a single
+`RELATION_ENTITY_CONFIG`; verification fails closed for unsupported types.
 
 ## Phase 5 — Automation Foundation — *in progress*
 

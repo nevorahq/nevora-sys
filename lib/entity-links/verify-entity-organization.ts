@@ -1,12 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+// Active relation scope only: Tasks, Money, Documents, Subscriptions. CRM /
+// Leads / Clients / Deals are paused and must not be added here until explicitly
+// reactivated by product decision. Any type outside this map fails closed below.
 const ENTITY_TABLES: Record<string, string> = {
   task: "todos",
   document: "documents",
   transaction: "money_transactions",
   subscription: "subscriptions",
-  client: "crm_clients",
-  deal: "crm_deals",
 };
 
 /** Verifies both ends of a polymorphic link exist inside the active tenant. */

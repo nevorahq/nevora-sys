@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { RELATION_ENTITY_CONFIG } from "../constants/relation.constants";
 import type { EntityKind, RelationCandidate } from "../types/relation.types";
 
 /**
@@ -43,7 +44,7 @@ async function searchOne(
 ): Promise<RelationCandidate[]> {
   if (type === "task") {
     let q = supabase
-      .from("todos")
+      .from(RELATION_ENTITY_CONFIG.task.table)
       .select("id, title, status")
       .eq("organization_id", organizationId)
       .is("deleted_at", null)
@@ -62,7 +63,7 @@ async function searchOne(
 
   if (type === "document") {
     let q = supabase
-      .from("documents")
+      .from(RELATION_ENTITY_CONFIG.document.table)
       .select("id, title, doc_type")
       .eq("organization_id", organizationId)
       .is("deleted_at", null)
@@ -81,7 +82,7 @@ async function searchOne(
 
   if (type === "transaction") {
     let q = supabase
-      .from("money_transactions")
+      .from(RELATION_ENTITY_CONFIG.transaction.table)
       .select("id, title, amount, currency, transaction_date")
       .eq("organization_id", organizationId)
       .is("deleted_at", null)
@@ -100,7 +101,7 @@ async function searchOne(
 
   // subscription
   let q = supabase
-    .from("subscriptions")
+    .from(RELATION_ENTITY_CONFIG.subscription.table)
     .select("id, name, amount, currency, next_billing_date")
     .eq("organization_id", organizationId)
     .ilike("name", pattern)

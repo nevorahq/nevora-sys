@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ENTITY_LINK_COLUMNS, type EntityLink } from "@/lib/entity-links";
 import {
   ENTITY_KIND_ROUTE,
+  RELATION_ENTITY_CONFIG,
   type EntityKind,
 } from "../constants/relation.constants";
 import { normalizeRelation } from "../utils/normalize-relation";
@@ -91,7 +92,7 @@ async function hydrateCards(
 
       if (kind === "task") {
         const { data } = await supabase
-          .from("todos")
+          .from(RELATION_ENTITY_CONFIG.task.table)
           .select("id, title, status, due_date")
           .eq("organization_id", organizationId)
           .is("deleted_at", null)
@@ -113,7 +114,7 @@ async function hydrateCards(
 
       if (kind === "document") {
         const { data } = await supabase
-          .from("documents")
+          .from(RELATION_ENTITY_CONFIG.document.table)
           .select("id, title, doc_type, status")
           .eq("organization_id", organizationId)
           .is("deleted_at", null)
@@ -135,7 +136,7 @@ async function hydrateCards(
 
       if (kind === "transaction") {
         const { data } = await supabase
-          .from("money_transactions")
+          .from(RELATION_ENTITY_CONFIG.transaction.table)
           .select("id, title, amount, currency, transaction_date, type")
           .eq("organization_id", organizationId)
           .is("deleted_at", null)
@@ -157,7 +158,7 @@ async function hydrateCards(
 
       // subscription — нет deleted_at, фильтруем только по org + RLS
       const { data } = await supabase
-        .from("subscriptions")
+        .from(RELATION_ENTITY_CONFIG.subscription.table)
         .select("id, name, amount, currency, next_billing_date, is_active")
         .eq("organization_id", organizationId)
         .in("id", ids);

@@ -213,6 +213,12 @@ Scope: Relations scope currently covers active modules only: Tasks, Money,
 Documents and Subscriptions. CRM / Leads / Clients / Deals remain paused and out
 of scope. Future relation expansion must stay limited to active modules unless a
 paused module is explicitly reactivated by product decision.
+Resolver: relation resolver metadata (entity kind → table / route / label) is
+centralized in a single `RELATION_ENTITY_CONFIG` source of truth; hydration,
+search and route generation all derive from it. `verifyEntityOrganization` fails
+closed for any entity type outside the active set (paused CRM types are no longer
+mapped). Covered by `relation.constants.test.ts` and
+`verify-entity-organization.test.ts`.
 Next Step: consistent relation UI across Tasks/Money/Documents/Subscriptions.
 
 ## Action Center
