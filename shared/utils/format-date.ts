@@ -12,3 +12,14 @@ export function formatDate(date: string | Date): string {
     year: "numeric",
   }).format(new Date(date));
 }
+
+/**
+ * Форматирует время (часы:минуты) — для отметки «когда проведено».
+ * Берётся из created_at (timestamp), т.к. transaction_date — это DATE без времени.
+ */
+export function formatTime(date: string | Date): string {
+  return new Intl.DateTimeFormat("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(date));
+}

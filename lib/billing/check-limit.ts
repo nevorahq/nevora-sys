@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { UNLIMITED } from "@/modules/billing";
 import type { UsageMetric } from "@/modules/billing";
+import { resolveAccountLimits } from "./resolve-account-limits";
 
 /**
  * Проверяет, не превышен ли лимит плана для данной метрики.
@@ -25,6 +25,14 @@ export async function checkPlanLimit(
 ): Promise<{ allowed: boolean; reason?: string }> {
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { allowed: false, reason: "Authentication required" };
+
+  const limits = await resolveAccountLimits(user.id, organizationId);
+  if (limits.unlimitedAccess) return { allowed: true };
+
   // Keep error messages friendly. The matching RLS guard in migration 027 is
   // still authoritative for every direct database mutation.
   const { data: writable } = await supabase.rpc("is_organization_writable", {
@@ -34,46 +42,38 @@ export async function checkPlanLimit(
     return { allowed: false, reason: "Your trial has ended. Choose a plan to continue editing." };
   }
 
-  // Получаем подписку + план одним запросом
+  // Получаем статус подписки. Сами quota уже централизованно разрешены выше.
   const { data: subRaw } = await supabase
     .from("billing_subscriptions")
-    .select(
-      "status, plan:plans!plan_id(" +
-        "max_members, max_workspaces, max_tasks, max_deals, max_clients, " +
-        "max_documents, max_subscriptions, max_money_transactions, " +
-        "max_ai_calls_mo, max_storage_mb" +
-      ")",
-    )
+    .select("status")
     .eq("organization_id", organizationId)
     .maybeSingle();
 
   const sub = subRaw as unknown as {
     status: string;
-    plan: Record<string, number> | null;
   } | null;
 
-  if (!sub || !sub.plan) return { allowed: true }; // нет подписки — не блокируем
+  if (!sub) return { allowed: true }; // нет подписки — legacy org не блокируем
 
   if (sub.status === "canceled") {
     return { allowed: false, reason: "Subscription is canceled" };
   }
 
-  const plan = sub.plan;
-  const limitMap: Record<UsageMetric, string> = {
-    members:            "max_members",
-    workspaces:         "max_workspaces",
-    tasks:              "max_tasks",
-    deals:              "max_deals",
-    clients:            "max_clients",
-    documents:          "max_documents",
-    subscriptions:      "max_subscriptions",
-    money_transactions: "max_money_transactions",
-    ai_calls:           "max_ai_calls_mo",
-    storage_mb:         "max_storage_mb",
+  const limitMap: Record<UsageMetric, number | null> = {
+    members: limits.maxMembers,
+    workspaces: limits.maxWorkspaces,
+    tasks: limits.maxTasks,
+    deals: limits.maxDeals,
+    clients: limits.maxClients,
+    documents: limits.maxDocuments,
+    subscriptions: limits.maxSubscriptions,
+    money_transactions: limits.maxMoneyTransactions,
+    ai_calls: limits.maxAiRequestsPerMonth,
+    storage_mb: limits.maxStorageMb,
   };
 
-  const limit = plan[limitMap[metric]] ?? UNLIMITED;
-  if (limit === UNLIMITED) return { allowed: true };
+  const limit = limitMap[metric];
+  if (limit === null) return { allowed: true };
 
   const blocked = (used: number): { allowed: boolean; reason?: string } => ({
     allowed: false,

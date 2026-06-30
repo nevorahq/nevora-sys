@@ -33,7 +33,7 @@ export async function getTaskSummary(): Promise<TaskSummary> {
   // При масштабировании — вынести в PostgreSQL function.
   const { data, error } = await supabase
     .from("todos")
-    .select("is_completed, due_date");
+    .select("status, due_date");
 
   if (error) {
     console.error("getTaskSummary error:", error);
@@ -47,8 +47,9 @@ export async function getTaskSummary(): Promise<TaskSummary> {
   let overdue = 0;
   let dueToday = 0;
 
+  // status — источник истины: done = завершена, остальное = активна.
   for (const todo of todos) {
-    if (todo.is_completed) {
+    if (todo.status === "done") {
       completed++;
     } else {
       active++;

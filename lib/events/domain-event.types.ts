@@ -111,7 +111,8 @@ export type AggregateType =
   | "booking_host_profile"
   | "booking_service"
   | "entity_relation"
-  | "action_item";
+  | "action_item"
+  | "project";
 
 // ── Payload map — типизированный payload для каждого события ─────────────────
 // Добавляй новые события сюда по мере роста модулей.
@@ -134,13 +135,29 @@ export interface DomainEventPayloadMap {
     title: string;
     assignee_id: string;
   };
+  "task.unassigned": {
+    title: string;
+    assignee_id: string;
+  };
   "task.updated": Record<string, unknown>;
   "task.deleted": { title: string };
   "task.due_date_changed": {
     title: string;
     old_due_date: string | null;
     new_due_date: string | null;
+    // Classified server-side: set | extended | shortened | changed | removed.
+    change_type?: string;
+    reason?: string | null;
   };
+
+  // Projects (Tasks module)
+  "project.created": { name: string; slug: string; status: string; priority: string };
+  "project.updated": Record<string, unknown>;
+  "project.archived": { name: string };
+  "project.completed": { name: string; completed_at: string };
+  "project.progress_updated": { progress: number };
+  "task.assigned_to_project": { task_id: string; project_id: string; title: string };
+  "task.removed_from_project": { task_id: string; project_id: string; title: string };
 
   "client.created": { name: string; email?: string | null };
   "client.updated": Record<string, unknown>;
@@ -185,6 +202,13 @@ export interface DomainEventPayloadMap {
     account_id?: string | null;
     transaction_date?: string | null;
   };
+  "money.transfer.created": {
+    amount: number;
+    currency: string;
+    from_account_id: string;
+    to_account_id: string;
+    transaction_date?: string | null;
+  };
   "transaction.deleted": { amount?: number; type?: string };
   "account.created": {
     name: string;
@@ -221,7 +245,11 @@ export interface DomainEventPayloadMap {
   "subscription.plan_changed": { plan_slug: string; billing_cycle: string };
   "subscription.canceled": { at_period_end: boolean };
 
-  "document.created": { title: string };
+  "document.created": {
+    title: string;
+    source?: "subscription" | "dashboard" | string;
+    skip_money_sync?: boolean;
+  };
   "document.updated": { title: string };
   "document.deleted": { title: string };
   "document.attachment_uploaded": { filename: string; size_bytes: number };
@@ -257,6 +285,8 @@ export interface DomainEventPayloadMap {
     amount: number;
     type: string;
     source_document_id?: string | null;
+    category_id?: string | null;
+    expense_context_id?: string | null;
   };
   "money.transaction.rejected": {
     source_document_id?: string | null;

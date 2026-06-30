@@ -25,24 +25,24 @@ export function MoneyCreateButtons({ dict, defaultCurrency, accounts, categories
   return (
     <>
       <div className="flex items-center gap-2">
-        {/* Add Account */}
+        {/* Accounts */}
         <Button
           onClick={() => setAccountOpen(true)}
-          aria-label={dict.money.accounts.add}
+          aria-label={dict.money.accounts.buttonLabel}
           className="shrink-0 w-9 h-9 p-0 rounded-full sm:w-auto sm:h-auto sm:px-4 sm:py-2.5 sm:rounded-(--neu-radius-pill)"
         >
           <WalletIcon size={15} strokeWidth={2} />
-          <span className="hidden sm:inline">{dict.money.accounts.add}</span>
+          <span className="hidden sm:inline">{dict.money.accounts.buttonLabel}</span>
         </Button>
 
-        {/* Add Transaction */}
+        {/* Transaction */}
         <Button
           onClick={() => setTransactionOpen(true)}
-          aria-label={dict.money.transactions.add}
+          aria-label={dict.money.transactions.buttonLabel}
           className="shrink-0 w-9 h-9 p-0 rounded-full sm:w-auto sm:h-auto sm:px-4 sm:py-2.5 sm:rounded-(--neu-radius-pill)"
         >
           <ArrowRightLeftIcon size={15} strokeWidth={2} />
-          <span className="hidden sm:inline">{dict.money.transactions.add}</span>
+          <span className="hidden sm:inline">{dict.money.transactions.buttonLabel}</span>
         </Button>
       </div>
 

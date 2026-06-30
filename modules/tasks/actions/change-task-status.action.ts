@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { changeTaskStatusSchema } from "../schemas/task.schema";
-import { ROUTES } from "@/shared/config/routes";
+import { recalculateProjectProgress } from "../projects/services/recalculate-project-progress";
+import { ROUTES, projectDetailUrl } from "@/shared/config/routes";
 import type { TaskStatus } from "../constants/task.constants";
 
 export async function changeTaskStatusAction(
@@ -19,12 +20,13 @@ export async function changeTaskStatusAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
+  let affectedProjectId: string | null = null;
   try {
     const supabase = await createClient();
 
     const { data: task, error: fetchError } = await supabase
       .from("todos")
-      .select("id, title, status")
+      .select("id, title, status, project_id")
       .eq("id", parsed.data.taskId)
       .eq("organization_id", org.id)
       .is("deleted_at", null)
@@ -34,14 +36,20 @@ export async function changeTaskStatusAction(
       return { error: "Task not found" };
     }
 
+    affectedProjectId = (task.project_id as string | null) ?? null;
+
     const oldStatus = task.status as TaskStatus;
     if (oldStatus === parsed.data.status) {
       return {};
     }
 
+    const isDone = parsed.data.status === "done";
+
+    // status — источник истины; is_completed синхронизируется здесь явно
+    // (done → true, остальные → false). DB-триггер дублирует это правило.
     const { error } = await supabase
       .from("todos")
-      .update({ status: parsed.data.status, updated_by: user.id })
+      .update({ status: parsed.data.status, is_completed: isDone, updated_by: user.id })
       .eq("id", parsed.data.taskId)
       .eq("organization_id", org.id);
 
@@ -50,7 +58,8 @@ export async function changeTaskStatusAction(
       return { error: "Failed to update status" };
     }
 
-    const isDone = parsed.data.status === "done";
+    // Completion ratio changed for the task's project — recompute server-side.
+    await recalculateProjectProgress(supabase, affectedProjectId);
 
     await Promise.all([
       emitDomainEvent({
@@ -79,5 +88,8 @@ export async function changeTaskStatusAction(
 
   revalidatePath(ROUTES.dashboard);
   revalidatePath(ROUTES.tasks);
+  revalidatePath(ROUTES.projects);
+  revalidatePath(`${ROUTES.tasks}/${parsed.data.taskId}`);
+  if (affectedProjectId) revalidatePath(projectDetailUrl(affectedProjectId));
   return {};
 }

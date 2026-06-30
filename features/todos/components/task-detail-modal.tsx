@@ -20,11 +20,9 @@ interface TaskDetailModalProps {
 }
 
 const STATUS_STYLES: Record<TaskStatus, string> = {
-  todo:        "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
-  in_progress: "bg-accent-blue-soft text-accent-blue",
-  in_review:   "bg-accent-yellow-soft text-accent-yellow",
+  todo:        "bg-surface-sunken text-text-secondary",
+  in_progress: "bg-accent-lilac-soft text-accent-lilac",
   done:        "bg-accent-green-soft text-accent-green",
-  cancelled:   "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500",
 };
 
 const PRIORITY_STYLES: Record<string, string> = {

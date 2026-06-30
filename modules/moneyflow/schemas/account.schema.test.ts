@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { getAccountSchemas } from "./account.schema";
 
-const { createAccountSchema } = getAccountSchemas({
+const { createAccountSchema, updateAccountSchema } = getAccountSchemas({
   nameRequired: "Name required",
   invalidType: "Invalid type",
+  balanceNegative: "Starting balance cannot be negative",
 });
 
 describe("createAccountSchema currency", () => {
@@ -32,5 +33,33 @@ describe("createAccountSchema currency", () => {
       initial_balance: "0",
       currency: "RON",
     }).success).toBe(false);
+  });
+});
+
+describe("account starting balance", () => {
+  it("rejects a negative starting balance on create", () => {
+    const result = createAccountSchema.safeParse({
+      name: "Debt Card",
+      type: "card",
+      initial_balance: "-360",
+      currency: "MDL",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe("Starting balance cannot be negative");
+  });
+
+  it("rejects a negative starting balance on update", () => {
+    const result = updateAccountSchema.safeParse({
+      accountId: "11111111-1111-4111-8111-111111111111",
+      name: "Debt Card",
+      type: "card",
+      initial_balance: "-1",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a zero or positive starting balance", () => {
+    expect(createAccountSchema.safeParse({ name: "A", type: "cash", initial_balance: "0", currency: "MDL" }).success).toBe(true);
+    expect(createAccountSchema.safeParse({ name: "B", type: "cash", initial_balance: "360", currency: "MDL" }).success).toBe(true);
   });
 });

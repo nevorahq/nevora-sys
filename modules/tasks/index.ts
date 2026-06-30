@@ -22,13 +22,29 @@ export {
   TASK_TITLE_MAX_LENGTH,
   TASK_DESCRIPTION_MAX_LENGTH,
   TASK_COMMENT_MAX_LENGTH,
+  TASK_DUE_DATE_CHANGE_TYPES,
+  TASK_DUE_DATE_REASON_MAX_LENGTH,
 } from "./constants/task.constants";
 export type {
   TaskStatus,
   TaskPriority,
   TaskRelationType,
   TaskFilter,
+  TaskDueDateChangeType,
 } from "./constants/task.constants";
+
+export type { TaskDueDateChange } from "./types/task-due-date.types";
+
+// Sorting
+export {
+  TASK_SORTS,
+  DEFAULT_TASK_SORT,
+  TASK_SORT_LABELS,
+  TASK_SORT_OPTIONS,
+  type TaskSort,
+} from "./constants/task-sort.constants";
+export { taskSortSchema, parseTaskSort } from "./schemas/task-sort.schema";
+export { applyTaskSort, TASK_LIST_VIEW } from "./queries/apply-task-sort";
 
 // Schemas
 export {
@@ -45,6 +61,9 @@ export type {
   AddTaskCommentInput,
   AddTaskRelationInput,
 } from "./schemas/task.schema";
+export { updateTaskDueDateSchema } from "./schemas/task-due-date.schema";
+export type { UpdateTaskDueDateInput } from "./schemas/task-due-date.schema";
+export { resolveDueDateChange } from "./lib/resolve-due-date-change";
 
 // Queries
 export { getTasks, getTasksWithAssignees } from "./queries/get-tasks";
@@ -57,5 +76,6 @@ export { createTaskAction } from "./actions/create-task.action";
 export { updateTaskAction } from "./actions/update-task.action";
 export { deleteTaskAction } from "./actions/delete-task.action";
 export { changeTaskStatusAction } from "./actions/change-task-status.action";
+export { updateTaskDueDateAction } from "./actions/update-task-due-date.action";
 export { addTaskCommentAction } from "./actions/add-task-comment.action";
 export { assignTaskAction, unassignTaskAction } from "./actions/assign-task.action";

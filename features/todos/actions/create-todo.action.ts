@@ -1,11 +1,13 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
 import { checkPlanLimit } from "@/lib/billing";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { getTodoSchemas } from "../schemas/todo.schema";
+import { recalculateProjectProgress } from "@/modules/tasks/projects/services/recalculate-project-progress";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
@@ -32,20 +34,24 @@ export async function createTodoAction(
 
   const { user, org, workspace } = await requireOrg();
 
-  const [taskLimit, documentLimit] = await Promise.all([
-    checkPlanLimit(org.id, "tasks"),
-    checkPlanLimit(org.id, "documents"),
-  ]);
-  if (!taskLimit.allowed || !documentLimit.allowed) {
-    return { error: taskLimit.reason ?? documentLimit.reason ?? dict.todos.errors.createFailed };
+  // Only the task plan limit gates creation here. The `documents` limit is
+  // checked later, and only when the user actually attached a file (see
+  // createTaskDocumentWithAttachments) — a file-less task must never be blocked
+  // by, or consume, the documents quota.
+  const taskLimit = await checkPlanLimit(org.id, "tasks");
+  if (!taskLimit.allowed) {
+    return { error: taskLimit.reason ?? dict.todos.errors.createFailed };
   }
 
   const rawData = {
     title: formData.get("title") as string,
     description: (formData.get("description") as string) || "",
     priority: formData.get("priority") as string,
-    due_date: (formData.get("due_date") as string) || null,
+    // Срок исполнения при создании не устанавливается. Дата назначается
+    // отдельным действием (updateTaskDueDate) после перевода задачи в работу.
+    due_date: null,
     recurrence: (formData.get("recurrence") as string) || "none",
+    project_id: (formData.get("project_id") as string) || "",
   };
 
   const parsed = createTodoSchema.safeParse(rawData);
@@ -59,11 +65,32 @@ export async function createTodoAction(
     return { fieldErrors };
   }
 
-  let createdDocumentId: string | undefined;
+  let createdTaskId: string;
   try {
     const supabase = await createClient();
+    const taskId = randomUUID();
 
-    const { data: task, error } = await supabase.from("todos").insert({
+    // A project_id from the form is never trusted: it must resolve to a live
+    // project in the SAME org and workspace, otherwise the task is created
+    // without a project rather than leaking across tenants.
+    let projectId: string | null = null;
+    if (parsed.data.project_id) {
+      const { data: project } = await supabase
+        .from("projects")
+        .select("id, workspace_id, archived_at")
+        .eq("id", parsed.data.project_id)
+        .eq("organization_id", org.id)
+        .maybeSingle();
+      if (project && !project.archived_at && project.workspace_id === workspace.id) {
+        projectId = project.id as string;
+      }
+    }
+
+    // Не используем INSERT ... RETURNING: приватная todos SELECT-policy
+    // проверяется до AFTER INSERT trigger, который назначает автора, и поэтому
+    // Postgres отклоняет новую строку с 42501. UUID генерируем заранее.
+    const { error } = await supabase.from("todos").insert({
+      id: taskId,
       organization_id: org.id,
       workspace_id: workspace.id,
       created_by: user.id,
@@ -71,83 +98,41 @@ export async function createTodoAction(
       title: parsed.data.title,
       description: parsed.data.description,
       priority: parsed.data.priority,
+      status: "todo", // новая задача всегда стартует со статусом "Не определён"
       due_date: parsed.data.due_date,
       recurrence: parsed.data.recurrence,
-    }).select("id").single();
+      project_id: projectId,
+    });
 
-    if (error || !task) {
+    if (error) {
       console.error("createTodo error:", error);
       return { error: dict.todos.errors.createFailed };
     }
+    createdTaskId = taskId;
 
-    const taskDocumentContent = [
-      parsed.data.description.trim(),
-      `Priority: ${parsed.data.priority}`,
-      parsed.data.due_date ? `Due date: ${parsed.data.due_date}` : null,
-      parsed.data.recurrence === "monthly" ? "Recurring: monthly" : null,
-    ].filter(Boolean).join("\n\n");
+    // New task may belong to a project — refresh that project's progress.
+    await recalculateProjectProgress(supabase, projectId);
 
-    const { data: document, error: documentError } = await supabase
-      .from("documents")
-      .insert({
-        organization_id: org.id,
-        workspace_id: workspace.id,
-        title: parsed.data.title,
-        content: taskDocumentContent,
-        doc_type: "note",
-        status: "draft",
-        entity_type: "task",
-        entity_id: task.id,
-        created_by: user.id,
-        updated_by: user.id,
-      })
-      .select("id")
-      .single();
-
-    if (documentError || !document) {
-      // Keep task/document creation all-or-nothing from the user's perspective.
-      await supabase
-        .from("todos")
-        .update({ deleted_at: new Date().toISOString(), updated_by: user.id })
-        .eq("id", task.id)
-        .eq("organization_id", org.id);
-      console.error("createTodo document creation error:", documentError);
-      return { error: "The task document could not be created. Please try again." };
-    }
-    createdDocumentId = document.id;
-
+    // The task is always created. The draft document + attachments are created
+    // separately, and only when the user attached at least one file (the client
+    // uploads to /api/tasks/[taskId]/document). A file-less task therefore never
+    // produces a `documents` row and never shows up in Drafts.
     await Promise.all([
       emitDomainEvent({
         organizationId: org.id,
         workspaceId: workspace.id,
         eventName: "task.created",
         aggregateType: "task",
-        aggregateId: task.id,
+        aggregateId: taskId,
         payload: { title: parsed.data.title, priority: parsed.data.priority, due_date: parsed.data.due_date },
       }),
       emitAuditLog({
         organizationId: org.id,
         entityType: "todos",
-        entityId: task.id,
+        entityId: taskId,
         action: "create",
         newData: { title: parsed.data.title, priority: parsed.data.priority },
         metadata: { source: "dashboard" },
-      }),
-      emitDomainEvent({
-        organizationId: org.id,
-        workspaceId: workspace.id,
-        eventName: "document.created",
-        aggregateType: "document",
-        aggregateId: document.id,
-        payload: { title: parsed.data.title },
-      }),
-      emitAuditLog({
-        organizationId: org.id,
-        entityType: "documents",
-        entityId: document.id,
-        action: "create",
-        newData: { title: parsed.data.title, entity_type: "task", entity_id: task.id },
-        metadata: { source: "dashboard", trigger: "task_creation" },
       }),
     ]);
   } catch (err) {
@@ -157,6 +142,7 @@ export async function createTodoAction(
 
   revalidatePath(ROUTES.dashboard);
   revalidatePath(ROUTES.tasks);
+  revalidatePath(ROUTES.projects);
   revalidatePath(ROUTES.documents);
-  return createdDocumentId ? { documentId: createdDocumentId } : { error: dict.todos.errors.createFailed };
+  return { taskId: createdTaskId };
 }

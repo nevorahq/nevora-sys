@@ -22,6 +22,7 @@ export const ROUTES = {
   dashboard: "/dashboard",
   actions: "/dashboard/actions",
   tasks: "/dashboard/tasks",
+  projects: "/dashboard/tasks/projects",
   crm: "/dashboard/crm",
   money: "/dashboard/money",
   subscriptions: "/dashboard/subscriptions",
@@ -29,8 +30,14 @@ export const ROUTES = {
   documentsNew: "/dashboard/documents/new",
   analytics:  "/dashboard/analytics",
   ai:         "/dashboard/ai",
-  billing:    "/dashboard/billing",
-  members:    "/dashboard/settings/members",
+  settings:          "/dashboard/settings",
+  settingsProfile:   "/dashboard/settings/profile",
+  settingsWorkspace: "/dashboard/settings/workspace",
+  settingsMembers:   "/dashboard/settings/members",
+  settingsBilling:   "/dashboard/settings/billing",
+  // Compatibility aliases for existing domain modules and links.
+  billing:            "/dashboard/settings/billing",
+  members:            "/dashboard/settings/members",
 
   // Booking — internal dashboard
   booking:              "/dashboard/booking",
@@ -42,6 +49,11 @@ export const ROUTES = {
   // Ops — health check для load balancer / monitoring (без сессии).
   health: "/api/health",
 } as const;
+
+/** URL детальной страницы проекта. */
+export function projectDetailUrl(projectId: string) {
+  return `/dashboard/tasks/projects/${projectId}`;
+}
 
 /** Публичный URL страницы бронирования организации. */
 export function bookingPageUrl(organizationSlug: string) {

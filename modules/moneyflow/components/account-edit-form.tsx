@@ -70,6 +70,7 @@ export function AccountEditForm({ account, dict, onSuccess }: AccountEditFormPro
           name="initial_balance"
           type="number"
           step="0.01"
+          min="0"
           label={`${t.initialBalance} (${account.currency})`}
           defaultValue={String(account.initial_balance)}
           required

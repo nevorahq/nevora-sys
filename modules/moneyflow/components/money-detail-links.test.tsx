@@ -22,6 +22,9 @@ vi.mock("../actions/update-transaction.action", () => ({
 vi.mock("../actions/delete-transaction.action", () => ({
   deleteTransactionAction: vi.fn(),
 }));
+vi.mock("../actions/create-transfer.action", () => ({
+  createTransferAction: vi.fn(),
+}));
 
 const dict = {
   common: { close: "Close", loading: "Loading" },
@@ -46,6 +49,21 @@ const dict = {
       recent: "Recent transactions",
       editButton: "Edit transaction",
     },
+    transfer: {
+      title: "Transfer from",
+      label: "Transfer",
+      buttonLabel: "Transfer",
+      fromLabel: "From account",
+      toLabel: "To account",
+      selectDestination: "Select account",
+      amountLabel: "Amount",
+      amountPlaceholder: "0.00",
+      dateLabel: "Date",
+      noteLabel: "Note",
+      notePlaceholder: "Optional note",
+      submit: "Transfer",
+      noDestination: "No other account with the same currency.",
+    },
   },
 } as never;
 
@@ -62,6 +80,7 @@ describe("Money detail navigation", () => {
           name: "USD Card",
           type: "card",
           initial_balance: 100,
+          balance: 100,
           currency: "USD",
           is_active: true,
           created_at: "2026-01-01",
@@ -89,10 +108,14 @@ describe("Money detail navigation", () => {
           currency: "USD",
           transaction_date: "2026-06-27",
           note: null,
+          from_account_id: null,
+          to_account_id: null,
           created_at: "2026-06-27",
           updated_at: "2026-06-27",
           account: { name: "USD Card" },
           category: null,
+          from_account: null,
+          to_account: null,
         }]}
       />,
     );

@@ -1,5 +1,9 @@
 import { z } from "zod";
 import {
+  DEFAULT_BASE_CURRENCY,
+  SUPPORTED_CURRENCIES,
+} from "@/shared/config/currencies";
+import {
   BILLING_CYCLES,
   SUB_CATEGORIES,
   SUB_NAME_MAX,
@@ -13,27 +17,22 @@ export function getSubscriptionSchemas(errors: {
   amountPositive: string;
   invalidCycle: string;
   invalidCategory: string;
+  invalidCurrency: string;
   dateRequired: string;
   invalidDate: string;
-  accountRequired: string;
 }) {
   const createSubscriptionSchema = z.object({
     name: z
       .string()
       .min(1, errors.nameRequired)
       .max(SUB_NAME_MAX),
-    // Счёт списания для авто-транзакции (на подписке не хранится —
-    // используется один раз при создании первой транзакции-расхода).
-    account_id: z
-      .string()
-      .uuid(errors.accountRequired),
     amount: z
       .coerce
       .number({ error: errors.amountRequired })
       .positive(errors.amountPositive),
-    currency: z
-      .string()
-      .default("MDL"),
+    currency: z.enum(SUPPORTED_CURRENCIES, {
+      error: errors.invalidCurrency,
+    }).default(DEFAULT_BASE_CURRENCY),
     billing_cycle: z.enum(BILLING_CYCLES, {
       error: errors.invalidCycle,
     }),
@@ -59,6 +58,7 @@ export function getSubscriptionSchemas(errors: {
     subscriptionId: z.string().min(1),
     name: z.string().min(1, errors.nameRequired).max(SUB_NAME_MAX),
     amount: z.coerce.number({ error: errors.amountRequired }).positive(errors.amountPositive),
+    currency: z.enum(SUPPORTED_CURRENCIES, { error: errors.invalidCurrency }),
     billing_cycle: z.enum(BILLING_CYCLES, { error: errors.invalidCycle }),
     next_billing_date: z.string().min(1, errors.dateRequired),
     category: z.enum(SUB_CATEGORIES, { error: errors.invalidCategory }),

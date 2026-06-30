@@ -31,8 +31,13 @@ export default async function MoneyAccountDetailPage({
       .maybeSingle(),
     supabase
       .from("money_transactions")
-      .select("*, account:money_accounts(name), category:money_categories(name)")
-      .eq("account_id", accountId)
+      // money_accounts is referenced by 3 FKs now — disambiguate `account` by
+      // its column and also embed from/to names for transfer rows. `.or` pulls
+      // in transfers where this account is the destination, not only account_id.
+      .select(
+        "*, account:money_accounts!account_id(name), category:money_categories(name), from_account:money_accounts!from_account_id(name), to_account:money_accounts!to_account_id(name)",
+      )
+      .or(`account_id.eq.${accountId},to_account_id.eq.${accountId}`)
       .eq("organization_id", org.id)
       .eq("status", "posted")
       .is("deleted_at", null)
@@ -41,8 +46,8 @@ export default async function MoneyAccountDetailPage({
       .limit(100),
     supabase
       .from("money_transactions")
-      .select("amount, type")
-      .eq("account_id", accountId)
+      .select("amount, type, to_account_id")
+      .or(`account_id.eq.${accountId},to_account_id.eq.${accountId}`)
       .eq("organization_id", org.id)
       .eq("status", "posted")
       .is("deleted_at", null),
@@ -59,6 +64,10 @@ export default async function MoneyAccountDetailPage({
     ? null
     : (ledgerEntries ?? []).reduce((balance, transaction) => {
         const amount = Number(transaction.amount);
+        if (transaction.type === "transfer") {
+          // Destination side adds, source side subtracts.
+          return transaction.to_account_id === accountId ? balance + amount : balance - amount;
+        }
         return transaction.type === "income" ? balance + amount : balance - amount;
       }, Number(account.initial_balance));
   const accountType = account.type as keyof typeof dict.money.accounts.types;

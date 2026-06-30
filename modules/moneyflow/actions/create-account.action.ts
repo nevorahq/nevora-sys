@@ -27,6 +27,7 @@ export async function createAccountAction(
   const { createAccountSchema } = getAccountSchemas({
     nameRequired: dict.money.errors.titleRequired,
     invalidType: dict.money.errors.invalidType,
+    balanceNegative: dict.money.errors.balanceNegative,
   });
 
   const ctx = await requireOrg();

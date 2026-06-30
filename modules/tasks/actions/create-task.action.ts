@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
@@ -25,7 +26,9 @@ export async function createTaskAction(
     description:  (formData.get("description") as string) || "",
     priority:     (formData.get("priority") as string) || "medium",
     status:       (formData.get("status") as string) || "todo",
-    due_date:     (formData.get("due_date") as string) || null,
+    // Срок исполнения при создании не задаётся — устанавливается отдельным
+    // действием после перевода задачи в статус "in_progress".
+    due_date:     null,
     recurrence:   (formData.get("recurrence") as string) || "none",
     assignee_ids: formData.getAll("assignee_ids") as string[],
   };
@@ -43,10 +46,14 @@ export async function createTaskAction(
 
   try {
     const supabase = await createClient();
+    const taskId = randomUUID();
 
-    const { data: newTask, error } = await supabase
+    // UUID заранее позволяет избежать INSERT ... RETURNING, который конфликтует
+    // с task-scoped SELECT RLS до завершения AFTER INSERT assignee trigger.
+    const { error } = await supabase
       .from("todos")
       .insert({
+        id:               taskId,
         organization_id: org.id,
         workspace_id:    workspace.id,
         created_by:      user.id,
@@ -57,23 +64,23 @@ export async function createTaskAction(
         status:          parsed.data.status,
         due_date:        parsed.data.due_date,
         recurrence:      parsed.data.recurrence,
-      })
-      .select("id")
-      .single();
+      });
 
-    if (error || !newTask) {
+    if (error) {
       console.error("createTask error:", error);
       return { error: "Failed to create task" };
     }
 
-    // Назначаем исполнителей если переданы
+    // Создатель уже добавлен в assignees триггером todos_add_creator_assignee.
+    // Доп. исполнители — идемпотентно, чтобы не конфликтовать с создателем.
     if (parsed.data.assignee_ids.length > 0) {
-      await supabase.from("task_assignees").insert(
+      await supabase.from("task_assignees").upsert(
         parsed.data.assignee_ids.map((uid) => ({
-          task_id:     newTask.id,
+          task_id:     taskId,
           user_id:     uid,
           assigned_by: user.id,
         })),
+        { onConflict: "task_id,user_id", ignoreDuplicates: true },
       );
     }
 
@@ -83,7 +90,7 @@ export async function createTaskAction(
         workspaceId:    workspace.id,
         eventName:      "task.created",
         aggregateType:  "task",
-        aggregateId:    newTask.id,
+        aggregateId:    taskId,
         payload: {
           title:    parsed.data.title,
           priority: parsed.data.priority,
@@ -93,7 +100,7 @@ export async function createTaskAction(
       emitAuditLog({
         organizationId: org.id,
         entityType:     "todos",
-        entityId:       newTask.id,
+        entityId:       taskId,
         action:         "create",
         newData: {
           title:       parsed.data.title,

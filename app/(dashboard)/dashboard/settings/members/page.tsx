@@ -1,69 +1,36 @@
 import { requireOrg } from "@/lib/auth/require-org";
-import { getSubscription, UNLIMITED } from "@/modules/billing";
-import { getMembers } from "@/modules/members";
-import { CreateInviteLink } from "@/features/members/components/create-invite-link";
-import { MembersList } from "@/features/members/components/members-list";
+import { resolveAccountLimits } from "@/lib/billing";
+import { getMembers } from "@/modules/settings/queries/get-members";
+import { hasSettingsPermission } from "@/modules/settings/utils/settings-permissions";
+import { SettingsHeader } from "@/modules/settings/components/SettingsHeader";
+import { SettingsAccessDenied } from "@/modules/settings/components/SettingsAccessDenied";
+import { MembersTable } from "@/modules/settings/components/MembersTable";
+import { InviteMemberDialog } from "@/modules/settings/components/InviteMemberDialog";
 
 export default async function MembersPage() {
-  const { org, membership } = await requireOrg();
+  const context = await requireOrg();
+  if (!hasSettingsPermission(context, "members.read")) return <SettingsAccessDenied />;
 
-  const [members, subscription] = await Promise.all([
-    getMembers(org.id),
-    getSubscription(org.id),
+  const [members, limits] = await Promise.all([
+    getMembers(),
+    resolveAccountLimits(context.user.id, context.org.id),
   ]);
 
-  const maxMembers = subscription?.plan?.max_members ?? UNLIMITED;
-  const unlimited = maxMembers === UNLIMITED;
+  const maxMembers = limits.maxMembers;
+  const unlimited = maxMembers === null;
   // Места считаются как active + invited (pending-invite держит место)
-  const seatCount = members.filter((m) => m.status !== "suspended").length;
-  const limitReached = !unlimited && seatCount >= maxMembers;
-  const canManage = ["owner", "admin"].includes(membership.roleId);
+  const seatCount = members.filter((member) => member.status !== "disabled").length;
+  const limitReached = maxMembers !== null && seatCount >= maxMembers;
+  const canManage = hasSettingsPermission(context, "members.update_role");
 
   return (
     <>
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Members</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Invite teammates and manage access
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <SettingsHeader title="Members" description="Invite teammates, manage access, and review pending invitations." />
+        {canManage && <InviteMemberDialog limitReached={limitReached} limitReason={unlimited ? undefined : `Your plan supports up to ${maxMembers} members.`} />}
       </div>
-
-      {/* Seat usage */}
-      <section className="mt-6">
-        <div className="soft-card-sm inline-flex items-center gap-2 px-4 py-2 text-sm">
-          <span className="font-medium text-text-primary">Members:</span>
-          <span className="text-text-secondary">
-            {seatCount} {unlimited ? "" : `of ${maxMembers}`}
-          </span>
-        </div>
-      </section>
-
-      {/* Invite */}
-      {canManage && (
-        <section className="mt-6 max-w-xl">
-          <CreateInviteLink
-            limitReached={limitReached}
-            limitReason={
-              unlimited
-                ? undefined
-                : `Your plan supports up to ${maxMembers} members. For a bigger team, choose Pro or Business.`
-            }
-          />
-        </section>
-      )}
-
-      {/* Members list */}
-      <section className="mt-8">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-text-secondary">
-          Team
-        </h2>
-        <MembersList
-          members={members}
-          currentUserId={membership.userId}
-          canManage={canManage}
-        />
-      </section>
+      <div className="mb-4 text-sm text-text-secondary">{seatCount} {unlimited ? "members" : `of ${maxMembers} seats used`}</div>
+      <MembersTable members={members} currentUserId={context.user.id} canManage={canManage} />
     </>
   );
 }

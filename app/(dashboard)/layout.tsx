@@ -11,6 +11,8 @@ import { getUpcomingRenewals } from "@/modules/subtracker/queries/get-upcoming-r
 import { getBookingRequests } from "@/modules/booking";
 import { getTrialState } from "@/modules/billing";
 import { TrialBanner } from "@/modules/billing/components/trial-banner";
+import { DeveloperAccessBadge } from "@/modules/billing/components/developer-access-badge";
+import { resolveAccountLimits } from "@/lib/billing";
 
 /**
  * Dashboard Layout — обёртка для ВСЕХ защищённых страниц.
@@ -44,9 +46,10 @@ export default async function DashboardLayout({
     getTaskSummary(),
     getUpcomingRenewals(),
   ]);
-  const [trial, bookingRequests] = await Promise.all([
+  const [trial, bookingRequests, limits] = await Promise.all([
     getTrialState(context.org.id),
     getBookingRequests(context.org.id, { status: "pending", limit: 5 }),
+    resolveAccountLimits(user.id, context.org.id),
   ]);
 
   return (
@@ -58,9 +61,12 @@ export default async function DashboardLayout({
       <div className="flex flex-1 flex-col min-w-0">
         {/* Header — user info, controls */}
         <header className="flex items-center justify-between border-b border-border-soft px-6 py-3.5">
-          <p className="text-sm text-text-muted">
-            {user.email?.split("@")[0]}
-          </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-sm text-text-muted">
+              {user.email?.split("@")[0]}
+            </p>
+            {limits.unlimitedAccess && <DeveloperAccessBadge />}
+          </div>
           <div className="flex items-center gap-2">
             <Notifications
               overdueCount={taskSummary.overdue}
@@ -76,7 +82,7 @@ export default async function DashboardLayout({
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
-          <TrialBanner trial={trial} />
+          {!limits.unlimitedAccess && <TrialBanner trial={trial} />}
           {children}
         </main>
       </div>

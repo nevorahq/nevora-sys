@@ -6,6 +6,8 @@ const createDraftTransactionFromDocument = vi.fn();
 const createActionItemForDocument = vi.fn();
 const normalizeFinancialDocument = vi.fn();
 const routeExtraction = vi.fn();
+const classifyExpense = vi.fn();
+const recordClassificationDecision = vi.fn();
 
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
 vi.mock("@/lib/entity-links", () => ({ createEntityLink }));
@@ -16,6 +18,10 @@ vi.mock("@/modules/action-center/services/create-action-item-for-document", () =
   createActionItemForDocument,
 }));
 vi.mock("@/modules/ai/services/normalize-financial-document", () => ({ normalizeFinancialDocument }));
+vi.mock("@/modules/moneyflow/services/expense-classifier", () => ({
+  classifyExpense,
+  recordClassificationDecision,
+}));
 vi.mock("./document-extraction-router", () => ({ routeExtraction }));
 
 const { runDocumentExtraction } = await import("./document-extraction-service");
@@ -107,6 +113,20 @@ beforeEach(() => {
   createEntityLink.mockResolvedValue({ ok: true });
   createActionItemForDocument.mockResolvedValue(undefined);
   createDraftTransactionFromDocument.mockResolvedValue({ ok: true, transactionId: "tx-1", duplicateOfId: null });
+  classifyExpense.mockResolvedValue({
+    normalizedMerchant: "acme",
+    categoryId: "category-1",
+    expenseContextId: "context-1",
+    visibility: "organization",
+    ownerUserId: null,
+    categoryConfidence: 0.8,
+    contextConfidence: 0.55,
+    method: "system_rule",
+    reason: "Matched a built-in rule.",
+    matchedSignals: ["merchant"],
+    classifierVersion: "smart-categories-v1",
+  });
+  recordClassificationDecision.mockResolvedValue(undefined);
   routeExtraction.mockResolvedValue({
     ok: true,
     provider: "pdf_parse",
@@ -147,5 +167,20 @@ describe("runDocumentExtraction — persistence failures", () => {
     expect(result.status).toBe("completed");
     expect(result.transactionId).toBe("tx-1");
     expect(createDraftTransactionFromDocument).toHaveBeenCalledTimes(1);
+    expect(createDraftTransactionFromDocument).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        categoryId: "category-1",
+        expenseContextId: "context-1",
+        visibility: "organization",
+      }),
+    );
+    expect(recordClassificationDecision).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      "tx-1",
+      expect.objectContaining({ method: "system_rule" }),
+    );
   });
 });

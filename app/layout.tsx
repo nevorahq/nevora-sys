@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 // и бандлятся webpack'ом. Никакой загрузки с fonts.googleapis.com во время
 // сборки → build воспроизводим в CI/офлайн. Inter Variable включает
 // latin + latin-ext + cyrillic (приложение на русском, lang="ru").
-import "@fontsource-variable/inter";
+// import "@fontsource-variable/inter";
 import "@fontsource/geist-mono/400.css";
 import "./globals.css";
 import { ThemeProvider } from "@/shared/ui/theme-provider";
@@ -21,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="ru"
+      lang="en"
       className="h-full antialiased"
       suppressHydrationWarning
     >

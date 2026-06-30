@@ -26,18 +26,32 @@ import type { MoneyTransactionWithRelations } from "../types/moneyflow.types";
  * последняя добавленная наверху.
  */
 export async function getTransactions(
-  options: { limit?: number } = {},
+  options: { limit?: number; monthStart?: string; nextMonthStart?: string } = {},
 ): Promise<MoneyTransactionWithRelations[]> {
-  const { limit = 20 } = options;
+  const { limit = 20, monthStart, nextMonthStart } = options;
 
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("money_transactions")
-    .select("*, account:money_accounts(name), category:money_categories(name)")
+    // money_accounts is now referenced by 3 FKs (account_id, from_account_id,
+    // to_account_id) — disambiguate each embed by its FK column.
+    .select(
+      "*, account:money_accounts!account_id(name), category:money_categories(name), from_account:money_accounts!from_account_id(name), to_account:money_accounts!to_account_id(name)",
+    )
     // Recent Transactions — леджер фактов. Запланированные (planned)
     // показываются отдельно в блоке «Предстоящие расходы».
     .eq("status", "posted")
+    // Никогда не показываем мягко удалённые/замещённые строки, иначе после
+    // повторной экстракции/отклонения в ленте остаются «призрачные» дубли.
+    .is("deleted_at", null);
+
+  // History navigator: scope the ledger to a UTC month window when provided.
+  // Without it (e.g. dashboard overview) the latest posted facts are returned.
+  if (monthStart) query = query.gte("transaction_date", monthStart);
+  if (nextMonthStart) query = query.lt("transaction_date", nextMonthStart);
+
+  const { data, error } = await query
     .order("transaction_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);

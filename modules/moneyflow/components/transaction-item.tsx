@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowUpRightIcon, ArrowDownLeftIcon, PencilIcon } from "lucide-react";
+import { ArrowUpRightIcon, ArrowDownLeftIcon, ArrowRightLeftIcon, PencilIcon } from "lucide-react";
 import { ROUTES } from "@/shared/config/routes";
 import { formatMoney } from "@/shared/utils/format-money";
 import { DeleteTransactionButton } from "./delete-transaction-button";
 import { TransactionEditForm } from "./transaction-edit-form";
 import { Modal } from "@/shared/ui/modal";
 import { cn } from "@/shared/utils/cn";
-import { formatDate } from "@/shared/utils/format-date";
+import { formatDate, formatTime } from "@/shared/utils/format-date";
 import type { MoneyAccount, MoneyCategory, MoneyTransactionWithRelations } from "../types/moneyflow.types";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
@@ -30,7 +30,13 @@ export function TransactionItem({
 }: TransactionItemProps) {
   const [isEditing, setIsEditing] = useState(false);
 
+  const isTransfer = tx.type === "transfer";
   const isIncome = tx.type === "income";
+
+  // Transfer is neutral: no green/red, no +/−, shows "From → To".
+  const subtitle = isTransfer
+    ? `${tx.from_account?.name ?? "—"} → ${tx.to_account?.name ?? "—"}`
+    : `${tx.category?.name ?? "—"}${tx.account?.name ? ` · ${tx.account.name}` : ""}`;
 
   return (
     <>
@@ -43,10 +49,12 @@ export function TransactionItem({
           <div
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-(--neu-radius-md)",
-              isIncome ? "bg-accent-green-soft" : "bg-accent-pink-soft",
+              isTransfer ? "bg-surface-sunken" : isIncome ? "bg-accent-green-soft" : "bg-accent-pink-soft",
             )}
           >
-            {isIncome ? (
+            {isTransfer ? (
+              <ArrowRightLeftIcon size={18} className="text-text-secondary" strokeWidth={2} />
+            ) : isIncome ? (
               <ArrowDownLeftIcon size={18} className="text-accent-green" strokeWidth={2} />
             ) : (
               <ArrowUpRightIcon size={18} className="text-accent-pink" strokeWidth={2} />
@@ -54,35 +62,38 @@ export function TransactionItem({
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-text-primary">{tx.title}</p>
-            <p className="truncate text-xs text-text-muted">
-              {tx.category?.name ?? "—"}
-              {tx.account?.name ? ` · ${tx.account.name}` : ""}
+            <p className="truncate text-sm font-medium text-text-primary">
+              {isTransfer ? dict.money.transfer.label : tx.title}
             </p>
+            <p className="truncate text-xs text-text-muted">{subtitle}</p>
           </div>
 
           <div className="shrink-0 text-right">
             <p
               className={cn(
                 "text-sm font-semibold tabular-nums",
-                isIncome ? "text-accent-green" : "text-text-primary",
+                isTransfer ? "text-text-secondary" : isIncome ? "text-accent-green" : "text-text-primary",
               )}
             >
-              {isIncome ? "+" : "−"}
+              {isTransfer ? "" : isIncome ? "+" : "−"}
               {formatMoney(Number(tx.amount))}
             </p>
-            <p className="text-xs text-text-muted">{formatDate(tx.transaction_date)}</p>
+            <p className="text-xs text-text-muted" suppressHydrationWarning>
+              {formatDate(tx.transaction_date)}, {formatTime(tx.created_at)}
+            </p>
           </div>
         </Link>
 
-        <button
-          type="button"
-          onClick={() => setIsEditing(true)}
-          className="soft-icon-button h-8 w-8 text-text-muted hover:text-text-primary"
-          aria-label={dict.money.transactions.editButton}
-        >
-          <PencilIcon size={15} strokeWidth={1.75} />
-        </button>
+        {!isTransfer && (
+          <button
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className="soft-icon-button h-8 w-8 text-text-muted hover:text-text-primary"
+            aria-label={dict.money.transactions.editButton}
+          >
+            <PencilIcon size={15} strokeWidth={1.75} />
+          </button>
+        )}
 
         {canDelete && (
           <DeleteTransactionButton

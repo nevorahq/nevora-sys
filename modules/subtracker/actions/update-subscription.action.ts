@@ -22,6 +22,7 @@ export async function updateSubscriptionAction(
     subscriptionId: formData.get("subscriptionId") as string,
     name: formData.get("name") as string,
     amount: formData.get("amount") as string,
+    currency: formData.get("currency") as string,
     billing_cycle: formData.get("billing_cycle") as string,
     next_billing_date: formData.get("next_billing_date") as string,
     category: formData.get("category") as string,
@@ -48,6 +49,7 @@ export async function updateSubscriptionAction(
       .update({
         name: parsed.data.name,
         amount: parsed.data.amount,
+        currency: parsed.data.currency,
         billing_cycle: parsed.data.billing_cycle,
         next_billing_date: parsed.data.next_billing_date,
         category: parsed.data.category,
@@ -74,6 +76,7 @@ export async function updateSubscriptionAction(
       payload: {
         name: parsed.data.name,
         amount: parsed.data.amount,
+        currency: parsed.data.currency,
         billing_cycle: parsed.data.billing_cycle,
         next_billing_date: parsed.data.next_billing_date,
       },

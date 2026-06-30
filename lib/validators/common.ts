@@ -11,6 +11,9 @@ export type ActionResult = {
   error?: string;
   fieldErrors?: Record<string, string[]>;
   documentId?: string;
+  taskId?: string;
+  subscriptionId?: string;
+  warning?: string;
 };
 
 /**

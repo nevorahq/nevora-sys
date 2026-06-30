@@ -7,6 +7,20 @@ import { canDo } from "@/lib/context/current-context";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
 import { ROUTES } from "@/shared/config/routes";
+import { z } from "zod";
+import { CLASSIFIER_VERSION, normalizeMerchantName, upsertPrivateMerchantRule } from "../services/expense-classifier";
+
+const classificationReviewSchema = z.object({
+  categoryId: uuidSchema,
+  expenseContextId: uuidSchema,
+  rememberChoice: z.boolean().default(false),
+  merchantName: z.string().trim().min(1).max(240),
+  amount: z.number().positive().max(999_999_999_999),
+  transactionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  currency: z.string().trim().length(3).transform((value) => value.toUpperCase()),
+});
+
+export type ClassificationReviewInput = z.infer<typeof classificationReviewSchema>;
 
 export type ConfirmDocumentTransactionResult = {
   error?: string;
@@ -38,12 +52,19 @@ export type ConfirmDocumentTransactionResult = {
 export async function confirmDocumentTransactionAction(
   transactionId: string,
   accountId?: string,
+  classificationInput?: ClassificationReviewInput,
 ): Promise<ConfirmDocumentTransactionResult> {
   if (!uuidSchema.safeParse(transactionId).success) {
     return { error: "Invalid transaction ID." };
   }
   if (accountId !== undefined && !uuidSchema.safeParse(accountId).success) {
     return { error: "Invalid account ID." };
+  }
+  const parsedClassification = classificationInput
+    ? classificationReviewSchema.safeParse(classificationInput)
+    : null;
+  if (parsedClassification && !parsedClassification.success) {
+    return { error: "Select a valid category and expense context." };
   }
 
   const ctx = await requireOrg();
@@ -56,7 +77,7 @@ export async function confirmDocumentTransactionAction(
   // Load the planned draft to learn its currency + current account before posting.
   const { data: draft, error: draftError } = await supabase
     .from("money_transactions")
-    .select("id, currency, account_id")
+    .select("id, currency, account_id, merchant_name, category_id, expense_context_id, visibility, owner_user_id")
     .eq("id", transactionId)
     .eq("organization_id", ctx.org.id)
     .eq("status", "planned")
@@ -72,10 +93,14 @@ export async function confirmDocumentTransactionAction(
     return { error: "Draft transaction not found or already confirmed." };
   }
 
+  const reviewedCurrency = parsedClassification?.success
+    ? parsedClassification.data.currency
+    : draft.currency as string;
+
   // Resolve the target account (caller may reassign to a compatible one).
   const targetAccountId = accountId ?? (draft.account_id as string | null);
   if (!targetAccountId) {
-    return { error: "Select an account before confirming.", code: "currency_mismatch", requiredCurrency: draft.currency as string };
+    return { error: "Select an account before confirming.", code: "currency_mismatch", requiredCurrency: reviewedCurrency };
   }
 
   const { data: account, error: accountError } = await supabase
@@ -96,23 +121,80 @@ export async function confirmDocumentTransactionAction(
   }
 
   // Currency invariant: never post a foreign-currency amount onto an account.
-  if ((account.currency as string) !== (draft.currency as string)) {
+  if ((account.currency as string) !== reviewedCurrency) {
     return {
-      error: `This is a ${draft.currency} document. Pick a ${draft.currency} account to confirm it.`,
+      error: `This is a ${reviewedCurrency} document. Pick a ${reviewedCurrency} account to confirm it.`,
       code: "currency_mismatch",
-      requiredCurrency: draft.currency as string,
+      requiredCurrency: reviewedCurrency,
+    };
+  }
+
+  let classificationUpdate: Record<string, unknown> = {};
+  let selectedContext: {
+    id: string;
+    visibility: "organization" | "private";
+    owner_user_id: string | null;
+  } | undefined;
+
+  if (parsedClassification?.success) {
+    const [categoryResult, contextResult] = await Promise.all([
+      supabase
+        .from("money_categories")
+        .select("id")
+        .eq("id", parsedClassification.data.categoryId)
+        .eq("organization_id", ctx.org.id)
+        .eq("type", "expense")
+        .eq("is_active", true)
+        .maybeSingle(),
+      supabase
+        .from("expense_contexts")
+        .select("id, visibility, owner_user_id")
+        .eq("id", parsedClassification.data.expenseContextId)
+        .eq("organization_id", ctx.org.id)
+        .eq("is_active", true)
+        .maybeSingle(),
+    ]);
+
+    if (!categoryResult.data || !contextResult.data) {
+      return { error: "The selected category or expense context is unavailable." };
+    }
+
+    selectedContext = contextResult.data as {
+      id: string;
+      visibility: "organization" | "private";
+      owner_user_id: string | null;
+    };
+    if (selectedContext?.visibility === "private" && selectedContext.owner_user_id !== ctx.user.id) {
+      return { error: "You cannot use another member's private expense context." };
+    }
+
+    classificationUpdate = {
+      category_id: parsedClassification.data.categoryId,
+      expense_context_id: parsedClassification.data.expenseContextId,
+      visibility: selectedContext?.visibility ?? "organization",
+      owner_user_id: selectedContext?.visibility === "private" ? ctx.user.id : null,
+      merchant_name: parsedClassification.data.merchantName,
+      title: parsedClassification.data.merchantName,
+      amount: parsedClassification.data.amount,
+      transaction_date: parsedClassification.data.transactionDate,
+      currency: parsedClassification.data.currency,
     };
   }
 
   const { data: confirmed, error } = await supabase
     .from("money_transactions")
-    .update({ status: "posted", account_id: targetAccountId, updated_by: ctx.user.id })
+    .update({
+      status: "posted",
+      account_id: targetAccountId,
+      updated_by: ctx.user.id,
+      ...classificationUpdate,
+    })
     .eq("id", transactionId)
     .eq("organization_id", ctx.org.id)
     .eq("status", "planned")
     .not("source_document_id", "is", null)
     .is("deleted_at", null)
-    .select("id, amount, type, source_document_id")
+    .select("id, amount, type, source_document_id, category_id, expense_context_id, visibility, owner_user_id, merchant_name")
     .maybeSingle();
 
   if (error) {
@@ -121,6 +203,38 @@ export async function confirmDocumentTransactionAction(
   }
   if (!confirmed) {
     return { error: "Draft transaction not found or already confirmed." };
+  }
+
+  if (parsedClassification?.success) {
+    const decisionVisibility = (confirmed.visibility as "organization" | "private") ?? "organization";
+    const decisionOwner = decisionVisibility === "private" ? ctx.user.id : null;
+    const normalizedMerchant = normalizeMerchantName((confirmed.merchant_name as string | null) ?? (draft.merchant_name as string | null));
+
+    const { error: decisionError } = await supabase.from("transaction_classifications").insert({
+      organization_id: ctx.org.id,
+      workspace_id: ctx.workspace.id,
+      transaction_id: confirmed.id,
+      owner_user_id: decisionOwner,
+      visibility: decisionVisibility,
+      category_id: parsedClassification.data.categoryId,
+      expense_context_id: parsedClassification.data.expenseContextId,
+      category_confidence: 1,
+      context_confidence: 1,
+      method: "manual",
+      reason: "User confirmed the category and expense context during document review.",
+      matched_signals: ["document_review"],
+      classifier_version: CLASSIFIER_VERSION,
+      created_by: ctx.user.id,
+    });
+    if (decisionError) console.error("confirmDocumentTransaction classification decision error:", decisionError.message);
+
+    if (parsedClassification.data.rememberChoice) {
+      await upsertPrivateMerchantRule(supabase, ctx, {
+        normalizedMerchant,
+        categoryId: parsedClassification.data.categoryId,
+        expenseContextId: parsedClassification.data.expenseContextId,
+      });
+    }
   }
 
   await Promise.all([
@@ -134,6 +248,8 @@ export async function confirmDocumentTransactionAction(
         amount: Number(confirmed.amount),
         type: confirmed.type as string,
         source_document_id: (confirmed.source_document_id as string | null) ?? null,
+        category_id: (confirmed.category_id as string | null) ?? null,
+        expense_context_id: (confirmed.expense_context_id as string | null) ?? null,
       },
     }),
     emitAuditLog({
@@ -142,7 +258,11 @@ export async function confirmDocumentTransactionAction(
       entityId: confirmed.id as string,
       action: "status_change",
       oldData: { status: "planned" },
-      newData: { status: "posted" },
+      newData: {
+        status: "posted",
+        category_id: (confirmed.category_id as string | null) ?? null,
+        expense_context_id: (confirmed.expense_context_id as string | null) ?? null,
+      },
       metadata: { source: "dashboard" },
     }),
   ]);

@@ -23,27 +23,30 @@ import { validateDocumentFiles } from "@/modules/documents/services/validate-doc
 interface TodoFormProps {
   dict: Dictionary;
   onSuccess?: () => void;
+  /** Pre-attach the new task to this project (renders a hidden field). */
+  fixedProjectId?: string;
+  /** Optional project options for an inline selector (ignored if fixedProjectId set). */
+  projects?: { id: string; name: string }[];
 }
 
-export function TodoForm({ dict, onSuccess }: TodoFormProps) {
+export function TodoForm({ dict, onSuccess, fixedProjectId, projects }: TodoFormProps) {
   const t = dict.todos.form;
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
-  // `Date#toISOString` would use UTC and can display tomorrow/yesterday near
-  // midnight. Date inputs expect a local calendar date instead.
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   const [state, formAction, isPending] = useActionState<ActionResult, FormData>(
     async (prevState, formData) => {
       const result = await createTodoAction(prevState, formData);
-      if (result.documentId && files.length > 0) {
+      // The task is always created. A draft document is created only when files
+      // are attached — we send them to a single server process that creates the
+      // document + attachments atomically (and rolls back on failure).
+      if (result.taskId && files.length > 0) {
         const uploadData = new FormData();
         files.forEach((file) => uploadData.append("files", file));
-        const response = await fetch(`/api/documents/${result.documentId}/attachments`, { method: "POST", body: uploadData });
+        const response = await fetch(`/api/tasks/${result.taskId}/document`, { method: "POST", body: uploadData });
         if (!response.ok) {
           const payload = await response.json() as { error?: string };
           return { error: payload.error ?? "Task created, but attachments could not be uploaded." };
@@ -108,16 +111,29 @@ export function TodoForm({ dict, onSuccess }: TodoFormProps) {
           />
         </div>
 
-        <div className="w-full">
-          <Input
-            id="due_date"
-            name="due_date"
-            type="date"
-            defaultValue={today}
-            className="h-11 py-0"
-            error={state.fieldErrors?.due_date?.[0]}
-          />
-        </div>
+        {/* Срок исполнения на создании не задаётся: дату можно установить
+            только после перевода задачи в статус "in_progress". */}
+
+        {/* Project assignment: hidden when fixed, a selector when options given. */}
+        {fixedProjectId ? (
+          <input type="hidden" name="project_id" value={fixedProjectId} />
+        ) : (
+          projects && projects.length > 0 && (
+            <div className="w-full">
+              <Select
+                id="project_id"
+                name="project_id"
+                defaultValue=""
+                options={[
+                  { value: "", label: "No project" },
+                  ...projects.map((p) => ({ value: p.id, label: p.name })),
+                ]}
+                className="h-11 py-0"
+                error={state.fieldErrors?.project_id?.[0]}
+              />
+            </div>
+          )
+        )}
 
         <fieldset className="w-full" aria-label={t.recurrenceLabel}>
           <legend className="sr-only">{t.recurrenceLabel}</legend>

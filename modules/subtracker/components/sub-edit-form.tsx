@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { updateSubscriptionAction } from "../actions/update-subscription.action";
 import { BILLING_CYCLES, SUB_CATEGORIES } from "../constants/subtracker.constants";
+import { CURRENCY_NAMES, SUPPORTED_CURRENCIES } from "@/shared/config/currencies";
 import { Input } from "@/shared/ui/input";
 import { Select } from "@/shared/ui/select";
 import { Button } from "@/shared/ui/button";
@@ -40,6 +41,11 @@ export function SubEditForm({ subscription: sub, dict, onSuccess }: SubEditFormP
     label: dict.subscriptions.categories[cat],
   }));
 
+  const currencyOptions = SUPPORTED_CURRENCIES.map((currency) => ({
+    value: currency,
+    label: `${currency} — ${CURRENCY_NAMES[currency]}`,
+  }));
+
   return (
     <form action={formAction}>
       <input type="hidden" name="subscriptionId" value={sub.id} />
@@ -72,6 +78,15 @@ export function SubEditForm({ subscription: sub, dict, onSuccess }: SubEditFormP
           defaultValue={String(sub.amount)}
           required
           error={state.fieldErrors?.amount?.[0]}
+        />
+
+        <Select
+          id="edit-sub-currency"
+          name="currency"
+          label={t.currencyLabel}
+          options={currencyOptions}
+          defaultValue={sub.currency}
+          error={state.fieldErrors?.currency?.[0]}
         />
 
         <Select

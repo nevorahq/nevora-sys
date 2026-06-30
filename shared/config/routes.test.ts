@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isPublicRoute } from "./routes";
+import { isPublicRoute, ROUTES } from "./routes";
 
 /**
  * Логика proxy: какие пути доступны без сессии. Регрессия по этому набору
@@ -34,5 +34,14 @@ describe("isPublicRoute", () => {
   it("защищённые пути требуют сессию", () => {
     expect(isPublicRoute("/dashboard")).toBe(false);
     expect(isPublicRoute("/dashboard/crm")).toBe(false);
+  });
+
+  it("Settings owns profile, workspace, members, and billing routes", () => {
+    expect(ROUTES.settingsProfile).toBe("/dashboard/settings/profile");
+    expect(ROUTES.settingsWorkspace).toBe("/dashboard/settings/workspace");
+    expect(ROUTES.settingsMembers).toBe("/dashboard/settings/members");
+    expect(ROUTES.settingsBilling).toBe("/dashboard/settings/billing");
+    expect(ROUTES.members).toBe(ROUTES.settingsMembers);
+    expect(ROUTES.billing).toBe(ROUTES.settingsBilling);
   });
 });

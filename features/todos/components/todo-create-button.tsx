@@ -9,9 +9,11 @@ import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface TodoCreateButtonProps {
   dict: Dictionary;
+  /** Optional project options for the inline project selector. */
+  projects?: { id: string; name: string }[];
 }
 
-export function TodoCreateButton({ dict }: TodoCreateButtonProps) {
+export function TodoCreateButton({ dict, projects }: TodoCreateButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -31,7 +33,7 @@ export function TodoCreateButton({ dict }: TodoCreateButtonProps) {
         title={dict.todos.form.createButton}
         closeLabel={dict.common.close}
       >
-        {isOpen && <TodoForm dict={dict} onSuccess={() => setIsOpen(false)} />}
+        {isOpen && <TodoForm dict={dict} projects={projects} onSuccess={() => setIsOpen(false)} />}
       </Modal>
     </>
   );

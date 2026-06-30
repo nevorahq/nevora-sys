@@ -38,7 +38,6 @@ export type { UpcomingExpenses } from "./queries/get-upcoming-expenses";
 export { createAccountAction } from "./actions/create-account.action";
 export { updateAccountAction } from "./actions/update-account.action";
 export { deactivateAccountAction } from "./actions/deactivate-account.action";
-export { createCategoryAction, createCategoryInline } from "./actions/create-category.action";
 export { createTransactionAction } from "./actions/create-transaction.action";
 export { updateTransactionAction } from "./actions/update-transaction.action";
 export { deleteTransactionAction } from "./actions/delete-transaction.action";

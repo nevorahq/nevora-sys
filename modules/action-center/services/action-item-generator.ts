@@ -157,7 +157,7 @@ async function detectTasks(supabase: SupabaseClient, orgId: string, out: Candida
     .select("id, title, due_date, status")
     .eq("organization_id", orgId)
     .is("deleted_at", null)
-    .in("status", ["todo", "in_progress", "in_review"])
+    .in("status", ["todo", "in_progress"])
     .limit(SCAN_LIMIT);
   if (!tasks?.length) return;
 

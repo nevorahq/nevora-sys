@@ -13,6 +13,13 @@ export const onDocumentCreated: AutomationHandler = {
   name: "on-document-created",
   eventName: "document.created",
   async run(ctx) {
+    if (ctx.payload.source === "subscription" || ctx.payload.skip_money_sync === true) {
+      return {
+        status: "skipped",
+        output: { reason: "subscription attachment must not trigger document automations" },
+      };
+    }
+
     const linkedType = ctx.payload.linked_entity_type;
     const linkedId = ctx.payload.linked_entity_id;
 

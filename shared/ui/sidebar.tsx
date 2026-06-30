@@ -4,8 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboardIcon, CheckSquareIcon, WalletIcon, RepeatIcon,
-  FileTextIcon, BarChart2Icon, SparklesIcon, CreditCardIcon,
-  CalendarCheckIcon, Users2Icon, ZapIcon,
+  FileTextIcon, BarChart2Icon, SparklesIcon, SettingsIcon,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ROUTES } from "@/shared/config/routes";
@@ -45,18 +44,15 @@ export function Sidebar({ dict }: SidebarProps) {
 
   const navItems: NavItem[] = [
     { href: ROUTES.dashboard,     label: dict.nav.dashboard,     icon: LayoutDashboardIcon },
-    { href: ROUTES.actions,       label: dict.nav.actions,       icon: ZapIcon },
     { href: ROUTES.tasks,         label: dict.nav.tasks,         icon: CheckSquareIcon },
-    // Временно скрыт CRM-модуль (вернуть — раскомментировать строку)
-    // { href: ROUTES.crm,           label: dict.nav.crm,           icon: UsersIcon },
     { href: ROUTES.money,         label: dict.nav.money,         icon: WalletIcon },
-    { href: ROUTES.subscriptions, label: dict.nav.subscriptions, icon: RepeatIcon },
     { href: ROUTES.documents,     label: dict.nav.documents,     icon: FileTextIcon },
+    { href: ROUTES.subscriptions, label: dict.nav.subscriptions, icon: RepeatIcon },
     { href: ROUTES.analytics,     label: dict.nav.analytics,     icon: BarChart2Icon },
     { href: ROUTES.ai,            label: dict.nav.ai,            icon: SparklesIcon },
-    { href: ROUTES.billing,       label: dict.nav.billing,       icon: CreditCardIcon },
-    { href: ROUTES.booking,       label: dict.nav.booking,       icon: CalendarCheckIcon },
-    { href: ROUTES.members,       label: dict.nav.members,       icon: Users2Icon },
+    // Временно скрыт модуль "Запись" (вернуть — раскомментировать строку)
+    // { href: ROUTES.booking,       label: dict.nav.booking,       icon: CalendarCheckIcon },
+    { href: ROUTES.settings,      label: dict.nav.settings,      icon: SettingsIcon },
   ];
 
   function isActive(href: string): boolean {

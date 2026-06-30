@@ -17,7 +17,7 @@ export function DocumentExtractionReview({
   state: DocumentExtractionState;
   canConfirm: boolean;
 }) {
-  const { extraction, financialData, items, draftTransaction, accounts } = state;
+  const { extraction, financialData, items, draftTransaction, accounts, categories, contexts, classification } = state;
 
   // Currency picker inputs: a planned draft must post onto a same-currency
   // account. Surface compatible accounts so the user can reassign before confirm.
@@ -134,6 +134,17 @@ export function DocumentExtractionReview({
             </span>
           </p>
           {draftTransaction.note && <p className="mt-1 text-xs text-accent-yellow">{draftTransaction.note}</p>}
+          {classification && (
+            <div className="mt-3 border-t border-border pt-3 text-xs text-text-muted">
+              <p>
+                Suggested by <span className="font-medium text-text-secondary">{classification.method.replaceAll("_", " ")}</span>
+                {classification.category_confidence != null
+                  ? ` · ${Math.round(classification.category_confidence * 100)}% category confidence`
+                  : ""}
+              </p>
+              <p className="mt-1">{classification.reason}</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -145,6 +156,14 @@ export function DocumentExtractionReview({
           needsAccount={needsAccount}
           requiredCurrency={draftCurrency}
           compatibleAccounts={compatibleAccounts}
+          categories={categories}
+          contexts={contexts}
+          initialCategoryId={draftTransaction?.category_id ?? null}
+          initialContextId={draftTransaction?.expense_context_id ?? null}
+          initialMerchantName={draftTransaction?.merchant_name ?? financialData?.merchant_name ?? null}
+          initialAmount={draftTransaction?.amount ?? financialData?.total_amount ?? null}
+          initialTransactionDate={draftTransaction?.transaction_date ?? financialData?.transaction_date ?? null}
+          initialCurrency={draftTransaction?.currency ?? financialData?.currency ?? null}
         />
       </div>
     </section>

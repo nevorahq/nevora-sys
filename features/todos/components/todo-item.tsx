@@ -1,17 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { PencilIcon, Trash2Icon } from "lucide-react";
+import { useTransition } from "react";
+import { Trash2Icon, AlertTriangleIcon, ClockIcon } from "lucide-react";
 import Link from "next/link";
-import { toggleTodoAction } from "../actions/toggle-todo.action";
 import { deleteTodoAction } from "../actions/delete-todo.action";
-import { TodoEditForm } from "./todo-edit-form";
-import { Modal } from "@/shared/ui/modal";
+import { TaskStatusBadge } from "./task-status-badge";
+import { getDueStatus, type DueStatus } from "../lib/due-status";
 import { cn } from "@/shared/utils/cn";
 import { formatDate } from "@/shared/utils/format-date";
 import type { Todo } from "@/entities/todo/model";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
-import { ROUTES } from "@/shared/config/routes";
+import { ROUTES, projectDetailUrl } from "@/shared/config/routes";
 
 interface TodoItemProps {
   todo: Todo;
@@ -19,23 +18,20 @@ interface TodoItemProps {
 }
 
 export function TodoItem({ todo, dict }: TodoItemProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [isToggling, startToggle] = useTransition();
   const [isDeleting, startDelete] = useTransition();
 
-  const isPending = isToggling || isDeleting;
+  const isPending = isDeleting;
+  const isDone = todo.status === "done";
+
+  // Heightened-attention marker: overdue / due today / due soon (≤3 days).
+  const dueStatus = getDueStatus(todo.due_date, todo.status);
+  const isOverdue = dueStatus.level === "overdue";
 
   const priorityStyles = {
     low: "bg-accent-green-soft text-accent-green",
     medium: "bg-accent-yellow-soft text-accent-yellow",
     high: "bg-accent-pink-soft text-accent-pink",
   } as const;
-
-  function handleToggle() {
-    startToggle(async () => {
-      await toggleTodoAction(todo.id, todo.is_completed);
-    });
-  }
 
   function handleDelete() {
     startDelete(async () => {
@@ -44,40 +40,23 @@ export function TodoItem({ todo, dict }: TodoItemProps) {
   }
 
   return (
-    <>
       <div
         className={cn(
           "soft-card-sm flex items-center gap-3 p-4 transition-opacity",
           isPending && "opacity-50 pointer-events-none",
+          // Overdue tasks get an extra accent ring so they stand out at a glance.
+          isOverdue && "ring-1 ring-danger/30",
         )}
       >
-        {/* Checkbox */}
-        <button
-          type="button"
-          role="checkbox"
-          aria-checked={todo.is_completed}
-          onClick={handleToggle}
-          className={cn(
-            "flex h-5 w-5 shrink-0 items-center justify-center rounded-(--neu-radius-sm)",
-            "border transition-all duration-150",
-            todo.is_completed
-              ? "bg-accent-green border-accent-green shadow-none"
-              : "border-border-strong bg-surface-sunken shadow-neu-inset",
-          )}
-        >
-          {todo.is_completed && (
-            <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          )}
-        </button>
+        {/* Status badge — постоянно виден и позволяет менять статус на карточке */}
+        <TaskStatusBadge taskId={todo.id} status={todo.status} dict={dict} />
 
         {/* Content */}
         <Link href={`${ROUTES.tasks}/${todo.id}`} className="min-w-0 flex-1 rounded-(--neu-radius-sm) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
           <p
             className={cn(
               "text-sm font-medium truncate",
-              todo.is_completed
+              isDone
                 ? "text-text-muted line-through"
                 : "text-text-primary",
             )}
@@ -91,27 +70,37 @@ export function TodoItem({ todo, dict }: TodoItemProps) {
           )}
         </Link>
 
+        {/* Project badge — only when the task belongs to a project */}
+        {todo.project && (
+          <Link
+            href={projectDetailUrl(todo.project.id)}
+            className="hidden items-center gap-1.5 rounded-(--neu-radius-pill) bg-surface-sunken px-2.5 py-1 text-xs font-medium text-text-secondary hover:text-text-primary sm:inline-flex"
+            title={todo.project.name}
+          >
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: todo.project.color ?? "var(--color-text-muted)" }}
+              aria-hidden
+            />
+            <span className="max-w-[8rem] truncate">{todo.project.name}</span>
+          </Link>
+        )}
+
         {/* Priority badge */}
         <span className={cn("soft-badge", priorityStyles[todo.priority])}>
           {dict.todos.priorities[todo.priority]}
         </span>
 
-        {/* Due date */}
-        {todo.due_date && (
-          <span className="hidden sm:inline text-xs text-text-muted">
-            {formatDate(todo.due_date)}
-          </span>
+        {/* Due-date attention marker (overdue / today / soon), else plain date */}
+        {dueStatus.level !== "none" ? (
+          <DueBadge dueStatus={dueStatus} dict={dict} />
+        ) : (
+          todo.due_date && (
+            <span className="hidden sm:inline text-xs text-text-muted">
+              {formatDate(todo.due_date)}
+            </span>
+          )
         )}
-
-        {/* Edit button */}
-        <button
-          type="button"
-          onClick={() => setIsEditing(true)}
-          className="soft-icon-button h-8 w-8 text-text-muted hover:text-text-primary"
-          aria-label={dict.todos.form.updateButton}
-        >
-          <PencilIcon size={15} strokeWidth={1.75} />
-        </button>
 
         {/* Delete button */}
         <button
@@ -123,20 +112,32 @@ export function TodoItem({ todo, dict }: TodoItemProps) {
           <Trash2Icon size={15} strokeWidth={1.75} />
         </button>
       </div>
+  );
+}
 
-      {/* Edit Modal */}
-      <Modal
-        isOpen={isEditing}
-        onClose={() => setIsEditing(false)}
-        title={dict.todos.form.updateButton}
-        closeLabel={dict.common.close}
-      >
-        <TodoEditForm
-          todo={todo}
-          dict={dict}
-          onSuccess={() => setIsEditing(false)}
-        />
-      </Modal>
-    </>
+/** Compact urgency marker shown on the card when a due date needs attention. */
+function DueBadge({ dueStatus, dict }: { dueStatus: DueStatus; dict: Dictionary }) {
+  const t = dict.todos.due;
+  const overdue = dueStatus.level === "overdue";
+
+  let label: string;
+  if (dueStatus.level === "overdue") label = t.overdue;
+  else if (dueStatus.level === "due_today") label = t.today;
+  else if (dueStatus.days === 1) label = t.tomorrow;
+  else label = t.inDays.replace("{days}", String(dueStatus.days));
+
+  const Icon = overdue ? AlertTriangleIcon : ClockIcon;
+
+  return (
+    <span
+      className={cn(
+        "soft-badge inline-flex items-center gap-1 whitespace-nowrap",
+        overdue ? "bg-danger-soft text-danger" : "bg-accent-yellow-soft text-accent-yellow",
+      )}
+      aria-label={overdue ? t.ariaOverdue : t.ariaSoon}
+    >
+      <Icon size={12} strokeWidth={2} aria-hidden="true" />
+      {label}
+    </span>
   );
 }

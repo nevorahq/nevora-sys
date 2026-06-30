@@ -92,19 +92,18 @@ export async function getDashboardMetrics(
   // Tasks
   const tasks = tasksAll.data ?? [];
   const tasksTotal     = tasks.length;
-  const tasksCompleted = tasks.filter((t) => t.is_completed).length;
-  const tasksActive    = tasks.filter(
-    (t) => !t.is_completed && t.status !== "cancelled",
-  ).length;
+  // status — источник истины: done = завершена, остальное = активна.
+  const tasksCompleted = tasks.filter((t) => t.status === "done").length;
+  const tasksActive    = tasks.filter((t) => t.status !== "done").length;
   const tasksOverdue = tasks.filter(
     (t) =>
-      !t.is_completed &&
+      t.status !== "done" &&
       t.due_date != null &&
       new Date(t.due_date) < now,
   ).length;
   const tasksDueToday = tasks.filter(
     (t) =>
-      !t.is_completed &&
+      t.status !== "done" &&
       t.due_date != null &&
       new Date(t.due_date) >= todayStart &&
       new Date(t.due_date) < new Date(todayStart.getTime() + 86400_000),

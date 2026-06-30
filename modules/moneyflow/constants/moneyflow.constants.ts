@@ -14,8 +14,18 @@ export const ACCOUNT_TYPES = ["cash", "card", "bank", "savings", "other"] as con
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
 
 // ── Transaction Types ──
+// income/expense are the user-facing types in the Add Transaction form.
+// `transfer` is a separate, neutral operation (account → account) created only
+// via the Transfer flow — never selectable as a category and excluded from
+// income/expense analytics. See migration 067.
 export const TRANSACTION_TYPES = ["income", "expense"] as const;
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
+
+export const TRANSFER_TYPE = "transfer" as const;
+
+// Every value the `type` column can hold (DB CHECK in migration 067).
+export const ALL_TRANSACTION_TYPES = [...TRANSACTION_TYPES, TRANSFER_TYPE] as const;
+export type AnyTransactionType = (typeof ALL_TRANSACTION_TYPES)[number];
 
 // Статус транзакции: posted = фактическая (в балансе),
 // planned = запланированная (прогноз «Предстоящие расходы», вне баланса).

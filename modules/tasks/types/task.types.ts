@@ -14,6 +14,7 @@ export interface Task {
   recurrence: "none" | "monthly";
   recurrence_source_id: string | null;
   deal_id?: string | null;
+  project_id?: string | null;
   position: number | null;
   is_completed: boolean;
   created_at: string;

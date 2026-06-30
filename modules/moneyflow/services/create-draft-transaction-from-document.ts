@@ -25,18 +25,45 @@ export interface DraftTransactionInput {
   currency: string;
   transactionDate: string | null; // ISO date or null → today fallback
   categoryId: string | null;
+  expenseContextId?: string | null;
+  visibility?: "organization" | "private";
+  ownerUserId?: string | null;
   confidence: number;
 }
 
 export type DraftTransactionResult =
   | { ok: true; transactionId: string; duplicateOfId: string | null }
-  | { ok: false; errorCode: "no_account" | "transaction_creation_failed"; errorMessage: string };
+  | { ok: false; errorCode: "no_account" | "transaction_creation_failed"; errorMessage: string }
+  | { ok: false; errorCode: "already_confirmed"; existingTransactionId: string; errorMessage: string };
 
 export async function createDraftTransactionFromDocument(
   supabase: SupabaseClient,
   ctx: CurrentContext,
   input: DraftTransactionInput,
 ): Promise<DraftTransactionResult> {
+  // 0. Idempotency guard: if this document already produced a CONFIRMED (posted)
+  // transaction, a re-extraction (e.g. "Retry extraction") must not mint a second
+  // draft. Confirming that draft would post a duplicate expense into the ledger.
+  // Planned drafts are intentionally NOT blocked here — they are superseded below.
+  const { data: confirmedExisting } = await supabase
+    .from("money_transactions")
+    .select("id")
+    .eq("organization_id", ctx.org.id)
+    .eq("source_document_id", input.documentId)
+    .eq("status", "posted")
+    .is("deleted_at", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (confirmedExisting) {
+    return {
+      ok: false,
+      errorCode: "already_confirmed",
+      existingTransactionId: confirmedExisting.id as string,
+      errorMessage: "This document is already linked to a confirmed transaction.",
+    };
+  }
+
   // 1. Resolve a default account — a transaction cannot exist without one.
   const { data: account } = await supabase
     .from("money_accounts")
@@ -79,6 +106,9 @@ export async function createDraftTransactionFromDocument(
       updated_by: ctx.user.id,
       account_id: account.id,
       category_id: input.categoryId,
+      expense_context_id: input.expenseContextId ?? null,
+      visibility: input.visibility ?? "organization",
+      owner_user_id: input.visibility === "private" ? (input.ownerUserId ?? ctx.user.id) : null,
       type: "expense",
       amount: input.totalAmount,
       currency: input.currency || DEFAULT_CURRENCY,

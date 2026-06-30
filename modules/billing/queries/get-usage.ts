@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type { UsageSummary } from "../types/billing.types";
-import type { Plan } from "../types/billing.types";
 import { USAGE_METRICS, UNLIMITED } from "../constants/billing.constants";
 import type { UsageMetric } from "../constants/billing.constants";
+import type { AccountLimits } from "@/lib/billing/account-limits";
 
 // Текущее реальное использование — считается live из таблиц
 async function fetchLiveUsage(
@@ -96,29 +96,30 @@ async function fetchLiveUsage(
   };
 }
 
-const PLAN_LIMIT_MAP: Record<UsageMetric, keyof Plan> = {
-  members:            "max_members",
-  workspaces:         "max_workspaces",
-  tasks:              "max_tasks",
-  deals:              "max_deals",
-  clients:            "max_clients",
-  documents:          "max_documents",
-  subscriptions:      "max_subscriptions",
-  money_transactions: "max_money_transactions",
-  ai_calls:           "max_ai_calls_mo",
-  storage_mb:         "max_storage_mb",
-};
-
 export async function getUsageSummary(
   organizationId: string,
-  plan: Plan,
+  limits: AccountLimits,
 ): Promise<UsageSummary[]> {
   const supabase = await createClient();
   const liveUsage = await fetchLiveUsage(supabase, organizationId);
 
+  const limitMap: Record<UsageMetric, number | null> = {
+    members: limits.maxMembers,
+    workspaces: limits.maxWorkspaces,
+    tasks: limits.maxTasks,
+    deals: limits.maxDeals,
+    clients: limits.maxClients,
+    documents: limits.maxDocuments,
+    subscriptions: limits.maxSubscriptions,
+    money_transactions: limits.maxMoneyTransactions,
+    ai_calls: limits.maxAiRequestsPerMonth,
+    storage_mb: limits.maxStorageMb,
+  };
+
   return USAGE_METRICS.map((metric) => {
     const used  = liveUsage[metric];
-    const limit = plan[PLAN_LIMIT_MAP[metric]] as number;
+    const resolvedLimit = limitMap[metric];
+    const limit = resolvedLimit === null ? UNLIMITED : resolvedLimit;
 
     const isUnlimited = limit === UNLIMITED;
     const pct = isUnlimited

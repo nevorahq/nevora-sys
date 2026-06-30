@@ -1,4 +1,4 @@
-import type { AccountType, TransactionType, CategoryType } from "../constants/moneyflow.constants";
+import type { AccountType, AnyTransactionType, CategoryType } from "../constants/moneyflow.constants";
 
 /**
  * MoneyFlow domain types.
@@ -46,12 +46,16 @@ export type MoneyTransaction = {
   user_id: string;
   account_id: string;
   category_id: string | null;
-  type: TransactionType;
+  type: AnyTransactionType;
   amount: number;
   currency: string;
   transaction_date: string; // ISO date: "2024-12-31"
   title: string;
   note: string | null;
+  // Transfer-only: the two accounts a `type='transfer'` row moves money between.
+  // NULL for income/expense rows (DB CHECK, migration 067).
+  from_account_id: string | null;
+  to_account_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -67,6 +71,9 @@ export type MoneyTransaction = {
 export type MoneyTransactionWithRelations = MoneyTransaction & {
   account: { name: string } | null;
   category: { name: string } | null;
+  // Joined for transfer rows so the ledger can render "From → To" by name.
+  from_account: { name: string } | null;
+  to_account: { name: string } | null;
 };
 
 // ── Summary (для Dashboard) ──

@@ -17,8 +17,15 @@ export async function getPlannedTransactions(): Promise<
 
   const { data, error } = await supabase
     .from("money_transactions")
-    .select("*, account:money_accounts(name), category:money_categories(name)")
+    // money_accounts is referenced by 3 FKs now (account_id, from_account_id,
+    // to_account_id) — disambiguate the embed by its FK column or PostgREST
+    // errors with an ambiguous-relationship hint. Planned rows are never
+    // transfers, so only the account_id side is needed.
+    .select("*, account:money_accounts!account_id(name), category:money_categories(name)")
     .eq("status", "planned")
+    // Exclude rejected/superseded drafts — reject + document re-extraction
+    // soft-delete planned rows, which must not resurface as actionable.
+    .is("deleted_at", null)
     .order("transaction_date", { ascending: true })
     .order("created_at", { ascending: false });
 

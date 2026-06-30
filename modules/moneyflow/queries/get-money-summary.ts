@@ -25,40 +25,59 @@ import type { CurrencySummary, MoneySummary } from "../types/moneyflow.types";
  *
  * RLS гарантирует: SELECT вернёт только данные текущего пользователя.
  */
-export async function getMoneySummary(): Promise<MoneySummary> {
+/**
+ * @param options.monthStart / nextMonthStart — UTC month window for the monthly
+ * income/expenses metrics (history navigator). Defaults to the current month.
+ * Balance is always the live cumulative total and is NOT scoped to the window.
+ */
+export async function getMoneySummary(
+  options: { monthStart?: string; nextMonthStart?: string } = {},
+): Promise<MoneySummary> {
   const supabase = await createClient();
   const { org } = await requireOrg();
   const baseCurrency = org.baseCurrency;
 
-  // Текущий месяц: первый и последний день
+  // Текущий месяц в UTC. Границы СТРОГО в UTC (Date.UTC), иначе на сервере со
+  // смещением +N часов локальная полночь 1-го числа уезжает в предыдущий день,
+  // и крайние дни месяца (29–31) выпадают из выборки, хотя transaction_date —
+  // это DATE без таймзоны. Верхняя граница — исключающая (< 1-е число след.
+  // месяца), чтобы не вычислять «последний день» вручную.
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    .toISOString()
-    .split("T")[0];
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    .toISOString()
-    .split("T")[0];
+  const monthStart = options.monthStart
+    ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+  const nextMonthStart = options.nextMonthStart
+    ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
 
   // Параллельно: активные счета + все posted-транзакции + транзакции месяца.
-  // planned исключаем — они не влияют на баланс до проведения (см.
-  // getUpcomingExpenses).
+  // Фильтры строго как в каноничной RPC get_org_money_summary (миграция 041):
+  //   - счета: is_active = true AND deleted_at IS NULL
+  //   - транзакции: status = 'posted' AND deleted_at IS NULL
+  // Без `deleted_at IS NULL` мягко удалённая строка «протекает» в кумулятивный
+  // Current Balance (planned исключены статусом и не влияют на баланс).
   const [accountsResult, allTxResult, monthTxResult] = await Promise.all([
     supabase
       .from("money_accounts")
       .select("initial_balance, currency")
-      .eq("is_active", true),
-
-    supabase
-      .from("money_transactions")
-      .select("type, amount, currency")
-      .eq("status", "posted"),
+      .eq("is_active", true)
+      .is("deleted_at", null),
 
     supabase
       .from("money_transactions")
       .select("type, amount, currency")
       .eq("status", "posted")
+      .is("deleted_at", null)
+      // Transfers (type='transfer') net to zero per currency and are NOT
+      // income/expense — exclude them so they never touch totals or analytics.
+      .in("type", ["income", "expense"]),
+
+    supabase
+      .from("money_transactions")
+      .select("type, amount, currency")
+      .eq("status", "posted")
+      .is("deleted_at", null)
+      .in("type", ["income", "expense"])
       .gte("transaction_date", monthStart)
-      .lte("transaction_date", monthEnd),
+      .lt("transaction_date", nextMonthStart),
   ]);
 
   // currency → агрегат. Map сохраняет каждую валюту изолированной.

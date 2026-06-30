@@ -98,6 +98,7 @@ export function CreateAccountForm({ dict, defaultCurrency = DEFAULT_CURRENCY, on
             name="initial_balance"
             type="number"
             step="0.01"
+            min="0"
             label={t.balanceLabel}
             placeholder={t.balancePlaceholder}
             defaultValue="0"

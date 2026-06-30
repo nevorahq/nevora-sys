@@ -86,7 +86,7 @@ beforeEach(() => {
 
 describe("createDraftTransactionFromDocument", () => {
   it("returns no_account when the org has no active account", async () => {
-    const supabase = makeSupabase((table, op) => {
+    const supabase = makeSupabase((table, _op) => {
       if (table === "money_accounts") return { data: null };
       return { data: null, error: null };
     });
@@ -98,6 +98,28 @@ describe("createDraftTransactionFromDocument", () => {
       errorMessage: expect.any(String),
     });
     expect(executed).not.toContain("money_transactions:insert");
+  });
+
+  it("returns already_confirmed and inserts nothing when the document already has a posted transaction", async () => {
+    const supabase = makeSupabase((table, op) => {
+      // The idempotency guard runs first: a posted tx already exists for the doc.
+      if (table === "money_transactions" && op === "select") return { data: { id: OLD_TX_ID }, error: null };
+      if (table === "money_accounts") return { data: { id: "acc-1" } };
+      return { data: null, error: null };
+    });
+
+    const result = await createDraftTransactionFromDocument(supabase, ctx, input);
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "already_confirmed",
+      existingTransactionId: OLD_TX_ID,
+      errorMessage: expect.any(String),
+    });
+    // No draft is minted and no prior drafts are touched.
+    expect(executed).not.toContain("money_transactions:insert");
+    expect(executed).not.toContain("money_transactions:update");
+    expect(emitDomainEvent).not.toHaveBeenCalled();
   });
 
   it("inserts the new draft BEFORE superseding prior drafts, excluding the new row", async () => {

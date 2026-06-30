@@ -5,6 +5,10 @@ import { emitDomainEvent } from "@/lib/events";
 import { createEntityLink } from "@/lib/entity-links";
 import { logger } from "@/lib/observability/logger";
 import { createDraftTransactionFromDocument } from "@/modules/moneyflow/services/create-draft-transaction-from-document";
+import {
+  classifyExpense,
+  recordClassificationDecision,
+} from "@/modules/moneyflow/services/expense-classifier";
 import { createActionItemForDocument } from "@/modules/action-center/services/create-action-item-for-document";
 import { normalizeFinancialDocument } from "@/modules/ai/services/normalize-financial-document";
 import { routeExtraction } from "./document-extraction-router";
@@ -262,6 +266,12 @@ export async function runDocumentExtraction(
   let transactionId: string | null = null;
 
   if (decision.createTransaction) {
+    const classification = await classifyExpense(supabase, ctx, {
+      merchantName: extracted.merchant.name,
+      itemNames: extracted.items.map((item) => item.name),
+      aiCategoryHints: extracted.items.map((item) => item.category),
+    });
+
     const draft = await createDraftTransactionFromDocument(supabase, ctx, {
       documentId,
       extractionId,
@@ -269,12 +279,16 @@ export async function runDocumentExtraction(
       totalAmount: extracted.transaction.total as number,
       currency: extracted.transaction.currency,
       transactionDate: normalizeDate(extracted.transaction.date),
-      categoryId: null,
+      categoryId: classification.categoryId,
+      expenseContextId: classification.expenseContextId,
+      visibility: classification.visibility,
+      ownerUserId: classification.ownerUserId,
       confidence: extracted.confidence.overall,
     });
 
     if (draft.ok) {
       transactionId = draft.transactionId;
+      await recordClassificationDecision(supabase, ctx, draft.transactionId, classification);
 
       // Link document → transaction (auto, with confidence metadata).
       const link = await createEntityLink({
@@ -303,8 +317,25 @@ export async function runDocumentExtraction(
         primaryEntityId: draft.transactionId,
         financialImpact: extracted.transaction.total as number,
         aiConfidence: extracted.confidence.overall,
-        aiReason: decision.reason,
-        metadata: { source_document_id: documentId, extraction_id: extractionId, duplicate_of: draft.duplicateOfId, needs_field_review: decision.requiresFieldReview },
+        aiReason: `${decision.reason} ${classification.reason}`,
+        metadata: {
+          source_document_id: documentId,
+          extraction_id: extractionId,
+          duplicate_of: draft.duplicateOfId,
+          needs_field_review: decision.requiresFieldReview,
+          classification_method: classification.method,
+          category_confidence: classification.categoryConfidence,
+          context_confidence: classification.contextConfidence,
+        },
+      });
+    } else if (draft.errorCode === "already_confirmed") {
+      // Re-extraction of an already-confirmed document is a no-op: the expense is
+      // already in the ledger. No new draft is minted (transactionId stays null)
+      // and no review item is opened, so the user isn't asked to confirm a duplicate.
+      logger.info("extraction.run.already_confirmed", {
+        documentId,
+        extractionId,
+        existingTransactionId: draft.existingTransactionId,
       });
     } else {
       // Draft couldn't be created (e.g. no account) → ask the user to act.

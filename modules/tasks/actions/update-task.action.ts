@@ -8,6 +8,9 @@ import { updateTaskSchema } from "../schemas/task.schema";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 
+// Поля, изменения которых мы отслеживаем в audit log.
+const TRACKED_FIELDS = ["title", "description", "priority", "status", "due_date"] as const;
+
 export async function updateTaskAction(
   _prevState: ActionResult,
   formData: FormData,
@@ -43,9 +46,36 @@ export async function updateTaskAction(
   try {
     const supabase = await createClient();
 
+    // Загружаем прежние значения (RLS: вернётся только при наличии доступа).
+    const { data: existing, error: fetchError } = await supabase
+      .from("todos")
+      .select("title, description, priority, status, due_date")
+      .eq("id", taskId)
+      .eq("organization_id", org.id)
+      .is("deleted_at", null)
+      .single();
+
+    if (fetchError || !existing) return { error: "Task not found" };
+
+    // Оставляем только реально изменившиеся поля.
+    const oldData: Record<string, unknown> = {};
+    const newData: Record<string, unknown> = {};
+    for (const field of TRACKED_FIELDS) {
+      if (!(field in parsed.data)) continue;
+      const next = (parsed.data as Record<string, unknown>)[field];
+      const prev = (existing as Record<string, unknown>)[field];
+      if (next !== prev) {
+        oldData[field] = prev;
+        newData[field] = next;
+      }
+    }
+
+    // Нечего менять — не пишем событие и не дёргаем БД.
+    if (Object.keys(newData).length === 0) return {};
+
     const { error } = await supabase
       .from("todos")
-      .update({ ...parsed.data, updated_by: user.id })
+      .update({ ...newData, updated_by: user.id })
       .eq("id", taskId)
       .eq("organization_id", org.id)
       .is("deleted_at", null);
@@ -60,7 +90,8 @@ export async function updateTaskAction(
       entityType:     "todos",
       entityId:       taskId,
       action:         "update",
-      newData:        parsed.data as Record<string, unknown>,
+      oldData,
+      newData,
       metadata:       { source: "dashboard" },
     });
   } catch (err) {
@@ -70,5 +101,6 @@ export async function updateTaskAction(
 
   revalidatePath(ROUTES.dashboard);
   revalidatePath(ROUTES.tasks);
+  revalidatePath(`${ROUTES.tasks}/${taskId}`);
   return {};
 }

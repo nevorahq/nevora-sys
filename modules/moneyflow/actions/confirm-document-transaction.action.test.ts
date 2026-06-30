@@ -24,6 +24,7 @@ const ACC_MDL = "66666666-6666-4666-8666-666666666666";
 
 let executed: string[];
 let updatePayloads: Record<string, unknown>;
+let insertPayloads: Record<string, unknown>;
 
 /** Op-aware Supabase mock. `resolver(table, op)` resolves each terminal query. */
 function makeSupabase(resolver: (table: string, op: string) => unknown) {
@@ -37,6 +38,10 @@ function makeSupabase(resolver: (table: string, op: string) => unknown) {
     builder.update = vi.fn((payload: Record<string, unknown>) => {
       updatePayloads[table] = payload;
       return setOp("update");
+    });
+    builder.insert = vi.fn((payload: Record<string, unknown>) => {
+      insertPayloads[table] = payload;
+      return setOp("insert");
     });
     builder.select = vi.fn(() => builder);
     builder.not = vi.fn(() => builder);
@@ -70,6 +75,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   executed = [];
   updatePayloads = {};
+  insertPayloads = {};
   requireOrg.mockResolvedValue({ org: { id: ORG_ID }, workspace: { id: "ws" }, user: { id: USER_ID } });
   canDo.mockReturnValue(true);
   emitDomainEvent.mockResolvedValue(undefined);
@@ -156,5 +162,78 @@ describe("confirmDocumentTransactionAction", () => {
     expect(result.error).toMatch(/not found or already confirmed/i);
     expect(emitDomainEvent).not.toHaveBeenCalled();
     expect(executed).not.toContain("action_items:update");
+  });
+
+  it("posts reviewed classification privately and remembers an opted-in merchant rule", async () => {
+    createClient.mockResolvedValue(
+      makeSupabase((table, op) => {
+        if (table === "money_transactions" && op === "select") {
+          return {
+            data: {
+              id: TX_ID,
+              currency: "EUR",
+              account_id: ACC_EUR,
+              merchant_name: "Bolt SRL",
+              category_id: null,
+              expense_context_id: null,
+              visibility: "organization",
+              owner_user_id: null,
+            },
+            error: null,
+          };
+        }
+        if (table === "money_accounts") return { data: { id: ACC_EUR, currency: "EUR" }, error: null };
+        if (table === "money_categories") return { data: { id: "77777777-7777-4777-8777-777777777777" }, error: null };
+        if (table === "expense_contexts") {
+          return { data: { id: "88888888-8888-4888-8888-888888888888", visibility: "private", owner_user_id: USER_ID }, error: null };
+        }
+        if (table === "money_transactions" && op === "update") {
+          return {
+            data: {
+              id: TX_ID,
+              amount: "50",
+              type: "expense",
+              source_document_id: DOC_ID,
+              category_id: "77777777-7777-4777-8777-777777777777",
+              expense_context_id: "88888888-8888-4888-8888-888888888888",
+              visibility: "private",
+              owner_user_id: USER_ID,
+              merchant_name: "Bolt SRL",
+            },
+            error: null,
+          };
+        }
+        if (table === "expense_classification_rules" && op === "select") return { data: null, error: null };
+        return { error: null };
+      }),
+    );
+
+    const result = await confirmDocumentTransactionAction(TX_ID, undefined, {
+      categoryId: "77777777-7777-4777-8777-777777777777",
+      expenseContextId: "88888888-8888-4888-8888-888888888888",
+      rememberChoice: true,
+      merchantName: "Bolt SRL",
+      amount: 50,
+      transactionDate: "2026-06-28",
+      currency: "EUR",
+    });
+
+    expect(result).toEqual({});
+    expect(updatePayloads.money_transactions).toMatchObject({
+      category_id: "77777777-7777-4777-8777-777777777777",
+      expense_context_id: "88888888-8888-4888-8888-888888888888",
+      visibility: "private",
+      owner_user_id: USER_ID,
+      merchant_name: "Bolt SRL",
+      amount: 50,
+      transaction_date: "2026-06-28",
+      currency: "EUR",
+    });
+    expect(insertPayloads.transaction_classifications).toMatchObject({ method: "manual", visibility: "private" });
+    expect(insertPayloads.expense_classification_rules).toMatchObject({
+      normalized_merchant: "bolt",
+      owner_user_id: USER_ID,
+      visibility: "private",
+    });
   });
 });

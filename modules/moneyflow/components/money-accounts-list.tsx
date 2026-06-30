@@ -2,40 +2,81 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { PencilIcon, PowerOffIcon, WalletIcon, CreditCardIcon, BuildingIcon, PiggyBankIcon } from "lucide-react";
+import { PencilIcon, PowerOffIcon, ArrowRightLeftIcon, WalletIcon, CreditCardIcon, BuildingIcon, PiggyBankIcon } from "lucide-react";
 import { deactivateAccountAction } from "../actions/deactivate-account.action";
 import { formatMoney } from "@/shared/utils/format-money";
 import { AccountEditForm } from "./account-edit-form";
+import { TransferForm } from "./transfer-form";
 import { Modal } from "@/shared/ui/modal";
 import { cn } from "@/shared/utils/cn";
 import { ROUTES } from "@/shared/config/routes";
 import type { MoneyAccount } from "../types/moneyflow.types";
+import type { AccountWithBalance } from "../queries/get-accounts-with-balances";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface MoneyAccountsListProps {
-  accounts: MoneyAccount[];
+  accounts: AccountWithBalance[];
   dict: Dictionary;
 }
 
 export function MoneyAccountsList({ accounts, dict }: MoneyAccountsListProps) {
   if (accounts.length === 0) return null;
 
+  // Group accounts by currency, preserving first-appearance order. Each currency
+  // becomes its own framed group; accounts inside share a currency so their
+  // balances are directly comparable.
+  const groups: { currency: string; items: AccountWithBalance[] }[] = [];
+  const byCurrency = new Map<string, { currency: string; items: AccountWithBalance[] }>();
+  for (const account of accounts) {
+    let group = byCurrency.get(account.currency);
+    if (!group) {
+      group = { currency: account.currency, items: [] };
+      byCurrency.set(account.currency, group);
+      groups.push(group);
+    }
+    group.items.push(account);
+  }
+
   return (
     <div>
       <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
         {dict.money.accounts.title}
       </h2>
-      <div className="flex flex-col gap-2.5">
-        {accounts.map((account) => (
-          <AccountItem key={account.id} account={account} dict={dict} />
+      <div className="flex flex-col gap-3">
+        {groups.map((group) => (
+          <div
+            key={group.currency}
+            className="rounded-(--neu-radius-lg) border border-border-soft p-2.5 sm:p-3"
+          >
+            <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-text-muted">
+              {group.currency}
+            </p>
+            {/* Vertical on mobile, horizontal (wrapping) row on ≥sm. */}
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
+              {group.items.map((account) => (
+                <div key={account.id} className="sm:min-w-[15rem] sm:flex-1">
+                  <AccountItem account={account} accounts={accounts} dict={dict} />
+                </div>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>
   );
 }
 
-function AccountItem({ account, dict }: { account: MoneyAccount; dict: Dictionary }) {
+function AccountItem({
+  account,
+  accounts,
+  dict,
+}: {
+  account: AccountWithBalance;
+  accounts: MoneyAccount[];
+  dict: Dictionary;
+}) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isDeactivating, startDeactivate] = useTransition();
   const t = dict.money.accounts;
@@ -83,11 +124,20 @@ function AccountItem({ account, dict }: { account: MoneyAccount; dict: Dictionar
 
           <div className="shrink-0 text-right">
             <p className="text-sm font-semibold text-text-primary tabular-nums">
-              {formatMoney(account.initial_balance)}
+              {formatMoney(account.balance)}
             </p>
-            <p className="text-xs text-text-muted">{account.currency}</p>
           </div>
         </Link>
+
+        {/* Transfer button */}
+        <button
+          type="button"
+          onClick={() => setIsTransferring(true)}
+          className="soft-icon-button h-8 w-8 text-text-muted hover:text-text-primary"
+          aria-label={dict.money.transfer.buttonLabel}
+        >
+          <ArrowRightLeftIcon size={15} strokeWidth={1.75} />
+        </button>
 
         {/* Edit button */}
         <button
@@ -127,6 +177,21 @@ function AccountItem({ account, dict }: { account: MoneyAccount; dict: Dictionar
           account={account}
           dict={dict}
           onSuccess={() => setIsEditing(false)}
+        />
+      </Modal>
+
+      {/* Transfer Modal */}
+      <Modal
+        isOpen={isTransferring}
+        onClose={() => setIsTransferring(false)}
+        title={`${dict.money.transfer.title} ${account.name}`}
+        closeLabel={dict.common.close}
+      >
+        <TransferForm
+          fromAccount={account}
+          accounts={accounts}
+          dict={dict}
+          onSuccess={() => setIsTransferring(false)}
         />
       </Modal>
     </>

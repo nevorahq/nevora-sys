@@ -17,6 +17,7 @@ export async function updateAccountAction(
   const { updateAccountSchema } = getAccountSchemas({
     nameRequired: dict.money.errors.titleRequired,
     invalidType: dict.money.errors.invalidType,
+    balanceNegative: dict.money.errors.balanceNegative,
   });
 
   const ctx = await requireOrg();

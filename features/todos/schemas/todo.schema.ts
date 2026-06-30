@@ -32,6 +32,14 @@ export function getTodoSchemas(errors: {
       .nullable()
       .default(null),
     recurrence: z.enum(["none", "monthly"]).default("none"),
+    // Optional project assignment. "" (no selection) normalizes to null.
+    project_id: z
+      .string()
+      .trim()
+      .transform((v) => (v === "" ? null : v))
+      .nullable()
+      .default(null)
+      .refine((v) => v === null || /^[0-9a-f-]{36}$/i.test(v), "Invalid project"),
   });
 
   const updateTodoSchema = createTodoSchema.partial();

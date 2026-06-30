@@ -159,4 +159,48 @@ describe("ExtractionReviewActions inline account creation", () => {
     expect(screen.getByRole("button", { name: "Create USD account" })).toBeTruthy();
     expect((screen.getByRole("button", { name: /Confirm transaction/i }) as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it("submits reviewed category/context and explicit learning consent", async () => {
+    mocks.confirmTransaction.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(
+      <ExtractionReviewActions
+        {...baseProps}
+        needsAccount={false}
+        categories={[
+          { id: "11111111-1111-4111-8111-111111111111", name: "Transport" },
+          { id: "22222222-2222-4222-8222-222222222222", name: "Food" },
+        ]}
+        contexts={[
+          { id: "33333333-3333-4333-8333-333333333333", name: "Work", slug: "work", visibility: "organization" },
+          { id: "44444444-4444-4444-8444-444444444444", name: "Personal", slug: "personal", visibility: "private" },
+        ]}
+        initialCategoryId="11111111-1111-4111-8111-111111111111"
+        initialContextId="33333333-3333-4333-8333-333333333333"
+        initialMerchantName="Bolt SRL"
+        initialAmount={50}
+        initialTransactionDate="2026-06-28"
+        initialCurrency="EUR"
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText("Category"), "22222222-2222-4222-8222-222222222222");
+    await user.selectOptions(screen.getByLabelText("Expense context"), "44444444-4444-4444-8444-444444444444");
+    await user.click(screen.getByLabelText(/Remember this choice/i));
+    await user.click(screen.getByRole("button", { name: /Confirm transaction/i }));
+
+    expect(mocks.confirmTransaction).toHaveBeenCalledWith(
+      "7b113e6e-c727-4308-baf9-c8f813ece4d5",
+      undefined,
+      {
+        categoryId: "22222222-2222-4222-8222-222222222222",
+        expenseContextId: "44444444-4444-4444-8444-444444444444",
+        rememberChoice: true,
+        merchantName: "Bolt SRL",
+        amount: 50,
+        transactionDate: "2026-06-28",
+        currency: "EUR",
+      },
+    );
+  });
 });

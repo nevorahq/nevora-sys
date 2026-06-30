@@ -1,5 +1,6 @@
 export const DOMAIN_EVENT_NAMES = [
-  "task.created", "task.updated", "task.completed", "task.reopened", "task.deleted", "task.assigned", "task.due_date_changed",
+  "task.created", "task.updated", "task.completed", "task.reopened", "task.deleted", "task.assigned", "task.unassigned", "task.due_date_changed",
+  "project.created", "project.updated", "project.archived", "project.completed", "project.progress_updated", "task.assigned_to_project", "task.removed_from_project",
   "client.created", "client.updated", "client.deleted", "deal.created", "deal.updated", "deal.stage_changed", "deal.won", "deal.lost", "deal.deleted",
   "payment.received", "payment.sent", "money.transaction.created", "money.transaction.updated", "transaction.deleted", "account.created", "account.updated", "account.deactivated", "category.created",
   "subscription.created", "subscription.updated", "subscription.deleted", "subscription.renewed", "subscription.expired", "subscription.plan_changed", "subscription.canceled",
@@ -7,6 +8,7 @@ export const DOMAIN_EVENT_NAMES = [
   "document.created", "document.updated", "document.deleted", "document.attachment_uploaded", "document.linked",
   "document.extraction.started", "document.extraction.completed", "document.extraction.failed",
   "money.transaction.draft_created", "money.transaction.confirmed", "money.transaction.rejected",
+  "money.transfer.created",
   "action_center.item_created",
   "org.created", "org.updated", "member.invited", "member.joined", "member.removed", "member.role_changed", "workspace.created",
   "booking.requested", "booking.request.accepted", "booking.request.rejected", "booking.request.canceled", "booking.host_profile.created", "booking.host_profile.updated", "booking.service.created", "booking.availability.updated", "crm.lead.created_from_booking", "booking.request.linked_to_crm_lead",

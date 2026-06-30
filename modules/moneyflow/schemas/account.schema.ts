@@ -15,7 +15,14 @@ import {
 export function getAccountSchemas(errors: {
   nameRequired: string;
   invalidType: string;
+  balanceNegative: string;
 }) {
+  // A starting balance is "money you already have" — it cannot be negative.
+  // Allowing it silently corrupts the cumulative Current Balance (a −360 start
+  // makes the balance −360 with no transactions). Transactions stay positive
+  // (amount > 0); their direction lives in `type`.
+  const initialBalance = z.coerce.number().min(0, errors.balanceNegative);
+
   const createAccountSchema = z.object({
     name: z
       .string()
@@ -24,10 +31,7 @@ export function getAccountSchemas(errors: {
     type: z.enum(ACCOUNT_TYPES, {
       error: errors.invalidType,
     }),
-    initial_balance: z
-      .coerce
-      .number()
-      .default(0),
+    initial_balance: initialBalance.default(0),
     currency: z.enum(MONEY_ACCOUNT_CURRENCIES).default(DEFAULT_CURRENCY),
   });
 
@@ -35,7 +39,7 @@ export function getAccountSchemas(errors: {
     accountId: z.string().uuid(),
     name: z.string().min(1, errors.nameRequired).max(ACCOUNT_NAME_MAX),
     type: z.enum(ACCOUNT_TYPES, { error: errors.invalidType }),
-    initial_balance: z.coerce.number(),
+    initial_balance: initialBalance,
   });
 
   return { createAccountSchema, updateAccountSchema };
