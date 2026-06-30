@@ -83,9 +83,12 @@ self-serve plan selection (wire landing `?plan=<id>`) are not built yet.
 
 ### Operational follow-ups (do not block Phase 0)
 
-- **Verify whether migration `064` (task due-date history) is applied on the
-  remote Supabase environment.** This is an operational follow-up and does not
-  block the Phase 0 documentation commit (local checks are green). Do not apply
-  remote migrations without a separate, coordinated task.
 - Replace placeholder landing contact channels (`hello@nevora.com`, `@nevora`)
   with real ones before launch.
+
+### Resolved operational follow-ups
+
+- **Migration `064` (task due-date history) remote status — verified on
+  2026-06-30** via `supabase migration list`. Migration `064` is **applied on
+  remote** Supabase; all migrations through `067` are present remotely. No
+  database action required.
