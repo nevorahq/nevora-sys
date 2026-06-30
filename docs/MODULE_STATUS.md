@@ -204,6 +204,15 @@ Database: `047` (entity relations layer over `entity_links`), applied + smoke-te
 Server Actions / API: link/unlink + relation queries.
 Known Issues: UX for managing links is partial.
 Risks: link integrity when source/target rows are deleted.
+Reverse navigation: Documents now show reverse linked entities through
+`UniversalRelationViewer`. A document linked from a subscription displays the
+related subscription on the document detail page. Bidirectional `entity_links`
+are resolved from the document side; unavailable/deleted targets are dropped
+without crashing the page (`fetchEntityRelations`).
+Scope: Relations scope currently covers active modules only: Tasks, Money,
+Documents and Subscriptions. CRM / Leads / Clients / Deals remain paused and out
+of scope. Future relation expansion must stay limited to active modules unless a
+paused module is explicitly reactivated by product decision.
 Next Step: consistent relation UI across Tasks/Money/Documents/Subscriptions.
 
 ## Action Center

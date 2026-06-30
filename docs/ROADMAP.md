@@ -38,6 +38,13 @@ money balance-integrity hardening, document extraction reliability.
 
 `entity_links`-based relations (migration `047`) connecting Task ↔ Transaction ↔
 Subscription ↔ Document. Module exists; needs consistent link-management UX.
+Reverse navigation is in place: documents now show reverse linked entities
+through `UniversalRelationViewer` — a document linked from a subscription
+displays the related subscription on the document detail page.
+Relations scope currently covers active modules only: Tasks, Money, Documents and
+Subscriptions. CRM / Leads / Clients / Deals remain paused and out of scope.
+Future relation expansion must stay limited to active modules unless a paused
+module is explicitly reactivated by product decision.
 
 ## Phase 5 — Automation Foundation — *in progress*
 
