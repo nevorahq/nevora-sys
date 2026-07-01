@@ -8,10 +8,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { getRelationsForEntity } from "../services/relation.service";
-import {
-  ENTITY_KIND_LABELS,
-  RELATION_TYPE_LABELS,
-} from "../constants/relation.constants";
+import { ENTITY_KIND_LABELS } from "../constants/relation.constants";
+import { getRelationTypeLabel } from "../utils/relation-perspective-label";
 import type {
   EntityKind,
   GroupedRelations,
@@ -154,7 +152,7 @@ function RelationCard({
           </span>
           <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-text-muted">
             <span className="rounded-full bg-surface px-1.5 py-0.5">
-              {RELATION_TYPE_LABELS[item.relationType]}
+              {getRelationTypeLabel(item.relationType, entity.type)}
             </span>
             {entity.status && <span className="capitalize">{entity.status}</span>}
             {amount && <span>{amount}</span>}

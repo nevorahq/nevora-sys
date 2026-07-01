@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PlusIcon, SearchIcon, CheckIcon } from "lucide-react";
 import { Button } from "@/shared/ui/button";
@@ -15,6 +15,7 @@ import {
 import type { EntityKind, RelationCandidate } from "../types/relation.types";
 import { searchRelationCandidates } from "../actions/search-relation-candidates.action";
 import { createEntityRelation } from "../actions/create-relation.action";
+import { getRelationTypeOptionsForPair } from "../utils/relation-type-options";
 import { RelationTypeSelect } from "./relation-type-select";
 
 interface RelationSearchDialogProps {
@@ -54,6 +55,21 @@ export function RelationSearchDialog({
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Опции relation type, осмысленные для выбранной пары (source ↔ target).
+  const relationTypeOptions = useMemo(
+    () => getRelationTypeOptionsForPair(sourceEntityType, targetType),
+    [sourceEntityType, targetType],
+  );
+
+  function selectTargetType(next: EntityKind) {
+    setTargetType(next);
+    setSelected(null);
+    const nextOptions = getRelationTypeOptionsForPair(sourceEntityType, next);
+    if (!nextOptions.includes(relationType)) {
+      setRelationType(nextOptions[0] ?? "related_to");
+    }
+  }
 
   // Поиск с дебаунсом при открытой модалке / смене типа / запроса.
   useEffect(() => {
@@ -130,10 +146,7 @@ export function RelationSearchDialog({
           <Select
             label="Entity type"
             value={targetType}
-            onChange={(e) => {
-              setTargetType(e.target.value as EntityKind);
-              setSelected(null);
-            }}
+            onChange={(e) => selectTargetType(e.target.value as EntityKind)}
             options={RELATION_ENTITY_KINDS.map((kind) => ({
               value: kind,
               label: ENTITY_KIND_SINGULAR[kind],
@@ -194,7 +207,11 @@ export function RelationSearchDialog({
           </div>
 
           {selected && (
-            <RelationTypeSelect value={relationType} onChange={setRelationType} />
+            <RelationTypeSelect
+              value={relationType}
+              onChange={setRelationType}
+              options={relationTypeOptions}
+            />
           )}
 
           {error && <p className="text-sm text-accent-pink">{error}</p>}
@@ -206,7 +223,7 @@ export function RelationSearchDialog({
             <Button
               type="button"
               onClick={confirm}
-              disabled={!selected || isPending}
+              disabled={!selected || isPending || relationTypeOptions.length === 0}
               isLoading={isPending}
             >
               Create link
