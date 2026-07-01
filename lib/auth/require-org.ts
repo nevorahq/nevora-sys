@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { requireUser } from "./require-user";
 import { createClient } from "@/lib/supabase/server";
 import { ROUTES } from "@/shared/config/routes";
+import { resolveActiveOrganizationId, type MembershipRecord } from "./resolve-active-organization";
+import { getSelectedOrganizationId, setSelectedOrganizationId } from "./organization-cookie";
 import type {
   CurrentContext,
   OrgContext,
@@ -47,13 +49,20 @@ const ROLE_PERMISSIONS: Record<OrgRole, string[]> = {
  *
  * Phase 2 schema: memberships (role as TEXT) + organizations + workspaces.
  * Permissions derived from role — no role_permissions table needed.
+ *
+ * Multi-org: пользователь может состоять в нескольких организациях
+ * (active membership в каждой). Активная — та, что выбрана через
+ * active_org_id cookie (см. organization-cookie.ts), если она реально
+ * принадлежит пользователю (resolveActiveOrganizationId никогда не
+ * доверяет cookie напрямую — только как подсказку). Иначе — детерминированный
+ * fallback на старейшее active membership, как и раньше для single-org.
  */
 export const requireOrg = cache(async (): Promise<CurrentContext> => {
   const user = await requireUser();
   const supabase = await createClient();
 
-  // ── 1. Membership + Organization ─────────────────────────────────────
-  const { data: memberData, error: memberError } = await supabase
+  // ── 1. Все active membership пользователя + Organization ───────────────
+  const { data: membershipRows, error: memberError } = await supabase
     .from("memberships")
     .select(
       `
@@ -74,12 +83,31 @@ export const requireOrg = cache(async (): Promise<CurrentContext> => {
     )
     .eq("user_id", user.id)
     .eq("status", "active")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .single();
+    .order("created_at", { ascending: true });
 
-  if (memberError || !memberData) {
+  if (memberError || !membershipRows || membershipRows.length === 0) {
     redirect(ROUTES.onboarding);
+  }
+
+  const selectedOrganizationId = await getSelectedOrganizationId();
+  const records: MembershipRecord[] = membershipRows.map((row) => ({
+    organizationId: row.organization_id as string,
+    status: row.status as MembershipRecord["status"],
+    createdAt: row.created_at as string,
+  }));
+  const activeOrganizationId = resolveActiveOrganizationId(records, selectedOrganizationId);
+
+  const memberData = membershipRows.find((row) => row.organization_id === activeOrganizationId);
+  if (!memberData) {
+    // Не должно случиться (records строятся из тех же строк), но fail closed.
+    redirect(ROUTES.onboarding);
+  }
+
+  // Cookie отсутствовала/указывала на недоступную org — обновить best-effort
+  // (no-op при вызове из Server Component render, см. organization-cookie.ts).
+  const resolvedOrganizationId = memberData.organization_id as string;
+  if (selectedOrganizationId !== resolvedOrganizationId) {
+    await setSelectedOrganizationId(resolvedOrganizationId);
   }
 
   const rawOrg = Array.isArray(memberData.organizations)

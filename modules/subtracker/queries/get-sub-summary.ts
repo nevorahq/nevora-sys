@@ -19,13 +19,18 @@ import type { SubSummary } from "../types/subtracker.types";
  * Приведение через множители:
  *   Weekly $2.99 → monthly: 2.99 × 4.33 = $12.95
  *   Yearly $99   → monthly: 99 / 12 = $8.25
+ *
+ * RLS (is_org_member) допускает любую org пользователя — при active
+ * membership в нескольких сразу (multi-org, Phase 4.3) явный фильтр по
+ * organizationId обязателен поверх RLS.
  */
-export async function getSubSummary(): Promise<SubSummary> {
+export async function getSubSummary(organizationId: string): Promise<SubSummary> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("subscriptions")
     .select("amount, billing_cycle")
+    .eq("organization_id", organizationId)
     .eq("is_active", true);
 
   if (error) {

@@ -24,8 +24,13 @@ import type { MoneyTransactionWithRelations } from "../types/moneyflow.types";
  * Сортировка: новые первыми (transaction_date DESC, created_at DESC).
  * Двойная сортировка: если несколько транзакций в один день —
  * последняя добавленная наверху.
+ *
+ * RLS (is_org_member) допускает любую org пользователя — при active
+ * membership в нескольких сразу (multi-org, Phase 4.3) явный фильтр по
+ * organizationId обязателен, иначе леджер смешает транзакции разных org.
  */
 export async function getTransactions(
+  organizationId: string,
   options: { limit?: number; monthStart?: string; nextMonthStart?: string } = {},
 ): Promise<MoneyTransactionWithRelations[]> {
   const { limit = 20, monthStart, nextMonthStart } = options;
@@ -39,6 +44,7 @@ export async function getTransactions(
     .select(
       "*, account:money_accounts!account_id(name), category:money_categories(name), from_account:money_accounts!from_account_id(name), to_account:money_accounts!to_account_id(name)",
     )
+    .eq("organization_id", organizationId)
     // Recent Transactions — леджер фактов. Запланированные (planned)
     // показываются отдельно в блоке «Предстоящие расходы».
     .eq("status", "posted")

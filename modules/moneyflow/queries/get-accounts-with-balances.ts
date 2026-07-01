@@ -24,15 +24,18 @@ export type AccountWithBalance = MoneyAccount & {
  * дважды). Только posted и не удалённые строки попадают в баланс — те же
  * фильтры, что в get-money-summary и на странице счёта.
  *
- * RLS: SELECT вернёт только счета/транзакции текущей организации.
+ * RLS (is_org_member) scopes rows to any org the user belongs to — a user
+ * can be active in more than one (multi-org, Phase 4.3), so we explicitly
+ * filter by organizationId on top of RLS to isolate the selected org.
  */
-export async function getAccountsWithBalances(): Promise<AccountWithBalance[]> {
+export async function getAccountsWithBalances(organizationId: string): Promise<AccountWithBalance[]> {
   const supabase = await createClient();
 
   const [accountsResult, txResult] = await Promise.all([
     supabase
       .from("money_accounts")
       .select("*")
+      .eq("organization_id", organizationId)
       .eq("is_active", true)
       .is("deleted_at", null)
       .order("created_at", { ascending: true }),
@@ -40,6 +43,7 @@ export async function getAccountsWithBalances(): Promise<AccountWithBalance[]> {
     supabase
       .from("money_transactions")
       .select("type, amount, account_id, from_account_id, to_account_id")
+      .eq("organization_id", organizationId)
       .eq("status", "posted")
       .is("deleted_at", null),
   ]);

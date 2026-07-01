@@ -34,11 +34,11 @@ export default async function MoneyPage({
   const [summary, accounts, categories, transactions, planned, subscriptions, breakdown] =
     await Promise.all([
       getMoneySummary(monthWindow),
-      getAccountsWithBalances(),
-      getCategories(),
-      getTransactions({ limit: 20, ...monthWindow }),
-      getPlannedTransactions(),
-      getSubscriptions(),
+      getAccountsWithBalances(ctx.org.id),
+      getCategories(ctx.org.id),
+      getTransactions(ctx.org.id, { limit: 20, ...monthWindow }),
+      getPlannedTransactions(ctx.org.id),
+      getSubscriptions(ctx.org.id),
       getExpenseBreakdown(monthWindow),
     ]);
 

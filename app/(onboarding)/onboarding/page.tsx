@@ -2,6 +2,8 @@ import { headers } from "next/headers";
 import { OnboardingForm } from "@/features/onboarding/components/onboarding-form";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { currencyForCountry } from "@/shared/config/currencies";
+import { requireUser } from "@/lib/auth/require-user";
+import { PendingInvitesCard, getPendingInvites } from "@/modules/members";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -23,7 +25,8 @@ export const metadata: Metadata = {
  * подтверждает или меняет значение перед созданием организации.
  */
 export default async function OnboardingPage() {
-  const { dict } = await getDictionary();
+  const [{ dict }] = await Promise.all([getDictionary(), requireUser()]);
+  const pendingInvites = await getPendingInvites();
 
   const hdrs = await headers();
   // Заголовки страны от популярных edge/CDN-провайдеров. Нет заголовка
@@ -35,5 +38,12 @@ export default async function OnboardingPage() {
     null;
   const detectedCurrency = currencyForCountry(country);
 
-  return <OnboardingForm dict={dict} detectedCurrency={detectedCurrency} />;
+  return (
+    <div className="w-full max-w-md space-y-4">
+      {pendingInvites.length > 0 && (
+        <PendingInvitesCard invites={pendingInvites} redirectOnAccept />
+      )}
+      <OnboardingForm dict={dict} detectedCurrency={detectedCurrency} />
+    </div>
+  );
 }

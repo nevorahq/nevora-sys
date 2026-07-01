@@ -17,8 +17,13 @@ import type { CategoryType } from "../constants/moneyflow.constants";
  * выбрать "Еда" для дохода, что бессмысленно.
  *
  * Сортировка: is_default первыми (системные наверху), потом по имени.
+ *
+ * RLS (is_org_member) допускает любую org пользователя — при active
+ * membership в нескольких сразу (multi-org, Phase 4.3) явный фильтр по
+ * organizationId обязателен, иначе категории смешаются между организациями.
  */
 export async function getCategories(
+  organizationId: string,
   filterType?: CategoryType,
 ): Promise<MoneyCategory[]> {
   const supabase = await createClient();
@@ -26,6 +31,7 @@ export async function getCategories(
   let query = supabase
     .from("money_categories")
     .select("*")
+    .eq("organization_id", organizationId)
     .eq("is_active", true)
     .order("is_default", { ascending: false })
     .order("name", { ascending: true });

@@ -13,6 +13,7 @@ import { getTrialState } from "@/modules/billing";
 import { TrialBanner } from "@/modules/billing/components/trial-banner";
 import { DeveloperAccessBadge } from "@/modules/billing/components/developer-access-badge";
 import { resolveAccountLimits } from "@/lib/billing";
+import { OrganizationSwitcher, getUserOrganizations } from "@/modules/members";
 
 /**
  * Dashboard Layout — обёртка для ВСЕХ защищённых страниц.
@@ -39,17 +40,18 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [user, context, { dict, locale }, taskSummary, renewals] = await Promise.all([
+  const [user, context, { dict, locale }] = await Promise.all([
     requireUser(),
     requireOrg(),
     getDictionary(),
-    getTaskSummary(),
-    getUpcomingRenewals(),
   ]);
-  const [trial, bookingRequests, limits] = await Promise.all([
+  const [taskSummary, renewals, trial, bookingRequests, limits, userOrganizations] = await Promise.all([
+    getTaskSummary(context.org.id),
+    getUpcomingRenewals(context.org.id),
     getTrialState(context.org.id),
     getBookingRequests(context.org.id, { status: "pending", limit: 5 }),
     resolveAccountLimits(user.id, context.org.id),
+    getUserOrganizations(user.id),
   ]);
 
   return (
@@ -62,6 +64,7 @@ export default async function DashboardLayout({
         {/* Header — user info, controls */}
         <header className="flex items-center justify-between border-b border-border-soft px-6 py-3.5">
           <div className="flex min-w-0 items-center gap-2">
+            <OrganizationSwitcher currentOrganizationId={context.org.id} organizations={userOrganizations} />
             <p className="truncate text-sm text-text-muted">
               {user.email?.split("@")[0]}
             </p>

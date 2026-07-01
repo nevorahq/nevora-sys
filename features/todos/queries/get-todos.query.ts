@@ -11,26 +11,29 @@ interface GetTodosOptions {
 }
 
 /**
- * Query: all tasks visible to the current user, sorted server-side.
+ * Query: all tasks visible to the current user in the active organization,
+ * sorted server-side.
  *
  * "server-only" — importing this in a Client Component fails the build.
  *
- * RLS is the tenant guard: the sortable view (task_smart_list) is
- * security_invoker, so SELECT returns exactly the rows the user may read —
- * we deliberately do NOT add an organization_id filter here, mirroring the
- * original behaviour.
+ * RLS (is_org_member) scopes rows to organizations the user belongs to —
+ * but a user can have active membership in MORE than one organization
+ * (multi-org, Phase 4.3), so RLS alone is not enough to isolate the
+ * currently selected organization. We explicitly filter by organizationId
+ * (from requireOrg()) on top of RLS — defense in depth, and the only way
+ * to avoid mixing tasks from a user's other organizations into this list.
  *
  * Resilience: if the sort view is missing (migration 061 not applied yet, or
  * the PostgREST cache hasn't reloaded), we fall back to the base `todos` table
  * ordered by recency so the Tasks page never breaks.
  */
-export async function getTodosQuery(options: GetTodosOptions = {}): Promise<Todo[]> {
+export async function getTodosQuery(organizationId: string, options: GetTodosOptions = {}): Promise<Todo[]> {
   const supabase = await createClient();
   const sort = options.sort ?? DEFAULT_TASK_SORT;
 
   // Primary path: sortable view with server-side smart ordering.
   const viewQuery = applyTaskSort(
-    supabase.from(TASK_LIST_VIEW).select("*").is("deleted_at", null),
+    supabase.from(TASK_LIST_VIEW).select("*").eq("organization_id", organizationId).is("deleted_at", null),
     sort,
   );
   const { data, error } = await viewQuery;
@@ -48,6 +51,7 @@ export async function getTodosQuery(options: GetTodosOptions = {}): Promise<Todo
       *,
       project:projects!todos_project_id_fkey ( id, name, color, status )
     `)
+    .eq("organization_id", organizationId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 

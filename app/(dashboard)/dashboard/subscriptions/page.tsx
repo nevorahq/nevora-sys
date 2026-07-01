@@ -17,12 +17,11 @@ import { SubEmptyState } from "@/modules/subtracker/components/sub-empty-state";
  * После успешного создания — модалка закрывается автоматически.
  */
 export default async function SubscriptionsPage() {
-  const [summary, subscriptions, upcoming, { dict }, ctx] = await Promise.all([
-    getSubSummary(),
-    getSubscriptions(),
-    getUpcomingRenewals(),
-    getDictionary(),
-    requireOrg(),
+  const [{ dict }, ctx] = await Promise.all([getDictionary(), requireOrg()]);
+  const [summary, subscriptions, upcoming] = await Promise.all([
+    getSubSummary(ctx.org.id),
+    getSubscriptions(ctx.org.id),
+    getUpcomingRenewals(ctx.org.id),
   ]);
 
   return (

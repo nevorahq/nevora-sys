@@ -23,7 +23,7 @@ export type TaskSummary = {
   dueToday: number;
 };
 
-export async function getTaskSummary(): Promise<TaskSummary> {
+export async function getTaskSummary(organizationId: string): Promise<TaskSummary> {
   const supabase = await createClient();
 
   const today = new Date().toISOString().split("T")[0];
@@ -31,9 +31,14 @@ export async function getTaskSummary(): Promise<TaskSummary> {
   // Один запрос — все todos, считаем агрегаты в коде.
   // Для MVP (десятки-сотни задач) это быстрее чем 4 отдельных COUNT-запроса.
   // При масштабировании — вынести в PostgreSQL function.
+  //
+  // RLS (is_org_member) допускает любую org пользователя — при active
+  // membership в нескольких сразу (multi-org, Phase 4.3) явный фильтр по
+  // organizationId обязателен, иначе overdue-бейдж смешает задачи разных org.
   const { data, error } = await supabase
     .from("todos")
-    .select("status, due_date");
+    .select("status, due_date")
+    .eq("organization_id", organizationId);
 
   if (error) {
     console.error("getTaskSummary error:", error);

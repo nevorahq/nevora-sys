@@ -13,8 +13,12 @@ import type { Subscription, UpcomingRenewal } from "../types/subtracker.types";
  * - Badge в sidebar (количество upcoming)
  *
  * Сортировка: самые срочные наверху (daysUntil ASC).
+ *
+ * RLS (is_org_member) допускает любую org пользователя — при active
+ * membership в нескольких сразу (multi-org, Phase 4.3) явный фильтр по
+ * organizationId обязателен поверх RLS.
  */
-export async function getUpcomingRenewals(): Promise<UpcomingRenewal[]> {
+export async function getUpcomingRenewals(organizationId: string): Promise<UpcomingRenewal[]> {
   const supabase = await createClient();
 
   const today = new Date();
@@ -28,6 +32,7 @@ export async function getUpcomingRenewals(): Promise<UpcomingRenewal[]> {
   const { data, error } = await supabase
     .from("subscriptions")
     .select("*")
+    .eq("organization_id", organizationId)
     .eq("is_active", true)
     .gte("next_billing_date", todayStr)
     .lte("next_billing_date", weekLaterStr)

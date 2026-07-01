@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { uuidSchema } from "@/lib/validators/common";
 
 export const MEMBER_ROLES = ["member", "admin"] as const;
 export type MemberRole = (typeof MEMBER_ROLES)[number];
@@ -24,3 +25,9 @@ export const acceptInviteLinkSchema = z.object({
   token: z.string().min(10),
 });
 export type AcceptInviteLinkInput = z.infer<typeof acceptInviteLinkSchema>;
+
+// ── Organization switcher ───────────────────────────────────────────────
+export const switchOrganizationSchema = z.object({
+  organizationId: uuidSchema,
+});
+export type SwitchOrganizationInput = z.infer<typeof switchOrganizationSchema>;

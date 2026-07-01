@@ -18,7 +18,7 @@ export default async function TasksPage({
 
   const { org } = await requireOrg();
   const [todos, projects, { dict }] = await Promise.all([
-    getTodosQuery({ sort }),
+    getTodosQuery(org.id, { sort }),
     getProjects(org.id, { status: ["active", "paused"] }),
     getDictionary(),
   ]);

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/require-user";
+import { setSelectedOrganizationId } from "@/lib/auth/organization-cookie";
 import { inviteResponseSchema } from "../schemas/member.schemas";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
@@ -11,6 +12,11 @@ import type { ActionResult } from "@/lib/validators/common";
  * Приглашённый принимает инвайт: own membership invited→active (через RPC).
  * Использует requireUser (а не requireOrg): у invited-only юзера может не быть
  * активной организации.
+ *
+ * После успеха организация, в которую только что вступил пользователь,
+ * становится выбранной активной (setSelectedOrganizationId) — RPC уже
+ * подтвердила, что это его собственное membership (auth.uid()), так что
+ * cross-tenant риска нет.
  */
 export async function acceptInviteAction(
   _prevState: ActionResult,
@@ -40,6 +46,8 @@ export async function acceptInviteAction(
     return { error: "Server error" };
   }
 
+  await setSelectedOrganizationId(parsed.data.organizationId);
   revalidatePath(ROUTES.dashboard);
+  revalidatePath(ROUTES.onboarding);
   return {};
 }

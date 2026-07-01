@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRightIcon, AlertTriangleIcon } from "lucide-react";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
+import { requireOrg } from "@/lib/auth/require-org";
 import { getTaskSummary } from "@/features/todos/queries/get-task-summary";
 import { getMoneySummary } from "@/modules/moneyflow/queries/get-money-summary";
 import { getTransactions } from "@/modules/moneyflow/queries/get-transactions";
@@ -23,6 +24,7 @@ import { ROUTES } from "@/shared/config/routes";
  * - getSubSummary() + getUpcomingRenewals() → modules/subtracker/
  */
 export default async function DashboardPage() {
+  const { org } = await requireOrg();
   const [
     taskSummary,
     moneySummary,
@@ -31,11 +33,11 @@ export default async function DashboardPage() {
     upcomingRenewals,
     { dict },
   ] = await Promise.all([
-    getTaskSummary(),
+    getTaskSummary(org.id),
     getMoneySummary(),
-    getTransactions({ limit: 5 }),
-    getSubSummary(),
-    getUpcomingRenewals(),
+    getTransactions(org.id, { limit: 5 }),
+    getSubSummary(org.id),
+    getUpcomingRenewals(org.id),
     getDictionary(),
   ]);
 

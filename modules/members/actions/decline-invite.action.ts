@@ -36,5 +36,6 @@ export async function declineInviteAction(
   }
 
   revalidatePath(ROUTES.dashboard);
+  revalidatePath(ROUTES.onboarding);
   return {};
 }
