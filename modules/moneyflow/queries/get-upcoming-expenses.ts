@@ -21,7 +21,9 @@ import { getRatesToBase, sumInBase } from "./fx-conversion";
  * расходы разбиты по валюте транзакции. Кросс-валютная нормализация в
  * base_currency — отдельный FX-слой, пока не внедрён.
  *
- * RLS гарантирует scope по текущей организации.
+ * RLS (is_org_member) допускает любую org пользователя — при active
+ * membership в нескольких сразу (multi-org) явный фильтр по organization_id
+ * обязателен поверх RLS.
  */
 export interface UpcomingExpenses {
   /** Предстоящие расходы за окно, раздельно по валютам. */
@@ -46,6 +48,7 @@ export async function getUpcomingExpenses(): Promise<UpcomingExpenses> {
   const { data, error } = await supabase
     .from("money_transactions")
     .select("amount, currency")
+    .eq("organization_id", org.id)
     .eq("status", "planned")
     .eq("type", "expense")
     .gte("transaction_date", today)

@@ -16,9 +16,12 @@ import type { MoneyAccount } from "../types/moneyflow.types";
  * Сортировка: по дате создания (старые первыми) — логичный порядок
  * для счетов (первый добавленный = основной).
  *
- * RLS: SELECT вернёт только счета текущего пользователя.
+ * RLS (is_org_member) допускает любую org пользователя — при active
+ * membership в нескольких сразу (multi-org) явный фильтр по organizationId
+ * обязателен поверх RLS.
  */
 export async function getAccounts(
+  organizationId: string,
   options: { includeInactive?: boolean } = {},
 ): Promise<MoneyAccount[]> {
   const supabase = await createClient();
@@ -26,6 +29,7 @@ export async function getAccounts(
   let query = supabase
     .from("money_accounts")
     .select("*")
+    .eq("organization_id", organizationId)
     .order("created_at", { ascending: true });
 
   if (!options.includeInactive) {

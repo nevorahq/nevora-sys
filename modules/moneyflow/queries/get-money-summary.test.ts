@@ -12,17 +12,23 @@ const { getMoneySummary } = await import("./get-money-summary");
 
 /**
  * Chainable Supabase mock that records every `.is(column, null)` filter so we
- * can assert the soft-delete guard, and resolves each query by table. The two
- * money_transactions reads (all-time vs monthly) are told apart by whether
- * `.gte` (the month lower-bound) was called.
+ * can assert the soft-delete guard, and every `.eq(column, value)` filter so
+ * we can assert the multi-org guard (organization_id must be applied to
+ * every table read here — see Phase 4.4 audit), and resolves each query by
+ * table. The two money_transactions reads (all-time vs monthly) are told
+ * apart by whether `.gte` (the month lower-bound) was called.
  */
 function makeSupabase() {
   const isCalls: Array<[string, string]> = [];
+  const eqCalls: Array<[string, string, unknown]> = [];
   const from = vi.fn((table: string) => {
     const state = { gte: false };
     const builder: Record<string, unknown> = {};
     builder.select = vi.fn(() => builder);
-    builder.eq = vi.fn(() => builder);
+    builder.eq = vi.fn((column: string, value: unknown) => {
+      eqCalls.push([table, column, value]);
+      return builder;
+    });
     builder.in = vi.fn(() => builder);
     builder.lt = vi.fn(() => builder);
     builder.gte = vi.fn(() => {
@@ -51,7 +57,7 @@ function makeSupabase() {
       result().then(res, rej);
     return builder;
   });
-  return { client: { from } as never, isCalls };
+  return { client: { from } as never, isCalls, eqCalls };
 }
 
 beforeEach(() => {
@@ -77,5 +83,22 @@ describe("getMoneySummary", () => {
     expect(mdl?.monthlyIncome).toBe(22500);
     expect(mdl?.monthlyExpenses).toBe(100);
     expect(result.base.balance).toBe(22400);
+  });
+
+  it("scopes every table read to the active organization (Phase 4.4 regression)", async () => {
+    // RLS alone (is_org_member) allows any org the user is active in — a user
+    // active in 2+ orgs would otherwise see balances/transactions merged
+    // across all of them. Every read here must carry an explicit
+    // organization_id filter for the resolved active org (requireOrg()).
+    const supabase = makeSupabase();
+    createClient.mockResolvedValue(supabase.client);
+
+    await getMoneySummary();
+
+    const orgFilters = supabase.eqCalls.filter(([, column]) => column === "organization_id");
+    expect(orgFilters).toContainEqual(["money_accounts", "organization_id", "org-1"]);
+    // Both money_transactions reads (all-time + monthly) must be scoped.
+    expect(orgFilters.filter(([table]) => table === "money_transactions")).toHaveLength(2);
+    expect(orgFilters.every(([, , value]) => value === "org-1")).toBe(true);
   });
 });

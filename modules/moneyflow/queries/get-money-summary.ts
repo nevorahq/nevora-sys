@@ -23,7 +23,9 @@ import type { CurrencySummary, MoneySummary } from "../types/moneyflow.types";
  * Для MVP — проще и понятнее считать в коде.
  * При масштабировании (1000+ транзакций) — вынести в PostgreSQL function.
  *
- * RLS гарантирует: SELECT вернёт только данные текущего пользователя.
+ * RLS (is_org_member) допускает любую org пользователя — при active
+ * membership в нескольких сразу (multi-org) явный фильтр по organization_id
+ * обязателен поверх RLS, иначе баланс/доходы/расходы смешаются между org.
  */
 /**
  * @param options.monthStart / nextMonthStart — UTC month window for the monthly
@@ -36,6 +38,7 @@ export async function getMoneySummary(
   const supabase = await createClient();
   const { org } = await requireOrg();
   const baseCurrency = org.baseCurrency;
+  const organizationId = org.id;
 
   // Текущий месяц в UTC. Границы СТРОГО в UTC (Date.UTC), иначе на сервере со
   // смещением +N часов локальная полночь 1-го числа уезжает в предыдущий день,
@@ -58,12 +61,14 @@ export async function getMoneySummary(
     supabase
       .from("money_accounts")
       .select("initial_balance, currency")
+      .eq("organization_id", organizationId)
       .eq("is_active", true)
       .is("deleted_at", null),
 
     supabase
       .from("money_transactions")
       .select("type, amount, currency")
+      .eq("organization_id", organizationId)
       .eq("status", "posted")
       .is("deleted_at", null)
       // Transfers (type='transfer') net to zero per currency and are NOT
@@ -73,6 +78,7 @@ export async function getMoneySummary(
     supabase
       .from("money_transactions")
       .select("type, amount, currency")
+      .eq("organization_id", organizationId)
       .eq("status", "posted")
       .is("deleted_at", null)
       .in("type", ["income", "expense"])
