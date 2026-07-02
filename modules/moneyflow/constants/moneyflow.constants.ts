@@ -36,6 +36,26 @@ export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
 export const CATEGORY_TYPES = TRANSACTION_TYPES;
 export type CategoryType = TransactionType;
 
+// ── Categorization (Phase 5: Money Intelligence) ──
+// Lifecycle of category assignment on a transaction (migration 069).
+export const CATEGORIZATION_STATUSES = [
+  "uncategorized", "processing", "suggested", "confirmed", "failed",
+] as const;
+export type CategorizationStatus = (typeof CATEGORIZATION_STATUSES)[number];
+
+// Who assigned category_id. Mirrors the DB CHECK (069).
+export const CATEGORY_SOURCES = ["manual", "rule", "history", "system", "ai", "import"] as const;
+export type CategorySource = (typeof CATEGORY_SOURCES)[number];
+
+// Suggestion review states (money_ai_suggestions.status).
+export const SUGGESTION_STATUSES = ["pending", "accepted", "edited", "rejected", "expired"] as const;
+export type SuggestionStatus = (typeof SUGGESTION_STATUSES)[number];
+
+// Confidence bands (spec §17): a suggestion below MIN is stored but the
+// transaction stays uncategorized; user rules apply directly.
+export const CONFIDENCE_HIGH = 0.9;
+export const CONFIDENCE_MIN_SUGGESTION = 0.4;
+
 // ── Currency ──
 // MVP: одна валюта. При масштабировании — массив + user preference.
 export const DEFAULT_CURRENCY = "MDL" as const;

@@ -5,6 +5,7 @@ import { requireOrg } from "@/lib/auth/require-org";
 import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
 import { UniversalRelationViewer } from "@/modules/relations";
+import { AiSuggestionPanel } from "@/modules/moneyflow/components/ai-suggestion-panel";
 import { ROUTES } from "@/shared/config/routes";
 
 export default async function TransactionDetailPage({ params }: PageProps<"/dashboard/money/[transactionId]">) {
@@ -15,7 +16,7 @@ export default async function TransactionDetailPage({ params }: PageProps<"/dash
   const supabase = await createClient();
   const { data: tx } = await supabase
     .from("money_transactions")
-    .select("id, title, amount, currency, transaction_date, type, note, status, account:money_accounts!account_id(name), category:money_categories(name), from_account:money_accounts!from_account_id(name), to_account:money_accounts!to_account_id(name)")
+    .select("id, title, amount, currency, transaction_date, type, note, status, category_id, categorization_status, account:money_accounts!account_id(name), category:money_categories(name), from_account:money_accounts!from_account_id(name), to_account:money_accounts!to_account_id(name)")
     .eq("id", transactionId)
     .eq("organization_id", org.id)
     .is("deleted_at", null)
@@ -29,6 +30,41 @@ export default async function TransactionDetailPage({ params }: PageProps<"/dash
   const toAccount = Array.isArray(tx.to_account) ? tx.to_account[0] : tx.to_account;
   const isTransfer = tx.type === "transfer";
   const isIncome = tx.type === "income";
+
+  // Money Intelligence: pending suggestion + selectable categories for the
+  // AI Categorization block. Transfers carry no category (067) and drafts are
+  // reviewed in the Planned flow, so both skip the panel.
+  const showAiPanel = !isTransfer && tx.status === "posted" && canDo(ctx, "data.write");
+  type PendingSuggestion = {
+    id: string;
+    suggested_category_id: string | null;
+    suggested_category_name: string | null;
+    confidence: number;
+    reasoning: string | null;
+    source: "history" | "system" | "ai";
+  };
+  let pendingSuggestion: PendingSuggestion | null = null;
+  let typeCategories: Array<{ id: string; name: string }> = [];
+  if (showAiPanel) {
+    const [suggestionResult, categoriesResult] = await Promise.all([
+      supabase
+        .from("money_ai_suggestions")
+        .select("id, suggested_category_id, suggested_category_name, confidence, reasoning, source")
+        .eq("organization_id", org.id)
+        .eq("transaction_id", tx.id)
+        .eq("status", "pending")
+        .maybeSingle(),
+      supabase
+        .from("money_categories")
+        .select("id, name")
+        .eq("organization_id", org.id)
+        .eq("type", tx.type)
+        .eq("is_active", true)
+        .order("name", { ascending: true }),
+    ]);
+    pendingSuggestion = (suggestionResult.data as PendingSuggestion | null) ?? null;
+    typeCategories = (categoriesResult.data as Array<{ id: string; name: string }> | null) ?? [];
+  }
 
   return (
     <>
@@ -57,6 +93,15 @@ export default async function TransactionDetailPage({ params }: PageProps<"/dash
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <main className="space-y-6">
+          {showAiPanel && (
+            <AiSuggestionPanel
+              transactionId={tx.id}
+              categorizationStatus={(tx.categorization_status as string) ?? "uncategorized"}
+              hasCategory={Boolean(tx.category_id)}
+              suggestion={pendingSuggestion}
+              categories={typeCategories}
+            />
+          )}
           {tx.note && <section className="soft-card p-5 sm:p-6"><h2 className="text-base font-semibold text-text-primary">Notes</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-primary">{tx.note}</p></section>}
           <UniversalRelationViewer entityType="transaction" entityId={tx.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.money}/${tx.id}`} />
         </main>

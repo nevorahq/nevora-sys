@@ -69,6 +69,11 @@ export async function createTransactionAction(
         amount: parsed.data.amount,
         account_id: parsed.data.account_id,
         category_id: parsed.data.category_id,
+        // A category picked in the form is a manual, confirmed decision
+        // (Money Intelligence, migration 069). Without one the row waits in
+        // the uncategorized queue for rule/AI categorization.
+        category_source: parsed.data.category_id ? "manual" : null,
+        categorization_status: parsed.data.category_id ? "confirmed" : "uncategorized",
         transaction_date: parsed.data.transaction_date,
         currency: parsed.data.currency,
         status: parsed.data.status,

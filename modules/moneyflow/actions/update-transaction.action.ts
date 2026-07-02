@@ -43,6 +43,15 @@ export async function updateTransactionAction(
   try {
     const supabase = await createClient();
 
+    // Money Intelligence: a category picked in the edit form is a manual,
+    // confirmed decision; removing it returns the row to 'uncategorized'.
+    const { data: previous } = await supabase
+      .from("money_transactions")
+      .select("category_id")
+      .eq("id", parsed.data.transactionId)
+      .eq("organization_id", ctx.org.id)
+      .maybeSingle();
+
     const { data: updatedTx, error } = await supabase
       .from("money_transactions")
       .update({
@@ -51,6 +60,9 @@ export async function updateTransactionAction(
         amount: parsed.data.amount,
         account_id: parsed.data.account_id,
         category_id: parsed.data.category_id,
+        category_source: parsed.data.category_id ? "manual" : null,
+        category_confidence: null,
+        categorization_status: parsed.data.category_id ? "confirmed" : "uncategorized",
         transaction_date: parsed.data.transaction_date,
         note: parsed.data.note,
         updated_by: ctx.user.id,
@@ -63,6 +75,21 @@ export async function updateTransactionAction(
     if (error || !updatedTx) {
       console.error("updateTransaction error:", error);
       return { error: dict.money.errors.updateTransactionFailed };
+    }
+
+    if ((previous?.category_id ?? null) !== parsed.data.category_id) {
+      await emitDomainEvent({
+        organizationId: ctx.org.id,
+        workspaceId: (updatedTx.workspace_id as string | null) ?? undefined,
+        eventName: "money.transaction.category_changed",
+        aggregateType: "transaction",
+        aggregateId: updatedTx.id as string,
+        payload: {
+          transaction_id: updatedTx.id,
+          category_id: parsed.data.category_id,
+          category_source: parsed.data.category_id ? "manual" : null,
+        },
+      });
     }
 
     await emitDomainEvent({
