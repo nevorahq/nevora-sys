@@ -91,6 +91,7 @@ beforeEach(() => {
   insertPayloads = {};
   requireOrg.mockResolvedValue({ org: { id: ORG_ID }, workspace: { id: "ws" }, user: { id: USER_ID } });
   canDo.mockReturnValue(true);
+  upsertPrivateMerchantRule.mockResolvedValue("private-rule-1");
   createClient.mockResolvedValue(makeSupabase(infra()));
 });
 
@@ -152,6 +153,13 @@ describe("acceptMoneyAiSuggestionAction", () => {
       expect.anything(),
       expect.anything(),
       expect.objectContaining({ normalizedMerchant: "google ireland", categoryId: OVERRIDE }),
+    );
+    expect(emitDomainEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: "money.category_rule.created",
+        aggregateId: "private-rule-1",
+        payload: expect.objectContaining({ rule_id: "private-rule-1", scope: "private" }),
+      }),
     );
   });
 

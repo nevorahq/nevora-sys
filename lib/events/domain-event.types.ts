@@ -247,8 +247,26 @@ export interface DomainEventPayloadMap {
     source: string;
   };
   "money.category_rule.created": {
+    rule_id: string | null;
     merchant: string;
     category_id: string;
+    scope?: string;
+  };
+  "money.category_rule.updated": {
+    rule_id: string;
+    scope: string;
+    category_id: string | null;
+  };
+  "money.category_rule.disabled": { rule_id: string; scope: string };
+  "money.category_rule.enabled": { rule_id: string; scope: string };
+  "money.category_rule.deleted": { rule_id: string; scope: string };
+  "money.ai_suggestion.expired": {
+    transaction_id: string;
+    source: string;
+  };
+  "money.transaction.auto_categorization_requested": {
+    transaction_id: string;
+    type: string;
   };
   "account.created": {
     name: string;

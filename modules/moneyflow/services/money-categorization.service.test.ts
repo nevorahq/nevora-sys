@@ -142,6 +142,26 @@ describe("categorizeTransaction (rule-first pipeline)", () => {
     );
   });
 
+  it("never applies another user's private rule", async () => {
+    const OTHER_USER = "99999999-9999-4999-8999-999999999999";
+    const supabase = makeSupabase(
+      resolver({
+        expense_classification_rules: () => ({
+          data: [{ category_id: CAT_ID, expense_context_id: null, visibility: "private", owner_user_id: OTHER_USER }],
+          error: null,
+        }),
+      }),
+    );
+
+    const result = await categorizeTransaction(supabase, ctx, TX_ID);
+
+    // The foreign private rule is skipped; "bolt" falls through to the
+    // built-in transport keyword, which only creates a suggestion.
+    expect(result).toMatchObject({ outcome: "suggested", source: "system" });
+    const txUpdates = updatePayloads["money_transactions"] ?? [];
+    expect(txUpdates.every((payload) => (payload as Record<string, unknown>).category_id === undefined)).toBe(true);
+  });
+
   it("suggests from merchant history before touching system rules or AI", async () => {
     const supabase = makeSupabase(
       resolver({

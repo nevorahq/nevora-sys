@@ -159,7 +159,7 @@ function TransactionRow({
             {tx.sourceDocumentId && (
               <Link
                 href={`${ROUTES.documents}/${tx.sourceDocumentId}`}
-                className="inline-flex items-center gap-1 text-xs text-accent-purple hover:underline"
+                className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary hover:underline"
               >
                 <FileTextIcon size={12} /> {labels.source}
               </Link>

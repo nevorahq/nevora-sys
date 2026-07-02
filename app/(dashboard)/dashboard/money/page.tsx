@@ -1,6 +1,6 @@
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { requireOrg } from "@/lib/auth/require-org";
-import { canDo } from "@/lib/context/current-context";
+import { canDo, isAdmin } from "@/lib/context/current-context";
 import { getMoneySummary } from "@/modules/moneyflow/queries/get-money-summary";
 import { getAccountsWithBalances } from "@/modules/moneyflow/queries/get-accounts-with-balances";
 import { getCategories } from "@/modules/moneyflow/queries/get-categories";
@@ -12,6 +12,7 @@ import {
   getUncategorizedCount,
   getUncategorizedTransactions,
 } from "@/modules/moneyflow/queries/get-uncategorized-transactions";
+import { getCategorizationDiagnostics } from "@/modules/moneyflow/queries/get-categorization-diagnostics";
 import { getSubscriptions } from "@/modules/subtracker/queries/get-subscriptions";
 import { MoneySummaryCards } from "@/modules/moneyflow/components/money-summary-cards";
 import { MoneyCreateButtons } from "@/modules/moneyflow/components/money-create-buttons";
@@ -21,6 +22,7 @@ import { MoneyAccountsList } from "@/modules/moneyflow/components/money-accounts
 import { MoneyEmptyState } from "@/modules/moneyflow/components/money-empty-state";
 import { ExpenseBreakdown } from "@/modules/moneyflow/components/expense-breakdown";
 import { CategoryIntelligenceCards } from "@/modules/moneyflow/components/category-intelligence-cards";
+import { CategorizationDiagnosticsCard } from "@/modules/moneyflow/components/categorization-diagnostics";
 import { UncategorizedTransactions } from "@/modules/moneyflow/components/uncategorized-transactions";
 import { ExpenseQuestion } from "@/modules/moneyflow/components/expense-question";
 import { MonthNavigator } from "@/modules/moneyflow/components/month-navigator";
@@ -41,7 +43,8 @@ export default async function MoneyPage({
   const showUncategorized = filter === "uncategorized";
 
   const ctx = await requireOrg();
-  const [summary, accounts, categories, transactions, planned, subscriptions, breakdown, intelligence, uncategorizedCount, uncategorized] =
+  const admin = isAdmin(ctx);
+  const [summary, accounts, categories, transactions, planned, subscriptions, breakdown, intelligence, uncategorizedCount, uncategorized, diagnostics] =
     await Promise.all([
       getMoneySummary(monthWindow),
       getAccountsWithBalances(ctx.org.id),
@@ -55,6 +58,7 @@ export default async function MoneyPage({
       showUncategorized
         ? getUncategorizedTransactions(ctx.org.id, monthWindow)
         : Promise.resolve([]),
+      admin ? getCategorizationDiagnostics(ctx.org.id) : Promise.resolve(null),
     ]);
 
   const allHref = month ? `${ROUTES.money}?month=${encodeURIComponent(month)}` : ROUTES.money;
@@ -128,6 +132,12 @@ export default async function MoneyPage({
         >
           {dict.money.intelligence.uncategorizedFilter} · {uncategorizedCount}
         </Link>
+        <Link
+          href={`${ROUTES.money}/rules`}
+          className="ml-auto min-h-9 rounded-full bg-surface-sunken px-4 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary"
+        >
+          {dict.money.intelligence.rulesLink}
+        </Link>
       </div>
 
       {/* Uncategorized queue (spec §12.4) */}
@@ -177,6 +187,14 @@ export default async function MoneyPage({
         data={intelligence}
         labels={dict.money.intelligence.analytics}
       />
+
+      {/* Pipeline health — admins only (Phase 5.1 §4.6) */}
+      {admin && diagnostics && (
+        <CategorizationDiagnosticsCard
+          data={diagnostics}
+          labels={dict.money.intelligence.diagnostics}
+        />
+      )}
 
       <ExpenseBreakdown
         breakdown={breakdown}

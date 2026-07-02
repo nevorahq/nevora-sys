@@ -135,7 +135,7 @@ export async function acceptMoneyAiSuggestionAction(
   // Optional learning step: remember the merchant → category choice as the
   // caller's private rule so the next transaction skips AI entirely.
   if (parsed.data.rememberChoice && suggestion.normalized_merchant_name) {
-    await upsertPrivateMerchantRule(supabase, ctx, {
+    const ruleId = await upsertPrivateMerchantRule(supabase, ctx, {
       normalizedMerchant: suggestion.normalized_merchant_name,
       categoryId,
       expenseContextId: null,
@@ -144,9 +144,14 @@ export async function acceptMoneyAiSuggestionAction(
       organizationId: ctx.org.id,
       workspaceId: ctx.workspace.id,
       eventName: "money.category_rule.created",
-      aggregateType: "transaction",
-      aggregateId: suggestion.transaction_id,
-      payload: { category_id: categoryId, merchant: suggestion.normalized_merchant_name },
+      aggregateType: "money_category_rule",
+      aggregateId: ruleId ?? suggestion.transaction_id,
+      payload: {
+        rule_id: ruleId,
+        category_id: categoryId,
+        merchant: suggestion.normalized_merchant_name,
+        scope: "private",
+      },
     });
   }
 

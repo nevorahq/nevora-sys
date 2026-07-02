@@ -30,7 +30,7 @@ export function ExpenseQuestion({ labels, month }: ExpenseQuestionProps) {
   return (
     <section className="mt-8 soft-card p-5">
       <div className="flex items-center gap-2">
-        <SparklesIcon size={18} className="text-accent-purple" />
+        <SparklesIcon size={18} className="text-text-secondary" />
         <h2 className="font-semibold text-text-primary">{labels.title}</h2>
       </div>
       <p className="mt-1 text-sm text-text-muted">{labels.hint}</p>
@@ -45,7 +45,7 @@ export function ExpenseQuestion({ labels, month }: ExpenseQuestionProps) {
         <button
           type="submit"
           disabled={pending || question.trim().length < 3}
-          className="min-h-11 rounded-lg bg-accent-purple px-4 text-sm font-semibold text-text-inverse disabled:opacity-50"
+          className="min-h-11 rounded-lg bg-text-primary px-4 text-sm font-semibold text-text-inverse disabled:opacity-50"
         >
           {pending ? labels.calculating : labels.calculate}
         </button>

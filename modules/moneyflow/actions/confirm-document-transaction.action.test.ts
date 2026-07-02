@@ -23,7 +23,7 @@ const ACC_EUR = "55555555-5555-4555-8555-555555555555";
 const ACC_MDL = "66666666-6666-4666-8666-666666666666";
 
 let executed: string[];
-let updatePayloads: Record<string, unknown>;
+let updatePayloads: Record<string, Record<string, unknown>[]>;
 let insertPayloads: Record<string, unknown>;
 
 /** Op-aware Supabase mock. `resolver(table, op)` resolves each terminal query. */
@@ -36,7 +36,7 @@ function makeSupabase(resolver: (table: string, op: string) => unknown) {
       return builder;
     };
     builder.update = vi.fn((payload: Record<string, unknown>) => {
-      updatePayloads[table] = payload;
+      (updatePayloads[table] ??= []).push(payload);
       return setOp("update");
     });
     builder.insert = vi.fn((payload: Record<string, unknown>) => {
@@ -105,11 +105,11 @@ describe("confirmDocumentTransactionAction", () => {
     const result = await confirmDocumentTransactionAction(TX_ID);
 
     expect(result).toEqual({});
-    expect(updatePayloads.money_transactions).toMatchObject({ status: "posted", account_id: ACC_EUR, updated_by: USER_ID });
+    expect(updatePayloads.money_transactions[0]).toMatchObject({ status: "posted", account_id: ACC_EUR, updated_by: USER_ID });
     expect(emitDomainEvent).toHaveBeenCalledWith(
       expect.objectContaining({ eventName: "money.transaction.confirmed", aggregateId: TX_ID }),
     );
-    expect(updatePayloads.action_items).toMatchObject({ status: "resolved" });
+    expect(updatePayloads.action_items[0]).toMatchObject({ status: "resolved" });
     expect(revalidatePath).toHaveBeenCalledWith(`/dashboard/documents/${DOC_ID}`);
   });
 
@@ -142,7 +142,7 @@ describe("confirmDocumentTransactionAction", () => {
     const result = await confirmDocumentTransactionAction(TX_ID, ACC_EUR);
 
     expect(result).toEqual({});
-    expect(updatePayloads.money_transactions).toMatchObject({ status: "posted", account_id: ACC_EUR });
+    expect(updatePayloads.money_transactions[0]).toMatchObject({ status: "posted", account_id: ACC_EUR });
   });
 
   it("errors when the selected account is unavailable", async () => {
@@ -219,7 +219,7 @@ describe("confirmDocumentTransactionAction", () => {
     });
 
     expect(result).toEqual({});
-    expect(updatePayloads.money_transactions).toMatchObject({
+    expect(updatePayloads.money_transactions[0]).toMatchObject({
       category_id: "77777777-7777-4777-8777-777777777777",
       expense_context_id: "88888888-8888-4888-8888-888888888888",
       visibility: "private",
@@ -228,6 +228,13 @@ describe("confirmDocumentTransactionAction", () => {
       amount: 50,
       transaction_date: "2026-06-28",
       currency: "EUR",
+    });
+    // Phase 5.1 consistency: a confirmed draft that carries a category is a
+    // manual, confirmed categorization — recorded in a follow-up update.
+    expect(updatePayloads.money_transactions[1]).toMatchObject({
+      categorization_status: "confirmed",
+      category_source: "manual",
+      normalized_merchant_name: "bolt",
     });
     expect(insertPayloads.transaction_classifications).toMatchObject({ method: "manual", visibility: "private" });
     expect(insertPayloads.expense_classification_rules).toMatchObject({

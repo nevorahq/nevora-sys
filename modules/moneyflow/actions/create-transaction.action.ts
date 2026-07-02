@@ -1,11 +1,13 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
 import { emitDomainEvent } from "@/lib/events";
 import { checkPlanLimit } from "@/lib/billing";
 import { getTransactionSchemas } from "../schemas/transaction.schema";
+import { categorizeTransaction } from "../services/money-categorization.service";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
@@ -107,6 +109,40 @@ export async function createTransactionAction(
           : {}),
       },
     });
+
+    // Auto-categorization (Phase 5.1): a posted income/expense without a
+    // user-picked category enters the pipeline automatically. The heavy work
+    // (incl. a possible AI call) runs AFTER the response via Next `after()` —
+    // same non-blocking pattern as document extraction. A user rule applies
+    // the category directly; history/system/AI only create a pending
+    // suggestion; failures mark the row 'failed' and never surface here.
+    // Limitation: no background worker exists, so if the `after()` callback is
+    // lost (process crash) the row simply stays in the uncategorized queue,
+    // where manual/bulk categorization picks it up.
+    if (
+      !parsed.data.category_id &&
+      parsed.data.status !== "planned" &&
+      (parsed.data.type === "income" || parsed.data.type === "expense")
+    ) {
+      const transactionId = newTx.id as string;
+      await emitDomainEvent({
+        organizationId: org.id,
+        workspaceId: workspace.id,
+        eventName: "money.transaction.auto_categorization_requested",
+        aggregateType: "transaction",
+        aggregateId: transactionId,
+        payload: { transaction_id: transactionId, type: parsed.data.type },
+      });
+      after(async () => {
+        try {
+          const bgSupabase = await createClient();
+          const bgCtx = await requireOrg();
+          await categorizeTransaction(bgSupabase, bgCtx, transactionId, { allowAi: true });
+        } catch (err) {
+          console.error("createTransaction: auto-categorization failed", err);
+        }
+      });
+    }
   } catch (err) {
     console.error("createTransaction unexpected error:", err);
     return { error: dict.money.errors.serverError };
