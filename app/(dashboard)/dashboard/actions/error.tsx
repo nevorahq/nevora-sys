@@ -11,7 +11,10 @@ export default function ActionsError({
   return (
     <div className="soft-card p-8 text-center">
       <h2 className="text-lg font-semibold text-text-primary">Couldn&apos;t load the Action Center</h2>
-      <p className="mt-2 text-sm text-text-muted">{error.message || "An unexpected error occurred"}</p>
+      <p className="mt-2 text-sm text-text-muted">An unexpected error occurred. Please try again.</p>
+      {error.digest ? (
+        <p className="mt-2 text-xs text-text-muted/70">Reference: <code>{error.digest}</code></p>
+      ) : null}
       <button
         onClick={reset}
         className="mt-4 rounded-(--neu-radius-pill) bg-surface-sunken px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary"

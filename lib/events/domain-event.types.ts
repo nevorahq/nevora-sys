@@ -112,7 +112,9 @@ export type AggregateType =
   | "booking_service"
   | "entity_relation"
   | "action_item"
-  | "project";
+  | "project"
+  | "money_ai_suggestion"
+  | "money_category_rule";
 
 // ── Payload map — типизированный payload для каждого события ─────────────────
 // Добавляй новые события сюда по мере роста модулей.
@@ -210,6 +212,62 @@ export interface DomainEventPayloadMap {
     transaction_date?: string | null;
   };
   "transaction.deleted": { amount?: number; type?: string };
+
+  // Money Intelligence (Phase 5, migration 069)
+  "money.transaction.categorization_requested": {
+    transaction_id: string;
+    type: string;
+  };
+  "money.transaction.categorized": {
+    transaction_id: string;
+    category_id: string | null;
+    category_source: string;
+    confidence?: number;
+  };
+  "money.transaction.category_changed": {
+    transaction_id: string;
+    category_id: string | null;
+    category_source: string | null;
+  };
+  "money.ai_suggestion.created": {
+    transaction_id: string;
+    suggested_category_id: string | null;
+    source: string;
+    confidence: number;
+  };
+  "money.ai_suggestion.accepted": {
+    transaction_id: string;
+    category_id: string;
+    source: string;
+    confidence: number;
+    edited: boolean;
+  };
+  "money.ai_suggestion.rejected": {
+    transaction_id: string;
+    source: string;
+  };
+  "money.category_rule.created": {
+    rule_id: string | null;
+    merchant: string;
+    category_id: string;
+    scope?: string;
+  };
+  "money.category_rule.updated": {
+    rule_id: string;
+    scope: string;
+    category_id: string | null;
+  };
+  "money.category_rule.disabled": { rule_id: string; scope: string };
+  "money.category_rule.enabled": { rule_id: string; scope: string };
+  "money.category_rule.deleted": { rule_id: string; scope: string };
+  "money.ai_suggestion.expired": {
+    transaction_id: string;
+    source: string;
+  };
+  "money.transaction.auto_categorization_requested": {
+    transaction_id: string;
+    type: string;
+  };
   "account.created": {
     name: string;
     currency: string;
@@ -244,6 +302,19 @@ export interface DomainEventPayloadMap {
   "recommendation.dismissed": Record<string, unknown>;
   "subscription.plan_changed": { plan_slug: string; billing_cycle: string };
   "subscription.canceled": { at_period_end: boolean };
+  "billing.subscription.created": Record<string, unknown>;
+  "billing.subscription.updated": Record<string, unknown>;
+  "billing.subscription.canceled": { at_period_end?: boolean; provider?: string };
+  "billing.plan.changed": { old_plan_code?: string; new_plan_code: string };
+  "billing.payment.succeeded": { amount?: number; currency?: string; provider?: string };
+  "billing.payment.failed": { amount?: number; currency?: string; provider?: string; reason?: string };
+  "billing.limit.exceeded": {
+    key: string;
+    current_usage: number;
+    limit: number | null;
+    plan_code: string;
+  };
+  "billing.trial.expired": { trial_end: string };
 
   "document.created": {
     title: string;

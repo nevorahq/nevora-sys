@@ -216,9 +216,9 @@ export async function upsertPrivateMerchantRule(
   supabase: SupabaseClient,
   ctx: CurrentContext,
   input: { normalizedMerchant: string; categoryId: string | null; expenseContextId: string | null },
-): Promise<void> {
+): Promise<string | null> {
   const normalizedMerchant = input.normalizedMerchant;
-  if (!normalizedMerchant || normalizedMerchant === "unknown merchant") return;
+  if (!normalizedMerchant || normalizedMerchant === "unknown merchant") return null;
 
   const { data: existingRule } = await supabase
     .from("expense_classification_rules")
@@ -244,6 +244,8 @@ export async function upsertPrivateMerchantRule(
         .eq("id", existingRule.id)
         .eq("organization_id", ctx.org.id)
         .eq("owner_user_id", ctx.user.id)
+        .select("id")
+        .maybeSingle()
     : await supabase.from("expense_classification_rules").insert({
         organization_id: ctx.org.id,
         workspace_id: ctx.workspace.id,
@@ -252,8 +254,11 @@ export async function upsertPrivateMerchantRule(
         normalized_merchant: normalizedMerchant,
         ...rulePayload,
         created_by: ctx.user.id,
-      });
+      })
+        .select("id")
+        .maybeSingle();
   if (ruleResult.error) console.error("upsertPrivateMerchantRule error:", ruleResult.error.message);
+  return (ruleResult.data as { id?: string } | null)?.id ?? null;
 }
 
 function findCategoryByName(categories: CategoryRow[], key: string): CategoryRow | undefined {

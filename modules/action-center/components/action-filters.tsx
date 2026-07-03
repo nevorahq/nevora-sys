@@ -8,6 +8,7 @@ import { SOURCE_LABELS } from "../constants/action-center.constants";
 
 export interface FilterState {
   search: string;
+  view: "attention" | "snoozed" | "";
   priority: string; // "" = all
   sourceType: string; // "" = all
 }
@@ -31,6 +32,12 @@ export function ActionFilters({ value, onChange }: ActionFiltersProps) {
           className="pl-9"
         />
       </div>
+      <Select
+        label="View"
+        value={value.view}
+        onChange={(e) => onChange({ ...value, view: e.target.value as FilterState["view"] })}
+        options={[{ value: "attention", label: "Needs attention" }, { value: "snoozed", label: "Snoozed" }, { value: "", label: "All active" }]}
+      />
       <Select
         label="Priority"
         value={value.priority}

@@ -11,9 +11,11 @@ export async function getSubscription(
     .select(
       "id, organization_id, plan_id, status, billing_cycle, " +
       "trial_ends_at, current_period_start, current_period_end, " +
-      "canceled_at, cancel_at_period_end, external_id, metadata, created_at, updated_at, " +
+      "canceled_at, cancel_at_period_end, external_id, " +
+      "billing_provider, provider_customer_id, provider_subscription_id, trial_start, trial_end, " +
+      "metadata, created_at, updated_at, " +
       "plan:plans!plan_id(" +
-        "id, slug, name, description, price_monthly, price_yearly, currency, is_active, " +
+        "id, slug, code, name, description, price_monthly, price_yearly, currency, is_active, sort_order, " +
         "max_members, max_workspaces, max_tasks, max_deals, max_clients, " +
         "max_documents, max_subscriptions, max_money_transactions, max_ai_calls_mo, max_storage_mb, " +
         "included_members, extra_member_price, features, created_at, updated_at" +

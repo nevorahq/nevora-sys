@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CreditCardIcon, UserRoundIcon, UsersRoundIcon, Building2Icon } from "lucide-react";
+import { BellRingIcon, Code2Icon, CreditCardIcon, Layers3Icon, UserRoundIcon, UsersRoundIcon, Building2Icon } from "lucide-react";
 import { ROUTES } from "@/shared/config/routes";
 import { cn } from "@/shared/utils/cn";
 
 const ITEMS = [
   { href: ROUTES.settingsProfile, label: "Profile", icon: UserRoundIcon, admin: false },
+  { href: ROUTES.settingsNotifications, label: "Notifications", icon: BellRingIcon, admin: false },
   { href: ROUTES.settingsWorkspace, label: "Workspace", icon: Building2Icon, admin: true },
   { href: ROUTES.settingsMembers, label: "Members", icon: UsersRoundIcon, admin: true },
   { href: ROUTES.settingsBilling, label: "Billing", icon: CreditCardIcon, admin: true },
+  { href: ROUTES.settingsPlans, label: "Plans", icon: Layers3Icon, admin: false },
+  { href: ROUTES.settingsDeveloper, label: "Developer", icon: Code2Icon, admin: true },
 ] as const;
 
 export function SettingsSidebar({ canAdminister }: { canAdminister: boolean }) {

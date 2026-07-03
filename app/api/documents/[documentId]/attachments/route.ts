@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
-import { checkPlanLimit } from "@/lib/billing";
+import { assertPlanLimit, assertSubscriptionWritable } from "@/modules/billing";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
 import { hasDocumentPermission } from "@/modules/documents/services/document-permissions";
@@ -25,8 +25,12 @@ export async function POST(request: Request, context: RouteContext<"/api/documen
     const filesValidation = validateDocumentFiles(files);
     if (!filesValidation.ok) return NextResponse.json(filesValidation, { status: 400 });
 
-    const storageLimit = await checkPlanLimit(ctx.org.id, "storage_mb", files.reduce((total, file) => total + file.size, 0) / (1024 * 1024));
-    if (!storageLimit.allowed) return NextResponse.json({ error: storageLimit.reason ?? "Storage limit reached." }, { status: 403 });
+    try {
+      await assertSubscriptionWritable(ctx.org.id);
+      await assertPlanLimit(ctx.org.id, "storage.bytes", files.reduce((total, file) => total + file.size, 0));
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Storage limit reached." }, { status: 403 });
+    }
 
     const supabase = await createClient();
     const { data: document } = await supabase.from("documents").select("id, workspace_id").eq("id", parsedId.data).eq("organization_id", ctx.org.id).single();

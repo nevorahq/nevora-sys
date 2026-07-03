@@ -1,4 +1,11 @@
-import type { AccountType, AnyTransactionType, CategoryType } from "../constants/moneyflow.constants";
+import type {
+  AccountType,
+  AnyTransactionType,
+  CategorizationStatus,
+  CategorySource,
+  CategoryType,
+  SuggestionStatus,
+} from "../constants/moneyflow.constants";
 
 /**
  * MoneyFlow domain types.
@@ -56,8 +63,37 @@ export type MoneyTransaction = {
   // NULL for income/expense rows (DB CHECK, migration 067).
   from_account_id: string | null;
   to_account_id: string | null;
+  // Money Intelligence (migration 069). Transfers carry no category and stay
+  // 'uncategorized' — categorization queries always filter by type.
+  categorization_status: CategorizationStatus;
+  category_source: CategorySource | null;
+  category_confidence: number | null;
+  merchant_name?: string | null;
+  normalized_merchant_name?: string | null;
   created_at: string;
   updated_at: string;
+};
+
+// ── AI category suggestion (money_ai_suggestions, migration 069) ──
+export type MoneyAiSuggestion = {
+  id: string;
+  organization_id: string;
+  workspace_id: string | null;
+  transaction_id: string;
+  suggested_category_id: string | null;
+  suggested_category_name: string | null;
+  suggested_type: CategoryType | null;
+  merchant_name: string | null;
+  normalized_merchant_name: string | null;
+  confidence: number;
+  reasoning: string | null;
+  tags: string[];
+  source: "history" | "system" | "ai";
+  status: SuggestionStatus;
+  created_by: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
 };
 
 /**

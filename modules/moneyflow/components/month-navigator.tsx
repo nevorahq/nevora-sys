@@ -49,7 +49,7 @@ export function MonthNavigator({ range, dict }: { range: MonthRange; dict: Dicti
       {!range.isCurrent && (
         <Link
           href={ROUTES.money}
-          className="text-xs font-medium text-accent-purple hover:underline"
+          className="text-xs font-medium text-text-secondary hover:text-text-primary hover:underline"
         >
           {t.thisMonth}
         </Link>

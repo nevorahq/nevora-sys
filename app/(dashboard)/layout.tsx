@@ -14,6 +14,9 @@ import { TrialBanner } from "@/modules/billing/components/trial-banner";
 import { DeveloperAccessBadge } from "@/modules/billing/components/developer-access-badge";
 import { resolveAccountLimits } from "@/lib/billing";
 import { OrganizationSwitcher, getUserOrganizations } from "@/modules/members";
+import { getNotificationPreferences } from "@/modules/settings/notifications/queries/get-notification-preferences";
+import { NotificationProvider } from "@/modules/notifications/components/notification-provider";
+import { getNotificationCounters } from "@/modules/notifications/queries/get-notification-counters";
 
 /**
  * Dashboard Layout — обёртка для ВСЕХ защищённых страниц.
@@ -45,17 +48,20 @@ export default async function DashboardLayout({
     requireOrg(),
     getDictionary(),
   ]);
-  const [taskSummary, renewals, trial, bookingRequests, limits, userOrganizations] = await Promise.all([
+  const [taskSummary, renewals, trial, bookingRequests, limits, userOrganizations, notificationPreferences, initialNotificationCounters] = await Promise.all([
     getTaskSummary(context.org.id),
     getUpcomingRenewals(context.org.id),
     getTrialState(context.org.id),
     getBookingRequests(context.org.id, { status: "pending", limit: 5 }),
     resolveAccountLimits(user.id, context.org.id),
     getUserOrganizations(user.id),
+    getNotificationPreferences(),
+    getNotificationCounters(),
   ]);
 
   return (
-    <div className="flex h-full min-h-screen">
+    <NotificationProvider key={`${context.org.id}:${user.id}`} organizationId={context.org.id} userId={user.id} initialPreferences={notificationPreferences} initialCounters={initialNotificationCounters}>
+      <div className="flex h-full min-h-screen">
       {/* Sidebar — навигация платформы */}
       <Sidebar dict={dict} />
 
@@ -89,6 +95,7 @@ export default async function DashboardLayout({
           {children}
         </main>
       </div>
-    </div>
+      </div>
+    </NotificationProvider>
   );
 }

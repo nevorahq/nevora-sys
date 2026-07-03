@@ -8,7 +8,7 @@ import { ActionDetailDrawer } from "./action-detail-drawer";
 import { ActionEmptyState } from "./action-empty-state";
 import { SECTION_LABELS, SECTION_ORDER } from "../constants/action-center.constants";
 import type { ActionFeed as ActionFeedData, ActionFilters as ActionFiltersInput } from "../types/action-center.types";
-import type { ActionItemPriority, ActionSourceType } from "../types/action-item.types";
+import type { ActionItemPriority, ActionItemStatus, ActionSourceType } from "../types/action-item.types";
 import { getActionFeed } from "../actions/get-feed.action";
 
 interface ActionFeedProps {
@@ -17,11 +17,12 @@ interface ActionFeedProps {
   currentUserId: string;
 }
 
-const EMPTY_FILTERS: FilterState = { search: "", priority: "", sourceType: "" };
+const EMPTY_FILTERS: FilterState = { search: "", view: "attention", priority: "", sourceType: "" };
 
 function toInput(f: FilterState, cursor?: string): ActionFiltersInput {
   return {
     search: f.search.trim() || undefined,
+    status: (f.view === "attention" ? ["open", "in_progress", "failed"] : f.view === "snoozed" ? ["snoozed"] : undefined) as ActionItemStatus[] | undefined,
     priority: f.priority ? [f.priority as ActionItemPriority] : undefined,
     sourceType: f.sourceType ? [f.sourceType as ActionSourceType] : undefined,
     cursor,

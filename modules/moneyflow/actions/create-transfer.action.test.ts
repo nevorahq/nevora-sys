@@ -3,14 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const createClient = vi.fn();
 const requireOrg = vi.fn();
 const emitDomainEvent = vi.fn();
-const checkPlanLimit = vi.fn();
+const reserveOrganizationUsage = vi.fn();
+const releaseOrganizationUsage = vi.fn();
 const revalidatePath = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/lib/supabase/server", () => ({ createClient }));
 vi.mock("@/lib/auth/require-org", () => ({ requireOrg }));
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
-vi.mock("@/lib/billing", () => ({ checkPlanLimit }));
+vi.mock("@/modules/billing", () => ({ reserveOrganizationUsage, releaseOrganizationUsage }));
 vi.mock("@/shared/i18n/get-dictionary", () => ({
   getDictionary: vi.fn(async () => ({
     dict: {
@@ -84,7 +85,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   insertArg = null;
   requireOrg.mockResolvedValue(ctx);
-  checkPlanLimit.mockResolvedValue({ allowed: true });
+  reserveOrganizationUsage.mockResolvedValue(1);
+  releaseOrganizationUsage.mockResolvedValue(0);
   emitDomainEvent.mockResolvedValue(undefined);
   accountsData = {
     data: [

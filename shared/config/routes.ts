@@ -32,9 +32,12 @@ export const ROUTES = {
   ai:         "/dashboard/ai",
   settings:          "/dashboard/settings",
   settingsProfile:   "/dashboard/settings/profile",
+  settingsNotifications: "/dashboard/settings/notifications",
   settingsWorkspace: "/dashboard/settings/workspace",
   settingsMembers:   "/dashboard/settings/members",
   settingsBilling:   "/dashboard/settings/billing",
+  settingsPlans:     "/dashboard/settings/plans",
+  settingsDeveloper: "/dashboard/settings/developer",
   // Compatibility aliases for existing domain modules and links.
   billing:            "/dashboard/settings/billing",
   members:            "/dashboard/settings/members",
@@ -88,6 +91,7 @@ export function inviteUrl(token: string) {
 export const PUBLIC_PREFIXES = [
   "/booking/",
   "/api/public/",
+  "/api/v1/",
   "/invite/",
 ] as const;
 

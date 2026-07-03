@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
-import { checkPlanLimit } from "@/lib/billing";
+import {
+  assertPlanLimit,
+  releaseOrganizationUsage,
+  reserveOrganizationUsage,
+} from "@/modules/billing";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { validateDocumentFiles } from "./validate-document-file";
 import { persistDocumentAttachments } from "./persist-document-attachments";
@@ -57,54 +61,63 @@ export async function createTaskDocumentWithAttachments(params: {
   if (!task) return { ok: false, status: 404, error: "Task not found." };
   const taskRow = task as TaskRow;
 
-  const [documentLimit, storageLimit] = await Promise.all([
-    checkPlanLimit(ctx.org.id, "documents"),
-    checkPlanLimit(ctx.org.id, "storage_mb", files.reduce((total, file) => total + file.size, 0) / (1024 * 1024)),
-  ]);
-  if (!documentLimit.allowed || !storageLimit.allowed) {
-    return { ok: false, status: 403, error: documentLimit.reason ?? storageLimit.reason ?? "Your plan limit has been reached." };
+  try {
+    await assertPlanLimit(ctx.org.id, "storage.bytes", files.reduce((total, file) => total + file.size, 0));
+    await reserveOrganizationUsage(ctx.org.id, "documents.count", 1);
+  } catch (error) {
+    return { ok: false, status: 403, error: error instanceof Error ? error.message : "Your plan limit has been reached." };
   }
 
-  const content = [
-    (taskRow.description ?? "").trim(),
-    `Priority: ${taskRow.priority ?? "medium"}`,
-    taskRow.due_date ? `Due date: ${taskRow.due_date}` : null,
-    taskRow.recurrence === "monthly" ? "Recurring: monthly" : null,
-  ].filter(Boolean).join("\n\n");
+  // Guards the reservation against a thrown exception between reserve and a
+  // committed `documents` row. Once the row exists the counter legitimately
+  // backs it (and the removal trigger releases on any later delete/rollback),
+  // so the catch must NOT release — that would double-decrement (P1-3).
+  let documentCreated = false;
+  try {
+    const content = [
+      (taskRow.description ?? "").trim(),
+      `Priority: ${taskRow.priority ?? "medium"}`,
+      taskRow.due_date ? `Due date: ${taskRow.due_date}` : null,
+      taskRow.recurrence === "monthly" ? "Recurring: monthly" : null,
+    ].filter(Boolean).join("\n\n");
 
-  const { data: document, error: documentError } = await supabase
-    .from("documents")
-    .insert({
-      organization_id: ctx.org.id,
-      workspace_id: ctx.workspace.id,
-      title: taskRow.title,
-      content,
-      doc_type: "note",
-      status: "draft",
-      entity_type: "task",
-      entity_id: taskRow.id,
-      created_by: ctx.user.id,
-      updated_by: ctx.user.id,
-    })
-    .select("id")
-    .single();
-  if (documentError || !document) {
-    console.error("createTaskDocument: document creation failed", documentError);
-    return { ok: false, status: 500, error: "We could not create the task document. Please try again." };
-  }
-  const documentId = document.id as string;
+    const { data: document, error: documentError } = await supabase
+      .from("documents")
+      .insert({
+        organization_id: ctx.org.id,
+        workspace_id: ctx.workspace.id,
+        title: taskRow.title,
+        content,
+        doc_type: "note",
+        status: "draft",
+        entity_type: "task",
+        entity_id: taskRow.id,
+        created_by: ctx.user.id,
+        updated_by: ctx.user.id,
+      })
+      .select("id")
+      .single();
+    if (documentError || !document) {
+      console.error("createTaskDocument: document creation failed", documentError);
+      await releaseOrganizationUsage(ctx.org.id, "documents.count", 1);
+      return { ok: false, status: 500, error: "We could not create the task document. Please try again." };
+    }
+    documentCreated = true;
+    const documentId = document.id as string;
 
-  const persisted = await persistDocumentAttachments({ supabase, ctx, documentId, files });
-  if (!persisted.ok) {
-    // Never leave an empty or partially-filled draft behind: undo storage,
-    // attachment rows, and the document itself before surfacing the error.
-    await rollbackTaskDocument(supabase, ctx, documentId, persisted.uploadedPaths);
-    console.error("createTaskDocument: upload failed, rolled back document", persisted.error);
-    return { ok: false, status: 500, error: persisted.error };
-  }
-  const attachments = persisted.attachments;
+    const persisted = await persistDocumentAttachments({ supabase, ctx, documentId, files });
+    if (!persisted.ok) {
+      // Never leave an empty or partially-filled draft behind: undo storage,
+      // attachment rows, and the document itself before surfacing the error.
+      // Deleting the document fires the removal trigger, which releases the
+      // reservation — so we do NOT release explicitly here.
+      await rollbackTaskDocument(supabase, ctx, documentId, persisted.uploadedPaths);
+      console.error("createTaskDocument: upload failed, rolled back document", persisted.error);
+      return { ok: false, status: 500, error: persisted.error };
+    }
+    const attachments = persisted.attachments;
 
-  await Promise.all([
+    await Promise.all([
     emitDomainEvent({ organizationId: ctx.org.id, workspaceId: ctx.workspace.id, eventName: "document.created", aggregateType: "document", aggregateId: documentId, payload: { title: taskRow.title } }),
     emitAuditLog({ organizationId: ctx.org.id, entityType: "documents", entityId: documentId, action: "create", newData: { title: taskRow.title, entity_type: "task", entity_id: taskRow.id }, metadata: { source: "dashboard", trigger: "task_creation" } }),
     ...attachments.flatMap((attachment) => {
@@ -116,11 +129,18 @@ export async function createTaskDocumentWithAttachments(params: {
     }),
   ]);
 
-  return {
-    ok: true,
-    documentId,
-    attachments: attachments.map(({ id, original_filename }) => ({ id, original_filename })),
-  };
+    return {
+      ok: true,
+      documentId,
+      attachments: attachments.map(({ id, original_filename }) => ({ id, original_filename })),
+    };
+  } catch (err) {
+    // Only release when no document row was ever committed; otherwise the row
+    // (or its rollback delete) owns the counter and releasing here would drift
+    // it negative.
+    if (!documentCreated) await releaseOrganizationUsage(ctx.org.id, "documents.count", 1);
+    throw err;
+  }
 }
 
 async function rollbackTaskDocument(

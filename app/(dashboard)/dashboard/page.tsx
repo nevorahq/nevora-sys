@@ -13,6 +13,8 @@ import { MoneyRecentTransactions } from "@/modules/moneyflow/components/money-re
 import { MoneyEmptyState } from "@/modules/moneyflow/components/money-empty-state";
 import { SubSummaryCards } from "@/modules/subtracker/components/sub-summary-cards";
 import { ROUTES } from "@/shared/config/routes";
+import { getNotificationCounters } from "@/modules/notifications/queries/get-notification-counters";
+import { ObligationSummary } from "@/modules/notifications/components/obligation-summary";
 
 /**
  * Dashboard Overview — /dashboard
@@ -31,6 +33,7 @@ export default async function DashboardPage() {
     recentTransactions,
     subSummary,
     upcomingRenewals,
+    notificationCounters,
     { dict },
   ] = await Promise.all([
     getTaskSummary(org.id),
@@ -38,6 +41,7 @@ export default async function DashboardPage() {
     getTransactions(org.id, { limit: 5 }),
     getSubSummary(org.id),
     getUpcomingRenewals(org.id),
+    getNotificationCounters(),
     getDictionary(),
   ]);
 
@@ -52,6 +56,8 @@ export default async function DashboardPage() {
           {dict.dashboard.subtitle}
         </p>
       </div>
+
+      <ObligationSummary counters={notificationCounters} />
 
       {/* ── Upcoming Renewals Alert ── */}
       {upcomingRenewals.length > 0 && (

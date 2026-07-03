@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
-import { checkPlanLimit } from "@/lib/billing";
+import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
 import { createTaskSchema } from "../schemas/task.schema";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
@@ -15,11 +15,6 @@ export async function createTaskAction(
   formData: FormData,
 ): Promise<ActionResult> {
   const { user, org, workspace } = await requireOrg();
-
-  const limitCheck = await checkPlanLimit(org.id, "tasks");
-  if (!limitCheck.allowed) {
-    return { error: limitCheck.reason ?? "Plan limit reached. Upgrade your plan." };
-  }
 
   const rawData = {
     title:        formData.get("title") as string,
@@ -42,6 +37,17 @@ export async function createTaskAction(
       fieldErrors[key] = [...(fieldErrors[key] ?? []), issue.message];
     }
     return { fieldErrors };
+  }
+
+  // Tracks a live reservation not yet backed by a persisted row. Set false the
+  // moment the insert commits so post-insert failures never release a
+  // legitimate count; released in the outer catch otherwise (P1-3).
+  let reserved = false;
+  try {
+    await reserveOrganizationUsage(org.id, "tasks.count", 1);
+    reserved = true;
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Plan limit reached. Upgrade your plan." };
   }
 
   try {
@@ -68,8 +74,13 @@ export async function createTaskAction(
 
     if (error) {
       console.error("createTask error:", error);
+      await releaseOrganizationUsage(org.id, "tasks.count", 1);
       return { error: "Failed to create task" };
     }
+
+    // Row is committed — the reservation now legitimately backs it. Any later
+    // failure must NOT release, and the removal trigger handles real deletes.
+    reserved = false;
 
     // Создатель уже добавлен в assignees триггером todos_add_creator_assignee.
     // Доп. исполнители — идемпотентно, чтобы не конфликтовать с создателем.
@@ -113,6 +124,7 @@ export async function createTaskAction(
     ]);
   } catch (err) {
     console.error("createTask unexpected error:", err);
+    if (reserved) await releaseOrganizationUsage(org.id, "tasks.count", 1);
     return { error: "Server error" };
   }
 

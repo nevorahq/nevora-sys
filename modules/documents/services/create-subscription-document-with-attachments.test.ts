@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const checkPlanLimit = vi.fn();
+const assertPlanLimit = vi.fn();
+const reserveOrganizationUsage = vi.fn();
+const releaseOrganizationUsage = vi.fn();
 const createEntityLink = vi.fn();
 const emitDomainEvent = vi.fn();
 const emitAuditLog = vi.fn();
 
-vi.mock("@/lib/billing", () => ({ checkPlanLimit }));
+vi.mock("@/modules/billing", () => ({ assertPlanLimit, reserveOrganizationUsage, releaseOrganizationUsage }));
 vi.mock("@/lib/entity-links", () => ({ createEntityLink }));
 vi.mock("@/lib/events", () => ({ emitDomainEvent, emitAuditLog }));
 
@@ -77,7 +79,9 @@ function receiptFile() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  checkPlanLimit.mockResolvedValue({ allowed: true });
+  assertPlanLimit.mockResolvedValue(undefined);
+  reserveOrganizationUsage.mockResolvedValue(1);
+  releaseOrganizationUsage.mockResolvedValue(0);
   createEntityLink.mockResolvedValue({ ok: true, data: { id: "relation-id" } });
   emitDomainEvent.mockResolvedValue(undefined);
   emitAuditLog.mockResolvedValue(undefined);

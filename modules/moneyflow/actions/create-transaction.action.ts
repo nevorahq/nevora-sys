@@ -1,11 +1,13 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
 import { emitDomainEvent } from "@/lib/events";
-import { checkPlanLimit } from "@/lib/billing";
+import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
 import { getTransactionSchemas } from "../schemas/transaction.schema";
+import { categorizeTransaction } from "../services/money-categorization.service";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
@@ -25,11 +27,6 @@ export async function createTransactionAction(
   const { createTransactionSchema } = getTransactionSchemas(dict.money.errors);
 
   const { user, org, workspace } = await requireOrg();
-
-  const limitCheck = await checkPlanLimit(org.id, "money_transactions");
-  if (!limitCheck.allowed) {
-    return { error: limitCheck.reason ?? "Money transaction limit reached. Upgrade your plan." };
-  }
 
   const rawData = {
     title: formData.get("title") as string,
@@ -54,6 +51,16 @@ export async function createTransactionAction(
     return { fieldErrors };
   }
 
+  // Live reservation not yet backed by a row; released in the outer catch if we
+  // never reach a committed insert (P1-3).
+  let reserved = false;
+  try {
+    await reserveOrganizationUsage(org.id, "money_transactions.count", 1);
+    reserved = true;
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Money transaction limit reached. Upgrade your plan." };
+  }
+
   try {
     const supabase = await createClient();
 
@@ -69,6 +76,11 @@ export async function createTransactionAction(
         amount: parsed.data.amount,
         account_id: parsed.data.account_id,
         category_id: parsed.data.category_id,
+        // A category picked in the form is a manual, confirmed decision
+        // (Money Intelligence, migration 069). Without one the row waits in
+        // the uncategorized queue for rule/AI categorization.
+        category_source: parsed.data.category_id ? "manual" : null,
+        categorization_status: parsed.data.category_id ? "confirmed" : "uncategorized",
         transaction_date: parsed.data.transaction_date,
         currency: parsed.data.currency,
         status: parsed.data.status,
@@ -79,8 +91,10 @@ export async function createTransactionAction(
 
     if (error || !newTx) {
       console.error("createTransaction error:", error);
+      await releaseOrganizationUsage(org.id, "money_transactions.count", 1);
       return { error: dict.money.errors.createTransactionFailed };
     }
+    reserved = false;
 
     await emitDomainEvent({
       organizationId: org.id,
@@ -102,8 +116,43 @@ export async function createTransactionAction(
           : {}),
       },
     });
+
+    // Auto-categorization (Phase 5.1): a posted income/expense without a
+    // user-picked category enters the pipeline automatically. The heavy work
+    // (incl. a possible AI call) runs AFTER the response via Next `after()` —
+    // same non-blocking pattern as document extraction. A user rule applies
+    // the category directly; history/system/AI only create a pending
+    // suggestion; failures mark the row 'failed' and never surface here.
+    // Limitation: no background worker exists, so if the `after()` callback is
+    // lost (process crash) the row simply stays in the uncategorized queue,
+    // where manual/bulk categorization picks it up.
+    if (
+      !parsed.data.category_id &&
+      parsed.data.status !== "planned" &&
+      (parsed.data.type === "income" || parsed.data.type === "expense")
+    ) {
+      const transactionId = newTx.id as string;
+      await emitDomainEvent({
+        organizationId: org.id,
+        workspaceId: workspace.id,
+        eventName: "money.transaction.auto_categorization_requested",
+        aggregateType: "transaction",
+        aggregateId: transactionId,
+        payload: { transaction_id: transactionId, type: parsed.data.type },
+      });
+      after(async () => {
+        try {
+          const bgSupabase = await createClient();
+          const bgCtx = await requireOrg();
+          await categorizeTransaction(bgSupabase, bgCtx, transactionId, { allowAi: true });
+        } catch (err) {
+          console.error("createTransaction: auto-categorization failed", err);
+        }
+      });
+    }
   } catch (err) {
     console.error("createTransaction unexpected error:", err);
+    if (reserved) await releaseOrganizationUsage(org.id, "money_transactions.count", 1);
     return { error: dict.money.errors.serverError };
   }
 

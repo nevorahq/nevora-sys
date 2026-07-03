@@ -5,10 +5,12 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboardIcon, CheckSquareIcon, WalletIcon, RepeatIcon,
   FileTextIcon, BarChart2Icon, SparklesIcon, SettingsIcon,
+  ListChecksIcon,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ROUTES } from "@/shared/config/routes";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
+import { useNotificationIndicator } from "@/modules/notifications/components/notification-provider";
 
 /**
  * Sidebar Navigation — responsive.
@@ -41,9 +43,11 @@ interface SidebarProps {
 
 export function Sidebar({ dict }: SidebarProps) {
   const pathname = usePathname();
+  const { counters } = useNotificationIndicator();
 
   const navItems: NavItem[] = [
     { href: ROUTES.dashboard,     label: dict.nav.dashboard,     icon: LayoutDashboardIcon },
+    { href: ROUTES.actions,       label: dict.nav.actions,       icon: ListChecksIcon },
     { href: ROUTES.tasks,         label: dict.nav.tasks,         icon: CheckSquareIcon },
     { href: ROUTES.money,         label: dict.nav.money,         icon: WalletIcon },
     { href: ROUTES.documents,     label: dict.nav.documents,     icon: FileTextIcon },
@@ -105,7 +109,7 @@ export function Sidebar({ dict }: SidebarProps) {
                   // title — нативный tooltip, показывает label при hover на mobile
                   title={item.label}
                   className={cn(
-                    "flex items-center rounded-(--neu-radius-md) text-sm font-medium transition-all duration-150",
+                    "relative flex items-center rounded-(--neu-radius-md) text-sm font-medium transition-all duration-150",
                     // Mobile: квадратная кнопка, иконка по центру
                     "justify-center p-2.5 md:justify-start md:gap-3 md:px-3 md:py-2.5",
                     active
@@ -120,6 +124,11 @@ export function Sidebar({ dict }: SidebarProps) {
                   />
                   {/* Label: скрыт на mobile, виден на desktop */}
                   <span className="hidden md:inline">{item.label}</span>
+                  {item.href === ROUTES.actions && counters.attention > 0 && (
+                    <span className="absolute ml-6 flex min-w-4 items-center justify-center rounded-full bg-accent-yellow px-1 text-[10px] font-bold text-text-primary md:static md:ml-auto">
+                      {counters.attention > 99 ? "99+" : counters.attention}
+                    </span>
+                  )}
                 </Link>
               </li>
             );

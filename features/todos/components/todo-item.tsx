@@ -131,13 +131,15 @@ function DueBadge({ dueStatus, dict }: { dueStatus: DueStatus; dict: Dictionary 
   return (
     <span
       className={cn(
-        "soft-badge inline-flex items-center gap-1 whitespace-nowrap",
+        "soft-badge inline-flex shrink-0 items-center gap-1 whitespace-nowrap",
         overdue ? "bg-danger-soft text-danger" : "bg-accent-yellow-soft text-accent-yellow",
+        overdue && "h-6 w-6 justify-center p-0",
       )}
       aria-label={overdue ? t.ariaOverdue : t.ariaSoon}
+      title={overdue ? label : undefined}
     >
       <Icon size={12} strokeWidth={2} aria-hidden="true" />
-      {label}
+      {!overdue && label}
     </span>
   );
 }

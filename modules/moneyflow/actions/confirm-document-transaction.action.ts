@@ -205,6 +205,24 @@ export async function confirmDocumentTransactionAction(
     return { error: "Draft transaction not found or already confirmed." };
   }
 
+  // Money Intelligence consistency (Phase 5.1): confirming a draft is an
+  // explicit user decision, so a category carried by the confirmed row is a
+  // manual, confirmed categorization — not a leftover 'uncategorized' default.
+  if (confirmed.category_id) {
+    const { error: catStateError } = await supabase
+      .from("money_transactions")
+      .update({
+        categorization_status: "confirmed",
+        category_source: "manual",
+        normalized_merchant_name:
+          normalizeMerchantName((confirmed.merchant_name as string | null) ?? null) || null,
+        updated_by: ctx.user.id,
+      })
+      .eq("id", confirmed.id)
+      .eq("organization_id", ctx.org.id);
+    if (catStateError) console.error("confirmDocumentTransaction categorization state error:", catStateError.message);
+  }
+
   if (parsedClassification?.success) {
     const decisionVisibility = (confirmed.visibility as "organization" | "private") ?? "organization";
     const decisionOwner = decisionVisibility === "private" ? ctx.user.id : null;

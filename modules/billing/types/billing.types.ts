@@ -6,12 +6,14 @@ import type {
 export interface Plan {
   id: string;
   slug: PlanSlug;
+  code?: PlanSlug;
   name: string;
   description: string | null;
   price_monthly: number;
   price_yearly: number;
   currency: string;
   is_active: boolean;
+  sort_order?: number;
   max_members: number;
   max_workspaces: number;
   max_tasks: number;
@@ -41,6 +43,11 @@ export interface Subscription {
   canceled_at: string | null;
   cancel_at_period_end: boolean;
   external_id: string | null;
+  billing_provider?: string;
+  provider_customer_id?: string | null;
+  provider_subscription_id?: string | null;
+  trial_start?: string | null;
+  trial_end?: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;

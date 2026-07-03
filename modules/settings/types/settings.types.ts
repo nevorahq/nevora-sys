@@ -53,7 +53,15 @@ export interface SettingsMember {
 }
 
 export interface UsageLimit {
-  key: "members" | "storage" | "ai_requests";
+  key:
+    | "members"
+    | "storage"
+    | "tasks"
+    | "documents"
+    | "money_transactions"
+    | "subscriptions"
+    | "ai_requests"
+    | "api_requests";
   label: string;
   used: number;
   limit: number | null;

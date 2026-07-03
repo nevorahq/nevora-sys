@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
 import { emitDomainEvent } from "@/lib/events";
-import { checkPlanLimit } from "@/lib/billing";
+import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
 import { getSubscriptionSchemas } from "../schemas/subscription.schema";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
@@ -18,11 +18,6 @@ export async function createSubscriptionAction(
   const { createSubscriptionSchema } = getSubscriptionSchemas(dict.subscriptions.errors);
 
   const { user, org, workspace } = await requireOrg();
-
-  const limitCheck = await checkPlanLimit(org.id, "subscriptions");
-  if (!limitCheck.allowed) {
-    return { error: limitCheck.reason ?? "Subscription limit reached. Upgrade your plan." };
-  }
 
   const rawData = {
     name: formData.get("name") as string,
@@ -44,6 +39,16 @@ export async function createSubscriptionAction(
       fieldErrors[key] = [...(fieldErrors[key] ?? []), issue.message];
     }
     return { fieldErrors };
+  }
+
+  // Live reservation not yet backed by a row; released in the outer catch if we
+  // never reach a committed insert (P1-3).
+  let reserved = false;
+  try {
+    await reserveOrganizationUsage(org.id, "subscriptions.count", 1);
+    reserved = true;
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Subscription limit reached. Upgrade your plan." };
   }
 
   let newSubId: string;
@@ -71,8 +76,10 @@ export async function createSubscriptionAction(
 
     if (error || !newSub) {
       console.error("createSubscription error:", error);
+      await releaseOrganizationUsage(org.id, "subscriptions.count", 1);
       return { error: dict.subscriptions.errors.createFailed };
     }
+    reserved = false;
     newSubId = newSub.id as string;
 
     await emitDomainEvent({
@@ -90,6 +97,7 @@ export async function createSubscriptionAction(
     });
   } catch (err) {
     console.error("createSubscription unexpected error:", err);
+    if (reserved) await releaseOrganizationUsage(org.id, "subscriptions.count", 1);
     return { error: dict.subscriptions.errors.serverError };
   }
 
