@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
 import { emitAuditLog } from "@/lib/events";
-import { checkPlanLimit } from "@/lib/billing";
+import { assertPlanLimit, assertSubscriptionWritable } from "@/modules/billing";
 import { addDocumentAttachmentSchema } from "../schemas/document.schemas";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
@@ -58,11 +58,12 @@ export async function addDocumentAttachmentAction(
 
     if (!doc) return { error: "Document not found" };
 
-    // Storage-лимит плана: проверяем, что used + размер файла не превысит квоту
-    const incomingMb = (parsed.data.file_size ?? 0) / (1024 * 1024);
-    const storageCheck = await checkPlanLimit(org.id, "storage_mb", incomingMb);
-    if (!storageCheck.allowed) {
-      return { error: storageCheck.reason ?? "Storage limit reached. Upgrade your plan." };
+    // Storage limits are canonical bytes internally; file_size already uses bytes.
+    try {
+      await assertSubscriptionWritable(org.id);
+      await assertPlanLimit(org.id, "storage.bytes", parsed.data.file_size ?? 0);
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Storage limit reached. Upgrade your plan." };
     }
 
     // Ensure file_path starts with org prefix (защита от path traversal)

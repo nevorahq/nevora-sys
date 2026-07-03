@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
 import { emitDomainEvent } from "@/lib/events";
-import { checkPlanLimit } from "@/lib/billing";
+import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
 import { getTransactionSchemas } from "../schemas/transaction.schema";
 import { categorizeTransaction } from "../services/money-categorization.service";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
@@ -28,11 +28,6 @@ export async function createTransactionAction(
 
   const { user, org, workspace } = await requireOrg();
 
-  const limitCheck = await checkPlanLimit(org.id, "money_transactions");
-  if (!limitCheck.allowed) {
-    return { error: limitCheck.reason ?? "Money transaction limit reached. Upgrade your plan." };
-  }
-
   const rawData = {
     title: formData.get("title") as string,
     type: formData.get("type") as string,
@@ -54,6 +49,16 @@ export async function createTransactionAction(
       fieldErrors[key] = [...(fieldErrors[key] ?? []), issue.message];
     }
     return { fieldErrors };
+  }
+
+  // Live reservation not yet backed by a row; released in the outer catch if we
+  // never reach a committed insert (P1-3).
+  let reserved = false;
+  try {
+    await reserveOrganizationUsage(org.id, "money_transactions.count", 1);
+    reserved = true;
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Money transaction limit reached. Upgrade your plan." };
   }
 
   try {
@@ -86,8 +91,10 @@ export async function createTransactionAction(
 
     if (error || !newTx) {
       console.error("createTransaction error:", error);
+      await releaseOrganizationUsage(org.id, "money_transactions.count", 1);
       return { error: dict.money.errors.createTransactionFailed };
     }
+    reserved = false;
 
     await emitDomainEvent({
       organizationId: org.id,
@@ -145,6 +152,7 @@ export async function createTransactionAction(
     }
   } catch (err) {
     console.error("createTransaction unexpected error:", err);
+    if (reserved) await releaseOrganizationUsage(org.id, "money_transactions.count", 1);
     return { error: dict.money.errors.serverError };
   }
 

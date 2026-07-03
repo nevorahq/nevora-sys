@@ -7,13 +7,13 @@ export async function getPlans(): Promise<Plan[]> {
   const { data, error } = await supabase
     .from("plans")
     .select(
-      "id, slug, name, description, price_monthly, price_yearly, currency, is_active, " +
+      "id, slug, code, name, description, price_monthly, price_yearly, currency, is_active, sort_order, " +
       "max_members, max_workspaces, max_tasks, max_deals, max_clients, " +
       "max_documents, max_subscriptions, max_money_transactions, " +
       "max_ai_calls_mo, max_storage_mb, included_members, extra_member_price, features, created_at, updated_at",
     )
     .eq("is_active", true)
-    .order("price_monthly", { ascending: true });
+    .order("sort_order", { ascending: true });
 
   if (error) {
     console.error("getPlans error:", error);

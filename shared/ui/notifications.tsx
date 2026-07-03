@@ -8,6 +8,7 @@ import { ROUTES } from "@/shared/config/routes";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import type { UpcomingRenewal } from "@/modules/subtracker/types/subtracker.types";
 import type { BookingRequestWithDetails } from "@/modules/booking";
+import { useNotificationIndicator } from "@/modules/notifications/components/notification-provider";
 
 interface NotificationsProps {
   overdueCount: number;
@@ -19,6 +20,7 @@ interface NotificationsProps {
 export function Notifications({ overdueCount, renewals, bookingRequests, dict }: NotificationsProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { unreadCount, markAllAsRead } = useNotificationIndicator();
 
   const n = dict.notifications;
   const totalCount = (overdueCount > 0 ? 1 : 0) + renewals.length + bookingRequests.length;
@@ -51,15 +53,15 @@ export function Notifications({ overdueCount, renewals, bookingRequests, dict }:
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label={n.label}
+        aria-label={unreadCount > 0 ? `${n.label}, ${unreadCount} unread` : n.label}
         aria-expanded={open}
         aria-haspopup="true"
         className="soft-icon-button relative w-9 h-9"
       >
         <BellIcon size={18} strokeWidth={1.75} />
-        {totalCount > 0 && (
+        {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white leading-none">
-            {totalCount > 9 ? "9+" : totalCount}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
@@ -80,12 +82,11 @@ export function Notifications({ overdueCount, renewals, bookingRequests, dict }:
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
             <p className="text-sm font-semibold text-text-primary">{n.label}</p>
-            {totalCount > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
-                {totalCount}
-              </span>
-            )}
+            {unreadCount > 0 && <button type="button" onClick={() => void markAllAsRead()} className="text-xs font-medium text-accent-green hover:underline">Mark all as read ({unreadCount > 99 ? "99+" : unreadCount})</button>}
           </div>
+          <p className="border-b border-border-soft px-4 py-2 text-[11px] leading-4 text-text-muted">
+            Reading clears new-delivery badges. Active actions remain open until completed or resolved.
+          </p>
 
           {/* Items */}
           <div className="flex flex-col">

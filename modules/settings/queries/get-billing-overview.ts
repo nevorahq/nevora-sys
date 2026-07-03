@@ -1,51 +1,58 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
 import { resolveAccountLimits } from "@/lib/billing";
-import { getInvoices, getPlans, getSubscription } from "@/modules/billing";
+import { getInvoices, getPlanEntitlement, getPlanLimit, getPlans, getSubscription, getUsage } from "@/modules/billing";
 import { requireSettingsPermission } from "../utils/settings-permissions";
 import type { BillingSettingsOverview, UsageLimit } from "../types/settings.types";
 
 export async function getBillingOverview(): Promise<BillingSettingsOverview> {
   const { org, user } = await requireSettingsPermission("billing.read");
-  const supabase = await createClient();
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
 
-  const [subscription, plans, invoices, limits, members, aiRequests, attachments] = await Promise.all([
+  const [
+    subscription,
+    plans,
+    invoices,
+    limits,
+    members,
+    storage,
+    tasks,
+    documents,
+    moneyTransactions,
+    subscriptions,
+    aiRequests,
+    apiRequests,
+    apiRequestsLimit,
+    publicApi,
+  ] = await Promise.all([
     getSubscription(org.id),
     getPlans(),
     getInvoices(org.id),
     resolveAccountLimits(user.id, org.id),
-    supabase
-      .from("memberships")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", org.id)
-      .in("status", ["active", "invited"]),
-    supabase
-      .from("ai_requests")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", org.id)
-      .gte("created_at", monthStart.toISOString()),
-    supabase
-      .from("document_attachments")
-      .select("file_size")
-      .eq("organization_id", org.id),
+    getUsage(org.id, "members.count"),
+    getUsage(org.id, "storage.bytes"),
+    getUsage(org.id, "tasks.count"),
+    getUsage(org.id, "documents.count"),
+    getUsage(org.id, "money_transactions.count"),
+    getUsage(org.id, "subscriptions.count"),
+    getUsage(org.id, "ai_requests.monthly"),
+    getUsage(org.id, "api_requests.monthly"),
+    getPlanLimit(org.id, "api_requests.monthly"),
+    getPlanEntitlement(org.id, "public_api.enabled"),
   ]);
 
-  const storageMb = Math.ceil(
-    ((attachments.data ?? []) as { file_size: number | null }[]).reduce(
-      (total, row) => total + (row.file_size ?? 0),
-      0,
-    ) / (1024 * 1024),
-  );
-
   const usage: UsageLimit[] = [
-    { key: "members", label: "Members / seats", used: members.count ?? 0, limit: limits.maxMembers },
-    { key: "storage", label: "Storage", used: storageMb, limit: limits.maxStorageMb, unit: "MB" },
-    { key: "ai_requests", label: "AI requests this month", used: aiRequests.count ?? 0, limit: limits.maxAiRequestsPerMonth },
+    { key: "members", label: "Members", used: members.value, limit: limits.maxMembers },
+    { key: "storage", label: "Storage", used: Math.ceil(storage.value / (1024 * 1024)), limit: limits.maxStorageMb, unit: "MB" },
+    { key: "tasks", label: "Tasks", used: tasks.value, limit: limits.maxTasks },
+    { key: "documents", label: "Documents", used: documents.value, limit: limits.maxDocuments },
+    { key: "money_transactions", label: "Money transactions", used: moneyTransactions.value, limit: limits.maxMoneyTransactions },
+    { key: "subscriptions", label: "Subscriptions", used: subscriptions.value, limit: limits.maxSubscriptions },
+    { key: "ai_requests", label: "AI requests", used: aiRequests.value, limit: limits.maxAiRequestsPerMonth },
   ];
+
+  if (publicApi?.value === true) {
+    usage.push({ key: "api_requests", label: "API requests", used: apiRequests.value, limit: apiRequestsLimit?.value ?? null });
+  }
 
   return {
     subscription,

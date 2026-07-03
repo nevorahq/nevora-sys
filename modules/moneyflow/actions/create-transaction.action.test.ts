@@ -5,7 +5,8 @@ const revalidatePath = vi.fn();
 const createClient = vi.fn();
 const requireOrg = vi.fn();
 const emitDomainEvent = vi.fn();
-const checkPlanLimit = vi.fn();
+const reserveOrganizationUsage = vi.fn();
+const releaseOrganizationUsage = vi.fn();
 const categorizeTransaction = vi.fn();
 
 vi.mock("next/server", () => ({ after }));
@@ -13,7 +14,10 @@ vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/lib/supabase/server", () => ({ createClient }));
 vi.mock("@/lib/auth/require-org", () => ({ requireOrg }));
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
-vi.mock("@/lib/billing", () => ({ checkPlanLimit }));
+vi.mock("@/modules/billing", () => ({
+  reserveOrganizationUsage,
+  releaseOrganizationUsage,
+}));
 vi.mock("../services/money-categorization.service", () => ({ categorizeTransaction }));
 vi.mock("@/shared/i18n/get-dictionary", () => ({
   getDictionary: async () => ({ dict: { money: { errors: {} } } }),
@@ -75,7 +79,8 @@ beforeEach(() => {
     org: { id: "org-1" },
     workspace: { id: "ws-1" },
   });
-  checkPlanLimit.mockResolvedValue({ allowed: true });
+  reserveOrganizationUsage.mockResolvedValue(1);
+  releaseOrganizationUsage.mockResolvedValue(0);
   createClient.mockResolvedValue(makeSupabase());
   categorizeTransaction.mockResolvedValue({ outcome: "suggested" });
 });
@@ -130,5 +135,28 @@ describe("createTransactionAction auto-categorization (Phase 5.1)", () => {
     await expect(
       (after.mock.calls[0][0] as () => Promise<void>)(),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe("createTransactionAction reservation compensation (P1-3)", () => {
+  it("releases the reservation when an unexpected error occurs before the insert commits", async () => {
+    // Throw between a successful reserve and a committed row.
+    createClient.mockRejectedValueOnce(new Error("connection refused"));
+
+    await createTransactionAction({}, formData(baseFields));
+
+    expect(reserveOrganizationUsage).toHaveBeenCalledWith("org-1", "money_transactions.count", 1);
+    expect(releaseOrganizationUsage).toHaveBeenCalledWith("org-1", "money_transactions.count", 1);
+    expect(releaseOrganizationUsage).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT release when a post-insert step throws (the row already backs the count)", async () => {
+    // Insert succeeds; a later side effect throws. The counter is legitimate.
+    emitDomainEvent.mockRejectedValueOnce(new Error("event bus down"));
+
+    await createTransactionAction({}, formData(baseFields));
+
+    expect(reserveOrganizationUsage).toHaveBeenCalledTimes(1);
+    expect(releaseOrganizationUsage).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const createClient = vi.fn();
 const requireOrg = vi.fn();
-const checkPlanLimit = vi.fn();
+const reserveOrganizationUsage = vi.fn();
+const releaseOrganizationUsage = vi.fn();
 const emitDomainEvent = vi.fn();
 const getDictionary = vi.fn();
 const revalidatePath = vi.fn();
@@ -10,7 +11,10 @@ const revalidatePath = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/lib/supabase/server", () => ({ createClient }));
 vi.mock("@/lib/auth/require-org", () => ({ requireOrg }));
-vi.mock("@/lib/billing", () => ({ checkPlanLimit }));
+vi.mock("@/modules/billing", () => ({
+  reserveOrganizationUsage,
+  releaseOrganizationUsage,
+}));
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
 vi.mock("@/shared/i18n/get-dictionary", () => ({ getDictionary }));
 
@@ -64,7 +68,8 @@ beforeEach(() => {
     org: { id: ORGANIZATION_ID },
     workspace: { id: WORKSPACE_ID },
   });
-  checkPlanLimit.mockResolvedValue({ allowed: true });
+  reserveOrganizationUsage.mockResolvedValue(1);
+  releaseOrganizationUsage.mockResolvedValue(0);
   createClient.mockResolvedValue({ from });
   single.mockResolvedValue({ data: { id: SUBSCRIPTION_ID }, error: null });
   emitDomainEvent.mockResolvedValue(undefined);
@@ -115,5 +120,14 @@ describe("createSubscriptionAction", () => {
 
     expect(from).not.toHaveBeenCalled();
     expect(emitDomainEvent).not.toHaveBeenCalled();
+  });
+
+  it("releases a reservation when the subscription insert fails", async () => {
+    single.mockResolvedValueOnce({ data: null, error: { message: "insert failed" } });
+
+    await expect(createSubscriptionAction({}, makeForm())).resolves.toEqual({ error: "Create failed" });
+
+    expect(reserveOrganizationUsage).toHaveBeenCalledWith(ORGANIZATION_ID, "subscriptions.count", 1);
+    expect(releaseOrganizationUsage).toHaveBeenCalledWith(ORGANIZATION_ID, "subscriptions.count", 1);
   });
 });

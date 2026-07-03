@@ -34,8 +34,13 @@ export default function DashboardError({
           Something went wrong
         </h2>
         <p className="mt-2 text-sm text-text-muted">
-          {error.message || "An unexpected error occurred"}
+          An unexpected error occurred. Please try again.
         </p>
+        {error.digest ? (
+          <p className="mt-2 text-xs text-text-muted/70">
+            Reference: <code>{error.digest}</code>
+          </p>
+        ) : null}
         <button
           onClick={reset}
           className="mt-6 inline-flex items-center justify-center rounded-(--neu-radius-pill) bg-text-primary px-6 py-2.5 text-sm font-semibold text-text-inverse shadow-neu-control hover:shadow-neu-card active:shadow-neu-inset active:scale-[0.98] transition-all"

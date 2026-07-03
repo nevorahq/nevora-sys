@@ -40,6 +40,54 @@ export { getInvoices }      from "./queries/get-invoices";
 export { getTrialState }    from "./queries/get-trial-state";
 export type { TrialState }  from "./queries/get-trial-state";
 
+// Services
+export {
+  getOrganizationPlan,
+  getOrganizationSubscription,
+  getPlanEntitlement,
+  getPlanLimit,
+  getUsage,
+  assertPlanEntitlement,
+  assertPlanLimit,
+  incrementUsage,
+  reserveOrganizationUsage,
+  releaseOrganizationUsage,
+  decrementUsage,
+  recalculateOrganizationUsage,
+  assertSubscriptionWritable,
+} from "./services/billing-service";
+export type { PlanLimit, UsageValue } from "./services/billing-service";
+export {
+  BILLING_LIMIT_KEYS,
+  BILLING_ENTITLEMENT_KEYS,
+  currentPeriodWindow,
+  defaultPeriodForLimit,
+  legacyPlanLimit,
+  megabytesToBytes,
+} from "./services/usage-keys";
+export { isSubscriptionWritableState } from "./services/subscription-writability";
+export type { SubscriptionWritableState } from "./services/subscription-writability";
+export type {
+  BillingLimitKey,
+  BillingEntitlementKey,
+  LimitPeriod,
+} from "./services/usage-keys";
+export {
+  PlanLimitExceededError,
+  PlanEntitlementRequiredError,
+  SubscriptionExpiredError,
+} from "./errors/billing.errors";
+export type { BillingErrorPayload } from "./errors/billing.errors";
+export { ManualBillingProvider, billingProvider } from "./services/billing-provider";
+export type {
+  BillingProvider,
+  BillingWebhookResult,
+  CheckoutSession,
+  CreateCheckoutInput,
+  CustomerPortalInput,
+  CustomerPortalSession,
+} from "./services/billing-provider";
+
 // Actions
 export { changePlanAction }          from "./actions/change-plan.action";
 export { cancelSubscriptionAction }  from "./actions/cancel-subscription.action";

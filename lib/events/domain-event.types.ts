@@ -302,6 +302,19 @@ export interface DomainEventPayloadMap {
   "recommendation.dismissed": Record<string, unknown>;
   "subscription.plan_changed": { plan_slug: string; billing_cycle: string };
   "subscription.canceled": { at_period_end: boolean };
+  "billing.subscription.created": Record<string, unknown>;
+  "billing.subscription.updated": Record<string, unknown>;
+  "billing.subscription.canceled": { at_period_end?: boolean; provider?: string };
+  "billing.plan.changed": { old_plan_code?: string; new_plan_code: string };
+  "billing.payment.succeeded": { amount?: number; currency?: string; provider?: string };
+  "billing.payment.failed": { amount?: number; currency?: string; provider?: string; reason?: string };
+  "billing.limit.exceeded": {
+    key: string;
+    current_usage: number;
+    limit: number | null;
+    plan_code: string;
+  };
+  "billing.trial.expired": { trial_end: string };
 
   "document.created": {
     title: string;

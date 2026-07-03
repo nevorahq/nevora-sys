@@ -2,6 +2,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { computePriority } from "./priority-engine";
+import { deliverNotification } from "@/modules/notifications/delivery/notification-delivery";
+import type { NotificationCategory, NotificationPriority } from "@/modules/notifications/types";
 import type {
   ActionItemType,
   ActionSourceType,
@@ -137,7 +139,65 @@ export async function syncActionItems(
     await supabase.from("action_item_links").insert(links);
   }
 
+  // Action Center stays the source; delivery is best-effort and channel failures
+  // never roll back generated action items.
+  await Promise.allSettled(fresh.map(async (candidate) => {
+    // Durable milestone delivery owns these obligation categories. The legacy
+    // scanner may still materialize the Action Center item, but must not create
+    // a second notification for the same business moment.
+    if (
+      (candidate.sourceType === "task" && (candidate.type === "due_soon" || candidate.type === "overdue"))
+      || (candidate.sourceType === "subscription" && candidate.type === "renewal_required")
+      || (candidate.sourceType === "transaction" && candidate.type === "draft_review")
+      || (candidate.sourceType === "document" && candidate.type === "document_review")
+    ) return;
+    const key = dedupeKey(candidate.type, candidate.sourceType, candidate.sourceId);
+    const actionItemId = byKey.get(key);
+    if (!actionItemId) return;
+    const { priority } = computePriority({
+      type: candidate.type,
+      sourceType: candidate.sourceType,
+      dueAt: candidate.dueAt ?? null,
+      financialImpact: candidate.financialImpact ?? null,
+      aiConfidence: candidate.aiConfidence ?? null,
+      missingRelation: candidate.missingRelation ?? false,
+    });
+    await deliverNotification(supabase, {
+      organizationId: orgId,
+      workspaceId: ctx.workspace.id,
+      userId: ctx.user.id,
+      title: candidate.title,
+      body: candidate.description ?? "Open Action Center to review this item.",
+      category: notificationCategory(candidate.sourceType),
+      priority: notificationPriority(priority),
+      targetUrl: notificationTarget(candidate.sourceType, candidate.sourceId),
+      deduplicationKey: `action-item:${actionItemId}:${ctx.user.id}`,
+      actionItemId,
+    });
+  }));
+
   return { created: inserted?.length ?? 0 };
+}
+
+function notificationCategory(sourceType: ActionSourceType): NotificationCategory {
+  if (sourceType === "task") return "task";
+  if (sourceType === "subscription") return "subscription";
+  if (sourceType === "transaction") return "payment";
+  if (sourceType === "document") return "document";
+  return "action_center";
+}
+
+function notificationPriority(priority: string): NotificationPriority {
+  if (priority === "critical" || priority === "high") return priority;
+  return priority === "info" ? "low" : "normal";
+}
+
+function notificationTarget(sourceType: ActionSourceType, sourceId: string): string {
+  if (sourceType === "task") return `/dashboard/tasks/${sourceId}`;
+  if (sourceType === "subscription") return `/dashboard/subscriptions/${sourceId}`;
+  if (sourceType === "transaction") return `/dashboard/money/${sourceId}`;
+  if (sourceType === "document") return `/dashboard/documents/${sourceId}`;
+  return "/dashboard/actions";
 }
 
 // ── Detectors ────────────────────────────────────────────────────────────────

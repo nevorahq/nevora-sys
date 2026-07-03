@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
-import { checkPlanLimit } from "@/lib/billing";
+import {
+  assertPlanLimit,
+  releaseOrganizationUsage,
+  reserveOrganizationUsage,
+} from "@/modules/billing";
 import { createEntityLink } from "@/lib/entity-links";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { validateDocumentFiles } from "./validate-document-file";
@@ -50,40 +54,47 @@ export async function createSubscriptionDocumentWithAttachments(params: {
   if (!subscription) return { ok: false, status: 404, error: "Subscription not found." };
   const subscriptionRow = subscription as SubscriptionRow;
 
-  const [documentLimit, storageLimit] = await Promise.all([
-    checkPlanLimit(ctx.org.id, "documents"),
-    checkPlanLimit(ctx.org.id, "storage_mb", files.reduce((total, file) => total + file.size, 0) / (1024 * 1024)),
-  ]);
-  if (!documentLimit.allowed || !storageLimit.allowed) {
+  try {
+    await assertPlanLimit(ctx.org.id, "storage.bytes", files.reduce((total, file) => total + file.size, 0));
+    await reserveOrganizationUsage(ctx.org.id, "documents.count", 1);
+  } catch (error) {
     return {
       ok: false,
       status: 403,
-      error: documentLimit.reason ?? storageLimit.reason ?? "Your plan limit has been reached.",
+      error: error instanceof Error ? error.message : "Your plan limit has been reached.",
     };
   }
 
-  const title = `${subscriptionRow.name} — ${files.length === 1 ? files[0].name : "attachments"}`.slice(0, 300);
-  const { data: document, error: documentError } = await supabase
-    .from("documents")
-    .insert({
-      organization_id: ctx.org.id,
-      workspace_id: ctx.workspace.id,
-      title,
-      content: subscriptionRow.note?.trim() || `Documents attached to subscription ${subscriptionRow.name}.`,
-      doc_type: "other",
-      status: "draft",
-      entity_type: null,
-      entity_id: null,
-      created_by: ctx.user.id,
-      updated_by: ctx.user.id,
-    })
-    .select("id")
-    .single();
-  if (documentError || !document) {
-    console.error("createSubscriptionDocument: document creation failed", documentError);
-    return { ok: false, status: 500, error: "We could not create the subscription document. Please try again." };
-  }
-  const documentId = document.id as string;
+  // Guards the reservation against a thrown exception between reserve and a
+  // committed `documents` row. Once the row exists the counter legitimately
+  // backs it (and the removal trigger releases on any later delete/rollback),
+  // so the catch must NOT release — that would double-decrement (P1-3).
+  let documentCreated = false;
+  try {
+    const title = `${subscriptionRow.name} — ${files.length === 1 ? files[0].name : "attachments"}`.slice(0, 300);
+    const { data: document, error: documentError } = await supabase
+      .from("documents")
+      .insert({
+        organization_id: ctx.org.id,
+        workspace_id: ctx.workspace.id,
+        title,
+        content: subscriptionRow.note?.trim() || `Documents attached to subscription ${subscriptionRow.name}.`,
+        doc_type: "other",
+        status: "draft",
+        entity_type: null,
+        entity_id: null,
+        created_by: ctx.user.id,
+        updated_by: ctx.user.id,
+      })
+      .select("id")
+      .single();
+    if (documentError || !document) {
+      console.error("createSubscriptionDocument: document creation failed", documentError);
+      await releaseOrganizationUsage(ctx.org.id, "documents.count", 1);
+      return { ok: false, status: 500, error: "We could not create the subscription document. Please try again." };
+    }
+    documentCreated = true;
+    const documentId = document.id as string;
 
   const persisted = await persistDocumentAttachments({ supabase, ctx, documentId, files });
   if (!persisted.ok) {
@@ -152,6 +163,13 @@ export async function createSubscriptionDocumentWithAttachments(params: {
   }
 
   return { ok: true, documentId, attachments, relationCreated: true };
+  } catch (err) {
+    // Only release when no document row was ever committed; otherwise the row
+    // (or its rollback delete) owns the counter and releasing here would drift
+    // it negative.
+    if (!documentCreated) await releaseOrganizationUsage(ctx.org.id, "documents.count", 1);
+    throw err;
+  }
 }
 
 async function rollbackSubscriptionDocument(

@@ -40,6 +40,10 @@ export interface ActionFeed {
 export interface ActionSummary {
   critical: number;
   dueToday: number;
+  upcoming: number;
+  overdue: number;
+  snoozed: number;
+  recentlyResolved: number;
   waitingApproval: number;
   aiSuggestions: number;
   total: number;

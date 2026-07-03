@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const checkPlanLimit = vi.fn();
+const assertPlanLimit = vi.fn();
+const reserveOrganizationUsage = vi.fn();
+const releaseOrganizationUsage = vi.fn();
 const emitDomainEvent = vi.fn();
 const emitAuditLog = vi.fn();
 
-vi.mock("@/lib/billing", () => ({ checkPlanLimit }));
+vi.mock("@/modules/billing", () => ({ assertPlanLimit, reserveOrganizationUsage, releaseOrganizationUsage }));
 vi.mock("@/lib/events", () => ({ emitDomainEvent, emitAuditLog }));
 
 const { createTaskDocumentWithAttachments } = await import("./create-task-document-with-attachments");
@@ -72,7 +74,9 @@ beforeEach(() => {
   ops = [];
   storageUploads = 0;
   storageRemovals = [];
-  checkPlanLimit.mockResolvedValue({ allowed: true });
+  assertPlanLimit.mockResolvedValue(undefined);
+  reserveOrganizationUsage.mockResolvedValue(1);
+  releaseOrganizationUsage.mockResolvedValue(0);
   emitDomainEvent.mockResolvedValue(undefined);
   emitAuditLog.mockResolvedValue(undefined);
 });
@@ -100,7 +104,8 @@ describe("createTaskDocumentWithAttachments", () => {
 
     expect(result).toEqual({ ok: false, status: 400, error: expect.stringMatching(/file is required/i) });
     expect(ops).not.toContain("documents:insert");
-    expect(checkPlanLimit).not.toHaveBeenCalled();
+    expect(assertPlanLimit).not.toHaveBeenCalled();
+    expect(reserveOrganizationUsage).not.toHaveBeenCalled();
     expect(emitDomainEvent).not.toHaveBeenCalled();
   });
 
@@ -128,14 +133,19 @@ describe("createTaskDocumentWithAttachments", () => {
   });
 
   it("checks the documents limit only here, and blocks when it is reached", async () => {
-    checkPlanLimit.mockImplementation((_org: string, metric: string) =>
-      Promise.resolve(metric === "documents" ? { allowed: false, reason: "Document limit reached" } : { allowed: true }),
-    );
+    reserveOrganizationUsage.mockRejectedValue(new Error("Document limit reached"));
     const supabase = makeSupabase({});
     const result = await createTaskDocumentWithAttachments({ supabase, ctx: CTX, taskId: TASK_ID, files: [pngFile()] });
 
     expect(result).toEqual({ ok: false, status: 403, error: "Document limit reached" });
     expect(ops).not.toContain("documents:insert");
+  });
+
+  it("checks attachment storage in bytes", async () => {
+    const file = pngFile();
+    await createTaskDocumentWithAttachments({ supabase: makeSupabase({}), ctx: CTX, taskId: TASK_ID, files: [file] });
+
+    expect(assertPlanLimit).toHaveBeenCalledWith(ORG_ID, "storage.bytes", file.size);
   });
 
   it("returns 404 when the task does not exist", async () => {

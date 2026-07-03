@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
-import { checkPlanLimit } from "@/lib/billing";
+import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
 import { createDocumentSchema } from "../schemas/document.schemas";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
@@ -18,11 +18,6 @@ export async function createDocumentAction(
   const { user, org, workspace } = ctx;
   if (!hasDocumentPermission(ctx, "document.create")) {
     return { error: "You do not have permission to create documents." };
-  }
-
-  const limitCheck = await checkPlanLimit(org.id, "documents");
-  if (!limitCheck.allowed) {
-    return { error: limitCheck.reason ?? "Plan limit reached. Upgrade your plan." };
   }
 
   const rawData = {
@@ -44,6 +39,16 @@ export async function createDocumentAction(
     return { fieldErrors };
   }
 
+  // Live reservation not yet backed by a row; released in the outer catch if we
+  // never reach a committed insert (P1-3).
+  let reserved = false;
+  try {
+    await reserveOrganizationUsage(org.id, "documents.count", 1);
+    reserved = true;
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Plan limit reached. Upgrade your plan." };
+  }
+
   try {
     const supabase = await createClient();
 
@@ -61,8 +66,10 @@ export async function createDocumentAction(
 
     if (error || !newDoc) {
       console.error("createDocument error:", error);
+      await releaseOrganizationUsage(org.id, "documents.count", 1);
       return { error: "Failed to create document" };
     }
+    reserved = false;
 
     await Promise.all([
       emitDomainEvent({
@@ -84,6 +91,7 @@ export async function createDocumentAction(
     ]);
   } catch (err) {
     console.error("createDocument unexpected error:", err);
+    if (reserved) await releaseOrganizationUsage(org.id, "documents.count", 1);
     return { error: "Server error" };
   }
 

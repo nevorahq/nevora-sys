@@ -10,7 +10,10 @@ import { ThemeProvider } from "@/shared/ui/theme-provider";
 import { StoreProvider } from "@/store/provider";
 
 export const metadata: Metadata = {
-  title: "nevora-sys",
+  title: {
+    default: "Nevora Business OS",
+    template: "%s — Nevora Business OS",
+  },
   description: "Personal productivity system built with Next.js and Supabase",
 };
 
