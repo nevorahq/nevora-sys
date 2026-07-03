@@ -2,6 +2,9 @@
   "name": "nevora-sys",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0 <24"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -27,6 +30,7 @@
     "react-redux": "^9.3.0",
     "resend": "^6.14.0",
     "tailwind-merge": "^3.6.0",
+    "web-push": "^3.6.7",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -36,6 +40,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "jsdom": "^29.1.1",
