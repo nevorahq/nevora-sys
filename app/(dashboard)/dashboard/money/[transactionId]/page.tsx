@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, ArrowRightLeftIcon, CalendarIcon, TagIcon, WalletIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightLeftIcon, CalendarIcon, RepeatIcon, TagIcon, WalletIcon } from "lucide-react";
 import { requireOrg } from "@/lib/auth/require-org";
 import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
-import { RepeatIcon } from "lucide-react";
 import { UniversalRelationViewer } from "@/modules/relations";
 import { AiSuggestionPanel } from "@/modules/moneyflow/components/ai-suggestion-panel";
 import { getPaymentCycleByTransactionId } from "@/modules/subtracker/queries/get-payment-cycles";

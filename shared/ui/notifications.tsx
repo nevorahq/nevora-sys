@@ -79,6 +79,9 @@ export function Notifications({ dict }: NotificationsProps) {
             <p className="text-sm font-semibold text-text-primary">{n.label}</p>
             {unreadCount > 0 && <button type="button" onClick={() => void markAllAsRead()} className="text-xs font-medium text-accent-green hover:underline">Mark all as read ({unreadCount > 99 ? "99+" : unreadCount})</button>}
           </div>
+          <p className="border-b border-border-soft px-4 py-2 text-[11px] leading-4 text-text-muted">
+            Reading clears new-delivery badges. Active actions remain open until completed or resolved.
+          </p>
 
           {/* Items */}
           <div className="flex max-h-[60vh] flex-col overflow-y-auto">

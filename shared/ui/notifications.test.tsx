@@ -9,7 +9,7 @@ const markAsRead = vi.fn();
 vi.mock("@/modules/notifications/components/notification-provider", () => ({
   useNotificationIndicator: () => ({
     unreadCount: 3,
-    counters: { unread: 3, attention: 0, upcoming: 0, dueToday: 0, overdue: 0, urgent: 0 },
+    counters: { unread: 3, attention: 0, upcoming: 0, dueToday: 0, overdue: 0, urgent: 0, recentActions: 0 },
     notifications: [
       {
         id: "11111111-1111-4111-8111-111111111111",

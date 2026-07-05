@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
-/* ============================================================
+/* ------------------------------------------------------------
    DESIGN SYSTEM — Soft UI / Neumorphism
    TaskFlow MVP
-   ============================================================
+   ------------------------------------------------------------
 
    Architecture:
    1. @theme inline  — maps Tailwind utility names → CSS vars
@@ -14,7 +14,7 @@
 
    Rule: never use raw hex values in components.
    All visual decisions go through tokens (--background, --surface, etc.)
-   ============================================================ */
+   ------------------------------------------------------------ */
 
 /* ── 1. TAILWIND TOKEN MAPPING ─────────────────────────────── */
 @theme inline {
