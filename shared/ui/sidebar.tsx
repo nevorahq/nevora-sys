@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboardIcon, CheckSquareIcon, WalletIcon, RepeatIcon,
   FileTextIcon, BarChart2Icon, SparklesIcon, SettingsIcon,
-  ListChecksIcon,
+  ListChecksIcon, InboxIcon,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ROUTES } from "@/shared/config/routes";
@@ -47,6 +47,7 @@ export function Sidebar({ dict }: SidebarProps) {
 
   const navItems: NavItem[] = [
     { href: ROUTES.dashboard,     label: dict.nav.dashboard,     icon: LayoutDashboardIcon },
+    { href: ROUTES.inbox,         label: dict.nav.inbox,         icon: InboxIcon },
     { href: ROUTES.actions,       label: dict.nav.actions,       icon: ListChecksIcon },
     { href: ROUTES.tasks,         label: dict.nav.tasks,         icon: CheckSquareIcon },
     { href: ROUTES.money,         label: dict.nav.money,         icon: WalletIcon },
@@ -124,9 +125,12 @@ export function Sidebar({ dict }: SidebarProps) {
                   />
                   {/* Label: скрыт на mobile, виден на desktop */}
                   <span className="hidden md:inline">{item.label}</span>
-                  {item.href === ROUTES.actions && counters.attention > 0 && (
-                    <span className="absolute ml-6 flex min-w-4 items-center justify-center rounded-full bg-accent-yellow px-1 text-[10px] font-bold text-text-primary md:static md:ml-auto">
-                      {counters.attention > 99 ? "99+" : counters.attention}
+                  {item.href === ROUTES.actions && counters.recentActions > 0 && (
+                    <span
+                      title={dict.nav.actions}
+                      className="absolute ml-6 flex min-w-4 items-center justify-center rounded-full bg-accent-yellow px-1 text-[10px] font-bold text-text-primary md:static md:ml-auto"
+                    >
+                      {counters.recentActions > 99 ? "99+" : counters.recentActions}
                     </span>
                   )}
                 </Link>

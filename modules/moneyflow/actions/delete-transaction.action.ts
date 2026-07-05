@@ -36,6 +36,17 @@ export async function deleteTransactionAction(id: string): Promise<{ error?: str
       return { error: dict.money.errors.deleteTransactionFailed };
     }
 
+    // Clean up the Action Center + notification footprint of the deleted
+    // transaction so no dropdown item is left pointing at a now-404 page.
+    // Best-effort: never fail the delete over cleanup.
+    const { error: purgeError } = await supabase.rpc("purge_transaction_from_action_center", {
+      p_organization_id: ctx.org.id,
+      p_transaction_id: deletedTransaction.id as string,
+    });
+    if (purgeError) {
+      console.error("[deleteTransaction] purge failed:", purgeError.message);
+    }
+
     await emitDomainEvent({
       organizationId: ctx.org.id,
       workspaceId: (deletedTransaction.workspace_id as string | null) ?? undefined,
@@ -54,5 +65,6 @@ export async function deleteTransactionAction(id: string): Promise<{ error?: str
 
   revalidatePath(ROUTES.money);
   revalidatePath(ROUTES.dashboard);
+  revalidatePath(ROUTES.actions);
   return {};
 }

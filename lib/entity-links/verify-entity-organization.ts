@@ -8,6 +8,7 @@ const ENTITY_TABLES: Record<string, string> = {
   document: "documents",
   transaction: "money_transactions",
   subscription: "subscriptions",
+  subscription_payment_cycle: "subscription_payment_cycles",
 };
 
 /** Verifies both ends of a polymorphic link exist inside the active tenant. */

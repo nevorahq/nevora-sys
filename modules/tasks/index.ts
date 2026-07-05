@@ -71,6 +71,10 @@ export type { GetTasksOptions } from "./queries/get-tasks";
 export { getTaskById } from "./queries/get-task-by-id";
 export { getTaskSummary } from "./queries/get-task-summary";
 
+// Services (headless task creation for callers outside the task form, e.g. Capture Inbox)
+export { createStandardTask } from "./services/create-standard-task";
+export type { CreateStandardTaskInput, CreateStandardTaskResult } from "./services/create-standard-task";
+
 // Actions
 export { createTaskAction } from "./actions/create-task.action";
 export { updateTaskAction } from "./actions/update-task.action";
@@ -79,3 +83,47 @@ export { changeTaskStatusAction } from "./actions/change-task-status.action";
 export { updateTaskDueDateAction } from "./actions/update-task-due-date.action";
 export { addTaskCommentAction } from "./actions/add-task-comment.action";
 export { assignTaskAction, unassignTaskAction } from "./actions/assign-task.action";
+
+// ── Financial Context Tasks (migration 079) ─────────────────────────────────
+export {
+  TASK_CONTEXT_TYPES,
+  TASK_CONTEXT_TYPE_LABELS,
+  PAYABLE_CONTEXT_TYPES,
+  FINANCIAL_TASK_STATUSES,
+  FINANCIAL_SOURCE_TYPES,
+  DEFAULT_REMINDER_OFFSET_DAYS,
+  MAX_REMINDER_OFFSET_DAYS,
+} from "./constants/task.constants";
+export type {
+  TaskContextType,
+  FinancialTaskStatus,
+  FinancialSourceType,
+} from "./constants/task.constants";
+export type { FinancialTask } from "./types/task.types";
+export { isFinancialTask } from "./types/task.types";
+export { calculateActionDueDate, normalizeReminderOffset } from "./services/calculate-action-due-date";
+export {
+  buildFinancialTaskTitle,
+  buildFinancialObligationIdempotencyKey,
+  buildFinancialTaskExpenseIdempotencyKey,
+} from "./services/financial-task-keys";
+export { createFinancialTask } from "./services/create-financial-task";
+export { markFinancialTaskAsPaid } from "./services/mark-financial-task-paid";
+export { resolveFinancialTask } from "./services/resolve-financial-task";
+export {
+  getFinancialTasks,
+  getFinancialTaskSummary,
+} from "./queries/get-financial-tasks";
+export type { FinancialTaskSummary } from "./queries/get-financial-tasks";
+export {
+  createFinancialTaskSchema,
+  markFinancialTaskPaidSchema,
+  skipFinancialTaskSchema,
+  dismissFinancialTaskSchema,
+  changeFinancialDueDateSchema,
+} from "./schemas/financial-task.schema";
+export { createFinancialTaskFromDocumentAction } from "./actions/create-financial-task-from-document.action";
+export { markFinancialTaskPaidAction } from "./actions/mark-financial-task-paid.action";
+export { skipFinancialTaskAction, dismissFinancialTaskAction } from "./actions/resolve-financial-task.action";
+export { FinancialTaskPanel } from "./components/financial-task-panel";
+export { FinancialTaskCard } from "./components/financial-task-card";

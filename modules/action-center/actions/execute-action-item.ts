@@ -74,5 +74,9 @@ export async function executeActionItem(
   });
 
   revalidatePath(ROUTES.actions);
+  revalidatePath(ROUTES.dashboard);
+  if (parsed.data.executeKind === "delete_task") revalidatePath(ROUTES.tasks);
+  if (parsed.data.executeKind === "delete_subscription") revalidatePath(ROUTES.subscriptions);
+  if (parsed.data.executeKind === "delete_planner_entry") revalidatePath(ROUTES.inbox);
   return { ok: true, data: { id: item.id, summary: exec.data.summary } };
 }

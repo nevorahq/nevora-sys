@@ -10,6 +10,10 @@ import { TaskAssigneesManager, type TaskAssigneeView } from "@/modules/tasks/com
 import { TaskActivity } from "@/modules/tasks/components/task-activity";
 import { TaskDueDateField } from "@/modules/tasks/components/task-due-date-field";
 import { getOrgMembers } from "@/modules/crm/queries/get-org-members";
+import { getPaymentCycleByTaskId } from "@/modules/subtracker/queries/get-payment-cycles";
+import { SubscriptionPaymentTaskPanel } from "@/modules/subtracker/components/subscription-payment-task-panel";
+import { FinancialTaskPanel } from "@/modules/tasks/components/financial-task-panel";
+import { getAccounts } from "@/modules/moneyflow/queries/get-accounts";
 import { UniversalRelationViewer } from "@/modules/relations";
 import { TaskStatusBadge } from "@/features/todos/components/task-status-badge";
 import {
@@ -51,6 +55,26 @@ export default async function TaskPreviewPage({ params }: PageProps<"/dashboard/
   const canManageAssignees = task.created_by === user.id || canDo(ctx, "data.delete");
   const canEditTask = canDo(ctx, "data.write");
 
+  // Subscription payment task? Surface the specialized Mark-as-paid workflow.
+  const paymentCycle = await getPaymentCycleByTaskId(org.id, task.id);
+  const [paymentSubscription, paymentAccounts] = paymentCycle
+    ? await Promise.all([
+        supabase
+          .from("subscriptions")
+          .select("id, name")
+          .eq("id", paymentCycle.subscription_id)
+          .eq("organization_id", org.id)
+          .maybeSingle()
+          .then((r) => r.data),
+        getAccounts(org.id),
+      ])
+    : [null, []];
+
+  // One-off Financial Context Task (not a subscription payment cycle)? Surface
+  // the Financial Context panel with the idempotent Mark-as-paid / Skip / Dismiss.
+  const isFinancialTask = task.task_context_type !== "standard";
+  const financialAccounts = isFinancialTask && !paymentCycle ? await getAccounts(org.id) : [];
+
   // Уникальные assignees (по user_id) с пометкой создателя.
   const assigneeViews: TaskAssigneeView[] = Array.from(
     new Map(task.assignees.map((a) => [a.user_id, a])).values(),
@@ -81,6 +105,33 @@ export default async function TaskPreviewPage({ params }: PageProps<"/dashboard/
             <h2 className="text-base font-semibold text-text-primary">Description</h2>
             <InlineTaskDescription />
           </section>
+          {paymentCycle && (
+            <SubscriptionPaymentTaskPanel
+              cycle={paymentCycle}
+              providerName={paymentSubscription?.name ?? "Subscription"}
+              accounts={paymentAccounts.map((a) => ({ id: a.id, name: a.name, currency: a.currency }))}
+              canWrite={canEditTask}
+            />
+          )}
+          {isFinancialTask && !paymentCycle && (
+            <FinancialTaskPanel
+              task={{
+                id: task.id,
+                task_context_type: task.task_context_type,
+                provider_name: task.provider_name,
+                amount: task.amount,
+                currency: task.currency,
+                financial_due_date: task.financial_due_date,
+                due_date: task.due_date,
+                reminder_offset_days: task.reminder_offset_days,
+                financial_status: task.financial_status,
+                financial_transaction_id: task.financial_transaction_id,
+                source_document_id: task.source_document_id,
+              }}
+              accounts={financialAccounts.map((a) => ({ id: a.id, name: a.name, currency: a.currency }))}
+              canWrite={canEditTask}
+            />
+          )}
           {document && <section className="soft-card p-5 sm:p-6"><div className="flex items-center gap-2"><FileTextIcon size={18} className="text-text-secondary" /><h2 className="text-base font-semibold text-text-primary">Document</h2></div><Link href={`${ROUTES.documents}/${document.id}`} className="mt-3 block text-sm font-medium text-text-secondary underline hover:text-text-primary">{document.title}</Link></section>}
           <UniversalRelationViewer entityType="task" entityId={task.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.tasks}/${task.id}`} />
           <TaskActivity taskId={task.id} initialItems={activity.items} initialHasMore={activity.hasMore} createdAt={task.created_at} updatedAt={task.updated_at} error={activity.error} dict={dict} />

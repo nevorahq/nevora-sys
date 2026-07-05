@@ -18,6 +18,14 @@ vi.mock("@/modules/billing", () => ({
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
 vi.mock("@/shared/i18n/get-dictionary", () => ({ getDictionary }));
 
+// Payment-cycle provisioning is exercised by its own tests; here we only assert
+// that subscription creation still creates NO money transaction and that
+// provisioning is invoked exactly once as a best-effort step.
+const provisionSubscriptionPaymentCycle = vi.fn();
+vi.mock("../services/provision-subscription-payment-cycle", () => ({
+  provisionSubscriptionPaymentCycle,
+}));
+
 const { createSubscriptionAction } = await import("./create-subscription.action");
 
 const ORGANIZATION_ID = "11111111-1111-4111-8111-111111111111";
@@ -73,6 +81,7 @@ beforeEach(() => {
   createClient.mockResolvedValue({ from });
   single.mockResolvedValue({ data: { id: SUBSCRIPTION_ID }, error: null });
   emitDomainEvent.mockResolvedValue(undefined);
+  provisionSubscriptionPaymentCycle.mockResolvedValue({ ok: true, cycle: { id: "cycle" }, taskId: null });
 });
 
 describe("createSubscriptionAction", () => {
@@ -108,6 +117,12 @@ describe("createSubscriptionAction", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/subscriptions");
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
     expect(revalidatePath).not.toHaveBeenCalledWith("/dashboard/money");
+
+    // First payment cycle + task are provisioned (best-effort), still money-free.
+    expect(provisionSubscriptionPaymentCycle).toHaveBeenCalledTimes(1);
+    expect(provisionSubscriptionPaymentCycle).toHaveBeenCalledWith(
+      expect.objectContaining({ dueDate: "2026-07-15" }),
+    );
   });
 
   it("rejects an unsupported currency before writing AI-prefilled data", async () => {

@@ -22,6 +22,11 @@ vi.mock("../actions/update-transaction.action", () => ({
 vi.mock("../actions/delete-transaction.action", () => ({
   deleteTransactionAction: vi.fn(),
 }));
+// Delete button pulls the notification provider (browser supabase client) — stub
+// it so the component tree renders without real env/client at import time.
+vi.mock("@/modules/notifications/components/notification-provider", () => ({
+  useNotificationIndicator: () => ({ refreshCounters: vi.fn() }),
+}));
 vi.mock("../actions/create-transfer.action", () => ({
   createTransferAction: vi.fn(),
 }));

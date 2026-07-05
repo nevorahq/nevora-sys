@@ -10,6 +10,58 @@ export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 export const TASK_RELATION_TYPES = ["blocks", "blocked_by", "relates_to", "duplicates"] as const;
 export type TaskRelationType = (typeof TASK_RELATION_TYPES)[number];
 
+// ── Financial Context Tasks (migration 079) ─────────────────────────────────
+// A task's financial context. `standard` is an ordinary todo (the default);
+// every other value marks the task as a Financial Context Task — a real payment
+// or deadline the task stands in for. Mirrors the CHECK on todos.task_context_type.
+export const TASK_CONTEXT_TYPES = [
+  "standard",
+  "subscription_payment",
+  "invoice_payment",
+  "tax_payment",
+  "domain_renewal",
+  "hosting_payment",
+  "client_invoice_followup",
+  "expense_review",
+  "document_review",
+] as const;
+export type TaskContextType = (typeof TASK_CONTEXT_TYPES)[number];
+
+// Context types that represent a payable obligation (Mark-as-paid is offered).
+export const PAYABLE_CONTEXT_TYPES: TaskContextType[] = [
+  "subscription_payment",
+  "invoice_payment",
+  "tax_payment",
+  "domain_renewal",
+  "hosting_payment",
+];
+
+// Financial lifecycle, orthogonal to task status (a paid task is also `done`).
+// Mirrors the CHECK on todos.financial_status.
+export const FINANCIAL_TASK_STATUSES = ["open", "paid", "skipped", "dismissed"] as const;
+export type FinancialTaskStatus = (typeof FINANCIAL_TASK_STATUSES)[number];
+
+// Where a financial task's obligation came from. Mirrors todos.financial_source_type.
+export const FINANCIAL_SOURCE_TYPES = ["document", "subscription_payment_cycle", "manual"] as const;
+export type FinancialSourceType = (typeof FINANCIAL_SOURCE_TYPES)[number];
+
+// Default reminder offset — a financial task surfaces this many days before the
+// real payment date (spec §10). Mirrors the DEFAULT on todos.reminder_offset_days.
+export const DEFAULT_REMINDER_OFFSET_DAYS = 3;
+export const MAX_REMINDER_OFFSET_DAYS = 365;
+
+export const TASK_CONTEXT_TYPE_LABELS: Record<TaskContextType, string> = {
+  standard:                "Standard",
+  subscription_payment:    "Subscription payment",
+  invoice_payment:         "Invoice payment",
+  tax_payment:             "Tax payment",
+  domain_renewal:          "Domain renewal",
+  hosting_payment:         "Hosting payment",
+  client_invoice_followup: "Client invoice follow-up",
+  expense_review:          "Expense review",
+  document_review:         "Document review",
+};
+
 export const TASK_FILTERS = ["all", "active", "completed", "overdue"] as const;
 export type TaskFilter = (typeof TASK_FILTERS)[number];
 

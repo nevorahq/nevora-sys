@@ -5,6 +5,9 @@ import { requireOrg } from "@/lib/auth/require-org";
 import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
 import { UniversalRelationViewer } from "@/modules/relations";
+import { getPaymentCyclesForSubscription } from "@/modules/subtracker/queries/get-payment-cycles";
+import { SubscriptionPaymentWorkflowPanel } from "@/modules/subtracker/components/subscription-payment-workflow-panel";
+import { getAccounts } from "@/modules/moneyflow/queries/get-accounts";
 import { ROUTES } from "@/shared/config/routes";
 
 export default async function SubscriptionDetailPage({ params }: PageProps<"/dashboard/subscriptions/[subscriptionId]">) {
@@ -15,12 +18,20 @@ export default async function SubscriptionDetailPage({ params }: PageProps<"/das
   const supabase = await createClient();
   const { data: sub } = await supabase
     .from("subscriptions")
-    .select("id, name, amount, currency, billing_cycle, next_billing_date, category, is_active, url, note")
+    .select("id, name, amount, currency, billing_cycle, next_billing_date, last_payment_date, category, is_active, cancelled_at, url, note")
     .eq("id", subscriptionId)
     .eq("organization_id", org.id)
     .maybeSingle();
 
   if (!sub) notFound();
+
+  const [cycles, accounts] = await Promise.all([
+    getPaymentCyclesForSubscription(org.id, sub.id),
+    getAccounts(org.id),
+  ]);
+  const currentCycle = cycles.find((c) => c.status === "planned" || c.status === "task_open") ?? null;
+  const history = cycles.filter((c) => c.id !== currentCycle?.id);
+  const canWrite = canDo(ctx, "data.write");
 
   return (
     <>
@@ -37,6 +48,16 @@ export default async function SubscriptionDetailPage({ params }: PageProps<"/das
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <main className="space-y-6">
+          <SubscriptionPaymentWorkflowPanel
+            subscriptionId={sub.id}
+            isActive={sub.is_active}
+            lastPaymentDate={sub.last_payment_date}
+            nextPaymentDate={sub.next_billing_date}
+            currentCycle={currentCycle}
+            history={history}
+            accounts={accounts.map((a) => ({ id: a.id, name: a.name, currency: a.currency }))}
+            canWrite={canWrite}
+          />
           {sub.note && <section className="soft-card p-5 sm:p-6"><h2 className="text-base font-semibold text-text-primary">Notes</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-primary">{sub.note}</p></section>}
           <UniversalRelationViewer entityType="subscription" entityId={sub.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.subscriptions}/${sub.id}`} />
         </main>

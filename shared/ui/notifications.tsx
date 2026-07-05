@@ -1,29 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BellIcon, CalendarCheckIcon, CheckSquareIcon, RepeatIcon } from "lucide-react";
+import { BellIcon, CheckSquareIcon, FileTextIcon, ListChecksIcon, RepeatIcon, WalletIcon } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/shared/utils/cn";
 import { ROUTES } from "@/shared/config/routes";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
-import type { UpcomingRenewal } from "@/modules/subtracker/types/subtracker.types";
-import type { BookingRequestWithDetails } from "@/modules/booking";
 import { useNotificationIndicator } from "@/modules/notifications/components/notification-provider";
+import type { UserNotification } from "@/modules/notifications/types";
 
 interface NotificationsProps {
-  overdueCount: number;
-  renewals: UpcomingRenewal[];
-  bookingRequests: BookingRequestWithDetails[];
   dict: Dictionary;
 }
 
-export function Notifications({ overdueCount, renewals, bookingRequests, dict }: NotificationsProps) {
+export function Notifications({ dict }: NotificationsProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { unreadCount, markAllAsRead } = useNotificationIndicator();
+  const { unreadCount, notifications, markAllAsRead, markAsRead } = useNotificationIndicator();
 
   const n = dict.notifications;
-  const totalCount = (overdueCount > 0 ? 1 : 0) + renewals.length + bookingRequests.length;
 
   /* Close on click outside */
   useEffect(() => {
@@ -84,71 +79,22 @@ export function Notifications({ overdueCount, renewals, bookingRequests, dict }:
             <p className="text-sm font-semibold text-text-primary">{n.label}</p>
             {unreadCount > 0 && <button type="button" onClick={() => void markAllAsRead()} className="text-xs font-medium text-accent-green hover:underline">Mark all as read ({unreadCount > 99 ? "99+" : unreadCount})</button>}
           </div>
-          <p className="border-b border-border-soft px-4 py-2 text-[11px] leading-4 text-text-muted">
-            Reading clears new-delivery badges. Active actions remain open until completed or resolved.
-          </p>
 
           {/* Items */}
-          <div className="flex flex-col">
-            {totalCount === 0 && (
+          <div className="flex max-h-[60vh] flex-col overflow-y-auto">
+            {notifications.length === 0 && (
               <p className="px-4 py-5 text-sm text-center text-text-muted">{n.empty}</p>
             )}
 
-            {/* Overdue tasks item */}
-            {overdueCount > 0 && (
-              <Link
-                href={ROUTES.tasks}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-sunken border-b border-border-soft last:border-none"
-              >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-(--neu-radius-md) bg-danger-soft">
-                  <CheckSquareIcon size={15} className="text-danger" strokeWidth={2} />
-                </div>
-                <p className="text-sm text-text-primary">
-                  <span className="font-semibold">{overdueCount}</span>{" "}
-                  {overdueCount === 1 ? n.overdueTask : n.overdueTasks}
-                </p>
-              </Link>
-            )}
-
-            {/* Upcoming renewals */}
-            {renewals.map((renewal) => (
-              <Link
-                key={renewal.id}
-                href={ROUTES.subscriptions}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-sunken border-b border-border-soft last:border-none"
-              >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-(--neu-radius-md) bg-accent-yellow-soft">
-                  <RepeatIcon size={15} className="text-accent-yellow" strokeWidth={2} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-text-primary">{renewal.name}</p>
-                  <p className="text-xs text-text-muted">{getRenewalLabel(renewal.daysUntil, n)}</p>
-                </div>
-              </Link>
-            ))}
-
-            {/* Pending booking requests are new inbound client requests. */}
-            {bookingRequests.map((request) => (
-              <Link
-                key={request.id}
-                href={ROUTES.bookingRequests}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 border-b border-border-soft px-4 py-3 transition-colors hover:bg-surface-sunken last:border-none"
-              >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-(--neu-radius-md) bg-accent-green-soft">
-                  <CalendarCheckIcon size={15} className="text-accent-green" strokeWidth={2} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-text-primary">
-                    {request.client_name}
-                  </p>
-                  <p className="truncate text-xs text-text-muted">
-                    {n.bookingRequest} · {request.service_name}
-                  </p>
-                </div>
-              </Link>
+            {notifications.map((notification) => (
+              <NotificationRow
+                key={notification.id}
+                notification={notification}
+                onOpen={() => {
+                  setOpen(false);
+                  void markAsRead(notification.id);
+                }}
+              />
             ))}
           </div>
         </div>
@@ -157,8 +103,44 @@ export function Notifications({ overdueCount, renewals, bookingRequests, dict }:
   );
 }
 
-function getRenewalLabel(daysUntil: number, n: Dictionary["notifications"]): string {
-  if (daysUntil === 0) return n.renewalToday;
-  if (daysUntil === 1) return n.renewalTomorrow;
-  return n.renewalInDays.replace("{{days}}", String(daysUntil));
+function NotificationRow({ notification, onOpen }: { notification: UserNotification; onOpen(): void }) {
+  const Icon = NOTIFICATION_ICON[notification.category] ?? ListChecksIcon;
+  const iconClass = NOTIFICATION_ICON_CLASS[notification.category] ?? "bg-info-soft text-info";
+
+  return (
+    <Link
+      href={notification.target_url ?? ROUTES.actions}
+      onClick={onOpen}
+      className="flex items-start gap-3 border-b border-border-soft px-4 py-3 transition-colors hover:bg-surface-sunken last:border-none"
+    >
+      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-(--neu-radius-md) ${iconClass}`}>
+        <Icon size={15} strokeWidth={2} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-text-primary">{notification.title}</p>
+        {notification.body && (
+          <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-text-muted">{notification.body}</p>
+        )}
+        <p className="mt-1 text-[11px] text-text-tertiary">
+          {new Date(notification.created_at).toLocaleString()}
+        </p>
+      </div>
+    </Link>
+  );
 }
+
+const NOTIFICATION_ICON = {
+  task: CheckSquareIcon,
+  subscription: RepeatIcon,
+  payment: WalletIcon,
+  document: FileTextIcon,
+  action_center: ListChecksIcon,
+};
+
+const NOTIFICATION_ICON_CLASS = {
+  task: "bg-danger-soft text-danger",
+  subscription: "bg-accent-yellow-soft text-accent-yellow",
+  payment: "bg-accent-green-soft text-accent-green",
+  document: "bg-info-soft text-info",
+  action_center: "bg-surface-sunken text-text-secondary",
+};

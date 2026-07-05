@@ -3,11 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ActionItem } from "../types/action-item.types";
 
 const MUTATION_COLUMNS =
-  "id, organization_id, status, type, source_type, source_id, primary_entity_id, title, assigned_to" as const;
+  "id, organization_id, status, type, source_type, source_id, primary_entity_id, title, assigned_to, metadata" as const;
 
 export type MutableActionItem = Pick<
   ActionItem,
-  "id" | "organization_id" | "status" | "type" | "source_type" | "source_id" | "primary_entity_id" | "title" | "assigned_to"
+  "id" | "organization_id" | "status" | "type" | "source_type" | "source_id" | "primary_entity_id" | "title" | "assigned_to" | "metadata"
 >;
 
 /**

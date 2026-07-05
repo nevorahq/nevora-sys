@@ -15,6 +15,7 @@ import type {
   ActionFilters,
 } from "../types/action-center.types";
 import { hydrateFeedItems } from "./hydrate-feed-items";
+import { orderRecentlyResolved, RESOLVED_BUFFER, RESOLVED_WINDOW_DAYS } from "./recently-resolved";
 
 function emptySections(): ActionFeedSections {
   return {
@@ -28,7 +29,7 @@ function emptySections(): ActionFeedSections {
 
 /**
  * Фид Action Center: активные item'ы (open/in_progress/snoozed), сгруппированные
- * по секциям + блок недавно закрытых. Keyset-пагинация по (priority_score, id).
+ * по секциям + блок недавно закрытых. Keyset-пагинация по (created_at, id).
  *
  * Tenant-safe: org из requireOrg + RLS. Только whitelisted колонки, без select("*").
  */
@@ -59,15 +60,14 @@ export async function getActionCenterFeed(input: ActionFilters = {}): Promise<Ac
   if (f.search) active = active.ilike("title", `%${escapeIlike(f.search)}%`);
 
   if (f.cursor) {
-    const [scoreRaw, id] = f.cursor.split(".");
-    const score = Number(scoreRaw);
-    if (Number.isFinite(score) && id) {
-      active = active.or(`priority_score.lt.${score},and(priority_score.eq.${score},id.lt.${id})`);
+    const [createdAt, id] = f.cursor.split("__");
+    if (createdAt && id) {
+      active = active.or(`created_at.lt.${createdAt},and(created_at.eq.${createdAt},id.lt.${id})`);
     }
   }
 
   const { data: activeRows, error } = await active
-    .order("priority_score", { ascending: false })
+    .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(f.limit);
 
@@ -79,9 +79,15 @@ export async function getActionCenterFeed(input: ActionFilters = {}): Promise<Ac
   const items = (activeRows ?? []) as ActionItem[];
 
   // ── Недавно закрытые (только первая страница) ───────────
+  // Очередь по МОМЕНТУ попадания в resolved-лист: resolved_at (resolved) или
+  // dismissed_at (dismissed), свежие сверху — а не по общему updated_at, который
+  // сдвигает элемент наверх при любом позднем апдейте строки. updated_at всегда
+  // >= момента резолва (его бампает триггер action_items_set_updated_at), поэтому
+  // фильтр по updated_at в БД — безопасный superset, а точная граница окна и
+  // порядок доводятся в памяти по resolvedAt().
   let resolvedRows: ActionItem[] = [];
   if (!f.cursor) {
-    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const since = new Date(Date.now() - RESOLVED_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
     const { data: recent } = await supabase
       .from("action_items")
       .select(ACTION_ITEM_COLUMNS)
@@ -89,8 +95,8 @@ export async function getActionCenterFeed(input: ActionFilters = {}): Promise<Ac
       .in("status", ["resolved", "dismissed"])
       .gte("updated_at", since)
       .order("updated_at", { ascending: false })
-      .limit(10);
-    resolvedRows = (recent ?? []) as ActionItem[];
+      .limit(RESOLVED_BUFFER);
+    resolvedRows = orderRecentlyResolved((recent ?? []) as ActionItem[], since);
   }
 
   // ── Гидрация (assignee_name, related_count) ─────────────
@@ -108,7 +114,7 @@ export async function getActionCenterFeed(input: ActionFilters = {}): Promise<Ac
 
   const nextCursor =
     items.length === f.limit
-      ? `${items[items.length - 1].priority_score}.${items[items.length - 1].id}`
+      ? `${items[items.length - 1].created_at}__${items[items.length - 1].id}`
       : null;
 
   return { sections, nextCursor };

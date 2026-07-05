@@ -13,6 +13,19 @@ export const dismissActionItemSchema = z.object({
   reason: z.string().trim().max(1_000).optional(),
 });
 
+export const restoreActionItemSchema = z.object({
+  actionItemId: uuidSchema,
+  // When the item marks a DELETED record (e.g. a deleted task), also undelete
+  // that record. Defaults to true so "Restore" on a deletion brings the record
+  // back; the UI may pass false to only re-open the action item.
+  restoreRecord: z.boolean().default(true),
+});
+
+export const bulkDismissActionItemsSchema = z.object({
+  actionItemIds: z.array(uuidSchema).min(1, "Select at least one action").max(100, "Select 100 actions or fewer"),
+  reason: z.string().trim().max(1_000).optional(),
+});
+
 export const snoozeActionItemSchema = z.object({
   actionItemId: uuidSchema,
   snoozedUntil: z
@@ -36,6 +49,8 @@ export const executeActionItemSchema = z.object({
 
 export type ResolveActionItemParsed = z.infer<typeof resolveActionItemSchema>;
 export type DismissActionItemParsed = z.infer<typeof dismissActionItemSchema>;
+export type RestoreActionItemParsed = z.infer<typeof restoreActionItemSchema>;
+export type BulkDismissActionItemsParsed = z.infer<typeof bulkDismissActionItemsSchema>;
 export type SnoozeActionItemParsed = z.infer<typeof snoozeActionItemSchema>;
 export type AssignActionItemParsed = z.infer<typeof assignActionItemSchema>;
 export type ExecuteActionItemParsed = z.infer<typeof executeActionItemSchema>;

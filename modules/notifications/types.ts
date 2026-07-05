@@ -17,6 +17,11 @@ export interface NotificationCounters {
   dueToday: number;
   overdue: number;
   urgent: number;
+  /**
+   * Action items recently ADDED to or COMPLETED in the Action Center (rolling
+   * 7-day window). Drives the "Действия" sidebar badge as a recent-actions log.
+   */
+  recentActions: number;
 }
 
 export const EMPTY_NOTIFICATION_COUNTERS: NotificationCounters = {
@@ -26,6 +31,7 @@ export const EMPTY_NOTIFICATION_COUNTERS: NotificationCounters = {
   dueToday: 0,
   overdue: 0,
   urgent: 0,
+  recentActions: 0,
 };
 
 export interface NotificationPreferences {
@@ -53,5 +59,6 @@ export interface UserNotification {
   category: NotificationCategory;
   priority: NotificationPriority;
   target_url: string | null;
+  read_at: string | null;
   created_at: string;
 }

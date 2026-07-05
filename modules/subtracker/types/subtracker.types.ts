@@ -17,6 +17,14 @@ export type Subscription = {
   note: string | null;
   created_at: string;
   updated_at: string;
+  // Payment workflow (migration 078)
+  billing_anchor_day: number | null;
+  last_payment_date: string | null;
+  default_category_id: string | null;
+  payment_method_hint: string | null;
+  auto_task_enabled: boolean;
+  auto_transaction_mode: "manual_confirm" | "auto_post_on_task_complete";
+  cancelled_at: string | null;
 };
 
 /**

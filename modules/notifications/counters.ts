@@ -12,5 +12,6 @@ export function normalizeNotificationCounters(value: unknown): NotificationCount
     dueToday: normalizeUnreadCount(data.due_today ?? data.dueToday),
     overdue: normalizeUnreadCount(data.overdue),
     urgent: normalizeUnreadCount(data.urgent),
+    recentActions: normalizeUnreadCount(data.recent_actions ?? data.recentActions),
   };
 }

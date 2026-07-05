@@ -6,11 +6,13 @@ import { requireOrg } from "@/lib/auth/require-org";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
 import { ROUTES } from "@/shared/config/routes";
+import { recordTaskDeletionInActionCenter } from "@/modules/action-center/services/record-task-deletion";
 
 export async function deleteTaskAction(
   taskId: string,
 ): Promise<{ error?: string }> {
-  const { user, org } = await requireOrg();
+  const ctx = await requireOrg();
+  const { user, org } = ctx;
 
   const parsed = uuidSchema.safeParse(taskId);
   if (!parsed.success) return { error: "Invalid task ID" };
@@ -60,6 +62,10 @@ export async function deleteTaskAction(
         oldData:        { title: task.title },
         metadata:       { source: "dashboard" },
       }),
+      recordTaskDeletionInActionCenter(supabase, ctx, {
+        taskId: task.id as string,
+        title: task.title as string,
+      }),
     ]);
   } catch (err) {
     console.error("deleteTask unexpected error:", err);
@@ -68,5 +74,6 @@ export async function deleteTaskAction(
 
   revalidatePath(ROUTES.dashboard);
   revalidatePath(ROUTES.tasks);
+  revalidatePath(ROUTES.actions);
   return {};
 }

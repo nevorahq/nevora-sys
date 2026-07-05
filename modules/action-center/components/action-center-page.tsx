@@ -3,10 +3,13 @@ import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
 import { getActionCenterFeed } from "../queries/get-action-center-feed";
 import { getActionCenterSummary } from "../queries/get-action-center-summary";
+import { getActivityLog } from "../queries/get-activity-log";
 import { syncActionItems } from "../services/action-item-generator";
 import { ActionCenterHeader } from "./action-center-header";
 import { ActionSummaryStrip } from "./action-summary-strip";
 import { ActionFeed } from "./action-feed";
+import { ActivityLog } from "./activity-log";
+import { MarkActionsSeen } from "./mark-actions-seen";
 
 /**
  * Async Server Component — композиционный слой Action Center.
@@ -52,16 +55,21 @@ export async function ActionCenterPage() {
     name: (p.display_name as string | null)?.trim() || "Member",
   }));
 
-  const [feed, summary] = await Promise.all([
+  const [feed, summary, activity] = await Promise.all([
     getActionCenterFeed({ limit: 50 }),
     getActionCenterSummary(),
+    getActivityLog(supabase, ctx.org.id),
   ]);
+
+  const actors: Record<string, string> = Object.fromEntries(members.map((m) => [m.id, m.name]));
 
   return (
     <div className="space-y-6">
+      <MarkActionsSeen />
       <ActionCenterHeader />
       <ActionSummaryStrip summary={summary} />
       <ActionFeed initialFeed={feed} members={members} currentUserId={ctx.user.id} />
+      <ActivityLog entries={activity} actors={actors} />
     </div>
   );
 }

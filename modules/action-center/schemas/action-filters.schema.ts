@@ -9,7 +9,7 @@ import {
 
 /**
  * Фильтры фида Action Center. Все массивы опциональны; cursor — opaque-строка
- * (priority_score|created_at|id) для keyset-пагинации.
+ * (created_at + id) для keyset-пагинации.
  */
 export const actionFiltersSchema = z.object({
   status: z.array(actionItemStatusSchema).optional(),

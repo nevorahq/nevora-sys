@@ -37,7 +37,13 @@ Rules:
 - Provide a calibrated confidence (0..1) per field group AND an overall confidence.
 - Suggest a transaction category per line item when obvious.
 - If the document looks like a recurring software/SaaS subscription payment, add a
-  suggestedAction of type "link_subscription".`;
+  suggestedAction of type "link_subscription".
+- If the document describes something to PAY IN THE FUTURE (an unpaid invoice, a
+  renewal/payment reminder, a tax notice, a hosting/domain bill) rather than a
+  completed purchase, populate "obligation" with isFinancialObligation=true, the
+  most specific obligationType, and paymentDueDate (and nextPaymentDate +
+  billingInterval when recurring). For an already-paid receipt, omit obligation
+  (null).`;
 
 const TOOL_INPUT_SCHEMA = {
   type: "object",
@@ -101,6 +107,22 @@ const TOOL_INPUT_SCHEMA = {
         },
         required: ["type", "reason"],
       },
+    },
+    obligation: {
+      type: ["object", "null"],
+      properties: {
+        isFinancialObligation: { type: "boolean" },
+        obligationType: {
+          type: ["string", "null"],
+          enum: ["invoice_payment", "tax_payment", "domain_renewal", "hosting_payment", "subscription_payment", "client_invoice_followup", null],
+        },
+        providerName: { type: ["string", "null"] },
+        paymentDueDate: { type: ["string", "null"] },
+        nextPaymentDate: { type: ["string", "null"] },
+        billingInterval: { type: ["string", "null"], enum: ["weekly", "monthly", "yearly", "one_time", null] },
+        confidence: { type: "number" },
+      },
+      required: ["isFinancialObligation"],
     },
   },
   required: ["documentType", "merchant", "transaction", "confidence"],

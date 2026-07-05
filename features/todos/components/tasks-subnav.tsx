@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ListTodoIcon, FolderKanbanIcon } from "lucide-react";
+import { ListTodoIcon, FolderKanbanIcon, WalletIcon } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ROUTES } from "@/shared/config/routes";
 
@@ -14,6 +14,7 @@ import { ROUTES } from "@/shared/config/routes";
  */
 const TABS = [
   { href: ROUTES.tasks, label: "All Tasks", icon: ListTodoIcon, exact: true },
+  { href: ROUTES.tasksFinancial, label: "Financial", icon: WalletIcon, exact: false },
   { href: ROUTES.projects, label: "Projects", icon: FolderKanbanIcon, exact: false },
 ];
 

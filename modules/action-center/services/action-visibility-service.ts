@@ -14,7 +14,7 @@ import type { AvailableAction } from "../types/action-center.types";
 const TERMINAL: ActionItemStatus[] = ["resolved", "dismissed", "cancelled"];
 
 export function getAvailableActions(
-  item: Pick<ActionItem, "type" | "status" | "source_type">,
+  item: Pick<ActionItem, "type" | "status" | "source_type"> & Partial<Pick<ActionItem, "metadata" | "primary_entity_type">>,
   permissions: ReadonlySet<string>,
 ): AvailableAction[] {
   const actions: AvailableAction[] = [];
@@ -69,6 +69,34 @@ export function getAvailableActions(
         permission: "action_center.execute.subscription",
       });
     }
+
+    if (item.source_type === "task" && has("data.delete")) {
+      actions.push({
+        kind: "execute",
+        executeKind: "delete_task",
+        label: "Delete task",
+        requiresConfirmation: true,
+        permission: "data.delete",
+      });
+    }
+    if (item.source_type === "subscription" && has("data.delete")) {
+      actions.push({
+        kind: "execute",
+        executeKind: "delete_subscription",
+        label: "Delete subscription",
+        requiresConfirmation: true,
+        permission: "data.delete",
+      });
+    }
+    if (isPlannerAction(item) && has("planner.entry.delete")) {
+      actions.push({
+        kind: "execute",
+        executeKind: "delete_planner_entry",
+        label: "Delete Inbox entry",
+        requiresConfirmation: true,
+        permission: "planner.entry.delete",
+      });
+    }
   }
 
   return actions;
@@ -85,7 +113,21 @@ export function executePermissionFor(executeKind: string): { permission: string;
       return { permission: "action_center.execute.subscription", dangerous: true };
     case "approve_document":
       return { permission: "action_center.execute.document_approval", dangerous: true };
+    case "delete_task":
+    case "delete_subscription":
+      return { permission: "data.delete", dangerous: true };
+    case "delete_planner_entry":
+      return { permission: "planner.entry.delete", dangerous: true };
     default:
       return { permission: "action_center.execute", dangerous: true };
   }
+}
+
+function isPlannerAction(
+  item: Pick<ActionItem, "source_type"> & Partial<Pick<ActionItem, "metadata" | "primary_entity_type">>,
+): boolean {
+  if (item.source_type !== "ai") return false;
+  if (item.primary_entity_type === "planner_entry" || item.primary_entity_type === "planner_suggestion") return true;
+  const metadata = item.metadata;
+  return metadata?.source === "planner" || typeof metadata?.planner_entry_id === "string";
 }

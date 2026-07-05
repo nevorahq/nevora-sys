@@ -13,6 +13,7 @@ import { createActionItemForDocument } from "@/modules/action-center/services/cr
 import { normalizeFinancialDocument } from "@/modules/ai/services/normalize-financial-document";
 import { routeExtraction } from "./document-extraction-router";
 import { evaluateExtraction } from "./confidence-rules";
+import { detectFinancialObligation } from "./detect-financial-obligation";
 import type { ExtractedFinancialDocument } from "../schemas/extracted-financial-document.schema";
 import type { ExtractionErrorCode } from "../types/document-extraction.types";
 
@@ -343,6 +344,19 @@ export async function runDocumentExtraction(
     }
   } else {
     await openDocumentReview(supabase, ctx, { documentId, title: document.title as string, reason: decision.reason, confidence: extracted.confidence.overall });
+  }
+
+  // Financial-obligation detection (spec §9–§11). Independent of the draft-expense
+  // path: an unpaid invoice / renewal notice becomes a planned Financial Context
+  // Task (high confidence auto-creates; medium is surfaced for confirmation on the
+  // document detail). Money-safe — never posts a transaction. Best-effort.
+  try {
+    const obligation = await detectFinancialObligation(supabase, ctx, { documentId, extracted });
+    if (obligation.detected) {
+      logger.info("extraction.run.obligation", { documentId, extractionId, band: obligation.band, autoCreated: obligation.autoCreated, taskId: obligation.taskId });
+    }
+  } catch (e) {
+    logger.error("extraction.run.obligation_failed", { documentId, extractionId, error: e instanceof Error ? e.message : String(e) });
   }
 
   await emitDomainEvent({

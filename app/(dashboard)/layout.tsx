@@ -6,9 +6,6 @@ import { Notifications } from "@/shared/ui/notifications";
 import { LogoutButton } from "@/features/auth/components/logout-button";
 import { requireUser } from "@/lib/auth/require-user";
 import { requireOrg } from "@/lib/auth/require-org";
-import { getTaskSummary } from "@/features/todos/queries/get-task-summary";
-import { getUpcomingRenewals } from "@/modules/subtracker/queries/get-upcoming-renewals";
-import { getBookingRequests } from "@/modules/booking";
 import { getTrialState } from "@/modules/billing";
 import { TrialBanner } from "@/modules/billing/components/trial-banner";
 import { DeveloperAccessBadge } from "@/modules/billing/components/developer-access-badge";
@@ -17,6 +14,7 @@ import { OrganizationSwitcher, getUserOrganizations } from "@/modules/members";
 import { getNotificationPreferences } from "@/modules/settings/notifications/queries/get-notification-preferences";
 import { NotificationProvider } from "@/modules/notifications/components/notification-provider";
 import { getNotificationCounters } from "@/modules/notifications/queries/get-notification-counters";
+import { getUnreadNotifications } from "@/modules/notifications/queries/get-user-notifications";
 
 /**
  * Dashboard Layout — обёртка для ВСЕХ защищённых страниц.
@@ -48,19 +46,17 @@ export default async function DashboardLayout({
     requireOrg(),
     getDictionary(),
   ]);
-  const [taskSummary, renewals, trial, bookingRequests, limits, userOrganizations, notificationPreferences, initialNotificationCounters] = await Promise.all([
-    getTaskSummary(context.org.id),
-    getUpcomingRenewals(context.org.id),
+  const [trial, limits, userOrganizations, notificationPreferences, initialNotificationCounters, initialNotifications] = await Promise.all([
     getTrialState(context.org.id),
-    getBookingRequests(context.org.id, { status: "pending", limit: 5 }),
     resolveAccountLimits(user.id, context.org.id),
     getUserOrganizations(user.id),
     getNotificationPreferences(),
     getNotificationCounters(),
+    getUnreadNotifications(),
   ]);
 
   return (
-    <NotificationProvider key={`${context.org.id}:${user.id}`} organizationId={context.org.id} userId={user.id} initialPreferences={notificationPreferences} initialCounters={initialNotificationCounters}>
+    <NotificationProvider key={`${context.org.id}:${user.id}`} organizationId={context.org.id} userId={user.id} initialPreferences={notificationPreferences} initialCounters={initialNotificationCounters} initialNotifications={initialNotifications}>
       <div className="flex h-full min-h-screen">
       {/* Sidebar — навигация платформы */}
       <Sidebar dict={dict} />
@@ -77,12 +73,7 @@ export default async function DashboardLayout({
             {limits.unlimitedAccess && <DeveloperAccessBadge />}
           </div>
           <div className="flex items-center gap-2">
-            <Notifications
-              overdueCount={taskSummary.overdue}
-              renewals={renewals}
-              bookingRequests={bookingRequests}
-              dict={dict}
-            />
+            <Notifications dict={dict} />
             <LanguageSwitcher locale={locale} />
             <ThemeToggle />
             <LogoutButton label={dict.nav.logout} />

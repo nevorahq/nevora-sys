@@ -29,7 +29,8 @@ export async function getDocumentById(
     `)
     .eq("id", documentId)
     .eq("organization_id", orgId)
-    .single();
+    .is("deleted_at", null)
+    .maybeSingle();
 
   if (error || !data) return null;
 

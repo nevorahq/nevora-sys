@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Trash2Icon } from "lucide-react";
 import { deleteTransactionAction } from "../actions/delete-transaction.action";
+import { useNotificationIndicator } from "@/modules/notifications/components/notification-provider";
 import { Modal } from "@/shared/ui/modal";
 import { cn } from "@/shared/utils/cn";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
@@ -23,6 +25,8 @@ export function DeleteTransactionButton({
   const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, startDelete] = useTransition();
+  const router = useRouter();
+  const { refreshCounters } = useNotificationIndicator();
   const labels = dict.money.transactions;
 
   function closeConfirmation() {
@@ -41,6 +45,11 @@ export function DeleteTransactionButton({
       }
 
       setIsConfirming(false);
+      // Drop the deleted transaction's notification from the dropdown right away
+      // (refreshCounters re-fetches both the badge counts and the list) and
+      // refresh the server-rendered transaction list.
+      refreshCounters();
+      router.refresh();
     });
   }
 

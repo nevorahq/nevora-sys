@@ -4,8 +4,10 @@ import { ArrowLeftIcon, ArrowRightLeftIcon, CalendarIcon, TagIcon, WalletIcon } 
 import { requireOrg } from "@/lib/auth/require-org";
 import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
+import { RepeatIcon } from "lucide-react";
 import { UniversalRelationViewer } from "@/modules/relations";
 import { AiSuggestionPanel } from "@/modules/moneyflow/components/ai-suggestion-panel";
+import { getPaymentCycleByTransactionId } from "@/modules/subtracker/queries/get-payment-cycles";
 import { ROUTES } from "@/shared/config/routes";
 
 export default async function TransactionDetailPage({ params }: PageProps<"/dashboard/money/[transactionId]">) {
@@ -23,6 +25,27 @@ export default async function TransactionDetailPage({ params }: PageProps<"/dash
     .maybeSingle();
 
   if (!tx) notFound();
+
+  // Was this expense created from a subscription payment cycle? (migration 078)
+  const paymentCycle = await getPaymentCycleByTransactionId(org.id, tx.id);
+  const paymentSubscription = paymentCycle
+    ? await supabase
+        .from("subscriptions")
+        .select("id, name")
+        .eq("id", paymentCycle.subscription_id)
+        .eq("organization_id", org.id)
+        .maybeSingle()
+        .then((r) => r.data)
+    : null;
+  const paymentTask = paymentCycle?.task_id
+    ? await supabase
+        .from("todos")
+        .select("id, title")
+        .eq("id", paymentCycle.task_id)
+        .eq("organization_id", org.id)
+        .maybeSingle()
+        .then((r) => r.data)
+    : null;
 
   const account = Array.isArray(tx.account) ? tx.account[0] : tx.account;
   const category = Array.isArray(tx.category) ? tx.category[0] : tx.category;
@@ -106,6 +129,37 @@ export default async function TransactionDetailPage({ params }: PageProps<"/dash
           <UniversalRelationViewer entityType="transaction" entityId={tx.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.money}/${tx.id}`} />
         </main>
         <aside className="space-y-4">
+          {paymentCycle && (
+            <section className="soft-card-sm space-y-3 p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+                <RepeatIcon size={15} className="text-accent-lilac" /> Created from subscription payment
+              </p>
+              <dl className="space-y-2 text-sm">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-text-muted">Subscription</dt>
+                  <dd className="text-right">
+                    <Link href={`${ROUTES.subscriptions}/${paymentCycle.subscription_id}`} className="font-medium text-text-secondary underline hover:text-text-primary">
+                      {paymentSubscription?.name ?? "Subscription"}
+                    </Link>
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-text-muted">Cycle</dt>
+                  <dd className="text-text-primary">{paymentCycle.billing_period_key}</dd>
+                </div>
+                {paymentTask && (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-text-muted">Task</dt>
+                    <dd className="text-right">
+                      <Link href={`${ROUTES.tasks}/${paymentTask.id}`} className="text-text-secondary underline hover:text-text-primary">
+                        {paymentTask.title}
+                      </Link>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </section>
+          )}
           <section className="soft-card-sm space-y-4 p-4">
             <div>
               <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-text-muted"><CalendarIcon size={13} /> Date</p>

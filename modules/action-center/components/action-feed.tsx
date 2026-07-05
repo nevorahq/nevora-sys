@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { EyeOffIcon } from "lucide-react";
+import { Checkbox } from "@/shared/ui/checkbox";
+import { Button } from "@/shared/ui/button";
+import { useNotificationIndicator } from "@/modules/notifications/components/notification-provider";
 import { ActionCard } from "./action-card";
 import { ActionFilters, type FilterState } from "./action-filters";
 import { ActionDetailDrawer } from "./action-detail-drawer";
-import { ActionEmptyState } from "./action-empty-state";
 import { SECTION_LABELS, SECTION_ORDER } from "../constants/action-center.constants";
 import type { ActionFeed as ActionFeedData, ActionFilters as ActionFiltersInput } from "../types/action-center.types";
 import type { ActionItemPriority, ActionItemStatus, ActionSourceType } from "../types/action-item.types";
 import { getActionFeed } from "../actions/get-feed.action";
+import { bulkDismissActionItems } from "../actions/bulk-dismiss-action-items";
 
 interface ActionFeedProps {
   initialFeed: ActionFeedData;
@@ -18,6 +22,7 @@ interface ActionFeedProps {
 }
 
 const EMPTY_FILTERS: FilterState = { search: "", view: "attention", priority: "", sourceType: "" };
+const VISIBLE_SECTION_ORDER = SECTION_ORDER.filter((section) => section !== "recently_resolved");
 
 function toInput(f: FilterState, cursor?: string): ActionFiltersInput {
   return {
@@ -32,11 +37,25 @@ function toInput(f: FilterState, cursor?: string): ActionFiltersInput {
 
 export function ActionFeed({ initialFeed, members, currentUserId }: ActionFeedProps) {
   const router = useRouter();
+  const { refreshCounters } = useNotificationIndicator();
   const [feed, setFeed] = useState<ActionFeedData>(initialFeed);
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkError, setBulkError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const mounted = useRef(false);
+
+  const selectableIds = useMemo(() => [
+    ...feed.sections.due_soon,
+    ...feed.sections.waiting_for_action,
+    ...feed.sections.missing_information,
+    ...feed.sections.ai_suggestions,
+  ].map((item) => item.id), [feed]);
+
+  const selectedVisibleIds = useMemo(() => selectableIds.filter((id) => selectedIds.has(id)), [selectableIds, selectedIds]);
+  const allVisibleSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id));
+  const selectedCount = selectedVisibleIds.length;
 
   // Re-fetch при изменении фильтров (debounce для search).
   useEffect(() => {
@@ -48,6 +67,8 @@ export function ActionFeed({ initialFeed, members, currentUserId }: ActionFeedPr
       startTransition(async () => {
         const next = await getActionFeed(toInput(filters));
         setFeed(next);
+        setSelectedIds(new Set());
+        setBulkError(null);
       });
     }, 250);
     return () => clearTimeout(handle);
@@ -78,6 +99,42 @@ export function ActionFeed({ initialFeed, members, currentUserId }: ActionFeedPr
     });
   }
 
+  function toggleOne(id: string, checked: boolean) {
+    setBulkError(null);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleAll(checked: boolean) {
+    setBulkError(null);
+    setSelectedIds(checked ? new Set(selectableIds) : new Set());
+  }
+
+  function dismissSelected() {
+    if (selectedVisibleIds.length === 0) return;
+    const actionItemIds = selectedVisibleIds;
+    startTransition(async () => {
+      setBulkError(null);
+      const result = await bulkDismissActionItems({
+        actionItemIds,
+        reason: "bulk_inactive",
+      });
+      if (!result.ok) {
+        setBulkError(result.error);
+        return;
+      }
+      setSelectedIds(new Set());
+      const next = await getActionFeed(toInput(filters));
+      setFeed(next);
+      refreshCounters();
+      router.refresh();
+    });
+  }
+
   const totalActive =
     feed.sections.due_soon.length +
     feed.sections.waiting_for_action.length +
@@ -88,14 +145,39 @@ export function ActionFeed({ initialFeed, members, currentUserId }: ActionFeedPr
     <div className="space-y-5">
       <ActionFilters value={filters} onChange={setFilters} />
 
-      {totalActive === 0 && feed.sections.recently_resolved.length === 0 ? (
-        <ActionEmptyState />
-      ) : (
+      {totalActive > 0 && (
         <div className={`space-y-6 ${pending ? "opacity-70" : ""}`}>
-          {SECTION_ORDER.map((section) => {
+          {selectableIds.length > 0 && (
+            <div className="flex flex-col gap-3 rounded-(--neu-radius) bg-surface-sunken p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  aria-label="Select all active actions"
+                  checked={allVisibleSelected}
+                  onChange={(event) => toggleAll(event.currentTarget.checked)}
+                />
+                <p className="text-sm text-text-secondary">
+                  {selectedCount > 0 ? `${selectedCount} selected` : "Select actions"}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={dismissSelected}
+                disabled={selectedCount === 0}
+                isLoading={pending && selectedCount > 0}
+                className="self-start sm:self-auto"
+              >
+                <EyeOffIcon size={16} />
+                Make inactive
+              </Button>
+            </div>
+          )}
+
+          {bulkError && <p className="text-sm text-danger" role="alert">{bulkError}</p>}
+
+          {VISIBLE_SECTION_ORDER.map((section) => {
             const items = feed.sections[section];
             if (items.length === 0) return null;
-            const muted = section === "recently_resolved";
             return (
               <section key={section}>
                 <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text-primary">
@@ -104,7 +186,14 @@ export function ActionFeed({ initialFeed, members, currentUserId }: ActionFeedPr
                 </h2>
                 <div className="space-y-2">
                   {items.map((item) => (
-                    <ActionCard key={item.id} item={item} onOpen={setSelectedId} muted={muted} />
+                    <ActionCard
+                      key={item.id}
+                      item={item}
+                      onOpen={setSelectedId}
+                      muted={false}
+                      selected={selectedIds.has(item.id)}
+                      onSelectedChange={toggleOne}
+                    />
                   ))}
                 </div>
               </section>

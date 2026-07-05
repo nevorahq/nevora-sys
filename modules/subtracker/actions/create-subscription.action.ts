@@ -6,6 +6,8 @@ import { requireOrg } from "@/lib/auth/require-org";
 import { emitDomainEvent } from "@/lib/events";
 import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
 import { getSubscriptionSchemas } from "../schemas/subscription.schema";
+import { provisionSubscriptionPaymentCycle } from "../services/provision-subscription-payment-cycle";
+import type { SubscriptionForPayment } from "../types/payment-cycle.types";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
@@ -17,7 +19,8 @@ export async function createSubscriptionAction(
   const { dict } = await getDictionary();
   const { createSubscriptionSchema } = getSubscriptionSchemas(dict.subscriptions.errors);
 
-  const { user, org, workspace } = await requireOrg();
+  const ctx = await requireOrg();
+  const { user, org, workspace } = ctx;
 
   const rawData = {
     name: formData.get("name") as string,
@@ -51,6 +54,10 @@ export async function createSubscriptionAction(
     return { error: error instanceof Error ? error.message : "Subscription limit reached. Upgrade your plan." };
   }
 
+  // Day-of-month anchor keeps the recurring schedule fixed (see
+  // calculate-next-payment-date). Weekly subs ignore it; storing it is harmless.
+  const billingAnchorDay = Number(parsed.data.next_billing_date.slice(8, 10));
+
   let newSubId: string;
   try {
     const supabase = await createClient();
@@ -67,6 +74,7 @@ export async function createSubscriptionAction(
         currency: parsed.data.currency,
         billing_cycle: parsed.data.billing_cycle,
         next_billing_date: parsed.data.next_billing_date,
+        billing_anchor_day: Number.isFinite(billingAnchorDay) ? billingAnchorDay : null,
         category: parsed.data.category,
         url: parsed.data.url,
         note: parsed.data.note,
@@ -95,6 +103,40 @@ export async function createSubscriptionAction(
         billing_cycle: parsed.data.billing_cycle,
       },
     });
+
+    // Workflow bootstrap: first payment cycle + payment task. This deliberately
+    // creates NO money transaction — an expense is posted only on Mark as paid.
+    // Best-effort: a missing cycle/task is a repairable state (safety cron), so
+    // provisioning never fails a committed subscription.
+    const subscriptionForPayment: SubscriptionForPayment = {
+      id: newSubId,
+      name: parsed.data.name,
+      amount: parsed.data.amount,
+      currency: parsed.data.currency,
+      billing_cycle: parsed.data.billing_cycle,
+      billing_anchor_day: Number.isFinite(billingAnchorDay) ? billingAnchorDay : null,
+      next_billing_date: parsed.data.next_billing_date,
+      default_category_id: null,
+      auto_task_enabled: true,
+      is_active: true,
+      cancelled_at: null,
+      workspace_id: workspace.id,
+    };
+    try {
+      const provisioned = await provisionSubscriptionPaymentCycle({
+        supabase,
+        ctx,
+        subscription: subscriptionForPayment,
+        dueDate: parsed.data.next_billing_date,
+      });
+      if (!provisioned.ok) {
+        console.error("createSubscription: payment cycle provisioning failed:", provisioned.error);
+      }
+    } catch (provisionErr) {
+      // Never fail a committed subscription on a best-effort workflow step;
+      // the safety cron repairs a missing cycle/task.
+      console.error("createSubscription: payment cycle provisioning threw:", provisionErr);
+    }
   } catch (err) {
     console.error("createSubscription unexpected error:", err);
     if (reserved) await releaseOrganizationUsage(org.id, "subscriptions.count", 1);

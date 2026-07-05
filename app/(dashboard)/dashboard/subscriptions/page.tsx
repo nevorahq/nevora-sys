@@ -3,6 +3,7 @@ import { requireOrg } from "@/lib/auth/require-org";
 import { getSubSummary } from "@/modules/subtracker/queries/get-sub-summary";
 import { getSubscriptions } from "@/modules/subtracker/queries/get-subscriptions";
 import { getUpcomingRenewals } from "@/modules/subtracker/queries/get-upcoming-renewals";
+import { getOpenCyclesBySubscription } from "@/modules/subtracker/queries/get-payment-cycles";
 import { SubSummaryCards } from "@/modules/subtracker/components/sub-summary-cards";
 import { SubUpcomingRenewals } from "@/modules/subtracker/components/sub-upcoming-renewals";
 import { SubList } from "@/modules/subtracker/components/sub-list";
@@ -18,11 +19,15 @@ import { SubEmptyState } from "@/modules/subtracker/components/sub-empty-state";
  */
 export default async function SubscriptionsPage() {
   const [{ dict }, ctx] = await Promise.all([getDictionary(), requireOrg()]);
-  const [summary, subscriptions, upcoming] = await Promise.all([
+  const [summary, subscriptions, upcoming, openCycles] = await Promise.all([
     getSubSummary(ctx.org.id),
     getSubscriptions(ctx.org.id),
     getUpcomingRenewals(ctx.org.id),
+    getOpenCyclesBySubscription(ctx.org.id),
   ]);
+  const cycleBySub = Object.fromEntries(
+    Array.from(openCycles.entries()).map(([subId, c]) => [subId, { status: c.status, due_date: c.due_date }]),
+  );
 
   return (
     <>
@@ -61,7 +66,7 @@ export default async function SubscriptionsPage() {
             <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
               {dict.subscriptions.summary.active}
             </h2>
-            <SubList subscriptions={subscriptions} dict={dict} />
+            <SubList subscriptions={subscriptions} dict={dict} cycleBySub={cycleBySub} />
           </>
         ) : (
           <SubEmptyState

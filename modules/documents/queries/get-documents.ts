@@ -25,7 +25,8 @@ export async function getDocuments(
     .select(
       "id, organization_id, workspace_id, title, content, doc_type, status, entity_type, entity_id, created_by, updated_by, created_at, updated_at, deleted_at",
     )
-    .eq("organization_id", orgId);
+    .eq("organization_id", orgId)
+    .is("deleted_at", null);
 
   if (options.status)     query = query.eq("status", options.status);
   if (options.doc_type)   query = query.eq("doc_type", options.doc_type);
@@ -52,7 +53,8 @@ export async function getDocumentSummary(orgId: string): Promise<DocumentSummary
   const { data, error } = await supabase
     .from("documents")
     .select("status, doc_type")
-    .eq("organization_id", orgId);
+    .eq("organization_id", orgId)
+    .is("deleted_at", null);
 
   if (error) {
     console.error("getDocumentSummary error:", error);

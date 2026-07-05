@@ -20,8 +20,10 @@ export const ROUTES = {
 
   // Dashboard
   dashboard: "/dashboard",
+  inbox: "/dashboard/inbox",
   actions: "/dashboard/actions",
   tasks: "/dashboard/tasks",
+  tasksFinancial: "/dashboard/tasks/financial",
   projects: "/dashboard/tasks/projects",
   crm: "/dashboard/crm",
   money: "/dashboard/money",

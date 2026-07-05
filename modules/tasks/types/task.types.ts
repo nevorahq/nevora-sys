@@ -1,4 +1,11 @@
-import type { TaskStatus, TaskPriority, TaskRelationType } from "../constants/task.constants";
+import type {
+  TaskStatus,
+  TaskPriority,
+  TaskRelationType,
+  TaskContextType,
+  FinancialTaskStatus,
+  FinancialSourceType,
+} from "../constants/task.constants";
 
 export interface Task {
   id: string;
@@ -20,6 +27,35 @@ export interface Task {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  // Financial Context (migration 079). All default to standard/null/open for
+  // ordinary tasks, so existing consumers are unaffected.
+  task_context_type: TaskContextType;
+  financial_due_date: string | null;
+  reminder_offset_days: number;
+  amount: number | null;
+  currency: string | null;
+  provider_name: string | null;
+  financial_source_type: FinancialSourceType | null;
+  financial_source_id: string | null;
+  source_document_id: string | null;
+  financial_transaction_id: string | null;
+  financial_status: FinancialTaskStatus;
+  financial_confidence: number | null;
+  financial_paid_at: string | null;
+  financial_skipped_at: string | null;
+}
+
+/** Narrowed view of a task that carries financial context (task_context_type !== 'standard'). */
+export interface FinancialTask extends Task {
+  task_context_type: Exclude<TaskContextType, "standard">;
+  financial_due_date: string;
+  amount: number;
+  currency: string;
+}
+
+/** Type guard: is this task a Financial Context Task? */
+export function isFinancialTask(task: Pick<Task, "task_context_type">): boolean {
+  return task.task_context_type !== "standard";
 }
 
 export interface TaskAssignee {

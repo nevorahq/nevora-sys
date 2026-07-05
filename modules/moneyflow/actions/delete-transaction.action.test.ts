@@ -26,6 +26,7 @@ const organizationEq = vi.fn(() => ({ select }));
 const transactionEq = vi.fn(() => ({ eq: organizationEq }));
 const deleteQuery = vi.fn(() => ({ eq: transactionEq }));
 const from = vi.fn(() => ({ delete: deleteQuery }));
+const rpc = vi.fn(async () => ({ error: null }));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -46,7 +47,7 @@ beforeEach(() => {
     permissions: new Set(["data.delete"]),
   });
   canDo.mockReturnValue(true);
-  createClient.mockResolvedValue({ from });
+  createClient.mockResolvedValue({ from, rpc });
   emitDomainEvent.mockResolvedValue(undefined);
   maybeSingle.mockResolvedValue({
     data: {
@@ -95,6 +96,11 @@ describe("deleteTransactionAction", () => {
     });
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/money");
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
+    // Purges the deleted transaction's Action Center + notification footprint.
+    expect(rpc).toHaveBeenCalledWith("purge_transaction_from_action_center", {
+      p_organization_id: ORGANIZATION_ID,
+      p_transaction_id: TRANSACTION_ID,
+    });
   });
 
   it("returns an error when the delete matched no row", async () => {

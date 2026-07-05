@@ -8,6 +8,7 @@ import { normalizeUnreadCount } from "../unread-count";
 import { shouldPlaySound } from "../preferences";
 import { shouldApplyUnreadCountResponse } from "../services/fetch-unread-notification-count";
 import { fetchNotificationCounters } from "../services/fetch-notification-counters";
+import { fetchUnreadNotifications } from "../services/fetch-user-notifications";
 import { BrowserTitleManager } from "../services/browser-title-manager";
 import { FaviconBadgeManager } from "../services/favicon-badge-manager";
 import {
@@ -17,21 +18,27 @@ import {
   shouldAcceptNotificationCountMessage,
   type NotificationCountMessage,
 } from "../services/notification-tab-sync";
-import { markAllNotificationsAsRead } from "../actions/notification-read.actions";
+import { markAllNotificationsAsRead, markNotificationAsRead } from "../actions/notification-read.actions";
 import { NOTIFICATION_PREFERENCES_EVENT } from "../events";
 import { claimNotification } from "@/modules/settings/notifications/services/notification-tab-coordinator";
-import { isNotificationAudioUnlocked, playNotificationSound } from "@/modules/settings/notifications/services/notification-sound";
+import { isNotificationAudioUnlocked, playNotificationSound, unlockNotificationAudio } from "@/modules/settings/notifications/services/notification-sound";
 
 interface NotificationIndicatorContextValue {
   unreadCount: number;
   counters: NotificationCounters;
+  notifications: UserNotification[];
   markAllAsRead(): Promise<void>;
+  markAsRead(notificationId: string): Promise<void>;
+  refreshCounters(): void;
 }
 
 const NotificationIndicatorContext = createContext<NotificationIndicatorContextValue>({
   unreadCount: 0,
   counters: EMPTY_NOTIFICATION_COUNTERS,
+  notifications: [],
   markAllAsRead: async () => undefined,
+  markAsRead: async () => undefined,
+  refreshCounters: () => undefined,
 });
 
 export function useNotificationIndicator(): NotificationIndicatorContextValue {
@@ -44,6 +51,7 @@ export function NotificationProvider({
   initialPreferences,
   initialUnreadCount,
   initialCounters,
+  initialNotifications,
   children,
 }: {
   organizationId: string;
@@ -51,9 +59,12 @@ export function NotificationProvider({
   initialPreferences: NotificationPreferences;
   initialUnreadCount?: number;
   initialCounters?: NotificationCounters;
+  initialNotifications?: UserNotification[];
   children: React.ReactNode;
 }) {
   const [message, setMessage] = useState<string | null>(null);
+  const [preferences, setPreferences] = useState(initialPreferences);
+  const [notifications, setNotifications] = useState<UserNotification[]>(() => initialNotifications ?? []);
   const [counters, setCounters] = useState<NotificationCounters>(() => initialCounters ?? {
     ...EMPTY_NOTIFICATION_COUNTERS,
     unread: normalizeUnreadCount(initialUnreadCount),
@@ -111,7 +122,9 @@ export function NotificationProvider({
 
   useEffect(() => {
     const update = (event: Event) => {
-      preferencesRef.current = (event as CustomEvent<NotificationPreferences>).detail;
+      const next = (event as CustomEvent<NotificationPreferences>).detail;
+      preferencesRef.current = next;
+      setPreferences(next);
       refreshCountRef.current();
     };
     window.addEventListener(NOTIFICATION_PREFERENCES_EVENT, update);
@@ -150,6 +163,24 @@ export function NotificationProvider({
   }, [applyCount, organizationId, userId]);
 
   useEffect(() => {
+    if (!preferences.inAppSoundEnabled || isNotificationAudioUnlocked()) return;
+    let done = false;
+    const activate = () => {
+      if (done || !preferencesRef.current.inAppSoundEnabled || isNotificationAudioUnlocked()) return;
+      done = true;
+      void unlockNotificationAudio(preferencesRef.current.soundVolume).catch(() => {
+        // The settings screen still exposes an explicit test/activation button.
+      });
+    };
+    window.addEventListener("pointerdown", activate, { capture: true, once: true });
+    window.addEventListener("keydown", activate, { capture: true, once: true });
+    return () => {
+      window.removeEventListener("pointerdown", activate, { capture: true });
+      window.removeEventListener("keydown", activate, { capture: true });
+    };
+  }, [preferences.inAppSoundEnabled, preferences.soundVolume]);
+
+  useEffect(() => {
     const titleManager = new BrowserTitleManager(document);
     const faviconManager = new FaviconBadgeManager(document);
     titleManagerRef.current = titleManager;
@@ -158,9 +189,10 @@ export function NotificationProvider({
     const applyPresentation = () => {
       // Tab title stays plain route text (no "(N)"/"(N!)" badge). Passing zero counts
       // keeps the manager stripping any stray prefix while never adding one. The
-      // favicon and the in-app bell carry the unread/urgent indicator instead.
+      // favicon mirrors the in-app bell: only unread deliveries create a browser
+      // tab marker. Urgent obligations stay visible in Action Center/Dashboard.
       titleManager.apply(0, 0);
-      void faviconManager.apply(countersRef.current.urgent > 0 ? countersRef.current.urgent : unreadCountRef.current);
+      void faviconManager.apply(unreadCountRef.current);
     };
     const observer = new MutationObserver(() => {
       window.cancelAnimationFrame(frame);
@@ -180,7 +212,7 @@ export function NotificationProvider({
 
   useEffect(() => {
     titleManagerRef.current?.apply(0, 0);
-    void faviconManagerRef.current?.apply(counters.urgent > 0 ? counters.urgent : counters.unread);
+    void faviconManagerRef.current?.apply(counters.unread);
   }, [counters]);
 
   useEffect(() => {
@@ -192,9 +224,13 @@ export function NotificationProvider({
       const requestId = ++latestRequestId;
       window.clearTimeout(debounceTimer);
       debounceTimer = window.setTimeout(async () => {
-        const next = await fetchNotificationCounters(supabase, organizationId);
+        const [next, nextNotifications] = await Promise.all([
+          fetchNotificationCounters(supabase, organizationId),
+          fetchUnreadNotifications(supabase, organizationId),
+        ]);
         if (next !== null && shouldApplyUnreadCountResponse(requestId, latestRequestId, mounted)) {
           publishAuthoritativeCounters(next);
+          setNotifications(nextNotifications);
         }
       }, 150);
     };
@@ -216,6 +252,10 @@ export function NotificationProvider({
         if (payload.eventType !== "INSERT") return;
         const notification = payload.new as UserNotification;
         if (notification.organization_id !== organizationId || notification.user_id !== userId) return;
+        setNotifications((current) => [
+          notification,
+          ...current.filter((item) => item.id !== notification.id),
+        ].slice(0, 20));
         setMessage(notification.body ? `${notification.title}: ${notification.body}` : notification.title);
         const preferences = preferencesRef.current;
         if (!shouldPlaySound(preferences, notification.category, notification.priority) || !isNotificationAudioUnlocked()) return;
@@ -230,6 +270,14 @@ export function NotificationProvider({
         event: "*",
         schema: "public",
         table: "action_items",
+        filter: `organization_id=eq.${organizationId}`,
+      }, refreshCount)
+      // New domain events drive the "Действия" recent-actions badge; a fresh
+      // insert should bump it immediately rather than waiting for the 60s poll.
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "domain_events",
         filter: `organization_id=eq.${organizationId}`,
       }, refreshCount)
       .subscribe((status) => {
@@ -252,13 +300,31 @@ export function NotificationProvider({
   const markAllAsRead = useCallback(async () => {
     const result = await markAllNotificationsAsRead();
     if (result.ok) {
+      setNotifications([]);
       publishAuthoritativeCount(result.unreadCount);
     } else {
       setMessage("Could not mark notifications as read. Please try again.");
     }
   }, [publishAuthoritativeCount]);
 
-  const contextValue = useMemo(() => ({ unreadCount, counters, markAllAsRead }), [markAllAsRead, counters, unreadCount]);
+  const markAsRead = useCallback(async (notificationId: string) => {
+    const result = await markNotificationAsRead(notificationId);
+    if (result.ok) {
+      setNotifications((current) => current.filter((notification) => notification.id !== notificationId));
+      publishAuthoritativeCount(result.unreadCount);
+    } else {
+      setMessage("Could not mark notification as read. Please try again.");
+    }
+  }, [publishAuthoritativeCount]);
+
+  const refreshCounters = useCallback(() => {
+    refreshCountRef.current();
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({ unreadCount, counters, notifications, markAllAsRead, markAsRead, refreshCounters }),
+    [markAllAsRead, markAsRead, refreshCounters, counters, notifications, unreadCount],
+  );
 
   return (
     <NotificationIndicatorContext.Provider value={contextValue}>

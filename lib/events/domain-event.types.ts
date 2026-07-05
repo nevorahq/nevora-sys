@@ -98,6 +98,7 @@ export type AggregateType =
   | "account"
   | "category"
   | "subscription"
+  | "subscription_payment_cycle"
   | "report"
   | "snapshot"
   | "ai_insight"
@@ -114,7 +115,9 @@ export type AggregateType =
   | "action_item"
   | "project"
   | "money_ai_suggestion"
-  | "money_category_rule";
+  | "money_category_rule"
+  | "planner_entry"
+  | "planner_suggestion";
 
 // ── Payload map — типизированный payload для каждого события ─────────────────
 // Добавляй новые события сюда по мере роста модулей.
@@ -292,6 +295,49 @@ export interface DomainEventPayloadMap {
   "subscription.expired": { name: string };
   "subscription.updated": Record<string, unknown>;
   "subscription.deleted": { name?: string };
+  "subscription.cancelled": {
+    name: string;
+    cancelled_at: string;
+    open_cycles_cancelled: number;
+    open_tasks_cancelled: number;
+  };
+
+  // Subscription Payment Workflow (migration 078)
+  "subscription.payment_cycle.created": {
+    subscription_id: string;
+    cycle_id: string;
+    billing_period_key: string;
+    due_date: string;
+    expected_amount: number;
+    currency: string;
+  };
+  "subscription.payment_cycle.paid": {
+    subscription_id: string;
+    cycle_id: string;
+    billing_period_key: string;
+    transaction_id: string;
+    amount: number;
+    currency: string;
+    paid_at: string;
+  };
+  "subscription.payment_cycle.skipped": {
+    subscription_id: string;
+    cycle_id: string;
+    billing_period_key: string;
+  };
+  "subscription.payment_due_date.changed": {
+    subscription_id: string;
+    cycle_id: string;
+    old_due_date: string;
+    new_due_date: string;
+  };
+  "subscription.payment_task.created": {
+    subscription_id: string;
+    cycle_id: string;
+    task_id: string;
+    billing_period_key: string;
+    due_date: string;
+  };
 
   "report.created": { name: string; report_type: string };
   "snapshot.created": { snapshot_date: string; period_type: string };
@@ -343,6 +389,72 @@ export interface DomainEventPayloadMap {
     extraction_id?: string | null;
     error_code: string;
     error_message: string;
+  };
+  // ── Financial Context Tasks (migration 079) ────────────────────────────────
+  "document.financial_data_extracted": {
+    context_type: string;
+    recurring: boolean;
+    provider_name?: string | null;
+    financial_due_date?: string | null;
+    amount?: number | null;
+    currency?: string | null;
+    confidence: number;
+  };
+  "financial_obligation.detected": {
+    context_type: string;
+    confidence: number;
+  };
+  "financial_obligation.confirmed": {
+    context_type: string;
+    task_id?: string | null;
+  };
+  "financial_obligation.dismissed": {
+    source_type?: string | null;
+    source_document_id?: string | null;
+    reason?: string | null;
+  };
+  "financial_obligation.task_created": {
+    document_id: string;
+    context_type: string;
+  };
+  "financial_obligation.paid": {
+    task_id: string;
+    transaction_id?: string | null;
+  };
+  "financial_obligation.skipped": {
+    source_type?: string | null;
+    source_document_id?: string | null;
+    reason?: string | null;
+  };
+  "financial_task.created": {
+    context_type: string;
+    provider_name?: string | null;
+    amount?: number | null;
+    currency?: string | null;
+    financial_due_date: string;
+    reminder_offset_days: number;
+    action_due_date?: string | null;
+    source_type?: string | null;
+    source_id?: string | null;
+    source_document_id?: string | null;
+  };
+  "financial_task.completed": {
+    transaction_id?: string | null;
+    paid_at: string;
+  };
+  "financial_task.skipped": {
+    reason?: string | null;
+    resolved_at: string;
+  };
+  "financial_task.dismissed": {
+    reason?: string | null;
+    resolved_at: string;
+  };
+  "financial_task.due_date_changed": {
+    old_financial_due_date?: string | null;
+    new_financial_due_date: string;
+    old_action_due_date?: string | null;
+    new_action_due_date?: string | null;
   };
   "money.transaction.draft_created": {
     amount: number;
@@ -453,6 +565,31 @@ export interface DomainEventPayloadMap {
   "action_item.dismissed": { type: string; source_type: string };
   "action_item.executed": { action: string; confirmed: boolean };
   "action_item.failed": { action: string; error: string };
+  "action_item.restored": { type: string; source_type: string; record_restored: boolean };
+
+  // Capture Inbox (Phase 8) — the thin input layer. Payloads stay minimal.
+  "planner_entry.created": { entry_type: string; source: string };
+  "planner_entry.processing_started": Record<string, never>;
+  "planner_entry.processed": {
+    detected_intent: string;
+    suggestion_count: number;
+    top_confidence: number;
+    band: string;
+  };
+  "planner_entry.failed": { reason: string };
+  "planner_suggestion.created": {
+    planner_entry_id: string;
+    suggestion_type: string;
+    confidence: number;
+  };
+  "planner_suggestion.accepted": {
+    suggestion_type: string;
+    entity_type: string;
+    entity_id: string;
+  };
+  "planner_suggestion.edited": { suggestion_type: string };
+  "planner_suggestion.rejected": { reason: string | null };
+  "planner_suggestion.failed": { reason: string };
 }
 
 // ── Базовый тип записи domain_event из БД ────────────────────────────────────

@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  bulkDismissActionItemsSchema,
   resolveActionItemSchema,
+  restoreActionItemSchema,
   snoozeActionItemSchema,
   assignActionItemSchema,
   executeActionItemSchema,
@@ -13,6 +15,13 @@ describe("mutation schemas", () => {
   it("resolve требует валидный UUID", () => {
     expect(resolveActionItemSchema.safeParse({ actionItemId: "x" }).success).toBe(false);
     expect(resolveActionItemSchema.safeParse({ actionItemId: ID }).success).toBe(true);
+  });
+
+  it("bulk dismiss требует непустой список UUID и ограничивает размер", () => {
+    expect(bulkDismissActionItemsSchema.safeParse({ actionItemIds: [] }).success).toBe(false);
+    expect(bulkDismissActionItemsSchema.safeParse({ actionItemIds: ["x"] }).success).toBe(false);
+    expect(bulkDismissActionItemsSchema.safeParse({ actionItemIds: [ID] }).success).toBe(true);
+    expect(bulkDismissActionItemsSchema.safeParse({ actionItemIds: Array.from({ length: 101 }, () => ID) }).success).toBe(false);
   });
 
   it("snooze требует будущую дату", () => {
@@ -32,6 +41,15 @@ describe("mutation schemas", () => {
     const r = executeActionItemSchema.safeParse({ actionItemId: ID, executeKind: "create_task_draft" });
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.confirmed).toBe(false);
+  });
+
+  it("restore требует UUID и по умолчанию восстанавливает запись", () => {
+    expect(restoreActionItemSchema.safeParse({ actionItemId: "x" }).success).toBe(false);
+    const r = restoreActionItemSchema.safeParse({ actionItemId: ID });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.restoreRecord).toBe(true);
+    const r2 = restoreActionItemSchema.safeParse({ actionItemId: ID, restoreRecord: false });
+    if (r2.success) expect(r2.data.restoreRecord).toBe(false);
   });
 });
 

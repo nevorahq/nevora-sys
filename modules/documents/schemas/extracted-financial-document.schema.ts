@@ -63,6 +63,35 @@ export const ExtractedFinancialDocumentSchema = z.object({
       }),
     )
     .default([]),
+
+  /**
+   * Optional financial-obligation signal (spec §9). Present when the document
+   * describes something to PAY IN THE FUTURE (an unpaid invoice, a renewal
+   * notice, a tax bill) rather than a completed purchase. Drives Financial
+   * Context Task creation. Nullable so a plain receipt (already paid) omits it.
+   */
+  obligation: z
+    .object({
+      isFinancialObligation: z.boolean().default(false),
+      obligationType: z
+        .enum([
+          "invoice_payment",
+          "tax_payment",
+          "domain_renewal",
+          "hosting_payment",
+          "subscription_payment",
+          "client_invoice_followup",
+        ])
+        .nullable()
+        .default(null),
+      providerName: z.string().nullable().default(null),
+      paymentDueDate: z.string().nullable().default(null),   // ISO 8601 when present
+      nextPaymentDate: z.string().nullable().default(null),  // recurring next charge
+      billingInterval: z.enum(["weekly", "monthly", "yearly", "one_time"]).nullable().default(null),
+      confidence: z.number().min(0).max(1).default(0),
+    })
+    .nullable()
+    .optional(),
 });
 
 export type ExtractedFinancialDocument = z.infer<typeof ExtractedFinancialDocumentSchema>;

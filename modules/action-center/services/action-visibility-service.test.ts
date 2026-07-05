@@ -7,6 +7,8 @@ const adminPerms = new Set([
   "action_center.assign",
   "action_center.execute.financial",
   "action_center.execute.subscription",
+  "data.delete",
+  "planner.entry.delete",
 ]);
 
 describe("getAvailableActions", () => {
@@ -36,6 +38,35 @@ describe("getAvailableActions", () => {
     expect(sub2.some((a) => a.executeKind === "cancel_subscription")).toBe(false);
   });
 
+  it("показывает destructive delete actions только при доменных delete permissions", () => {
+    const task = getAvailableActions({ type: "overdue", status: "open", source_type: "task" }, adminPerms);
+    expect(task.find((a) => a.executeKind === "delete_task")).toMatchObject({
+      requiresConfirmation: true,
+      permission: "data.delete",
+    });
+
+    const subscription = getAvailableActions({ type: "renewal_required", status: "open", source_type: "subscription" }, adminPerms);
+    expect(subscription.find((a) => a.executeKind === "delete_subscription")).toMatchObject({
+      requiresConfirmation: true,
+      permission: "data.delete",
+    });
+
+    const inbox = getAvailableActions({
+      type: "missing_information",
+      status: "open",
+      source_type: "ai",
+      primary_entity_type: "planner_entry",
+      metadata: { source: "planner", planner_entry_id: "entry-a" },
+    }, adminPerms);
+    expect(inbox.find((a) => a.executeKind === "delete_planner_entry")).toMatchObject({
+      requiresConfirmation: true,
+      permission: "planner.entry.delete",
+    });
+
+    const memberTask = getAvailableActions({ type: "overdue", status: "open", source_type: "task" }, memberPerms);
+    expect(memberTask.some((a) => a.executeKind === "delete_task")).toBe(false);
+  });
+
   it("снуз доступен только из open", () => {
     const inProgress = getAvailableActions({ type: "due_soon", status: "in_progress", source_type: "task" }, memberPerms);
     expect(inProgress.some((a) => a.kind === "snooze")).toBe(false);
@@ -47,5 +78,8 @@ describe("executePermissionFor", () => {
     expect(executePermissionFor("create_task_draft")).toEqual({ permission: "action_center.execute", dangerous: false });
     expect(executePermissionFor("confirm_transaction").dangerous).toBe(true);
     expect(executePermissionFor("cancel_subscription").permission).toBe("action_center.execute.subscription");
+    expect(executePermissionFor("delete_task")).toEqual({ permission: "data.delete", dangerous: true });
+    expect(executePermissionFor("delete_subscription")).toEqual({ permission: "data.delete", dangerous: true });
+    expect(executePermissionFor("delete_planner_entry")).toEqual({ permission: "planner.entry.delete", dangerous: true });
   });
 });
