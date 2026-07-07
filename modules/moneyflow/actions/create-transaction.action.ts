@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
 import { getTransactionSchemas } from "../schemas/transaction.schema";
@@ -26,7 +27,19 @@ export async function createTransactionAction(
   const { dict } = await getDictionary();
   const { createTransactionSchema } = getTransactionSchemas(dict.money.errors);
 
-  const { user, org, workspace } = await requireOrg();
+  // Centralized gate: auth → tenant → membership → data.write → billing
+  // entitlement (write blocked once the trial/subscription is not writable).
+  // Per-metric quota stays with the atomic reserveOrganizationUsage below —
+  // the guard intentionally omits `capability` so we don't double-count.
+  let ctx;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { user, org, workspace } = ctx;
 
   const rawData = {
     title: formData.get("title") as string,

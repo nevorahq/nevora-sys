@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 export type TrialState =
   | { kind: "active"; daysRemaining: number; endsAt: string }
   | { kind: "expired"; endsAt: string }
+  // Trial Reuse Protection (086): организация создана identity, уже
+  // использовавшей trial — подписка сразу expired + metadata.trial_denied.
+  | { kind: "denied" }
   | { kind: "not_trial" };
 
 /**
@@ -16,7 +19,7 @@ export async function getTrialState(organizationId: string): Promise<TrialState>
 
   const { data, error } = await supabase
     .from("billing_subscriptions")
-    .select("status, trial_ends_at, plan:plans!plan_id(slug)")
+    .select("status, trial_ends_at, metadata, plan:plans!plan_id(slug)")
     .eq("organization_id", organizationId)
     .maybeSingle();
 
@@ -25,6 +28,10 @@ export async function getTrialState(organizationId: string): Promise<TrialState>
   const plan = Array.isArray(data.plan) ? data.plan[0] : data.plan;
   if ((plan as { slug?: string } | null)?.slug !== "trial" || !data.trial_ends_at) {
     return { kind: "not_trial" };
+  }
+
+  if ((data.metadata as { trial_denied?: boolean } | null)?.trial_denied === true) {
+    return { kind: "denied" };
   }
 
   if (data.status === "expired" || new Date(data.trial_ends_at).getTime() <= Date.now()) {

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { createReportSchema } from "../schemas/analytics.schemas";
 import { ROUTES } from "@/shared/config/routes";
@@ -12,7 +12,18 @@ export async function createReportAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  const { user, org, workspace } = await requireOrg();
+  // Analytics writes are ordinary business writes: blocked once the org is no
+  // longer writable (expired trial / unpaid / canceled / restricted). The DB
+  // (migration 093 + can_write_data RLS) remains the authoritative boundary.
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { user, org, workspace } = ctx;
 
   const rawData = {
     name:        formData.get("name") as string,

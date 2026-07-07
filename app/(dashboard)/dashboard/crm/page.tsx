@@ -1,5 +1,6 @@
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
+import { assertPausedModuleEnabled } from "@/shared/config/paused-modules";
 import {
   getClients,
   getContacts,
@@ -30,6 +31,10 @@ interface CrmPageProps {
 }
 
 export default async function CrmPage({ searchParams }: CrmPageProps) {
+  // CRM is a paused module for the private beta: block the route unless it has
+  // been explicitly re-enabled for this environment.
+  assertPausedModuleEnabled("crm");
+
   const params = await searchParams;
 
   const rawSection = typeof params.section === "string" ? params.section : "clients";

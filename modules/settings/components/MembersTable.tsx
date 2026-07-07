@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { MoreHorizontalIcon, Trash2Icon, UsersRoundIcon } from "lucide-react";
 import { removeMember } from "../actions/remove-member";
 import { updateMemberRole } from "../actions/update-member-role";
+import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import type { SettingsMember } from "../types/settings.types";
 
 function formatLastActive(value: string | null) {
@@ -14,6 +15,7 @@ function formatLastActive(value: string | null) {
 export function MembersTable({ members, currentUserId, canManage }: { members: SettingsMember[]; currentUserId: string; canManage: boolean }) {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const writeGate = useAccessGate("write");
 
   if (members.length === 0) {
     return (
@@ -60,13 +62,13 @@ export function MembersTable({ members, currentUserId, canManage }: { members: S
           <tbody className="divide-y divide-border-soft">
             {members.map((member) => {
               const isSelf = member.userId === currentUserId;
-              const locked = !canManage || isSelf || member.role === "owner" || pending;
+              const locked = !canManage || writeGate.blocked || isSelf || member.role === "owner" || pending;
               return (
                 <tr key={member.id}>
                   <td className="px-4 py-3 font-medium text-text-primary">{member.name || "Unnamed member"}{isSelf && <span className="ml-2 text-xs text-text-muted">You</span>}</td>
                   <td className="px-4 py-3 text-text-secondary">{member.email || "Unavailable"}</td>
                   <td className="px-4 py-3">
-                    <select value={member.role} disabled={locked} onChange={(event) => changeRole(member.id, event.target.value)} className="rounded-md border border-border-soft bg-surface px-2 py-1.5 text-xs text-text-primary disabled:border-transparent disabled:opacity-100">
+                    <select value={member.role} disabled={locked} title={writeGate.blocked ? writeGate.message : undefined} onChange={(event) => changeRole(member.id, event.target.value)} className="rounded-md border border-border-soft bg-surface px-2 py-1.5 text-xs text-text-primary disabled:border-transparent disabled:opacity-100">
                       {member.role === "owner" && <option value="owner">Owner</option>}
                       <option value="admin">Admin</option>
                       <option value="member">Member</option>
@@ -76,7 +78,9 @@ export function MembersTable({ members, currentUserId, canManage }: { members: S
                   <td className="px-4 py-3 text-text-muted">{formatLastActive(member.lastActiveAt)}</td>
                   <td className="px-4 py-3 text-right">
                     {canManage && !isSelf && member.role !== "owner" ? (
-                      <button type="button" onClick={() => remove(member)} disabled={pending} className="inline-flex items-center gap-1 text-xs font-medium text-danger hover:underline disabled:opacity-50"><Trash2Icon size={13} /> Remove</button>
+                      <RestrictedActionTooltip message={writeGate.blocked ? writeGate.message : "Remove"}>
+                        <button type="button" onClick={() => remove(member)} disabled={pending || writeGate.blocked} className="inline-flex items-center gap-1 text-xs font-medium text-danger hover:underline disabled:cursor-not-allowed disabled:opacity-50"><Trash2Icon size={13} /> Remove</button>
+                      </RestrictedActionTooltip>
                     ) : (
                       <MoreHorizontalIcon size={16} className="ml-auto text-text-muted" />
                     )}

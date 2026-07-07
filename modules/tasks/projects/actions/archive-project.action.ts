@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { ROUTES, projectDetailUrl } from "@/shared/config/routes";
 import { archiveProjectSchema } from "../schemas/project.schema";
@@ -17,7 +17,15 @@ import { archiveProjectSchema } from "../schemas/project.schema";
 export async function archiveProjectAction(
   projectId: string,
 ): Promise<{ error?: string }> {
-  const { user, org, workspace, permissions } = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.delete", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { user, org, workspace, permissions } = ctx;
 
   if (!permissions.has("data.delete")) {
     return { error: "You do not have permission to archive projects." };

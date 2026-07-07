@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { ROUTES, projectDetailUrl } from "@/shared/config/routes";
 import { assignTaskToProjectSchema } from "../schemas/project.schema";
@@ -25,7 +25,15 @@ export async function assignTaskToProjectAction(
   taskId: string,
   projectId: string | null,
 ): Promise<{ error?: string }> {
-  const { user, org, workspace, permissions } = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { user, org, workspace, permissions } = ctx;
 
   if (!permissions.has("data.write")) {
     return { error: "You do not have permission to modify tasks." };

@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 // Прямой импорт server action (НЕ из бочки @/modules/members — она реэкспортит
 // server-only getMembers → next/headers попадёт в клиентский бандл).
 import { inviteMemberAction } from "@/modules/members/actions/invite-member.action";
 import { Input } from "@/shared/ui/input";
 import { Button } from "@/shared/ui/button";
+import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 
 interface InviteMemberFormProps {
@@ -22,9 +24,14 @@ export function InviteMemberForm({ limitReached, limitReason }: InviteMemberForm
 
   if (limitReached) {
     return (
-      <p className="text-sm text-text-muted">
-        {limitReason ?? "You have reached your plan's member limit. Upgrade to add more."}
-      </p>
+      <div className="flex flex-col gap-2">
+        <p className="text-sm text-text-muted">
+          {limitReason ?? "Достигнут лимит участников для текущего плана."}
+        </p>
+        <Link href={ROUTES.billing} className="text-sm font-medium text-text-primary underline underline-offset-4">
+          Billing
+        </Link>
+      </div>
     );
   }
 

@@ -1,0 +1,96 @@
+"use server";
+
+import { headers } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
+import type { ActionResult } from "@/lib/validators/common";
+import { changePlanSchema, type ChangePlanInput } from "../schemas/billing.schemas";
+import { billingProvider } from "../services/billing-provider";
+
+export interface CheckoutActionState extends ActionResult {
+  success?: string;
+  redirectUrl?: string;
+}
+
+async function getReturnUrl(): Promise<string> {
+  const headerStore = await headers();
+  const origin =
+    headerStore.get("origin") ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    "http://localhost:3000";
+  return `${origin}/dashboard/settings/billing`;
+}
+
+function fieldErrorsFromIssues(issues: { path: PropertyKey[]; message: string }[]) {
+  const fieldErrors: Record<string, string[]> = {};
+  for (const issue of issues) {
+    const key = String(issue.path[0] ?? "_form");
+    fieldErrors[key] = [...(fieldErrors[key] ?? []), issue.message];
+  }
+  return fieldErrors;
+}
+
+export async function createCheckoutSessionForCurrentOrganization(
+  input: ChangePlanInput,
+): Promise<CheckoutActionState> {
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "billing.manage", intent: "billing" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+
+  if (!["admin", "owner"].includes(ctx.membership.roleId)) {
+    return { error: "Only admins can manage billing." };
+  }
+
+  if (input.planSlug === "trial") {
+    return {
+      error: "The free trial can only be used once. Please choose Start, Pro or Business to continue.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { data: plan, error } = await supabase
+    .from("plans")
+    .select("id, slug, is_active")
+    .eq("slug", input.planSlug)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) return { error: "Could not load the selected plan." };
+  if (!plan || plan.slug === "trial") return { error: "Please choose an available paid plan." };
+
+  const session = await billingProvider.createCheckoutSession({
+    organizationId: ctx.org.id,
+    planCode: input.planSlug,
+    billingCycle: input.billingCycle,
+    returnUrl: await getReturnUrl(),
+  });
+
+  if (!session.url) {
+    return {
+      error:
+        "Billing provider is not connected yet. Paid plans can only be activated after provider checkout and verified webhook are configured.",
+    };
+  }
+
+  return { success: "Redirecting to secure checkout.", redirectUrl: session.url };
+}
+
+export async function createCheckoutSessionAction(
+  _prevState: CheckoutActionState,
+  formData: FormData,
+): Promise<CheckoutActionState> {
+  const parsed = changePlanSchema.safeParse({
+    planSlug: formData.get("planSlug") as string,
+    billingCycle: formData.get("billingCycle") as string,
+  });
+  if (!parsed.success) {
+    return { fieldErrors: fieldErrorsFromIssues(parsed.error.issues) };
+  }
+
+  return createCheckoutSessionForCurrentOrganization(parsed.data);
+}

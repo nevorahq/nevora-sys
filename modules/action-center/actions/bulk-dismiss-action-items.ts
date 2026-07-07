@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, isAccessError } from "@/lib/security";
 import { canDo } from "@/lib/context/current-context";
 import { ROUTES } from "@/shared/config/routes";
 import { bulkDismissActionItemsSchema } from "../schemas/action-mutation.schema";
@@ -25,7 +25,13 @@ export async function bulkDismissActionItems(
   const parsed = bulkDismissActionItemsSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
 
-  const ctx = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "action_center.dismiss", intent: "write" });
+  } catch (err) {
+    if (isAccessError(err)) return { ok: false, error: err.message };
+    throw err;
+  }
   if (!canDo(ctx, "action_center.dismiss")) return { ok: false, error: "Forbidden" };
 
   const supabase = await createClient();

@@ -7,6 +7,7 @@ import {
 } from "@/modules/billing";
 import { createEntityLink } from "@/lib/entity-links";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
+import { redactFilenameForEvent } from "@/lib/security/redact-filename";
 import { validateDocumentFiles } from "./validate-document-file";
 import { persistDocumentAttachments } from "./persist-document-attachments";
 
@@ -72,6 +73,10 @@ export async function createSubscriptionDocumentWithAttachments(params: {
   let documentCreated = false;
   try {
     const title = `${subscriptionRow.name} — ${files.length === 1 ? files[0].name : "attachments"}`.slice(0, 300);
+    // The stored document title may keep the raw filename (RLS-scoped row), but
+    // anything emitted to durable events/audit uses the redacted form so a
+    // PII-bearing filename cannot leak into cross-system logs.
+    const eventTitle = `${subscriptionRow.name} — ${files.length === 1 ? redactFilenameForEvent(files[0].name) : "attachments"}`.slice(0, 300);
     const { data: document, error: documentError } = await supabase
       .from("documents")
       .insert({
@@ -110,14 +115,14 @@ export async function createSubscriptionDocumentWithAttachments(params: {
       eventName: "document.created",
       aggregateType: "document",
       aggregateId: documentId,
-      payload: { title, source: "subscription", skip_money_sync: true },
+      payload: { title: eventTitle, source: "subscription", skip_money_sync: true },
     }),
     emitAuditLog({
       organizationId: ctx.org.id,
       entityType: "documents",
       entityId: documentId,
       action: "create",
-      newData: { title, source: "subscription", subscription_id: subscriptionId },
+      newData: { title: eventTitle, source: "subscription", subscription_id: subscriptionId },
       metadata: { source: "dashboard", trigger: "subscription_creation", skip_money_sync: true },
     }),
     ...persisted.attachments.flatMap((attachment) => [
@@ -127,14 +132,14 @@ export async function createSubscriptionDocumentWithAttachments(params: {
         eventName: "document.attachment_uploaded",
         aggregateType: "document",
         aggregateId: documentId,
-        payload: { filename: attachment.original_filename, size_bytes: attachment.size_bytes },
+        payload: { filename: redactFilenameForEvent(attachment.original_filename), size_bytes: attachment.size_bytes },
       }),
       emitAuditLog({
         organizationId: ctx.org.id,
         entityType: "document_attachments",
         entityId: attachment.id,
         action: "create",
-        newData: { document_id: documentId, file_name: attachment.original_filename },
+        newData: { document_id: documentId, file_name: redactFilenameForEvent(attachment.original_filename) },
         metadata: { source: "dashboard", trigger: "subscription_creation", skip_money_sync: true },
       }),
     ]),

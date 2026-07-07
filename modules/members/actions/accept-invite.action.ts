@@ -5,6 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { setSelectedOrganizationId } from "@/lib/auth/organization-cookie";
 import { inviteResponseSchema } from "../schemas/member.schemas";
+import {
+  auditInviteDecision,
+  inviteReasonFromMessage,
+  inviteRecipientMessage,
+} from "../services/invite-protection";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 
@@ -22,7 +27,7 @@ export async function acceptInviteAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireUser();
+  const user = await requireUser();
 
   const parsed = inviteResponseSchema.safeParse({
     organizationId: formData.get("organizationId") as string,
@@ -35,11 +40,17 @@ export async function acceptInviteAction(
       p_org_id: parsed.data.organizationId,
     });
     if (error) {
-      if (error.message.includes("invite_not_found")) {
-        return { error: "Invite not found or already handled" };
-      }
+      const reason = inviteReasonFromMessage(error.message);
+      auditInviteDecision({
+        action: "accept",
+        reason,
+        organizationId: parsed.data.organizationId,
+        actorId: user.id,
+        targetUserId: user.id,
+      });
+      if (reason === "auth_required") return { error: "Authentication required" };
       console.error("acceptInvite RPC error:", error);
-      return { error: "Failed to accept invite" };
+      return { error: inviteRecipientMessage(reason) };
     }
   } catch (err) {
     console.error("acceptInvite unexpected error:", err);

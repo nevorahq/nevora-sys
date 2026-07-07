@@ -1,12 +1,46 @@
+import "server-only";
+
+import type { BillingCycle, PlanSlug } from "../constants/billing.constants";
+import {
+  applyBillingProviderEvent,
+  parseBillingWebhookEvent,
+  verifyBillingWebhookSignature,
+  type AppliedBillingWebhookResult,
+} from "./billing-webhook";
+
+export type BillingProvider = "stripe" | "paddle" | "lemonsqueezy";
+
+export type ProviderSubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "unpaid"
+  | "canceled"
+  | "paused"
+  | "incomplete"
+  | "incomplete_expired";
+
+export type InternalBillingStatus =
+  | "trialing"
+  | "trial_expired"
+  | "active"
+  | "past_due"
+  | "grace"
+  | "unpaid"
+  | "canceled"
+  | "suspended"
+  | "developer_unlimited";
+
 export interface CreateCheckoutInput {
   organizationId: string;
-  planCode: string;
-  billingCycle: "monthly" | "yearly";
+  planCode: PlanSlug;
+  billingCycle: BillingCycle;
   returnUrl: string;
 }
 
 export interface CheckoutSession {
-  provider: "manual" | "noop";
+  provider: BillingProvider | null;
+  configured: boolean;
   url: string | null;
   reference: string;
 }
@@ -17,37 +51,100 @@ export interface CustomerPortalInput {
 }
 
 export interface CustomerPortalSession {
-  provider: "manual" | "noop";
+  provider: BillingProvider | null;
+  configured: boolean;
   url: string | null;
 }
 
-export interface BillingWebhookResult {
+export interface BillingWebhookResult extends AppliedBillingWebhookResult {
   accepted: boolean;
   eventType: string | null;
 }
 
-export interface BillingProvider {
+export interface BillingProviderAdapter {
+  readonly provider: BillingProvider | null;
+  readonly configured: boolean;
   createCheckoutSession(input: CreateCheckoutInput): Promise<CheckoutSession>;
   createCustomerPortal(input: CustomerPortalInput): Promise<CustomerPortalSession>;
-  handleWebhook(payload: unknown): Promise<BillingWebhookResult>;
+  handleWebhook(rawBody: string, headers: globalThis.Headers): Promise<BillingWebhookResult>;
 }
 
-export class ManualBillingProvider implements BillingProvider {
+export class BillingProviderNotConfiguredError extends Error {
+  constructor(message = "Billing provider is not connected yet.") {
+    super(message);
+    this.name = "BillingProviderNotConfiguredError";
+  }
+}
+
+class ProviderAgnosticBillingAdapter implements BillingProviderAdapter {
+  readonly provider: BillingProvider | null;
+  readonly configured: boolean;
+
+  constructor(provider: BillingProvider | null) {
+    this.provider = provider;
+    this.configured = provider !== null;
+  }
+
   async createCheckoutSession(input: CreateCheckoutInput): Promise<CheckoutSession> {
     return {
-      provider: "manual",
+      provider: this.provider,
+      configured: false,
       url: null,
-      reference: `${input.organizationId}:${input.planCode}:${input.billingCycle}`,
+      reference: `checkout:${input.organizationId}:${input.planCode}:${input.billingCycle}`,
     };
   }
 
   async createCustomerPortal(_input: CustomerPortalInput): Promise<CustomerPortalSession> {
-    return { provider: "manual", url: null };
+    return {
+      provider: this.provider,
+      configured: false,
+      url: null,
+    };
   }
 
-  async handleWebhook(_payload: unknown): Promise<BillingWebhookResult> {
-    return { accepted: true, eventType: null };
+  async handleWebhook(
+    rawBody: string,
+    headers: globalThis.Headers,
+  ): Promise<BillingWebhookResult> {
+    const provider = this.provider;
+    const secret = process.env.BILLING_WEBHOOK_SECRET;
+    const signature = headers.get("billing-signature") ?? headers.get("x-billing-signature");
+
+    if (!provider || !secret) {
+      throw new BillingProviderNotConfiguredError(
+        "Billing webhook is not configured. Set BILLING_PROVIDER and BILLING_WEBHOOK_SECRET.",
+      );
+    }
+
+    if (!verifyBillingWebhookSignature(rawBody, signature, secret)) {
+      return {
+        accepted: false,
+        eventType: null,
+        ok: false,
+        duplicate: false,
+        ignoredReason: "invalid_signature",
+      };
+    }
+
+    const event = parseBillingWebhookEvent(rawBody, provider);
+    const result = await applyBillingProviderEvent(event);
+    return {
+      ...result,
+      accepted: result.ok,
+      eventType: event.eventType,
+    };
   }
 }
 
-export const billingProvider: BillingProvider = new ManualBillingProvider();
+export function parseBillingProvider(value: string | undefined): BillingProvider | null {
+  if (value === "stripe" || value === "paddle" || value === "lemonsqueezy") {
+    return value;
+  }
+  return null;
+}
+
+export function getConfiguredBillingProvider(): BillingProviderAdapter {
+  return new ProviderAgnosticBillingAdapter(parseBillingProvider(process.env.BILLING_PROVIDER));
+}
+
+export const billingProvider: BillingProviderAdapter = getConfiguredBillingProvider();

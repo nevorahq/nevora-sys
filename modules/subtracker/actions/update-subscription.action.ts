@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import { getSubscriptionSchemas } from "../schemas/subscription.schema";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
@@ -16,7 +16,15 @@ export async function updateSubscriptionAction(
   const { dict } = await getDictionary();
   const { updateSubscriptionSchema } = getSubscriptionSchemas(dict.subscriptions.errors);
 
-  const { user, org } = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { user, org } = ctx;
 
   const rawData = {
     subscriptionId: formData.get("subscriptionId") as string,

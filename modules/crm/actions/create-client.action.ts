@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
+import { maskEmail } from "@/lib/email";
 import { checkPlanLimit } from "@/lib/billing";
 import { createClientSchema } from "../schemas/crm.schemas";
 import { ROUTES } from "@/shared/config/routes";
@@ -70,7 +71,9 @@ export async function createClientAction(
         eventName:      "client.created",
         aggregateType:  "client",
         aggregateId:    newClient.id,
-        payload:        { name: parsed.data.name, email: parsed.data.email ?? null },
+        // Raw email lives in the crm_clients row (RLS-scoped); the durable
+        // event stream keeps only a masked form, never the raw address.
+        payload:        { name: parsed.data.name, email: maskEmail(parsed.data.email) },
       }),
       emitAuditLog({
         organizationId: org.id,

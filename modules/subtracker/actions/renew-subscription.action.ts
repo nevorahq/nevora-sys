@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { canDo } from "@/lib/context/current-context";
 import { emitDomainEvent } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
@@ -13,7 +13,14 @@ import { calculateNextBillingDate } from "../services/calculate-next-billing-dat
 export async function renewSubscriptionAction(id: string): Promise<{ error?: string }> {
   if (!uuidSchema.safeParse(id).success) return { error: "Invalid subscription ID" };
 
-  const ctx = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
   if (!canDo(ctx, "data.write")) return { error: "You do not have permission to renew subscriptions." };
 
   const supabase = await createClient();

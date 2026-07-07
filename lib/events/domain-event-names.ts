@@ -6,6 +6,7 @@ export const DOMAIN_EVENT_NAMES = [
   "subscription.created", "subscription.updated", "subscription.deleted", "subscription.renewed", "subscription.expired", "subscription.plan_changed", "subscription.canceled", "subscription.cancelled",
   "subscription.payment_cycle.created", "subscription.payment_cycle.paid", "subscription.payment_cycle.skipped", "subscription.payment_due_date.changed", "subscription.payment_task.created",
   "billing.subscription.created", "billing.subscription.updated", "billing.subscription.canceled", "billing.plan.changed", "billing.payment.succeeded", "billing.payment.failed", "billing.limit.exceeded", "billing.trial.expired",
+  "billing.trial.claimed", "billing.trial.denied", "billing.trial.consumed", "billing.plan.required",
   "report.created", "snapshot.created", "insights.generated", "recommendations.generated", "summary.generated", "recommendation.dismissed",
   "document.created", "document.updated", "document.deleted", "document.attachment_uploaded", "document.linked",
   "document.extraction.started", "document.extraction.completed", "document.extraction.failed",

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireAppAccess, isAccessError } from "@/lib/security";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { ROUTES } from "@/shared/config/routes";
 import { workspaceSchema } from "../schemas/workspace.schema";
@@ -15,6 +16,16 @@ export async function updateWorkspace(
 ): Promise<SettingsActionState> {
   const context = await authorizeSettingsAction("workspace.update");
   if (!context) return { error: "Only owners and admins can update workspace settings." };
+
+  // Permission + tenant already enforced above; the gate adds the billing
+  // entitlement — settings stay reachable in degraded states but are blocked
+  // under suspension / security hold (intent "admin").
+  try {
+    await requireAppAccess({ intent: "admin" });
+  } catch (err) {
+    if (isAccessError(err)) return { error: err.message };
+    throw err;
+  }
 
   const parsed = workspaceSchema.safeParse({
     organizationName: formData.get("organizationName"),

@@ -21,6 +21,8 @@ function makeSuggestion(overrides: Partial<PlannerSuggestion> = {}): PlannerSugg
     accepted_entity_id: null,
     reject_reason: null,
     created_by: "user",
+    owner_user_id: "user",
+    visibility: "private",
     created_at: "",
     updated_at: "",
     ...overrides,

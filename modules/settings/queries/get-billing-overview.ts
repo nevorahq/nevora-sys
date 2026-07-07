@@ -1,15 +1,18 @@
 import "server-only";
 
+import { createClient } from "@/lib/supabase/server";
 import { resolveAccountLimits } from "@/lib/billing";
-import { getInvoices, getPlanEntitlement, getPlanLimit, getPlans, getSubscription, getUsage } from "@/modules/billing";
+import { getInvoices, getOrganizationAccessState, getPlanEntitlement, getPlanLimit, getPlans, getSubscription, getTrialEligibilityForCurrentUser, getUsage } from "@/modules/billing";
 import { requireSettingsPermission } from "../utils/settings-permissions";
 import type { BillingSettingsOverview, UsageLimit } from "../types/settings.types";
 
 export async function getBillingOverview(): Promise<BillingSettingsOverview> {
   const { org, user } = await requireSettingsPermission("billing.read");
+  const supabase = await createClient();
 
   const [
     subscription,
+    accessState,
     plans,
     invoices,
     limits,
@@ -23,8 +26,11 @@ export async function getBillingOverview(): Promise<BillingSettingsOverview> {
     apiRequests,
     apiRequestsLimit,
     publicApi,
+    trialEligibility,
+    auditResult,
   ] = await Promise.all([
     getSubscription(org.id),
+    getOrganizationAccessState(org.id),
     getPlans(),
     getInvoices(org.id),
     resolveAccountLimits(user.id, org.id),
@@ -38,6 +44,11 @@ export async function getBillingOverview(): Promise<BillingSettingsOverview> {
     getUsage(org.id, "api_requests.monthly"),
     getPlanLimit(org.id, "api_requests.monthly"),
     getPlanEntitlement(org.id, "public_api.enabled"),
+    getTrialEligibilityForCurrentUser(),
+    supabase
+      .from("audit_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", org.id),
   ]);
 
   const usage: UsageLimit[] = [
@@ -56,10 +67,13 @@ export async function getBillingOverview(): Promise<BillingSettingsOverview> {
 
   return {
     subscription,
+    accessState,
     plans,
     invoices,
     usage,
     providerConnected: Boolean(subscription?.external_id),
     unlimitedAccess: limits.unlimitedAccess,
+    trialEligibility,
+    recentAuditEvents: auditResult.count ?? 0,
   };
 }

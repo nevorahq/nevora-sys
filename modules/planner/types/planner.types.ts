@@ -41,12 +41,16 @@ export interface PlannerEntry {
   source_transaction_id: string | null;
   source_project_id: string | null;
   created_by: string;
+  /** Owner of this private capture (migration 087). Equals created_by. */
+  owner_user_id: string;
+  /** 'private' (default) — only the owner sees it; 'organization' reserved for future shared captures. */
+  visibility: "private" | "organization";
   created_at: string;
   updated_at: string;
 }
 
 export const PLANNER_ENTRY_COLUMNS =
-  "id, organization_id, workspace_id, raw_text, entry_type, source, status, ai_detected_intent, ai_confidence, source_document_id, source_task_id, source_subscription_id, source_transaction_id, source_project_id, created_by, created_at, updated_at" as const;
+  "id, organization_id, workspace_id, raw_text, entry_type, source, status, ai_detected_intent, ai_confidence, source_document_id, source_task_id, source_subscription_id, source_transaction_id, source_project_id, created_by, owner_user_id, visibility, created_at, updated_at" as const;
 
 // ── planner_suggestions ──────────────────────────────────────────────────────
 
@@ -102,12 +106,16 @@ export interface PlannerSuggestion {
   accepted_entity_id: string | null;
   reject_reason: string | null;
   created_by: string;
+  /** Owner of this private suggestion (migration 087). Equals created_by. */
+  owner_user_id: string;
+  /** 'private' (default) — only the owner sees it; 'organization' reserved for future shared captures. */
+  visibility: "private" | "organization";
   created_at: string;
   updated_at: string;
 }
 
 export const PLANNER_SUGGESTION_COLUMNS =
-  "id, organization_id, workspace_id, planner_entry_id, suggestion_type, title, description, proposed_payload, confidence, status, accepted_entity_type, accepted_entity_id, reject_reason, created_by, created_at, updated_at" as const;
+  "id, organization_id, workspace_id, planner_entry_id, suggestion_type, title, description, proposed_payload, confidence, status, accepted_entity_type, accepted_entity_id, reject_reason, created_by, owner_user_id, visibility, created_at, updated_at" as const;
 
 // ── Confidence policy (spec §15; mirrors document obligation bands) ───────────
 

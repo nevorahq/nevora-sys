@@ -7,6 +7,7 @@ import { PlusIcon, XIcon, LinkIcon } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Modal } from "@/shared/ui/modal";
 import { Select } from "@/shared/ui/select";
+import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import { cn } from "@/shared/utils/cn";
 import { ROUTES } from "@/shared/config/routes";
 import { TaskStatusBadge } from "@/features/todos/components/task-status-badge";
@@ -42,6 +43,8 @@ export function ProjectTaskList({
   const [adding, setAdding] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [isPending, startTransition] = useTransition();
+  const { blocked, message } = useAccessGate("write");
+  const allowManage = canManage && !blocked;
 
   function handleAddExisting() {
     if (!selectedTaskId) return;
@@ -72,13 +75,17 @@ export function ProjectTaskList({
         {canManage && (
           <div className="flex items-center gap-2">
             {unassignedTasks.length > 0 && (
-              <Button variant="secondary" className="h-9 gap-1.5 px-3 text-xs" onClick={() => setAdding(true)}>
-                <LinkIcon size={14} /> Add existing
-              </Button>
+              <RestrictedActionTooltip message={blocked ? message : "Add existing"}>
+                <Button variant="secondary" disabled={!allowManage} className="h-9 gap-1.5 px-3 text-xs" onClick={() => setAdding(true)}>
+                  <LinkIcon size={14} /> Add existing
+                </Button>
+              </RestrictedActionTooltip>
             )}
-            <Button className="h-9 gap-1.5 px-3 text-xs" onClick={() => setCreating(true)}>
-              <PlusIcon size={14} /> New task
-            </Button>
+            <RestrictedActionTooltip message={blocked ? message : "New task"}>
+              <Button className="h-9 gap-1.5 px-3 text-xs" disabled={!allowManage} onClick={() => setCreating(true)}>
+                <PlusIcon size={14} /> New task
+              </Button>
+            </RestrictedActionTooltip>
           </div>
         )}
       </div>
@@ -108,9 +115,10 @@ export function ProjectTaskList({
                 <button
                   type="button"
                   onClick={() => handleRemove(task.id)}
+                  disabled={blocked}
                   aria-label="Remove from project"
-                  title="Remove from project"
-                  className="soft-icon-button h-7 w-7 text-text-muted hover:text-danger"
+                  title={blocked ? message : "Remove from project"}
+                  className="soft-icon-button h-7 w-7 text-text-muted hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <XIcon size={14} />
                 </button>

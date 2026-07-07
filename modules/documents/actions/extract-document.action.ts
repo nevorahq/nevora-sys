@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { uuidSchema } from "@/lib/validators/common";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
@@ -25,7 +26,17 @@ export async function extractDocumentAction(documentId: string): Promise<ActionR
     return { error: "Invalid document ID." };
   }
 
-  const ctx = await requireOrg();
+  // AI extraction is a side-effecting execute — denied once the org is not
+  // writable (spec: AI execution denied on an expired trial). The background
+  // `after()` job below re-derives its own context via requireOrg.
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "execute" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
   if (!hasDocumentPermission(ctx, "document.create")) {
     return { error: "You do not have permission to extract documents." };
   }

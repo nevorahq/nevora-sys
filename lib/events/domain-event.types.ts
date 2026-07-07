@@ -361,6 +361,30 @@ export interface DomainEventPayloadMap {
     plan_code: string;
   };
   "billing.trial.expired": { trial_end: string };
+  // Trial Reuse Protection (migration 086). Payload минимальный и без raw
+  // email — identity живёт в billing_trial_claims (hash), не в событиях.
+  "billing.trial.claimed": {
+    organization_id: string | null;
+    user_id: string;
+    plan?: "trial";
+    trial_started_at?: string;
+    trial_ended_at?: string;
+  };
+  "billing.trial.denied": {
+    organization_id: string | null;
+    user_id: string;
+    reason?: string;
+  };
+  "billing.trial.consumed": {
+    organization_id: string | null;
+    user_id: string;
+    trial_ended_at?: string;
+  };
+  "billing.plan.required": {
+    organization_id: string | null;
+    user_id: string;
+    reason?: string;
+  };
 
   "document.created": {
     title: string;

@@ -4,7 +4,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Nevora Business OS",
     short_name: "Nevora",
-    description: "Personal productivity system built with Next.js and Supabase",
+    description:
+      "Connected Business Operations for tasks, projects, money, documents, subscriptions and AI-assisted workflows.",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

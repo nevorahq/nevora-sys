@@ -30,8 +30,8 @@ export default async function InvitePage({ params }: PageProps) {
               Invite not available
             </h1>
             <p className="mt-3 text-sm text-text-secondary">
-              This invite link is invalid or has expired. Ask the organization
-              owner for a new one.
+              Это приглашение сейчас недоступно. Организация должна активировать
+              платный план или обновить доступ.
             </p>
             <Link
               href={ROUTES.home}

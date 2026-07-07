@@ -4,8 +4,10 @@ import type { CurrentContext } from "@/lib/context/current-context";
 import { PLANNER_ENTRY_COLUMNS, type PlannerEntry } from "../types/planner.types";
 
 /**
- * Recent captures for the active org (RLS scopes to membership; the explicit
- * org filter is defense in depth). Excludes archived by default.
+ * Recent captures for the current user in the active org. The capture inbox is a
+ * private personal surface (migration 087): RLS already scopes rows to the owner;
+ * the explicit org + owner filters are defense in depth. Excludes archived by
+ * default.
  */
 export async function getPlannerEntries(
   ctx: CurrentContext,
@@ -16,6 +18,7 @@ export async function getPlannerEntries(
     .from("planner_entries")
     .select(PLANNER_ENTRY_COLUMNS)
     .eq("organization_id", ctx.org.id)
+    .eq("owner_user_id", ctx.user.id)
     .order("created_at", { ascending: false })
     .limit(options.limit ?? 50);
 

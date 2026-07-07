@@ -8,6 +8,7 @@ import { formatMoney } from "@/shared/utils/format-money";
 import { DeleteTransactionButton } from "./delete-transaction-button";
 import { TransactionEditForm } from "./transaction-edit-form";
 import { Modal } from "@/shared/ui/modal";
+import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import { cn } from "@/shared/utils/cn";
 import { formatDate, formatTime } from "@/shared/utils/format-date";
 import type { MoneyAccount, MoneyCategory, MoneyTransactionWithRelations } from "../types/moneyflow.types";
@@ -29,6 +30,7 @@ export function TransactionItem({
   canDelete,
 }: TransactionItemProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const { blocked, message } = useAccessGate("write");
 
   const isTransfer = tx.type === "transfer";
   const isIncome = tx.type === "income";
@@ -85,14 +87,17 @@ export function TransactionItem({
         </Link>
 
         {!isTransfer && (
-          <button
-            type="button"
-            onClick={() => setIsEditing(true)}
-            className="soft-icon-button h-8 w-8 text-text-muted hover:text-text-primary"
-            aria-label={dict.money.transactions.editButton}
-          >
-            <PencilIcon size={15} strokeWidth={1.75} />
-          </button>
+          <RestrictedActionTooltip message={blocked ? message : dict.money.transactions.editButton}>
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              disabled={blocked}
+              className="soft-icon-button h-8 w-8 text-text-muted hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={blocked ? `${dict.money.transactions.editButton}. ${message}` : dict.money.transactions.editButton}
+            >
+              <PencilIcon size={15} strokeWidth={1.75} />
+            </button>
+          </RestrictedActionTooltip>
         )}
 
         {canDelete && (

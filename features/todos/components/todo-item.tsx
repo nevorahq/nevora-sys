@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { Trash2Icon, AlertTriangleIcon, ClockIcon } from "lucide-react";
 import Link from "next/link";
 import { deleteTodoAction } from "../actions/delete-todo.action";
+import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import { TaskStatusBadge } from "./task-status-badge";
 import { getDueStatus, type DueStatus } from "../lib/due-status";
 import { cn } from "@/shared/utils/cn";
@@ -19,6 +20,7 @@ interface TodoItemProps {
 
 export function TodoItem({ todo, dict }: TodoItemProps) {
   const [isDeleting, startDelete] = useTransition();
+  const { blocked, message } = useAccessGate("write");
 
   const isPending = isDeleting;
   const isDone = todo.status === "done";
@@ -34,6 +36,7 @@ export function TodoItem({ todo, dict }: TodoItemProps) {
   } as const;
 
   function handleDelete() {
+    if (blocked) return;
     startDelete(async () => {
       await deleteTodoAction(todo.id);
     });
@@ -103,14 +106,17 @@ export function TodoItem({ todo, dict }: TodoItemProps) {
         )}
 
         {/* Delete button */}
-        <button
-          type="button"
-          onClick={handleDelete}
-          className="soft-icon-button h-8 w-8 text-text-muted hover:text-danger"
-          aria-label="Delete"
-        >
-          <Trash2Icon size={15} strokeWidth={1.75} />
-        </button>
+        <RestrictedActionTooltip message={blocked ? message : "Delete"}>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={blocked}
+            className="soft-icon-button h-8 w-8 text-text-muted hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={blocked ? `Delete. ${message}` : "Delete"}
+          >
+            <Trash2Icon size={15} strokeWidth={1.75} />
+          </button>
+        </RestrictedActionTooltip>
       </div>
   );
 }

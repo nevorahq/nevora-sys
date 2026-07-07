@@ -6,6 +6,7 @@ import { ExternalLinkIcon, SparklesIcon } from "lucide-react";
 import { Modal } from "@/shared/ui/modal";
 import { Button } from "@/shared/ui/button";
 import { Select } from "@/shared/ui/select";
+import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import { ActionPriorityBadge } from "./action-priority-badge";
 import { TYPE_LABELS, SOURCE_LABELS } from "../constants/action-center.constants";
 import type { ActionDetail } from "../types/action-center.types";
@@ -34,6 +35,8 @@ export function ActionDetailDrawer({ itemId, members, currentUserId, onClose, on
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, startBusy] = useTransition();
+  const writeGate = useAccessGate("write");
+  const executeGate = useAccessGate("execute");
 
   useEffect(() => {
     if (!itemId) return;
@@ -69,6 +72,11 @@ export function ActionDetailDrawer({ itemId, members, currentUserId, onClose, on
 
   function run(kind: string, executeKind?: string, requiresConfirmation?: boolean) {
     if (!detail) return;
+    const gate = kind === "execute" ? executeGate : writeGate;
+    if (gate.blocked) {
+      setError(gate.message);
+      return;
+    }
     if (requiresConfirmation && !window.confirm("This action changes business data. Continue?")) return;
     setError(null);
     startBusy(async () => {
@@ -93,6 +101,10 @@ export function ActionDetailDrawer({ itemId, members, currentUserId, onClose, on
 
   function changeAssignee(value: string) {
     if (!detail) return;
+    if (writeGate.blocked) {
+      setError(writeGate.message);
+      return;
+    }
     setError(null);
     startBusy(async () => {
       const res = await assignActionItem({
@@ -165,7 +177,7 @@ export function ActionDetailDrawer({ itemId, members, currentUserId, onClose, on
               <Select
                 label="Assigned to"
                 value={detail.item.assigned_to ?? ""}
-                disabled={busy}
+                disabled={busy || writeGate.blocked}
                 onChange={(e) => changeAssignee(e.target.value)}
                 options={[
                   { value: "", label: "Unassigned" },
@@ -196,17 +208,21 @@ export function ActionDetailDrawer({ itemId, members, currentUserId, onClose, on
             <div className="flex flex-wrap justify-end gap-2 border-t border-border-soft pt-4">
               {detail.availableActions
                 .filter((a) => a.kind !== "assign")
-                .map((a) => (
-                  <Button
-                    key={`${a.kind}-${a.executeKind ?? ""}`}
-                    type="button"
-                    variant={a.requiresConfirmation ? "danger" : a.kind === "resolve" ? "primary" : "secondary"}
-                    disabled={busy}
-                    onClick={() => run(a.kind, a.executeKind, a.requiresConfirmation)}
-                  >
-                    {a.label}
-                  </Button>
-                ))}
+                .map((a) => {
+                  const gate = a.kind === "execute" ? executeGate : writeGate;
+                  return (
+                    <RestrictedActionTooltip key={`${a.kind}-${a.executeKind ?? ""}`} message={gate.blocked ? gate.message : a.label}>
+                      <Button
+                        type="button"
+                        variant={a.requiresConfirmation ? "danger" : a.kind === "resolve" ? "primary" : "secondary"}
+                        disabled={busy || gate.blocked}
+                        onClick={() => run(a.kind, a.executeKind, a.requiresConfirmation)}
+                      >
+                        {a.label}
+                      </Button>
+                    </RestrictedActionTooltip>
+                  );
+                })}
             </div>
           )}
         </div>

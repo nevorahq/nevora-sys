@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, isAccessError } from "@/lib/security";
 import { canDo } from "@/lib/context/current-context";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
@@ -67,7 +67,15 @@ export async function confirmDocumentTransactionAction(
     return { error: "Select a valid category and expense context." };
   }
 
-  const ctx = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    // Confirming a document draft posts a real money transaction — a write that
+    // must be blocked once the org is no longer writable (expired/unpaid).
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    if (isAccessError(err)) return { error: err.message };
+    throw err;
+  }
   if (!canDo(ctx, "data.write")) {
     return { error: "You do not have permission to confirm transactions." };
   }

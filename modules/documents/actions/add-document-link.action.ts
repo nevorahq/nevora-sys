@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitAuditLog } from "@/lib/events";
 import { addDocumentLinkSchema } from "../schemas/document.schemas";
 import { ROUTES } from "@/shared/config/routes";
@@ -12,7 +12,17 @@ export async function addDocumentLinkAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  const { user, org } = await requireOrg();
+  // Adding a link is a business write: routed through the control plane so a
+  // non-writable org gets a typed denial (RLS enforces the same).
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { user, org } = ctx;
 
   const rawData = {
     documentId: formData.get("documentId") as string,

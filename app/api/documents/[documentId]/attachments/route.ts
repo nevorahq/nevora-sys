@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
-import { assertPlanLimit, assertSubscriptionWritable } from "@/modules/billing";
+import { requireAppAccess, isAccessError, redactFilenameForEvent } from "@/lib/security";
+import { assertPlanLimit } from "@/modules/billing";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
 import { hasDocumentPermission } from "@/modules/documents/services/document-permissions";
@@ -16,7 +16,9 @@ export async function POST(request: Request, context: RouteContext<"/api/documen
     const parsedId = uuidSchema.safeParse(documentId);
     if (!parsedId.success) return NextResponse.json({ error: "Invalid document." }, { status: 400 });
 
-    const ctx = await requireOrg();
+    // Attaching a file is a write. requireAppAccess denies it (with a typed
+    // AccessError) once the org is not writable, before any storage side effect.
+    const ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
     if (!hasDocumentPermission(ctx, "document.attachment.upload")) {
       return NextResponse.json({ error: "You do not have permission to upload attachments." }, { status: 403 });
     }
@@ -26,7 +28,6 @@ export async function POST(request: Request, context: RouteContext<"/api/documen
     if (!filesValidation.ok) return NextResponse.json(filesValidation, { status: 400 });
 
     try {
-      await assertSubscriptionWritable(ctx.org.id);
       await assertPlanLimit(ctx.org.id, "storage.bytes", files.reduce((total, file) => total + file.size, 0));
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Storage limit reached." }, { status: 403 });
@@ -57,12 +58,15 @@ export async function POST(request: Request, context: RouteContext<"/api/documen
       if (attachmentError) return NextResponse.json({ error: "The file was uploaded but its metadata could not be saved." }, { status: 500 });
       attachmentIds.push(attachmentId);
       await Promise.all([
-        emitDomainEvent({ organizationId: ctx.org.id, workspaceId: document.workspace_id ?? undefined, eventName: "document.attachment_uploaded", aggregateType: "document", aggregateId: document.id, payload: { filename: file.name, size_bytes: file.size } }),
-        emitAuditLog({ organizationId: ctx.org.id, entityType: "document_attachments", entityId: attachmentId, action: "create", newData: { document_id: document.id, file_name: file.name }, metadata: { source: "dashboard", trigger: "task_creation" } }),
+        emitDomainEvent({ organizationId: ctx.org.id, workspaceId: document.workspace_id ?? undefined, eventName: "document.attachment_uploaded", aggregateType: "document", aggregateId: document.id, payload: { filename: redactFilenameForEvent(file.name), size_bytes: file.size } }),
+        emitAuditLog({ organizationId: ctx.org.id, entityType: "document_attachments", entityId: attachmentId, action: "create", newData: { document_id: document.id, file_name: redactFilenameForEvent(file.name) }, metadata: { source: "dashboard", trigger: "task_creation" } }),
       ]);
     }
     return NextResponse.json({ attachmentIds });
   } catch (error) {
+    if (isAccessError(error)) {
+      return NextResponse.json({ error: error.message }, { status: error.httpStatus });
+    }
     console.error("document attachments upload failed", error);
     return NextResponse.json({ error: "We could not upload the attachments. Please try again." }, { status: 500 });
   }

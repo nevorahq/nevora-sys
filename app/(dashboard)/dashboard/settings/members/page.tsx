@@ -29,7 +29,7 @@ export default async function MembersPage() {
     <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <SettingsHeader title="Members" description="Invite teammates, manage access, and review pending invitations." />
-        {canManage && <InviteMemberDialog limitReached={limitReached} limitReason={unlimited ? undefined : `Your plan supports up to ${maxMembers} members.`} />}
+        {canManage && <InviteMemberDialog limitReached={limitReached} limitReason="Достигнут лимит участников для текущего плана." />}
       </div>
       {pendingInvites.length > 0 && (
         <div className="mb-4">

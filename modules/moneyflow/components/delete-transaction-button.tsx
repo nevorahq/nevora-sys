@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Trash2Icon } from "lucide-react";
 import { deleteTransactionAction } from "../actions/delete-transaction.action";
 import { useNotificationIndicator } from "@/modules/notifications/components/notification-provider";
+import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import { Modal } from "@/shared/ui/modal";
 import { cn } from "@/shared/utils/cn";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
@@ -27,6 +28,7 @@ export function DeleteTransactionButton({
   const [isDeleting, startDelete] = useTransition();
   const router = useRouter();
   const { refreshCounters } = useNotificationIndicator();
+  const { blocked, message } = useAccessGate("write");
   const labels = dict.money.transactions;
 
   function closeConfirmation() {
@@ -55,18 +57,21 @@ export function DeleteTransactionButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setIsConfirming(true)}
-        className={cn(
-          "soft-icon-button h-8 w-8 text-text-muted hover:text-danger",
-          className,
-        )}
-        aria-label={labels.deleteButton}
-        title={labels.deleteButton}
-      >
-        <Trash2Icon size={15} strokeWidth={1.75} />
-      </button>
+      <RestrictedActionTooltip message={blocked ? message : labels.deleteButton}>
+        <button
+          type="button"
+          onClick={() => setIsConfirming(true)}
+          disabled={blocked}
+          className={cn(
+            "soft-icon-button h-8 w-8 text-text-muted hover:text-danger disabled:cursor-not-allowed disabled:opacity-50",
+            className,
+          )}
+          aria-label={blocked ? `${labels.deleteButton}. ${message}` : labels.deleteButton}
+          title={blocked ? message : labels.deleteButton}
+        >
+          <Trash2Icon size={15} strokeWidth={1.75} />
+        </button>
+      </RestrictedActionTooltip>
 
       <Modal
         isOpen={isConfirming}

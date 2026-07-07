@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { changeTaskStatusAction } from "@/modules/tasks/actions/change-task-status.action";
+import { useAccessGate } from "@/modules/billing/components/access-state";
 import { TASK_STATUSES, type TaskStatus } from "@/modules/tasks/constants/task.constants";
 import { cn } from "@/shared/utils/cn";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
@@ -33,6 +34,7 @@ export function TaskStatusBadge({ taskId, status, dict, className }: TaskStatusB
   const [current, setCurrent] = useState<TaskStatus>(status);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const { blocked, message } = useAccessGate("write");
   const labels = dict.todos.statuses;
   const t = dict.todos.statusBadge;
 
@@ -65,9 +67,10 @@ export function TaskStatusBadge({ taskId, status, dict, className }: TaskStatusB
         <select
           aria-label={t.ariaLabel}
           aria-busy={isPending}
+          title={blocked ? message : undefined}
           value={current}
           onChange={handleChange}
-          disabled={isPending}
+          disabled={isPending || blocked}
           className={cn(
             "cursor-pointer appearance-none rounded-(--neu-radius-pill) bg-transparent",
             "py-1 pl-3 pr-7 text-xs font-medium text-inherit",

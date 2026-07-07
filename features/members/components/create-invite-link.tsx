@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 // Прямой импорт server action (не из бочки @/modules/members — там server-only queries).
 import {
@@ -7,6 +8,7 @@ import {
   type CreateInviteLinkResult,
 } from "@/modules/members/actions/create-invite-link.action";
 import { Button } from "@/shared/ui/button";
+import { ROUTES } from "@/shared/config/routes";
 
 interface CreateInviteLinkProps {
   limitReached?: boolean;
@@ -27,9 +29,14 @@ export function CreateInviteLink({ limitReached, limitReason }: CreateInviteLink
 
   if (limitReached) {
     return (
-      <p className="text-sm text-text-muted">
-        {limitReason ?? "You have reached your plan's member limit. Upgrade to add more."}
-      </p>
+      <div className="flex flex-col gap-2">
+        <p className="text-sm text-text-muted">
+          {limitReason ?? "Достигнут лимит участников для текущего плана."}
+        </p>
+        <Link href={ROUTES.billing} className="text-sm font-medium text-text-primary underline underline-offset-4">
+          Billing
+        </Link>
+      </div>
     );
   }
 

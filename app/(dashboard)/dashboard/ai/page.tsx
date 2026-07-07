@@ -5,6 +5,9 @@ import {
   XIcon,
 } from "lucide-react";
 import { requireOrg } from "@/lib/auth/require-org";
+import { getOrganizationAccessState } from "@/modules/billing/queries/get-organization-access-state";
+import { AI_BLOCKED_MESSAGE, isAccessIntentAllowed } from "@/modules/billing/services/access-state-ui";
+import { BillingRequiredAlert, RestrictedActionTooltip } from "@/modules/billing/components/access-state";
 import {
   getInsights,
   getRecommendations,
@@ -21,10 +24,12 @@ import {
 export default async function AiPage() {
   const { org } = await requireOrg();
 
-  const [insights, recommendations] = await Promise.all([
+  const [insights, recommendations, accessState] = await Promise.all([
     getInsights(org.id, { limit: 10 }),
     getRecommendations(org.id, { status: "pending", limit: 8 }),
+    getOrganizationAccessState(org.id),
   ]);
+  const canExecuteAi = isAccessIntentAllowed(accessState, "execute");
 
   return (
     <>
@@ -46,14 +51,20 @@ export default async function AiPage() {
             action={triggerGenerateRecommendations}
             label="Recommendations"
             icon={<ZapIcon size={14} />}
+            disabled={!canExecuteAi}
           />
           <GenerateButton
             action={triggerGenerateInsights}
             label="Insights"
             icon={<LightbulbIcon size={14} />}
+            disabled={!canExecuteAi}
           />
         </div>
       </div>
+
+      {!canExecuteAi && (
+        <BillingRequiredAlert title="AI ограничен" message={AI_BLOCKED_MESSAGE} className="mt-5" />
+      )}
 
       {/* Recommendations */}
       <section className="mt-8">
@@ -69,7 +80,7 @@ export default async function AiPage() {
         {recommendations.length > 0 ? (
           <div className="flex flex-col gap-3">
             {recommendations.map((rec) => (
-              <RecommendationCard key={rec.id} rec={rec} />
+              <RecommendationCard key={rec.id} rec={rec} canExecute={canExecuteAi} />
             ))}
           </div>
         ) : (
@@ -113,20 +124,26 @@ function GenerateButton({
   action,
   label,
   icon,
+  disabled,
 }: {
   action: (fd: FormData) => Promise<void>;
   label: string;
   icon: React.ReactNode;
+  disabled: boolean;
 }) {
   return (
     <form action={action}>
-      <button
-        type="submit"
-        className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:bg-surface-secondary hover:text-text-primary"
-      >
-        {icon}
-        {label}
-      </button>
+      <RestrictedActionTooltip message={disabled ? AI_BLOCKED_MESSAGE : label}>
+        <button
+          type="submit"
+          disabled={disabled}
+          aria-label={disabled ? `${label}. ${AI_BLOCKED_MESSAGE}` : label}
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:bg-surface-secondary hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {icon}
+          {label}
+        </button>
+      </RestrictedActionTooltip>
     </form>
   );
 }
@@ -150,7 +167,7 @@ function InsightCard({ insight }: { insight: AiInsight }) {
   );
 }
 
-function RecommendationCard({ rec }: { rec: AiRecommendation }) {
+function RecommendationCard({ rec, canExecute }: { rec: AiRecommendation; canExecute: boolean }) {
   const priorityCls = PRIORITY_STYLES[rec.priority] ?? PRIORITY_STYLES.medium;
   return (
     <div className="soft-card-sm flex items-start gap-4 p-4">
@@ -165,13 +182,16 @@ function RecommendationCard({ rec }: { rec: AiRecommendation }) {
       </div>
       <form action={triggerDismissRecommendation}>
         <input type="hidden" name="recommendationId" value={rec.id} />
-        <button
-          type="submit"
-          title="Dismiss"
-          className="shrink-0 rounded-md p-1.5 text-text-muted transition hover:bg-surface-secondary hover:text-text-primary"
-        >
-          <XIcon size={13} />
-        </button>
+        <RestrictedActionTooltip message={canExecute ? "Dismiss" : AI_BLOCKED_MESSAGE}>
+          <button
+            type="submit"
+            title={canExecute ? "Dismiss" : AI_BLOCKED_MESSAGE}
+            disabled={!canExecute}
+            className="shrink-0 rounded-md p-1.5 text-text-muted transition hover:bg-surface-secondary hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <XIcon size={13} />
+          </button>
+        </RestrictedActionTooltip>
       </form>
     </div>
   );
