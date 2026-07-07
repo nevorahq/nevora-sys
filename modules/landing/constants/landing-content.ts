@@ -508,12 +508,12 @@ const en = {
       "I'm open to feedback from people who actually manage tasks, documents, money, subscriptions and daily business processes.",
     cta: "Get in touch",
     ctaHref: "mailto:hello@nevora.com",
-    // PLACEHOLDER: замени на реальные контакты проекта (одинаковы для всех локалей).
     channels: [
-      { label: "Email", value: "hello@nevora.com", href: "mailto:hello@nevora.com" },
-      { label: "Telegram", value: "@nevora", href: "https://t.me/nevora" },
-      { label: "Instagram", value: "@nevora", href: "https://instagram.com/nevora" },
-      { label: "Facebook", value: "Nevora", href: "https://facebook.com/nevora" },
+      { label: "Email", value: "nevorahq@gmail.com", href: "mailto:nevorahq@gmail.com" },
+      { label: "Telegram", value: "@NEVORAHQ", href: "https://t.me/NEVORAHQ" },
+      { label: "Instagram", value: "@nevorahq", href: "https://www.instagram.com/nevorahq/" },
+      // Facebook временно скрыт — вернуть, когда появится страница проекта.
+      // { label: "Facebook", value: "Nevora", href: "https://facebook.com/nevora" },
     ],
   },
   footer: {
@@ -689,10 +689,11 @@ const ru: LandingContent = {
     cta: "Связаться",
     ctaHref: "mailto:hello@nevora.com",
     channels: [
-      { label: "Email", value: "hello@nevora.com", href: "mailto:hello@nevora.com" },
-      { label: "Telegram", value: "@nevora", href: "https://t.me/nevora" },
-      { label: "Instagram", value: "@nevora", href: "https://instagram.com/nevora" },
-      { label: "Facebook", value: "Nevora", href: "https://facebook.com/nevora" },
+      { label: "Email", value: "nevorahq@gmail.com", href: "mailto:nevorahq@gmail.com" },
+      { label: "Telegram", value: "@NEVORAHQ", href: "https://t.me/NEVORAHQ" },
+      { label: "Instagram", value: "@nevorahq", href: "https://www.instagram.com/nevorahq/" },
+      // Facebook временно скрыт — вернуть, когда появится страница проекта.
+      // { label: "Facebook", value: "Nevora", href: "https://facebook.com/nevora" },
     ],
   },
   footer: {

@@ -60,14 +60,14 @@ export default async function DashboardLayout({
   return (
     <AccessStateProvider accessState={accessState}>
       <NotificationProvider key={`${context.org.id}:${user.id}`} organizationId={context.org.id} userId={user.id} initialPreferences={notificationPreferences} initialCounters={initialNotificationCounters} initialNotifications={initialNotifications}>
-        <div className="flex h-full min-h-screen">
-          {/* Sidebar — навигация платформы */}
+        <div className="flex min-h-dvh">
+          {/* Sidebar — навигация платформы (sticky, 100dvh, неподвижный) */}
           <Sidebar dict={dict} />
 
           {/* Main content area */}
           <div className="flex flex-1 flex-col min-w-0">
-            {/* Header — user info, controls */}
-            <header className="flex items-center justify-between border-b border-border-soft px-6 py-3.5">
+            {/* Header — user info, controls (прилипает к верху при скролле) */}
+            <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border-soft bg-background px-6 py-3.5">
               <div className="flex min-w-0 items-center gap-2">
                 <OrganizationSwitcher currentOrganizationId={context.org.id} organizations={userOrganizations} />
                 <p className="truncate text-sm text-text-muted">
@@ -84,7 +84,7 @@ export default async function DashboardLayout({
             </header>
 
             {/* Page content */}
-            <main className="flex-1 overflow-y-auto p-6 md:p-8">
+            <main className="flex-1 p-6 md:p-8">
               {!limits.unlimitedAccess && <TrialBanner trial={trial} />}
               <ReadOnlyModeBanner />
               {children}

@@ -71,6 +71,9 @@ export function Sidebar({ dict }: SidebarProps) {
     <aside
       className={cn(
         "flex shrink-0 flex-col border-r border-border-soft bg-surface",
+        // Sticky: неподвижный при скролле, высота 100dvh, self-start чтобы
+        // sticky работал (иначе flex-stretch растянул бы по высоте контента)
+        "sticky top-0 self-start h-dvh",
         // Mobile: узкий (только иконки). Desktop: полный.
         "w-16 md:w-56",
         // Плавная анимация ширины при resize
@@ -97,7 +100,7 @@ export function Sidebar({ dict }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 py-4 md:px-3">
+      <nav className="flex-1 overflow-y-auto px-2 py-4 md:px-3">
         <ul className="flex flex-col gap-1">
           {navItems.map((item) => {
             const active = isActive(item.href);

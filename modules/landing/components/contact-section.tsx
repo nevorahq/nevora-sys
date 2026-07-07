@@ -15,7 +15,7 @@ export function ContactSection({
         <p className="mt-4 max-w-xl text-text-secondary">{content.text}</p>
         <p className="mt-2 max-w-xl text-text-secondary">{content.text2}</p>
 
-        <ul className="mt-8 grid gap-3 sm:grid-cols-2">
+        <ul className="mt-8 grid gap-3 sm:grid-cols-3">
           {content.channels.map((channel) => (
             <li key={channel.label}>
               <a
@@ -30,13 +30,6 @@ export function ContactSection({
             </li>
           ))}
         </ul>
-
-        <a
-          href={content.ctaHref}
-          className="mt-8 inline-flex items-center justify-center rounded-(--neu-radius-pill) bg-text-primary px-7 py-3 text-sm font-semibold text-text-inverse shadow-neu-control transition-all hover:shadow-neu-card active:scale-[0.98] active:shadow-neu-inset"
-        >
-          {content.cta}
-        </a>
       </div>
     </section>
   );
