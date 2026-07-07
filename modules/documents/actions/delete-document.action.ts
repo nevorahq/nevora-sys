@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
 import { logger } from "@/lib/observability/logger";
@@ -26,7 +26,14 @@ function isForbiddenError(error: SupabaseActionError): boolean {
 }
 
 export async function deleteDocumentAction(documentId: string): Promise<{ error?: string }> {
-  const ctx = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
   const { org, user } = ctx;
   if (!hasDocumentPermission(ctx, "document.delete")) {
     return { error: "You do not have permission to delete documents." };

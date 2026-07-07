@@ -4,6 +4,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { acceptInviteLinkSchema } from "../schemas/member.schemas";
+import {
+  auditInviteDecision,
+  inviteReasonFromMessage,
+  inviteRecipientMessage,
+} from "../services/invite-protection";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 
@@ -15,7 +20,7 @@ export async function acceptInviteLinkAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireUser();
+  const user = await requireUser();
 
   const parsed = acceptInviteLinkSchema.safeParse({
     token: formData.get("token") as string,
@@ -30,17 +35,16 @@ export async function acceptInviteLinkAction(
     });
 
     if (error) {
-      if (error.message.includes("trial_expired")) {
-        return { error: "This organization’s trial has ended and cannot accept new members." };
-      }
-      if (error.message.includes("invite_invalid")) {
-        return { error: "This invite link is invalid or has expired." };
-      }
-      if (error.message.includes("member_limit_reached")) {
-        return { error: "This organization has reached its member limit." };
-      }
+      const reason = inviteReasonFromMessage(error.message);
+      auditInviteDecision({
+        action: "accept",
+        reason,
+        actorId: user.id,
+        targetUserId: user.id,
+      });
+      if (reason === "auth_required") return { error: "Authentication required" };
       console.error("acceptInviteLink RPC error:", error);
-      return { error: "Failed to accept invite" };
+      return { error: inviteRecipientMessage(reason) };
     }
     ok = true;
   } catch (err) {

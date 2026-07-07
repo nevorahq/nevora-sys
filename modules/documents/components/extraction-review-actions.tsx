@@ -7,6 +7,7 @@ import { confirmDocumentTransactionAction } from "@/modules/moneyflow/actions/co
 import { rejectDocumentTransactionAction } from "@/modules/moneyflow/actions/reject-document-transaction.action";
 import { retryDocumentExtractionAction } from "../actions/retry-document-extraction.action";
 import { CreateAccountInlineCTA } from "./create-account-inline-cta";
+import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import type { MoneyAccountOption } from "@/modules/moneyflow/services/money-account-service";
 import { Toast } from "@/shared/ui/toast";
 
@@ -62,6 +63,7 @@ export function ExtractionReviewActions({
   const [amount, setAmount] = useState(initialAmount?.toString() ?? "");
   const [transactionDate, setTransactionDate] = useState(initialTransactionDate ?? new Date().toISOString().slice(0, 10));
   const [pending, start] = useTransition();
+  const { blocked, message } = useAccessGate("write");
 
   const availableAccounts = useMemo(() => {
     const merged = new Map(compatibleAccounts.map((account) => [account.id, account]));
@@ -87,6 +89,10 @@ export function ExtractionReviewActions({
   const dismissToast = useCallback(() => setToastMessage(null), []);
 
   function run(fn: () => Promise<{ error?: string }>) {
+    if (blocked) {
+      setError(message);
+      return;
+    }
     setError(null);
     start(async () => {
       const result = await fn();
@@ -100,7 +106,7 @@ export function ExtractionReviewActions({
 
   const noCompatibleAccount = needsAccount && availableAccounts.length === 0;
   // Block confirm until a same-currency account is chosen when one is required.
-  const confirmDisabled = pending || (needsAccount && !effectiveSelectedAccount);
+  const confirmDisabled = blocked || pending || (needsAccount && !effectiveSelectedAccount);
   const canReviewClassification = categories.length > 0 && contexts.length > 0;
 
   function confirmTransaction() {
@@ -140,7 +146,7 @@ export function ExtractionReviewActions({
                 id="confirm-account"
                 value={effectiveSelectedAccount}
                 onChange={(e) => setSelectedAccount(e.target.value)}
-                disabled={pending}
+                disabled={pending || blocked}
                 className="mt-1 w-full rounded-(--neu-radius-sm) border border-border bg-surface px-3 py-2 text-sm text-text-primary"
               >
                 {availableAccounts.map((a) => (
@@ -183,7 +189,7 @@ export function ExtractionReviewActions({
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
                 required
-                disabled={pending}
+                disabled={pending || blocked}
                 className="mt-1 w-full rounded-(--neu-radius-sm) border border-border bg-surface px-3 py-2 text-sm text-text-primary"
               />
             </div>
@@ -209,7 +215,7 @@ export function ExtractionReviewActions({
               value={transactionDate}
               onChange={(event) => setTransactionDate(event.target.value)}
               required
-              disabled={pending}
+              disabled={pending || blocked}
               className="mt-1 w-full rounded-(--neu-radius-sm) border border-border bg-surface px-3 py-2 text-sm text-text-primary"
             />
           </div>
@@ -222,7 +228,7 @@ export function ExtractionReviewActions({
               id="confirm-category"
               value={selectedCategory}
               onChange={(event) => setSelectedCategory(event.target.value)}
-              disabled={pending}
+              disabled={pending || blocked}
               className="mt-1 w-full rounded-(--neu-radius-sm) border border-border bg-surface px-3 py-2 text-sm text-text-primary"
             >
               {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
@@ -236,7 +242,7 @@ export function ExtractionReviewActions({
               id="confirm-context"
               value={selectedContext}
               onChange={(event) => setSelectedContext(event.target.value)}
-              disabled={pending}
+              disabled={pending || blocked}
               className="mt-1 w-full rounded-(--neu-radius-sm) border border-border bg-surface px-3 py-2 text-sm text-text-primary"
             >
               {contexts.map((context) => (
@@ -261,33 +267,39 @@ export function ExtractionReviewActions({
 
       <div className="flex flex-wrap gap-2">
         {transactionId && canConfirm && (
-          <button
-            type="button"
-            disabled={confirmDisabled || noCompatibleAccount || (canReviewClassification && (!merchantName.trim() || Number(amount) <= 0 || !transactionDate))}
-            onClick={() => run(confirmTransaction)}
-            className="inline-flex items-center gap-2 rounded-lg bg-accent-green px-4 py-2 text-sm font-semibold text-text-inverse shadow-neu-control hover:opacity-90 disabled:opacity-60"
-          >
-            <CheckIcon size={16} /> Confirm transaction
-          </button>
+          <RestrictedActionTooltip message={blocked ? message : "Confirm transaction"}>
+            <button
+              type="button"
+              disabled={confirmDisabled || noCompatibleAccount || (canReviewClassification && (!merchantName.trim() || Number(amount) <= 0 || !transactionDate))}
+              onClick={() => run(confirmTransaction)}
+              className="inline-flex items-center gap-2 rounded-lg bg-accent-green px-4 py-2 text-sm font-semibold text-text-inverse shadow-neu-control hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <CheckIcon size={16} /> Confirm transaction
+            </button>
+          </RestrictedActionTooltip>
         )}
         {transactionId && canConfirm && (
+          <RestrictedActionTooltip message={blocked ? message : "Reject"}>
+            <button
+              type="button"
+              disabled={pending || blocked}
+              onClick={() => run(() => rejectDocumentTransactionAction(transactionId))}
+              className="inline-flex items-center gap-2 rounded-lg border border-danger/30 px-4 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <XIcon size={16} /> Reject
+            </button>
+          </RestrictedActionTooltip>
+        )}
+        <RestrictedActionTooltip message={blocked ? message : "Retry extraction"}>
           <button
             type="button"
-            disabled={pending}
-            onClick={() => run(() => rejectDocumentTransactionAction(transactionId))}
-            className="inline-flex items-center gap-2 rounded-lg border border-danger/30 px-4 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:opacity-60"
+            disabled={pending || blocked}
+            onClick={() => run(() => retryDocumentExtractionAction(documentId))}
+            className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-primary hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <XIcon size={16} /> Reject
+            <RefreshCwIcon size={16} /> Retry extraction
           </button>
-        )}
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => run(() => retryDocumentExtractionAction(documentId))}
-          className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-primary hover:bg-surface-sunken disabled:opacity-60"
-        >
-          <RefreshCwIcon size={16} /> Retry extraction
-        </button>
+        </RestrictedActionTooltip>
       </div>
       {pending && <p className="text-xs text-text-muted">Working…</p>}
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}

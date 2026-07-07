@@ -39,6 +39,7 @@ export async function createPlannerSuggestion(
       workspace_id: ctx.workspace.id,
       planner_entry_id: plannerEntryId,
       created_by: ctx.user.id,
+      owner_user_id: ctx.user.id,
       suggestion_type: detected.suggestionType,
       title: detected.title,
       description: detected.description ?? null,

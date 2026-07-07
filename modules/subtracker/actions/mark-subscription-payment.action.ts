@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, isAccessError } from "@/lib/security";
 import { canDo } from "@/lib/context/current-context";
 import { ROUTES } from "@/shared/config/routes";
 import { markSubscriptionPaymentSchema } from "../schemas/payment-cycle.schema";
@@ -23,7 +23,15 @@ export async function markSubscriptionPaymentAction(input: {
   const parsed = markSubscriptionPaymentSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
 
-  const ctx = await requireOrg();
+  // Recording a payment can post a real money transaction — a write blocked
+  // once the org is not writable.
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    if (isAccessError(err)) return { error: err.message };
+    throw err;
+  }
   if (!canDo(ctx, "data.write")) {
     return { error: "You do not have permission to record subscription payments." };
   }

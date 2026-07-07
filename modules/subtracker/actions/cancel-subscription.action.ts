@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { canDo } from "@/lib/context/current-context";
 import { ROUTES } from "@/shared/config/routes";
 import { cancelSubscriptionSchema } from "../schemas/payment-cycle.schema";
@@ -15,7 +15,14 @@ export async function cancelSubscriptionAction(input: {
   const parsed = cancelSubscriptionSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
 
-  const ctx = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
   if (!canDo(ctx, "data.write")) {
     return { error: "You do not have permission to cancel subscriptions." };
   }

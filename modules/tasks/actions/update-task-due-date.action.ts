@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { updateTaskDueDateSchema } from "../schemas/task-due-date.schema";
 import { resolveDueDateChange } from "../lib/resolve-due-date-change";
@@ -33,7 +33,14 @@ export interface UpdateTaskDueDateInput {
 export async function updateTaskDueDateAction(
   input: UpdateTaskDueDateInput,
 ): Promise<ActionResult> {
-  const ctx = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
   const { user, org, workspace, permissions } = ctx;
 
   // Базовое право на запись данных (зеркалит can_write_data RLS).

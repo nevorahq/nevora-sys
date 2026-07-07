@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import { getTransactionSchemas } from "../schemas/transaction.schema";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
@@ -16,7 +16,14 @@ export async function updateTransactionAction(
   const { dict } = await getDictionary();
   const { updateTransactionSchema } = getTransactionSchemas(dict.money.errors);
 
-  const ctx = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
 
   const rawData = {
     transactionId: formData.get("transactionId") as string,

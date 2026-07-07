@@ -10,6 +10,13 @@ const getDictionary = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/lib/supabase/server", () => ({ createClient }));
 vi.mock("@/lib/auth/require-org", () => ({ requireOrg }));
+// Phase 2: actions now funnel through requireAppAccess; mock that boundary and
+// delegate to the existing requireOrg fixture (the guard has its own tests).
+vi.mock("@/lib/security", () => ({
+  requireAppAccess: () => requireOrg(),
+  accessErrorToActionResult: () => null,
+  isAccessError: () => false,
+}));
 vi.mock("@/lib/context/current-context", () => ({ canDo }));
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
 vi.mock("@/shared/i18n/get-dictionary", () => ({ getDictionary }));

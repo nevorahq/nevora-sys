@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select } from "@/shared/ui/select";
+import { BillingRequiredAlert, useAccessGate } from "@/modules/billing/components/access-state";
+import { UPLOAD_BLOCKED_MESSAGE } from "@/modules/billing/services/access-state-ui";
 import { ROUTES } from "@/shared/config/routes";
 import {
   DOCUMENT_MAX_FILES,
@@ -20,9 +22,14 @@ export function NewDocumentForm() {
   const { files, error: fileError, addFiles, removeFile } = useDocumentFiles();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { blocked } = useAccessGate("write");
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (blocked) {
+      setError(UPLOAD_BLOCKED_MESSAGE);
+      return;
+    }
     setError(null);
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -46,6 +53,7 @@ export function NewDocumentForm() {
 
   return (
     <form onSubmit={submit} className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+      {blocked && <BillingRequiredAlert title="Загрузка ограничена" message={UPLOAD_BLOCKED_MESSAGE} />}
       {error && <div role="alert" className="rounded-(--neu-radius-md) border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">{error}</div>}
       <div className="soft-card flex flex-col gap-5 p-5 sm:p-6">
         <Input id="title" name="title" label="Title *" placeholder="e.g. June supplier invoice" required maxLength={160} />
@@ -69,7 +77,7 @@ export function NewDocumentForm() {
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Button type="button" variant="ghost" disabled={isSubmitting} onClick={() => router.push(ROUTES.documents)}>Cancel</Button>
-        <Button type="submit" isLoading={isSubmitting} className="min-h-12">{isSubmitting ? "Uploading…" : "Create document"}</Button>
+        <Button type="submit" disabled={blocked} isLoading={isSubmitting} className="min-h-12">{isSubmitting ? "Uploading…" : "Create document"}</Button>
       </div>
     </form>
   );

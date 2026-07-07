@@ -39,9 +39,11 @@ import type { OrgRole } from "@/lib/context/organization-context";
 //   planner.suggestion.read/accept/edit/reject     — review AI suggestions
 // Capture is a core member action, so members get the full capture+review set
 // (accept still additionally requires the target-entity permission, e.g.
-// data.write for a task). Only delete/hard-manage stays with manager+.
-const PLANNER_WRITER = ["planner.entry.create", "planner.entry.read", "planner.entry.update", "planner.suggestion.read", "planner.suggestion.accept", "planner.suggestion.edit", "planner.suggestion.reject"];
-const PLANNER_MANAGER = [...PLANNER_WRITER, "planner.entry.delete"];
+// data.write for a task). The inbox is a private, owner-scoped surface
+// (migration 087: RLS restricts every row to owner_user_id = auth.uid()), so
+// delete is safe for members too — they can only ever archive their OWN captures.
+const PLANNER_WRITER = ["planner.entry.create", "planner.entry.read", "planner.entry.update", "planner.entry.delete", "planner.suggestion.read", "planner.suggestion.accept", "planner.suggestion.edit", "planner.suggestion.reject"];
+const PLANNER_MANAGER = [...PLANNER_WRITER];
 
 const ROLE_PERMISSIONS: Record<OrgRole, string[]> = {
   owner:   ["org.read", "org.update", "org.delete", "users.manage", "billing.manage", "plans.view", "usage.view", "developer.view", "developer.manage", "api_key.create", "api_key.revoke", "webhook.create", "webhook.update", "webhook.delete", "workspace.manage", "data.write", "data.delete", "domain_event.read", "entity_link.read", "entity_link.create", "entity_link.delete", "automation.read", "automation.manage", "action_center.view", "action_center.manage", "action_center.assign", "action_center.resolve", "action_center.dismiss", "action_center.execute", "action_center.execute.financial", "action_center.execute.subscription", "action_center.execute.document_approval", ...PLANNER_MANAGER],

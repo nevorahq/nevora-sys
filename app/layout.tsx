@@ -14,7 +14,28 @@ export const metadata: Metadata = {
     default: "Nevora Business OS",
     template: "%s — Nevora Business OS",
   },
-  description: "Personal productivity system built with Next.js and Supabase",
+  description:
+    "Connected Business Operations for tasks, projects, money, documents, subscriptions, Action Center and AI-assisted workflows.",
+  keywords: [
+    "business operating system",
+    "small business operations",
+    "task and finance workspace",
+    "document and subscription management",
+    "business action center",
+    "AI-assisted business workflows",
+  ],
+  openGraph: {
+    title: "Nevora Business OS",
+    description:
+      "Connected Business Operations for tasks, money, documents, subscriptions and review-first AI workflows.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Nevora Business OS",
+    description:
+      "Connected Business Operations for tasks, money, documents, subscriptions and review-first AI workflows.",
+  },
 };
 
 export default function RootLayout({

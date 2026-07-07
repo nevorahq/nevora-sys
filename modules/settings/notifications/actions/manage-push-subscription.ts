@@ -2,15 +2,24 @@
 
 import { headers } from "next/headers";
 import { requireOrg } from "@/lib/auth/require-org";
-import { getServiceRoleClient } from "@/lib/supabase/service-role";
+import { createClient } from "@/lib/supabase/server";
 import { pushSubscriptionSchema } from "../schemas/notification-preferences.schema";
 
+/**
+ * Push subscription management for the current user.
+ *
+ * Writes go through the RLS-scoped authenticated client — NOT the service role.
+ * `push_subscriptions` already has owner-scoped policies (migration 073:
+ * insert/update/delete require `user_id = auth.uid() AND is_org_member(org)`),
+ * so the database is the authorization boundary. `user_id`/`organization_id`
+ * are still taken from server-side context (requireOrg), and RLS independently
+ * enforces them — a client cannot write another user's subscription.
+ */
 export async function registerPushSubscription(input: unknown): Promise<{ ok: boolean; error?: string }> {
   const parsed = pushSubscriptionSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "The browser returned an invalid push subscription." };
   const context = await requireOrg();
-  const supabase = getServiceRoleClient();
-  if (!supabase) return { ok: false, error: "Push storage is not configured on this deployment." };
+  const supabase = await createClient();
   const headerStore = await headers();
   const { error } = await supabase.from("push_subscriptions").upsert({
     organization_id: context.org.id,
@@ -28,8 +37,7 @@ export async function registerPushSubscription(input: unknown): Promise<{ ok: bo
 export async function removePushSubscription(endpoint: unknown): Promise<{ ok: boolean; error?: string }> {
   if (typeof endpoint !== "string" || endpoint.length > 4096) return { ok: false, error: "Invalid subscription." };
   const context = await requireOrg();
-  const supabase = getServiceRoleClient();
-  if (!supabase) return { ok: false, error: "Push storage is not configured on this deployment." };
+  const supabase = await createClient();
   const { error } = await supabase
     .from("push_subscriptions")
     .delete()

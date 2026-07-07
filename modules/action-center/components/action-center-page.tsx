@@ -1,5 +1,5 @@
 import { requireOrg } from "@/lib/auth/require-org";
-import { canDo } from "@/lib/context/current-context";
+import { canDo, isAdmin } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
 import { getActionCenterFeed } from "../queries/get-action-center-feed";
 import { getActionCenterSummary } from "../queries/get-action-center-summary";
@@ -69,7 +69,7 @@ export async function ActionCenterPage() {
       <ActionCenterHeader />
       <ActionSummaryStrip summary={summary} />
       <ActionFeed initialFeed={feed} members={members} currentUserId={ctx.user.id} />
-      <ActivityLog entries={activity} actors={actors} />
+      <ActivityLog entries={activity} actors={actors} canViewSecurity={isAdmin(ctx)} />
     </div>
   );
 }

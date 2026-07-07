@@ -112,6 +112,10 @@ export async function syncActionItems(
 
   if (error) {
     if (error.code === "23505") return { created: 0 }; // гонка генерации — ок
+    // 42501 = RLS write denied. Expected on non-writable orgs (expired trial:
+    // can_write_data() → false via is_organization_writable). Reads still work,
+    // so the feed renders; we simply don't generate. Not an error — stay quiet.
+    if (error.code === "42501") return { created: 0 };
     console.error("[syncActionItems] insert failed:", error.message);
     return { created: 0 };
   }

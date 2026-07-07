@@ -35,6 +35,7 @@ export async function createPlannerEntry(
       organization_id: ctx.org.id,
       workspace_id: ctx.workspace.id,
       created_by: ctx.user.id,
+      owner_user_id: ctx.user.id,
       raw_text: rawText,
       entry_type: input.entryType ?? "text",
       source: "manual",

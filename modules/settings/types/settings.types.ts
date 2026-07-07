@@ -1,4 +1,5 @@
-import type { Invoice, Plan, SubscriptionWithPlan } from "@/modules/billing";
+import type { Invoice, Plan, SubscriptionWithPlan, TrialEligibility } from "@/modules/billing";
+import type { OrgAccessState } from "@/modules/billing";
 
 export type SettingsPermission =
   | "profile.read"
@@ -70,15 +71,19 @@ export interface UsageLimit {
 
 export interface BillingSettingsOverview {
   subscription: SubscriptionWithPlan | null;
+  accessState: OrgAccessState;
   plans: Plan[];
   invoices: Invoice[];
   usage: UsageLimit[];
   providerConnected: boolean;
   unlimitedAccess: boolean;
+  trialEligibility: TrialEligibility;
+  recentAuditEvents: number;
 }
 
 export interface SettingsActionState {
   success?: string;
   error?: string;
   fieldErrors?: Record<string, string[]>;
+  portalUrl?: string;
 }

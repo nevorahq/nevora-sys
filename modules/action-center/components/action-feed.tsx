@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { EyeOffIcon } from "lucide-react";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Button } from "@/shared/ui/button";
+import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import { useNotificationIndicator } from "@/modules/notifications/components/notification-provider";
 import { ActionCard } from "./action-card";
 import { ActionFilters, type FilterState } from "./action-filters";
@@ -45,6 +46,7 @@ export function ActionFeed({ initialFeed, members, currentUserId }: ActionFeedPr
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const mounted = useRef(false);
+  const writeGate = useAccessGate("write");
 
   const selectableIds = useMemo(() => [
     ...feed.sections.due_soon,
@@ -115,7 +117,7 @@ export function ActionFeed({ initialFeed, members, currentUserId }: ActionFeedPr
   }
 
   function dismissSelected() {
-    if (selectedVisibleIds.length === 0) return;
+    if (selectedVisibleIds.length === 0 || writeGate.blocked) return;
     const actionItemIds = selectedVisibleIds;
     startTransition(async () => {
       setBulkError(null);
@@ -159,17 +161,19 @@ export function ActionFeed({ initialFeed, members, currentUserId }: ActionFeedPr
                   {selectedCount > 0 ? `${selectedCount} selected` : "Select actions"}
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={dismissSelected}
-                disabled={selectedCount === 0}
-                isLoading={pending && selectedCount > 0}
-                className="self-start sm:self-auto"
-              >
-                <EyeOffIcon size={16} />
-                Make inactive
-              </Button>
+              <RestrictedActionTooltip message={writeGate.blocked ? writeGate.message : "Make inactive"}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={dismissSelected}
+                  disabled={selectedCount === 0 || writeGate.blocked}
+                  isLoading={pending && selectedCount > 0}
+                  className="self-start sm:self-auto"
+                >
+                  <EyeOffIcon size={16} />
+                  Make inactive
+                </Button>
+              </RestrictedActionTooltip>
             </div>
           )}
 

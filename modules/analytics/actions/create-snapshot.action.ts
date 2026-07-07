@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { createSnapshotSchema } from "../schemas/analytics.schemas";
 import { getDashboardMetrics } from "../queries/get-dashboard-metrics";
@@ -11,7 +11,17 @@ export async function createSnapshotAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  const { org, workspace, membership } = await requireOrg();
+  // Snapshot creation is an admin-only write. The entitlement gate blocks it
+  // once the org is not writable; RLS (migration 093) enforces the same.
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { org, workspace, membership } = ctx;
 
   if (!["admin", "owner"].includes(membership.roleId)) {
     return { error: "Only admins can create snapshots" };

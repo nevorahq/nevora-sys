@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult, redactFilenameForEvent } from "@/lib/security";
 import { emitAuditLog } from "@/lib/events";
 import { assertPlanLimit, assertSubscriptionWritable } from "@/modules/billing";
 import { addDocumentAttachmentSchema } from "../schemas/document.schemas";
@@ -21,7 +21,16 @@ export async function addDocumentAttachmentAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  const ctx = await requireOrg();
+  // Upload is a write; blocked once the org is not writable (spec: uploads
+  // denied on an expired trial).
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
   const { user, org } = ctx;
   if (!hasDocumentPermission(ctx, "document.attachment.upload")) {
     return { error: "You do not have permission to upload attachments." };
@@ -96,7 +105,7 @@ export async function addDocumentAttachmentAction(
       entityType:     "document_attachments",
       entityId:       newAttachment.id,
       action:         "create",
-      newData:        { document_id: parsed.data.documentId, file_name: parsed.data.file_name },
+      newData:        { document_id: parsed.data.documentId, file_name: redactFilenameForEvent(parsed.data.file_name) },
       metadata:       { source: "dashboard" },
     });
   } catch (err) {

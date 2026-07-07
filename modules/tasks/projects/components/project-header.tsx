@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeftIcon, CalendarIcon, PencilIcon, ArchiveIcon } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Modal } from "@/shared/ui/modal";
+import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import { ROUTES } from "@/shared/config/routes";
 import { formatDate } from "@/shared/utils/format-date";
 import { ProjectStatusBadge } from "./project-status-badge";
@@ -29,6 +30,9 @@ export function ProjectHeader({ project, ownerName, canManage, canArchive }: Pro
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [isArchiving, startArchive] = useTransition();
   const isArchived = Boolean(project.archived_at);
+  const { blocked, message } = useAccessGate("write");
+  const allowManage = canManage && !blocked;
+  const allowArchive = canArchive && !blocked;
 
   function handleArchive() {
     startArchive(async () => {
@@ -54,14 +58,18 @@ export function ProjectHeader({ project, ownerName, canManage, canArchive }: Pro
         {!isArchived && (canManage || canArchive) && (
           <div className="flex items-center gap-2">
             {canManage && (
-              <Button variant="secondary" className="h-9 gap-1.5 px-3 text-xs" onClick={() => setEditing(true)}>
-                <PencilIcon size={14} /> Edit
-              </Button>
+              <RestrictedActionTooltip message={blocked ? message : "Edit"}>
+                <Button variant="secondary" disabled={!allowManage} className="h-9 gap-1.5 px-3 text-xs" onClick={() => setEditing(true)}>
+                  <PencilIcon size={14} /> Edit
+                </Button>
+              </RestrictedActionTooltip>
             )}
             {canArchive && (
-              <Button variant="ghost" className="h-9 gap-1.5 px-3 text-xs" onClick={() => setConfirmArchive(true)}>
-                <ArchiveIcon size={14} /> Archive
-              </Button>
+              <RestrictedActionTooltip message={blocked ? message : "Archive"}>
+                <Button variant="ghost" disabled={!allowArchive} className="h-9 gap-1.5 px-3 text-xs" onClick={() => setConfirmArchive(true)}>
+                  <ArchiveIcon size={14} /> Archive
+                </Button>
+              </RestrictedActionTooltip>
             )}
           </div>
         )}

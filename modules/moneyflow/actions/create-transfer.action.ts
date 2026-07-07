@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
 import { getTransferSchema } from "../schemas/transfer.schema";
@@ -43,7 +43,15 @@ export async function createTransferAction(
     invalidDate: e.invalidDate,
   });
 
-  const { user, org, workspace } = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { user, org, workspace } = ctx;
 
   const parsed = transferSchema.safeParse({
     from_account_id: formData.get("from_account_id") as string,

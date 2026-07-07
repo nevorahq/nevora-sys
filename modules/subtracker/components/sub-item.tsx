@@ -9,6 +9,7 @@ import { renewSubscriptionAction } from "../actions/renew-subscription.action";
 import { formatMoney } from "@/shared/utils/format-money";
 import { SubEditForm } from "./sub-edit-form";
 import { Modal } from "@/shared/ui/modal";
+import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import { cn } from "@/shared/utils/cn";
 import { formatDate } from "@/shared/utils/format-date";
 import type { Subscription } from "../types/subtracker.types";
@@ -35,11 +36,13 @@ export function SubItem({ subscription: sub, dict, cycle }: SubItemProps) {
   const [isDeleting, startDelete] = useTransition();
   const [isRenewing, startRenew] = useTransition();
   const [renewError, setRenewError] = useState<string | null>(null);
+  const { blocked, message } = useAccessGate("write");
 
   const cycles = dict.subscriptions.cycles;
   const categories = dict.subscriptions.categories;
 
   function handleDelete() {
+    if (blocked) return;
     startDelete(async () => {
       await deleteSubscriptionAction(sub.id);
     });
@@ -47,6 +50,7 @@ export function SubItem({ subscription: sub, dict, cycle }: SubItemProps) {
 
   const isDue = sub.next_billing_date <= new Date().toISOString().slice(0, 10);
   function handleRenew() {
+    if (blocked) return;
     setRenewError(null);
     startRenew(async () => {
       const result = await renewSubscriptionAction(sub.id);
@@ -122,15 +126,20 @@ export function SubItem({ subscription: sub, dict, cycle }: SubItemProps) {
         {/* Legacy quick-renew only for subs without a managed payment cycle;
             workflow-managed subs advance via Mark as paid / Skip to avoid a
             double next_billing_date advance. */}
-        {isDue && !cycle && <button
-          type="button"
-          onClick={handleRenew}
-          className="soft-icon-button h-8 w-8 text-text-muted hover:text-accent-green"
-          aria-label="Renew subscription"
-          title="Renew subscription"
-        >
-          <RefreshCwIcon size={15} strokeWidth={1.75} className={isRenewing ? "animate-spin" : undefined} />
-        </button>}
+        {isDue && !cycle && (
+          <RestrictedActionTooltip message={blocked ? message : "Renew subscription"}>
+            <button
+              type="button"
+              onClick={handleRenew}
+              disabled={blocked}
+              className="soft-icon-button h-8 w-8 text-text-muted hover:text-accent-green disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={blocked ? `Renew subscription. ${message}` : "Renew subscription"}
+              title={blocked ? message : "Renew subscription"}
+            >
+              <RefreshCwIcon size={15} strokeWidth={1.75} className={isRenewing ? "animate-spin" : undefined} />
+            </button>
+          </RestrictedActionTooltip>
+        )}
 
         {/* Open detail (linked entities) */}
         <Link
@@ -143,24 +152,30 @@ export function SubItem({ subscription: sub, dict, cycle }: SubItemProps) {
         </Link>
 
         {/* Edit button */}
-        <button
-          type="button"
-          onClick={() => setIsEditing(true)}
-          className="soft-icon-button h-8 w-8 text-text-muted hover:text-text-primary"
-          aria-label={dict.subscriptions.form.editButton}
-        >
-          <PencilIcon size={15} strokeWidth={1.75} />
-        </button>
+        <RestrictedActionTooltip message={blocked ? message : dict.subscriptions.form.editButton}>
+          <button
+            type="button"
+            onClick={() => setIsEditing(true)}
+            disabled={blocked}
+            className="soft-icon-button h-8 w-8 text-text-muted hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={blocked ? `${dict.subscriptions.form.editButton}. ${message}` : dict.subscriptions.form.editButton}
+          >
+            <PencilIcon size={15} strokeWidth={1.75} />
+          </button>
+        </RestrictedActionTooltip>
 
         {/* Delete button */}
-        <button
-          type="button"
-          onClick={handleDelete}
-          className="soft-icon-button h-8 w-8 text-text-muted hover:text-danger"
-          aria-label={dict.subscriptions.form.deleteButton}
-        >
-          <Trash2Icon size={15} strokeWidth={1.75} />
-        </button>
+        <RestrictedActionTooltip message={blocked ? message : dict.subscriptions.form.deleteButton}>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={blocked}
+            className="soft-icon-button h-8 w-8 text-text-muted hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={blocked ? `${dict.subscriptions.form.deleteButton}. ${message}` : dict.subscriptions.form.deleteButton}
+          >
+            <Trash2Icon size={15} strokeWidth={1.75} />
+          </button>
+        </RestrictedActionTooltip>
       </div>
 
       {renewError && <p className="mt-2 text-xs text-danger" role="alert">{renewError}</p>}

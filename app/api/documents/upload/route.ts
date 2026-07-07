@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, isAccessError, redactFilenameForEvent } from "@/lib/security";
 import { createClient } from "@/lib/supabase/server";
 import {
   assertPlanLimit,
@@ -23,7 +23,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const ctx = await requireOrg();
+    const ctx = await requireAppAccess({ permission: "data.write", capability: "documents", intent: "write" });
     if (!hasDocumentPermission(ctx, "document.create") || !hasDocumentPermission(ctx, "document.attachment.upload")) {
       return NextResponse.json({ error: "You do not have permission to create documents." }, { status: 403 });
     }
@@ -144,8 +144,8 @@ export async function POST(request: Request) {
       emitDomainEvent({ organizationId: ctx.org.id, workspaceId: ctx.workspace.id, eventName: "document.created", aggregateType: "document", aggregateId: document.id, payload: { title: input.data.title } }),
       emitAuditLog({ organizationId: ctx.org.id, entityType: "documents", entityId: document.id, action: "create", newData: { title: input.data.title }, metadata: { source: "dashboard" } }),
       ...attachments.flatMap((attachment) => [
-        emitDomainEvent({ organizationId: ctx.org.id, workspaceId: ctx.workspace.id, eventName: "document.attachment_uploaded", aggregateType: "document", aggregateId: document.id, payload: { filename: attachment.original_filename, size_bytes: files.find((file) => file.name === attachment.original_filename)?.size ?? 0 } }),
-        emitAuditLog({ organizationId: ctx.org.id, entityType: "document_attachments", entityId: attachment.id, action: "create", newData: { document_id: document.id, file_name: attachment.original_filename }, metadata: { source: "dashboard" } }),
+        emitDomainEvent({ organizationId: ctx.org.id, workspaceId: ctx.workspace.id, eventName: "document.attachment_uploaded", aggregateType: "document", aggregateId: document.id, payload: { filename: redactFilenameForEvent(attachment.original_filename), size_bytes: files.find((file) => file.name === attachment.original_filename)?.size ?? 0 } }),
+        emitAuditLog({ organizationId: ctx.org.id, entityType: "document_attachments", entityId: attachment.id, action: "create", newData: { document_id: document.id, file_name: redactFilenameForEvent(attachment.original_filename) }, metadata: { source: "dashboard" } }),
       ]),
     ]);
 
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
           try {
             // Re-resolve request-scoped client + context inside the callback.
             const bgSupabase = await createClient();
-            const bgCtx = await requireOrg();
+            const bgCtx = await requireAppAccess({ permission: "data.write", intent: "write" });
             await runDocumentExtraction(bgSupabase, bgCtx, documentId, extractionId);
           } catch (extractionError) {
             console.error("documents upload: background extraction failed", extractionError);
@@ -177,6 +177,9 @@ export async function POST(request: Request) {
     revalidatePath(ROUTES.documents);
     return NextResponse.json({ documentId: document.id, attachments });
   } catch (error) {
+    if (isAccessError(error)) {
+      return NextResponse.json({ error: error.message }, { status: error.httpStatus });
+    }
     const { message, diagnosticId } = reportError("documents.upload.failed", error, {
       userMessage: "We could not finish the upload. Please try again.",
     });

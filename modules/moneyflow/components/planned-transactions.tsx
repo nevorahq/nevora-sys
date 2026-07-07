@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CalendarClockIcon, CheckIcon } from "lucide-react";
 import { postPlannedTransactionAction } from "../actions/post-planned-transaction.action";
 import { DeleteTransactionButton } from "./delete-transaction-button";
+import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import { formatMoney } from "@/shared/utils/format-money";
 import { formatDate } from "@/shared/utils/format-date";
 import { cn } from "@/shared/utils/cn";
@@ -62,6 +63,7 @@ function PlannedRow({
   const router = useRouter();
   const [isPosting, startPost] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const { blocked, message } = useAccessGate("write");
 
   // Same-currency accounts the draft can post onto. If its current account
   // already matches, no picker is needed.
@@ -77,6 +79,7 @@ function PlannedRow({
   const effectiveAccount = selectedAccount || compatibleAccounts[0]?.id || "";
 
   function handlePost() {
+    if (blocked) return;
     setError(null);
     startPost(async () => {
       const result = await postPlannedTransactionAction(tx.id, needsAccount ? effectiveAccount : undefined);
@@ -88,7 +91,7 @@ function PlannedRow({
     });
   }
 
-  const postDisabled = isPosting || noCompatibleAccount || (needsAccount && !effectiveAccount);
+  const postDisabled = blocked || isPosting || noCompatibleAccount || (needsAccount && !effectiveAccount);
 
   return (
     <div
@@ -119,15 +122,17 @@ function PlannedRow({
           −{formatMoney(Number(tx.amount))} {tx.currency}
         </p>
 
-        <button
-          type="button"
-          onClick={handlePost}
-          disabled={postDisabled}
-          title={t.postButton}
-          className="soft-icon-button h-9 w-9 shrink-0 text-accent-green disabled:opacity-40"
-        >
-          <CheckIcon size={16} strokeWidth={2} />
-        </button>
+        <RestrictedActionTooltip message={blocked ? message : t.postButton}>
+          <button
+            type="button"
+            onClick={handlePost}
+            disabled={postDisabled}
+            title={blocked ? message : t.postButton}
+            className="soft-icon-button h-9 w-9 shrink-0 text-accent-green disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <CheckIcon size={16} strokeWidth={2} />
+          </button>
+        </RestrictedActionTooltip>
 
         {canDelete && (
           <DeleteTransactionButton

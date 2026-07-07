@@ -32,6 +32,51 @@ export type {
   SetFeatureFlagInput, RecordUsageInput,
 } from "./schemas/billing.schemas";
 
+// Trial Reuse Protection (086)
+export type {
+  TrialEligibilityResult,
+  TrialIneligibleReason,
+  TrialClaim,
+  TrialClaimStatus,
+} from "./types/trial.types";
+export { parseTrialEligibility } from "./services/trial-eligibility";
+export { getTrialEligibility } from "./queries/get-trial-eligibility";
+export { consumeExpiredTrials } from "./services/consume-expired-trials";
+export type { ConsumeExpiredTrialsResult } from "./services/consume-expired-trials";
+
+// Entitlement control plane (089): HMAC identity + typed access states
+export type {
+  EntitlementReason,
+  OrgAccessState,
+  TrialEligibility,
+  ClaimTrialResult,
+} from "./types/entitlement.types";
+export {
+  ORG_ACCESS_STATES,
+  ENTITLEMENT_REASONS,
+  WRITABLE_ACCESS_STATES,
+} from "./types/entitlement.types";
+export {
+  parseTrialEligibilityV2,
+  parseClaimTrialResult,
+  parseAccessState,
+  isWritableAccessState,
+  isTrialAlreadyUsed,
+} from "./services/entitlement";
+export {
+  getAccessStateView,
+  isAccessIntentAllowed,
+  blockedActionMessage,
+  DEFAULT_BLOCKED_ACTION_MESSAGE,
+  INVITE_BLOCKED_MESSAGE,
+  AI_BLOCKED_MESSAGE,
+  UPLOAD_BLOCKED_MESSAGE,
+} from "./services/access-state-ui";
+export type { AccessGateIntent, AccessStateView } from "./services/access-state-ui";
+export { getOrganizationAccessState } from "./queries/get-organization-access-state";
+export { getTrialEligibilityForCurrentUser } from "./queries/get-trial-eligibility-v2";
+export { claimTrialForCurrentUser } from "./services/claim-trial";
+
 // Queries
 export { getSubscription }  from "./queries/get-subscription";
 export { getPlans }         from "./queries/get-plans";
@@ -78,17 +123,31 @@ export {
   SubscriptionExpiredError,
 } from "./errors/billing.errors";
 export type { BillingErrorPayload } from "./errors/billing.errors";
-export { ManualBillingProvider, billingProvider } from "./services/billing-provider";
+export {
+  BillingProviderNotConfiguredError,
+  billingProvider,
+  getConfiguredBillingProvider,
+  parseBillingProvider,
+} from "./services/billing-provider";
 export type {
   BillingProvider,
+  BillingProviderAdapter,
   BillingWebhookResult,
   CheckoutSession,
   CreateCheckoutInput,
   CustomerPortalInput,
   CustomerPortalSession,
+  InternalBillingStatus,
+  ProviderSubscriptionStatus,
 } from "./services/billing-provider";
+export type {
+  AppliedBillingWebhookResult,
+  NormalizedBillingWebhookEvent,
+} from "./services/billing-webhook";
 
 // Actions
+export { createCheckoutSessionAction } from "./actions/create-checkout-session.action";
+export type { CheckoutActionState } from "./actions/create-checkout-session.action";
 export { changePlanAction }          from "./actions/change-plan.action";
 export { cancelSubscriptionAction }  from "./actions/cancel-subscription.action";
 export { initSubscriptionAction }    from "./actions/init-subscription.action";

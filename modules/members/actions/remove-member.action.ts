@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
 import { ROUTES } from "@/shared/config/routes";
@@ -10,7 +10,18 @@ import type { ActionResult } from "@/lib/validators/common";
 
 /** Removes a non-owner teammate from the current organization. */
 export async function removeMemberAction(memberId: string): Promise<ActionResult> {
-  const { org, membership } = await requireOrg();
+  // Member management is an admin action (reachable even on an expired trial so
+  // an org can shed seats). users.manage = owner/admin. RLS remains the
+  // authoritative boundary for the billing state on the delete itself.
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "users.manage", intent: "admin" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { org, membership } = ctx;
 
   if (!uuidSchema.safeParse(memberId).success) return { error: "Invalid member" };
   if (!["owner", "admin"].includes(membership.roleId)) {

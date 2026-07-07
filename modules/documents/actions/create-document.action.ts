@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
 import { createDocumentSchema } from "../schemas/document.schemas";
@@ -14,7 +14,14 @@ export async function createDocumentAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  const ctx = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
   const { user, org, workspace } = ctx;
   if (!hasDocumentPermission(ctx, "document.create")) {
     return { error: "You do not have permission to create documents." };

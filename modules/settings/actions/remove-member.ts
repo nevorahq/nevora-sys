@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireAppAccess, isAccessError } from "@/lib/security";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { ROUTES } from "@/shared/config/routes";
 import { removeMemberSchema } from "../schemas/member-role.schema";
@@ -11,6 +12,13 @@ import type { SettingsActionState } from "../types/settings.types";
 export async function removeMember(memberId: string): Promise<SettingsActionState> {
   const context = await authorizeSettingsAction("members.remove");
   if (!context) return { error: "Only owners and admins can remove members." };
+
+  try {
+    await requireAppAccess({ permission: "users.manage", intent: "write" });
+  } catch (err) {
+    if (isAccessError(err)) return { error: err.message };
+    throw err;
+  }
 
   const parsed = removeMemberSchema.safeParse({ memberId });
   if (!parsed.success) return { error: "Invalid member." };

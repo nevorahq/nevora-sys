@@ -2,13 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
 import { ROUTES } from "@/shared/config/routes";
 
 export async function publishDocumentAction(documentId: string): Promise<{ error?: string }> {
-  const { user, org } = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { user, org } = ctx;
 
   const parsed = uuidSchema.safeParse(documentId);
   if (!parsed.success) return { error: "Invalid document ID" };

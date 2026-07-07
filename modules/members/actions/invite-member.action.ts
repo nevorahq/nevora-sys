@@ -2,10 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
-import { checkPlanLimit } from "@/lib/billing";
+import { requireAppAccess, isAccessError } from "@/lib/security";
 import { emitAuditLog } from "@/lib/events";
+import { maskEmail } from "@/lib/email";
 import { inviteMemberSchema } from "../schemas/member.schemas";
+import {
+  auditInviteDecision,
+  inviteReasonFromMessage,
+  inviteSenderMessage,
+} from "../services/invite-protection";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 
@@ -22,7 +27,22 @@ export async function inviteMemberAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  const { org, membership } = await requireOrg();
+  // Guard: users.manage (owner/admin) + invite entitlement (invites freeze on
+  // trial_expired / past_due) + members plan-limit — one funnel replaces the
+  // ad-hoc role check + checkPlanLimit. The invite_member RPC below stays the
+  // authoritative guard against direct calls.
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "users.manage", capability: "members", intent: "invite" });
+  } catch (err) {
+    if (isAccessError(err)) {
+      return {
+        error: inviteSenderMessage(err.code === "LIMIT_REACHED" ? "member_limit_reached" : "organization_restricted"),
+      };
+    }
+    throw err;
+  }
+  const { org, membership } = ctx;
 
   if (!["owner", "admin"].includes(membership.roleId)) {
     return { error: "Only owners and admins can invite members" };
@@ -41,11 +61,6 @@ export async function inviteMemberAction(
     return { fieldErrors };
   }
 
-  const limitCheck = await checkPlanLimit(org.id, "members");
-  if (!limitCheck.allowed) {
-    return { error: limitCheck.reason ?? "Member limit reached. Upgrade your plan." };
-  }
-
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("invite_member", {
@@ -55,6 +70,14 @@ export async function inviteMemberAction(
     });
 
     if (error) {
+      const reason = inviteReasonFromMessage(error.message);
+      auditInviteDecision({
+        action: "send",
+        reason,
+        organizationId: org.id,
+        actorId: membership.userId,
+        role: parsed.data.role,
+      });
       const m = error.message;
       if (m.includes("user_not_found")) {
         return { fieldErrors: { email: ["No account with this email. Ask them to sign up first."] } };
@@ -62,14 +85,19 @@ export async function inviteMemberAction(
       if (m.includes("already_member")) {
         return { fieldErrors: { email: ["This user is already in the organization."] } };
       }
-      if (m.includes("member_limit_reached")) {
-        return { error: "Member limit reached. Upgrade your plan." };
-      }
-      if (m.includes("trial_expired")) {
-        return { error: "Your trial has ended. Choose a plan to invite members." };
+      if (
+        reason === "member_limit_reached"
+        || reason === "trial_expired"
+        || reason === "organization_restricted"
+        || reason === "paid_plan_required"
+        || reason === "trial_already_used"
+        || reason === "billing_owner_restricted"
+        || reason === "role_not_allowed"
+      ) {
+        return { error: inviteSenderMessage(reason) };
       }
       if (m.includes("not_authorized")) {
-        return { error: "Only owners and admins can invite members" };
+        return { error: inviteSenderMessage("permission_denied") };
       }
       console.error("inviteMember RPC error:", error);
       return { error: "Failed to invite member" };
@@ -80,7 +108,8 @@ export async function inviteMemberAction(
       entityType:     "memberships",
       entityId:       (data as string) ?? "",
       action:         "create",
-      newData:        { email: parsed.data.email, role: parsed.data.role, status: "invited" },
+      // No raw email in audit_logs — mask the local part (support-triage only).
+      newData:        { email: maskEmail(parsed.data.email), role: parsed.data.role, status: "invited" },
       metadata:       { source: "dashboard" },
     });
   } catch (err) {

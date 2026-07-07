@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { updateWidgetSchema } from "../schemas/analytics.schemas";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
@@ -11,7 +11,17 @@ export async function updateWidgetAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  const { org } = await requireOrg();
+  // Widget updates are business writes: denied for non-writable orgs at both
+  // this gate and RLS (migration 093).
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { org } = ctx;
 
   const rawData = {
     widgetId:  formData.get("widgetId") as string,

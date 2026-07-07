@@ -6,6 +6,7 @@ import {
   reserveOrganizationUsage,
 } from "@/modules/billing";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
+import { redactFilenameForEvent } from "@/lib/security/redact-filename";
 import { validateDocumentFiles } from "./validate-document-file";
 import { persistDocumentAttachments } from "./persist-document-attachments";
 
@@ -123,8 +124,8 @@ export async function createTaskDocumentWithAttachments(params: {
     ...attachments.flatMap((attachment) => {
       const file = files.find((candidate) => candidate.name === attachment.original_filename);
       return [
-        emitDomainEvent({ organizationId: ctx.org.id, workspaceId: ctx.workspace.id, eventName: "document.attachment_uploaded", aggregateType: "document", aggregateId: documentId, payload: { filename: attachment.original_filename, size_bytes: file?.size ?? 0 } }),
-        emitAuditLog({ organizationId: ctx.org.id, entityType: "document_attachments", entityId: attachment.id, action: "create", newData: { document_id: documentId, file_name: attachment.original_filename }, metadata: { source: "dashboard", trigger: "task_creation" } }),
+        emitDomainEvent({ organizationId: ctx.org.id, workspaceId: ctx.workspace.id, eventName: "document.attachment_uploaded", aggregateType: "document", aggregateId: documentId, payload: { filename: redactFilenameForEvent(attachment.original_filename), size_bytes: file?.size ?? 0 } }),
+        emitAuditLog({ organizationId: ctx.org.id, entityType: "document_attachments", entityId: attachment.id, action: "create", newData: { document_id: documentId, file_name: redactFilenameForEvent(attachment.original_filename) }, metadata: { source: "dashboard", trigger: "task_creation" } }),
       ];
     }),
   ]);

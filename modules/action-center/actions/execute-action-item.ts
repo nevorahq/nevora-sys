@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, isAccessError } from "@/lib/security";
 import { canDo } from "@/lib/context/current-context";
 import { ROUTES } from "@/shared/config/routes";
 import { executeActionItemSchema } from "../schemas/action-mutation.schema";
@@ -26,8 +26,19 @@ export async function executeActionItem(
   const parsed = executeActionItemSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
 
-  const ctx = await requireOrg();
   const { permission, dangerous } = executePermissionFor(parsed.data.executeKind);
+
+  // Execute is a side-effecting action (may post a transaction / create a task):
+  // the scoped permission + billing execute-entitlement funnel through the gate.
+  // execute is denied once the org is not writable (spec: financial/AI execution
+  // denied on an expired trial).
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission, intent: "execute" });
+  } catch (err) {
+    if (isAccessError(err)) return { ok: false, error: err.message };
+    throw err;
+  }
   if (!canDo(ctx, permission)) return { ok: false, error: "Forbidden" };
   if (dangerous && !parsed.data.confirmed) {
     return { ok: false, error: "This action requires explicit confirmation" };

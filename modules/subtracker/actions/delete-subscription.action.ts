@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { canDo } from "@/lib/context/current-context";
 import { emitDomainEvent } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
@@ -15,7 +15,14 @@ export async function deleteSubscriptionAction(id: string): Promise<{ error?: st
     return { error: dict.subscriptions.errors.deleteFailed };
   }
 
-  const ctx = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.delete", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
   if (!canDo(ctx, "data.delete")) {
     return { error: dict.subscriptions.errors.deleteFailed };
   }

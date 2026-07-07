@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
 import { createTaskSchema } from "../schemas/task.schema";
@@ -14,7 +14,17 @@ export async function createTaskAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  const { user, org, workspace } = await requireOrg();
+  // Quota stays with the atomic reserveOrganizationUsage below (tasks.count);
+  // the guard covers auth → tenant → data.write → billing entitlement.
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { user, org, workspace } = ctx;
 
   const rawData = {
     title:        formData.get("title") as string,

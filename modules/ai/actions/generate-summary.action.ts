@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import { getAnthropicClient, AI_MODELS, buildSummaryPrompt } from "@/lib/ai";
 import { checkPlanLimit } from "@/lib/billing";
@@ -13,7 +13,15 @@ export async function generateSummaryAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  const { user, org, workspace } = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", capability: "ai_calls", intent: "execute" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { user, org, workspace } = ctx;
 
   const limitCheck = await checkPlanLimit(org.id, "ai_calls");
   if (!limitCheck.allowed) {

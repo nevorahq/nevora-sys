@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { canDo } from "@/lib/context/current-context";
 import { getAccountSchemas } from "../schemas/account.schema";
 import { createMoneyAccount } from "../services/money-account-service";
@@ -30,7 +30,14 @@ export async function createAccountAction(
     balanceNegative: dict.money.errors.balanceNegative,
   });
 
-  const ctx = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
   if (!canDo(ctx, "data.write")) {
     return { error: dict.money.errors.createAccountFailed };
   }

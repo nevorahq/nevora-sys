@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { changeTaskStatusSchema } from "../schemas/task.schema";
 import { recalculateProjectProgress } from "../projects/services/recalculate-project-progress";
@@ -13,7 +13,15 @@ export async function changeTaskStatusAction(
   taskId: string,
   newStatus: TaskStatus,
 ): Promise<{ error?: string }> {
-  const { user, org } = await requireOrg();
+  let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
+  try {
+    ctx = await requireAppAccess({ permission: "data.write", intent: "write" });
+  } catch (err) {
+    const denied = accessErrorToActionResult(err);
+    if (denied) return denied;
+    throw err;
+  }
+  const { user, org } = ctx;
 
   const parsed = changeTaskStatusSchema.safeParse({ taskId, status: newStatus });
   if (!parsed.success) {

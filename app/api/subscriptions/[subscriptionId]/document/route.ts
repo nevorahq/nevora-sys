@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireOrg } from "@/lib/auth/require-org";
+import { requireAppAccess, isAccessError } from "@/lib/security";
 import { createClient } from "@/lib/supabase/server";
 import { uuidSchema } from "@/lib/validators/common";
 import { ROUTES } from "@/shared/config/routes";
@@ -18,7 +18,10 @@ export async function POST(
     const parsedId = uuidSchema.safeParse(subscriptionId);
     if (!parsedId.success) return NextResponse.json({ error: "Invalid subscription." }, { status: 400 });
 
-    const ctx = await requireOrg();
+    // Creating the subscription document + uploading files is a write.
+    // requireAppAccess denies it (typed AccessError) for non-writable orgs
+    // before any storage side effect; the underlying tables' RLS enforces the same.
+    const ctx = await requireAppAccess({ permission: "data.write", capability: "documents", intent: "write" });
     if (!hasDocumentPermission(ctx, "document.create") || !hasDocumentPermission(ctx, "document.attachment.upload")) {
       return NextResponse.json({ error: "You do not have permission to create documents." }, { status: 403 });
     }
@@ -43,6 +46,9 @@ export async function POST(
       warning: result.warning,
     });
   } catch (error) {
+    if (isAccessError(error)) {
+      return NextResponse.json({ error: error.message }, { status: error.httpStatus });
+    }
     console.error("subscription document upload: unexpected failure", error);
     return NextResponse.json({ error: "We could not finish the upload. Please try again." }, { status: 500 });
   }

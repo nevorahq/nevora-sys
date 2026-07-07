@@ -8,8 +8,9 @@ import {
 } from "../types/planner.types";
 
 /**
- * Suggestions for the active org, optionally filtered by status and/or entry.
- * Newest first.
+ * Suggestions for the current user in the active org, optionally filtered by
+ * status and/or entry. Newest first. Personal surface (migration 087): RLS scopes
+ * to the owner; the explicit org + owner filters are defense in depth.
  */
 export async function getPlannerSuggestions(
   ctx: CurrentContext,
@@ -20,6 +21,7 @@ export async function getPlannerSuggestions(
     .from("planner_suggestions")
     .select(PLANNER_SUGGESTION_COLUMNS)
     .eq("organization_id", ctx.org.id)
+    .eq("owner_user_id", ctx.user.id)
     .order("created_at", { ascending: false })
     .limit(options.limit ?? 100);
 

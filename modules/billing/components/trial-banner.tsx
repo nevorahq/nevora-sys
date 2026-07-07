@@ -6,10 +6,19 @@ import type { TrialState } from "../queries/get-trial-state";
 export function TrialBanner({ trial }: { trial: TrialState }) {
   if (trial.kind === "not_trial") return null;
 
+  if (trial.kind === "denied") {
+    return (
+      <div className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
+        <div className="flex items-center gap-2"><AlertTriangleIcon size={18} /><span>The free trial was already used for your account. Choose Start, Pro or Business to activate this workspace.</span></div>
+        <Link className="shrink-0 font-medium underline" href={ROUTES.billing}>Choose a plan</Link>
+      </div>
+    );
+  }
+
   if (trial.kind === "expired") {
     return (
       <div className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
-        <div className="flex items-center gap-2"><AlertTriangleIcon size={18} /><span>Your trial has ended. Your data is safe, but the workspace is now read-only.</span></div>
+        <div className="flex items-center gap-2"><AlertTriangleIcon size={18} /><span>Your trial has ended. Your data is safe, but the workspace is now read-only. Choose Start, Pro or Business to continue.</span></div>
         <Link className="shrink-0 font-medium underline" href={ROUTES.billing}>View plans</Link>
       </div>
     );
