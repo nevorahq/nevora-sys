@@ -7,6 +7,7 @@ import {
   verifyBillingWebhookSignature,
   type AppliedBillingWebhookResult,
 } from "./billing-webhook";
+import { StripeBillingAdapter } from "./stripe.adapter";
 
 export type BillingProvider = "stripe" | "paddle" | "lemonsqueezy";
 
@@ -144,7 +145,9 @@ export function parseBillingProvider(value: string | undefined): BillingProvider
 }
 
 export function getConfiguredBillingProvider(): BillingProviderAdapter {
-  return new ProviderAgnosticBillingAdapter(parseBillingProvider(process.env.BILLING_PROVIDER));
+  const provider = parseBillingProvider(process.env.BILLING_PROVIDER);
+  if (provider === "stripe") return new StripeBillingAdapter();
+  return new ProviderAgnosticBillingAdapter(provider);
 }
 
 export const billingProvider: BillingProviderAdapter = getConfiguredBillingProvider();

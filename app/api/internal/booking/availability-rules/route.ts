@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
+import { pausedModuleGuard } from "@/shared/config/paused-modules";
 
 export async function GET(req: NextRequest) {
+  // Booking is paused for the private beta: the route handler must 404 too,
+  // otherwise the module stays reachable as a public API even with no UI.
+  const paused = pausedModuleGuard("booking");
+  if (paused) return paused;
+
   try {
     const { org } = await requireOrg();
     const hostId = req.nextUrl.searchParams.get("hostId");

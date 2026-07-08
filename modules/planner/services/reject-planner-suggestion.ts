@@ -3,7 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { canDo, type CurrentContext } from "@/lib/context/current-context";
 import { emitDomainEvent } from "@/lib/events";
 import type { RejectPlannerSuggestionInput } from "../schemas/planner-suggestion.schema";
-import { PLANNER_SUGGESTION_COLUMNS, type PlannerSuggestion } from "../types/planner.types";
+import {
+  PLANNER_SUGGESTION_COLUMNS,
+  PLANNER_SUGGESTION_OPEN_STATUSES,
+  type PlannerSuggestion,
+} from "../types/planner.types";
 import { resolvePlannerActionItems } from "./resolve-planner-action-item";
 
 export type RejectResult = { ok: true } | { ok: false; error: string };
@@ -37,7 +41,10 @@ export async function rejectPlannerSuggestion(
     return { ok: false, error: `Cannot reject a ${current.status} suggestion` };
   }
 
-  const { error: updateError } = await supabase
+  // Compare-and-swap on the open statuses. Reject is irreversible (Phase B
+  // security requirement #4), so it must not race an in-flight accept: a
+  // suggestion claimed as 'processing' falls outside this filter and stays put.
+  const { data: rejected, error: updateError } = await supabase
     .from("planner_suggestions")
     .update({
       status: "rejected",
@@ -45,11 +52,17 @@ export async function rejectPlannerSuggestion(
       updated_at: new Date().toISOString(),
     })
     .eq("id", input.suggestionId)
-    .eq("organization_id", ctx.org.id);
+    .eq("organization_id", ctx.org.id)
+    .in("status", PLANNER_SUGGESTION_OPEN_STATUSES)
+    .select("id")
+    .maybeSingle();
 
   if (updateError) {
     console.error("[rejectPlannerSuggestion] update failed:", updateError.message);
     return { ok: false, error: "Failed to reject suggestion" };
+  }
+  if (!rejected) {
+    return { ok: false, error: "This suggestion is no longer pending" };
   }
 
   // If no other pending/edited suggestions remain for the entry, close the entry.

@@ -9,6 +9,8 @@ import { PLAN_LABELS } from "@/modules/billing/constants/billing.constants";
 import { getAccessStateView } from "@/modules/billing/services/access-state-ui";
 import { isTrialAlreadyUsed } from "@/modules/billing/services/entitlement";
 import { AccessStateBadge, BillingRequiredAlert } from "@/modules/billing/components/access-state";
+import { UpgradePrompt } from "@/modules/billing/components/upgrade-prompt";
+import { getUpgradePromptsForUsage } from "@/modules/billing/services/upgrade-prompt.service";
 import { Button } from "@/shared/ui/button";
 import { UsageLimitsCard } from "./UsageLimitsCard";
 
@@ -16,6 +18,7 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
   const [pending, startTransition] = useTransition();
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [dismissedPrompts, setDismissedPrompts] = useState<string[]>([]);
   const subscription = overview.subscription;
   const accessView = getAccessStateView(overview.accessState);
   const trialEndsAt = subscription?.trial_ends_at
@@ -26,6 +29,12 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
     ? overview.plans.filter((plan) => plan.slug !== "trial")
     : overview.plans;
   const usageByKey = Object.fromEntries(overview.usage.map((item) => [item.key, item]));
+  const upgradePrompts = getUpgradePromptsForUsage(
+    overview.usage.filter((item) =>
+      ["documents_processed", "ai_suggestions", "members", "storage", "automation_runs"].includes(item.key),
+    ),
+    subscription?.plan.slug,
+  ).filter((prompt) => !dismissedPrompts.includes(prompt.id));
 
   function manageBilling() {
     setMessage(null);
@@ -39,13 +48,15 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
     });
   }
 
-  function startCheckout(planId: string, planSlug: string) {
+  function startCheckout(planId: string, planSlug: string, source?: "plan_card" | "upgrade_prompt", metricKey?: string) {
     setMessage(null);
     setPendingPlanId(planId);
     startTransition(async () => {
       const formData = new FormData();
       formData.set("planSlug", planSlug);
       formData.set("billingCycle", subscription?.billing_cycle ?? "monthly");
+      if (source) formData.set("source", source);
+      if (metricKey) formData.set("metricKey", metricKey);
       const result = await createCheckoutSessionAction({}, formData);
       setPendingPlanId(null);
       if (result.redirectUrl) {
@@ -54,6 +65,15 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
       }
       setMessage(result.error ?? result.success ?? null);
     });
+  }
+
+  function startPromptCheckout(planSlug: string, metricKey: string) {
+    const plan = overview.plans.find((item) => item.slug === planSlug);
+    if (!plan) {
+      setMessage("That plan is not available right now.");
+      return;
+    }
+    startCheckout(plan.id, plan.slug, "upgrade_prompt", metricKey);
   }
 
   return (
@@ -80,10 +100,27 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
         <OverviewCard title="Security/audit overview" value={`${overview.recentAuditEvents}`} description="Audit log entries visible to this organization." icon={<ShieldCheckIcon size={16} />} />
         <OverviewCard title="Members usage" value={formatUsage(usageByKey.members)} description="Active and invited seats." icon={<UsersRoundIcon size={16} />} />
         <OverviewCard title="Storage usage" value={formatUsage(usageByKey.storage)} description="Document attachment storage." icon={<DatabaseIcon size={16} />} />
-        <OverviewCard title="AI usage" value={formatUsage(usageByKey.ai_requests)} description="Monthly AI request usage." icon={<BotIcon size={16} />} />
+        <OverviewCard title="AI usage" value={formatUsage(usageByKey.ai_suggestions)} description="Monthly AI suggestion usage." icon={<BotIcon size={16} />} />
       </div>
 
       <UsageLimitsCard usage={overview.usage} />
+
+      {upgradePrompts.length > 0 && (
+        <section className="space-y-3">
+          {upgradePrompts.map((prompt) => (
+            <UpgradePrompt
+              key={prompt.id}
+              prompt={prompt}
+              isLoading={pending && overview.plans.some((plan) => plan.slug === prompt.targetPlanSlug && plan.id === pendingPlanId)}
+              onUpgrade={() => startPromptCheckout(prompt.targetPlanSlug, prompt.metricKey)}
+              onViewPricing={() => {
+                window.location.href = "/pricing";
+              }}
+              onDismiss={() => setDismissedPrompts((items) => [...items, prompt.id])}
+            />
+          ))}
+        </section>
+      )}
 
       <div className="grid gap-5 md:grid-cols-2">
         <section className="soft-card-sm p-5">

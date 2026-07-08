@@ -1,6 +1,6 @@
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
-import { ROUTES, isPublicRoute } from "@/shared/config/routes";
+import { ROUTES, isMachineRoute, isPublicRoute } from "@/shared/config/routes";
 
 /**
  * Proxy (бывший Middleware) — перехватывает КАЖДЫЙ запрос.
@@ -20,8 +20,14 @@ import { ROUTES, isPublicRoute } from "@/shared/config/routes";
  * - С пропуском пришёл на reception — отправляет к рабочему месту (dashboard)
  */
 export async function proxy(request: NextRequest) {
-  const { user, supabaseResponse } = await updateSession(request);
   const { pathname } = request.nextUrl;
+
+  // Машинный маршрут (cron / внутренние метрики): сессии нет и не будет, а
+  // редирект на /login превратил бы вызов планировщика в тихий 302. Обработчик
+  // проверяет свой shared secret сам — см. MACHINE_ROUTES.
+  if (isMachineRoute(pathname)) return NextResponse.next();
+
+  const { user, supabaseResponse } = await updateSession(request);
 
   // Неавторизован + protected route → на логин
   if (!user && !isPublicRoute(pathname)) {

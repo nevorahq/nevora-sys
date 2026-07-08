@@ -18,6 +18,7 @@ import type {
 import { RelationEmptyState } from "./relation-empty-state";
 import { RelationSearchDialog } from "./relation-search-dialog";
 import { RelationDeleteButton } from "./relation-delete-button";
+import { RelationReviewButtons } from "./relation-review-buttons";
 
 interface UniversalRelationViewerProps {
   entityType: EntityKind;
@@ -154,12 +155,16 @@ function RelationCard({
             <span className="rounded-full bg-surface px-1.5 py-0.5">
               {getRelationTypeLabel(item.relationType, entity.type)}
             </span>
+            <span className="rounded-full bg-surface px-1.5 py-0.5 capitalize">
+              {item.relationStatus.replace("_", " ")}
+            </span>
+            <span className="capitalize">{item.relationSource}</span>
+            {item.confidenceScore != null && (
+              <span>{Math.round(item.confidenceScore * 100)}% confidence</span>
+            )}
             {entity.status && <span className="capitalize">{entity.status}</span>}
             {amount && <span>{amount}</span>}
             {entity.subtitle && <span className="truncate">{entity.subtitle}</span>}
-            {item.metadata.source === "auto" && (
-              <span className="text-accent-blue">auto</span>
-            )}
           </span>
         </span>
         <ArrowUpRightIcon
@@ -167,6 +172,9 @@ function RelationCard({
           className="shrink-0 text-text-muted opacity-0 transition-opacity group-hover:opacity-100"
         />
       </Link>
+      {allowDelete && (item.relationStatus === "suggested" || item.relationStatus === "waiting_confirmation") && (
+        <RelationReviewButtons relationId={item.relationId} revalidate={revalidate} />
+      )}
       {allowDelete && (
         <RelationDeleteButton relationId={item.relationId} revalidate={revalidate} />
       )}

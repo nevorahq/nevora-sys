@@ -4,6 +4,11 @@ import { canDo } from "@/lib/context/current-context";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { executePermissionFor } from "./action-visibility-service";
+import {
+  confirmFinancialSuggestionRecord,
+  confirmSubscriptionTaskSuggestionRecord,
+  rejectFinancialSuggestionRecord,
+} from "@/modules/review/services/financial-suggestion.service";
 import type { ActionItem, ActionResult } from "../types/action-item.types";
 
 /**
@@ -19,7 +24,7 @@ import type { ActionItem, ActionResult } from "../types/action-item.types";
 export async function executeAction(
   supabase: SupabaseClient,
   ctx: CurrentContext,
-  item: Pick<ActionItem, "id" | "source_type" | "source_id" | "primary_entity_id" | "title">,
+  item: Pick<ActionItem, "id" | "source_type" | "source_id" | "primary_entity_id" | "title" | "metadata" | "suggestion_id">,
   executeKind: string,
   confirmed: boolean,
 ): Promise<ActionResult<{ summary: string }>> {
@@ -37,6 +42,12 @@ export async function executeAction(
       return createTaskDraft(supabase, ctx, item);
     case "confirm_transaction":
       return confirmTransaction(supabase, ctx, item);
+    case "confirm_financial_suggestion":
+      return confirmFinancialSuggestion(supabase, ctx, item);
+    case "reject_financial_suggestion":
+      return rejectFinancialSuggestion(supabase, ctx, item);
+    case "confirm_subscription_task_suggestion":
+      return confirmSubscriptionTaskSuggestion(supabase, ctx, item);
     case "cancel_subscription":
       return cancelSubscription(supabase, ctx, item);
     case "approve_document":
@@ -50,6 +61,45 @@ export async function executeAction(
     default:
       return { ok: false, error: `Unsupported action: ${executeKind}` };
   }
+}
+
+async function confirmFinancialSuggestion(
+  supabase: SupabaseClient,
+  ctx: CurrentContext,
+  item: Pick<ActionItem, "metadata" | "suggestion_id">,
+): Promise<ActionResult<{ summary: string }>> {
+  const suggestionId = item.suggestion_id ?? (typeof item.metadata?.suggestion_id === "string" ? item.metadata.suggestion_id : null);
+  if (!suggestionId) return { ok: false, error: "Action is not linked to a suggestion" };
+  const result = await confirmFinancialSuggestionRecord(supabase, ctx, { suggestionId });
+  if (!result.ok) return { ok: false, error: result.error };
+  return { ok: true, data: { summary: "Financial suggestion confirmed" } };
+}
+
+async function rejectFinancialSuggestion(
+  supabase: SupabaseClient,
+  ctx: CurrentContext,
+  item: Pick<ActionItem, "metadata" | "suggestion_id">,
+): Promise<ActionResult<{ summary: string }>> {
+  const suggestionId = item.suggestion_id ?? (typeof item.metadata?.suggestion_id === "string" ? item.metadata.suggestion_id : null);
+  if (!suggestionId) return { ok: false, error: "Action is not linked to a suggestion" };
+  const result = await rejectFinancialSuggestionRecord(supabase, ctx, {
+    suggestionId,
+    reason: "Rejected from Action Center",
+  });
+  if (!result.ok) return { ok: false, error: result.error };
+  return { ok: true, data: { summary: "Suggestion rejected" } };
+}
+
+async function confirmSubscriptionTaskSuggestion(
+  supabase: SupabaseClient,
+  ctx: CurrentContext,
+  item: Pick<ActionItem, "metadata" | "suggestion_id">,
+): Promise<ActionResult<{ summary: string }>> {
+  const suggestionId = item.suggestion_id ?? (typeof item.metadata?.suggestion_id === "string" ? item.metadata.suggestion_id : null);
+  if (!suggestionId) return { ok: false, error: "Action is not linked to a suggestion" };
+  const result = await confirmSubscriptionTaskSuggestionRecord(supabase, ctx, { suggestionId });
+  if (!result.ok) return { ok: false, error: result.error };
+  return { ok: true, data: { summary: "Subscription task created" } };
 }
 
 async function createTaskDraft(

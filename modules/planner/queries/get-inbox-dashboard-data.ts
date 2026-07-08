@@ -1,7 +1,9 @@
 import "server-only";
 import type { CurrentContext } from "@/lib/context/current-context";
 import type {
+  DraftOriginEntry,
   InboxDashboardData,
+  PendingDraft,
   PlannerEntryWithSuggestions,
   PlannerSuggestion,
 } from "../types/planner.types";
@@ -33,16 +35,27 @@ export async function getInboxDashboardData(
     suggestions: byEntry.get(entry.id) ?? [],
   }));
 
-  const pendingSuggestions = suggestions.filter(
-    (s) => s.status === "pending" || s.status === "edited",
+  // Pair each pending suggestion with the capture that produced it, so the review
+  // card can explain its own origin without a per-card query. Entries are already
+  // loaded above; an older capture outside that page yields a null origin, which
+  // the card renders as an unattributed draft rather than guessing.
+  const originByEntry = new Map<string, DraftOriginEntry>(
+    entries.map((e) => [e.id, { source: e.source, raw_text: e.raw_text, ai_detected_intent: e.ai_detected_intent }]),
   );
+
+  const pendingDrafts: PendingDraft[] = suggestions
+    .filter((s) => s.status === "pending" || s.status === "edited")
+    .map((suggestion) => ({
+      suggestion,
+      entry: originByEntry.get(suggestion.planner_entry_id) ?? null,
+    }));
 
   return {
     entries: entriesWithSuggestions,
-    pendingSuggestions,
+    pendingDrafts,
     counts: {
       captured: entries.filter((e) => e.status !== "archived" && e.status !== "accepted" && e.status !== "rejected").length,
-      pending: pendingSuggestions.length,
+      pending: pendingDrafts.length,
     },
   };
 }

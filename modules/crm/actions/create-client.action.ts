@@ -9,11 +9,16 @@ import { checkPlanLimit } from "@/lib/billing";
 import { createClientSchema } from "../schemas/crm.schemas";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
+import { assertPausedModuleAction } from "@/shared/config/paused-modules";
 
 export async function createClientAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
+  // CRM is paused for the private beta. A "use server" export stays
+  // reachable over POST even while its page 404s — gate the mutation itself.
+  assertPausedModuleAction("crm");
+
   const { user, org, workspace } = await requireOrg();
 
   const limitCheck = await checkPlanLimit(org.id, "clients");

@@ -4,11 +4,15 @@ export const en = {
     appName: "nevora-sys",
     close: "Close",
     createRecord: "Create Record",
+    noMatches: "Nothing matches this filter",
   },
   nav: {
     logout: "Sign Out",
     dashboard: "Dashboard",
+    /** Secondary metrics roll-up at /dashboard/overview. */
+    overview: "Overview",
     inbox: "Inbox",
+    /** Labels /dashboard — the Action Center is the primary operating screen. */
     actions: "Actions",
     tasks: "Tasks",
     crm: "CRM",
@@ -22,6 +26,50 @@ export const en = {
     members: "Members",
     settings: "Settings",
   },
+  /**
+   * First Action Wizard (Phase B / B2). Distinct from `onboarding` below, which
+   * is the pre-dashboard org-creation screen. Copy is fixed by the B0 UX
+   * contract: never claim Nevora acts on its own, never promise CRM/Booking,
+   * never imply money is posted automatically.
+   */
+  firstRun: {
+    title: "Start with one action",
+    subtitle: "Do one thing — Nevora prepares a draft, you review and confirm. You stay in control.",
+    skip: "Skip for now",
+    chooseHint: "Pick one. It takes about a minute.",
+    uploadDocument: "Upload a document",
+    uploadDocumentHint: "Nevora will suggest a task and link it back to the document.",
+    addSubscription: "Add a subscription",
+    addSubscriptionHint: "Nevora will suggest a renewal review task.",
+    createTask: "Create a task",
+    createTaskHint: "Nevora will suggest context or a link to a document.",
+    captureInboxItem: "Capture a note",
+    captureInboxItemHint: "Nevora will suggest what it should become.",
+    awaitingTitle: "Finish your first action",
+    awaitingBody: "Once it exists, Nevora prepares a draft here. Nothing changes until you confirm.",
+    awaitingCta: "Continue",
+    draftTitle: "Nevora prepared a draft",
+    draftBody: "Review before confirming. Confirm to update related data — nothing has changed yet.",
+    draftCta: "Review the draft",
+    /**
+     * Action-driven empty states (Phase B / B6). Each body says what Nevora will
+     * do NEXT, not what the module is for — an empty screen is the best place to
+     * show the value loop. Shown only on a true absence of data, never on a
+     * filter that matched nothing.
+     */
+    empty: {
+      documentsTitle: "No documents yet",
+      documentsBody: "Upload your first document — Nevora will suggest a task or a link to a subscription.",
+      subscriptionsTitle: "No subscriptions yet",
+      subscriptionsBody: "Add your first subscription — Nevora will prepare a renewal review task.",
+      tasksTitle: "No tasks yet",
+      tasksBody: "Create your first task, or let Nevora suggest one from a document.",
+      inboxTitle: "Your inbox is empty",
+      inboxBody: "Save an idea, a document or a business request — Nevora will suggest the next step.",
+      actionsTitle: "Nothing needs your attention",
+      actionsBody: "You're all caught up. Start something and Nevora will prepare the next step.",
+    },
+  },
   inbox: {
     title: "Inbox",
     subtitle: "Capture a thought, obligation or signal — AI suggests, you decide.",
@@ -30,7 +78,6 @@ export const en = {
     capturing: "Capturing…",
     tabInbox: "Inbox",
     tabReview: "Review",
-    empty: "Nothing captured yet. Drop your first thought above.",
     reviewEmpty: "No suggestions waiting for review.",
     suggestionFor: "Suggested",
     confidence: "confidence",
@@ -46,6 +93,43 @@ export const en = {
     rejected: "Rejected",
     failed: "Couldn't process — review manually.",
     createdEntity: "Created",
+    /**
+     * Draft review panel (Phase B / B3). Every draft must answer four questions
+     * before the user confirms: what is proposed, why, what data changes, what
+     * links get created. Copy per the B0 contract — never imply Nevora acted.
+     */
+    draft: {
+      prepared: "Nevora prepared this action",
+      whyLabel: "Why",
+      whyAi: "Detected from your note",
+      whySource: "Prepared from your",
+      whyManual: "From your capture",
+      changesLabel: "What will change",
+      linksLabel: "Links that will be created",
+      willCreateTask: "A task will be created",
+      willCreateFinancialTask: "A planned payment task will be created",
+      willCreateActionItem: "An item will appear in your Action Center",
+      noNewData: "No new records — only the link",
+      moneySafe: "No money is posted. Confirming records a planned obligation; an expense appears only when you mark it paid.",
+      unsupported: "Nevora can't run this suggestion yet. Edit it into a task or reminder.",
+      confirmHint: "Confirm to update related data. Nothing has changed yet.",
+      linkArrow: "→",
+      sources: {
+        document: "document",
+        subscription: "subscription",
+        task: "task",
+        money: "transaction",
+        manual: "capture",
+        system: "system",
+      },
+      entities: {
+        task: "Task",
+        document: "Document",
+        subscription: "Subscription",
+        transaction: "Transaction",
+        action_item: "Action item",
+      },
+    },
     types: {
       create_task: "Task",
       create_financial_task: "Financial task",
@@ -218,8 +302,7 @@ export const en = {
       placeholder: "Search tasks…",
     },
     empty: {
-      title: "No tasks yet",
-      description: "Create your first task to get started",
+      /** Filter matched nothing. The activation copy lives in firstRun.empty. */
       filtered: "No tasks match your filters",
     },
     item: {
@@ -679,10 +762,6 @@ export const en = {
       education: "Education",
       health: "Health & Fitness",
       other: "Other",
-    },
-    empty: {
-      title: "No subscriptions yet",
-      description: "Add your first subscription to start tracking",
     },
     errors: {
       nameRequired: "Service name is required",

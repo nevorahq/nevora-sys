@@ -7,8 +7,8 @@ import { ExtractionReviewActions } from "./extraction-review-actions";
 
 const mocks = vi.hoisted(() => ({
   createAccount: vi.fn(),
-  confirmTransaction: vi.fn(),
-  rejectTransaction: vi.fn(),
+  confirmSuggestion: vi.fn(),
+  rejectSuggestion: vi.fn(),
   retryExtraction: vi.fn(),
   refresh: vi.fn(),
   randomUUID: vi.fn(() => "0cf708ad-2f5d-4d2b-b88f-90fc934ad4f5"),
@@ -22,12 +22,9 @@ vi.mock("@/modules/moneyflow/actions/create-account-for-document-expense.action"
   createAccountForDocumentExpenseAction: mocks.createAccount,
 }));
 
-vi.mock("@/modules/moneyflow/actions/confirm-document-transaction.action", () => ({
-  confirmDocumentTransactionAction: mocks.confirmTransaction,
-}));
-
-vi.mock("@/modules/moneyflow/actions/reject-document-transaction.action", () => ({
-  rejectDocumentTransactionAction: mocks.rejectTransaction,
+vi.mock("@/modules/review/actions/financial-suggestion.actions", () => ({
+  confirmFinancialSuggestion: mocks.confirmSuggestion,
+  rejectFinancialSuggestion: mocks.rejectSuggestion,
 }));
 
 vi.mock("../actions/retry-document-extraction.action", () => ({
@@ -36,7 +33,7 @@ vi.mock("../actions/retry-document-extraction.action", () => ({
 
 const baseProps = {
   documentId: "a4c1216e-e85e-4d6c-8893-af0363ff8d1f",
-  transactionId: "7b113e6e-c727-4308-baf9-c8f813ece4d5",
+  suggestionId: "7b113e6e-c727-4308-baf9-c8f813ece4d5",
   canConfirm: true,
   needsAccount: true,
   compatibleAccounts: [],
@@ -69,7 +66,7 @@ describe("ExtractionReviewActions inline account creation", () => {
 
     expect(screen.getByText(`This is a ${currency} expense, but you have no active ${currency} account.`)).toBeTruthy();
     expect(screen.getByRole("button", { name: `Create ${currency} account` })).toBeTruthy();
-    expect((screen.getByRole("button", { name: /Confirm transaction/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /Confirm expense/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("prefills the account form and locks the known currency", async () => {
@@ -131,7 +128,7 @@ describe("ExtractionReviewActions inline account creation", () => {
       account: { id: "usd-account", name: "USD Card", currency: "USD" },
       created: true,
     });
-    mocks.confirmTransaction.mockResolvedValue({});
+    mocks.confirmSuggestion.mockResolvedValue({});
     const user = userEvent.setup();
     render(<ExtractionReviewActions {...baseProps} requiredCurrency="USD" />);
 
@@ -146,22 +143,25 @@ describe("ExtractionReviewActions inline account creation", () => {
     );
     expect(document.querySelector("dialog")).toBeNull();
 
-    const confirm = screen.getByRole("button", { name: /Confirm transaction/i }) as HTMLButtonElement;
+    const confirm = screen.getByRole("button", { name: /Confirm expense/i }) as HTMLButtonElement;
     expect(confirm.disabled).toBe(false);
     await user.click(confirm);
 
-    expect(mocks.confirmTransaction).toHaveBeenCalledWith("7b113e6e-c727-4308-baf9-c8f813ece4d5", "usd-account");
+    expect(mocks.confirmSuggestion).toHaveBeenCalledWith({
+      suggestionId: "7b113e6e-c727-4308-baf9-c8f813ece4d5",
+      accountId: "usd-account",
+    });
   });
 
   it("does not treat inactive accounts as compatible input", () => {
     render(<ExtractionReviewActions {...baseProps} requiredCurrency="USD" compatibleAccounts={[]} />);
 
     expect(screen.getByRole("button", { name: "Create USD account" })).toBeTruthy();
-    expect((screen.getByRole("button", { name: /Confirm transaction/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /Confirm expense/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("submits reviewed category/context and explicit learning consent", async () => {
-    mocks.confirmTransaction.mockResolvedValue({});
+    mocks.confirmSuggestion.mockResolvedValue({});
     const user = userEvent.setup();
     render(
       <ExtractionReviewActions
@@ -187,12 +187,11 @@ describe("ExtractionReviewActions inline account creation", () => {
     await user.selectOptions(screen.getByLabelText("Category"), "22222222-2222-4222-8222-222222222222");
     await user.selectOptions(screen.getByLabelText("Expense context"), "44444444-4444-4444-8444-444444444444");
     await user.click(screen.getByLabelText(/Remember this choice/i));
-    await user.click(screen.getByRole("button", { name: /Confirm transaction/i }));
+    await user.click(screen.getByRole("button", { name: /Confirm expense/i }));
 
-    expect(mocks.confirmTransaction).toHaveBeenCalledWith(
-      "7b113e6e-c727-4308-baf9-c8f813ece4d5",
-      undefined,
-      {
+    expect(mocks.confirmSuggestion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        suggestionId: "7b113e6e-c727-4308-baf9-c8f813ece4d5",
         categoryId: "22222222-2222-4222-8222-222222222222",
         expenseContextId: "44444444-4444-4444-8444-444444444444",
         rememberChoice: true,
@@ -200,7 +199,7 @@ describe("ExtractionReviewActions inline account creation", () => {
         amount: 50,
         transactionDate: "2026-06-28",
         currency: "EUR",
-      },
+      }),
     );
   });
 });

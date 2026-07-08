@@ -6,11 +6,16 @@ import { requireOrg } from "@/lib/auth/require-org";
 import { ROUTES } from "@/shared/config/routes";
 import { createHostSchema } from "../schemas/host.schemas";
 import type { ActionResult } from "@/lib/validators/common";
+import { assertPausedModuleAction } from "@/shared/config/paused-modules";
 
 export async function createHostAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
+  // BOOKING is paused for the private beta. A "use server" export stays
+  // reachable over POST even while its page 404s — gate the mutation itself.
+  assertPausedModuleAction("booking");
+
   const { org, membership } = await requireOrg();
   const supabase = await createClient();
 

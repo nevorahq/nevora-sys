@@ -7,6 +7,8 @@ export {
   RELATION_DIRECTIONS,
   type EntityLink,
   type EntityLinkType,
+  type EntityLinkSource,
+  type EntityLinkStatus,
   type RelationDirection,
   type RelationSource,
   type EntityLinkMetadata,

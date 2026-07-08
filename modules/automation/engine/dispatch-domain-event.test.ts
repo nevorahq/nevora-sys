@@ -14,6 +14,8 @@ import type { AutomationHandler } from "./automation-handler.types";
 const getHandlersForEvent = vi.fn<(e: string) => AutomationHandler[]>();
 const createAutomationLog =
   vi.fn<(input: Record<string, unknown>) => Promise<string>>();
+const assertPlanEntitlement = vi.fn<() => Promise<void>>();
+const assertPlanLimit = vi.fn<() => Promise<void>>();
 
 vi.mock("./automation-registry", () => ({
   getHandlersForEvent: (e: string) => getHandlersForEvent(e),
@@ -21,6 +23,10 @@ vi.mock("./automation-registry", () => ({
 vi.mock("../logs/create-automation-log", () => ({
   createAutomationLog: (input: Record<string, unknown>) =>
     createAutomationLog(input),
+}));
+vi.mock("@/modules/billing", () => ({
+  assertPlanEntitlement: () => assertPlanEntitlement(),
+  assertPlanLimit: () => assertPlanLimit(),
 }));
 
 const { dispatchDomainEvent } = await import("./dispatch-domain-event");
@@ -42,6 +48,10 @@ const baseInput = {
 beforeEach(() => {
   getHandlersForEvent.mockReset();
   createAutomationLog.mockClear();
+  assertPlanEntitlement.mockReset();
+  assertPlanLimit.mockReset();
+  assertPlanEntitlement.mockResolvedValue(undefined);
+  assertPlanLimit.mockResolvedValue(undefined);
 });
 
 describe("dispatchDomainEvent", () => {
@@ -98,5 +108,20 @@ describe("dispatchDomainEvent", () => {
     await dispatchDomainEvent({ ...baseInput, organizationId: "not-uuid" });
     expect(getHandlersForEvent).not.toHaveBeenCalled();
     expect(createAutomationLog).not.toHaveBeenCalled();
+  });
+
+  it("skips handlers with a commercial audit message when automation usage is exhausted", async () => {
+    assertPlanLimit.mockRejectedValueOnce(new Error("You have reached the automation_runs.monthly limit. Upgrade to continue."));
+    getHandlersForEvent.mockReturnValue([
+      { name: "h-limited", eventName: "document.created", run: async () => ({ status: "executed" }) },
+    ]);
+
+    await dispatchDomainEvent(baseInput);
+
+    expect(createAutomationLog).toHaveBeenCalledWith(expect.objectContaining({
+      automationName: "h-limited",
+      status: "skipped",
+      errorMessage: "Automation usage limit reached. Upgrade your plan to run more automations.",
+    }));
   });
 });

@@ -1,6 +1,13 @@
 # Phase 7.11 — Production Release Checklist
 
-**Status:** Draft 1
+> ⚠️ **SUPERSEDED (2026-07-08).** Use
+> [`release-checklist.md`](./release-checklist.md).
+>
+> Kept for history. Its migration section stops at `077`; the current baseline is
+> `000`–`093` (next free `094`). It also predates the Phase A scope gate (paused
+> CRM/Booking) and the Action Center-first dashboard. **Do not run this document.**
+
+**Status:** Superseded by `release-checklist.md`
 **Date:** 2026-07-02
 **Target:** first controlled production release (Phase 7.12 beta)
 **Stack:** Next.js 16 (Vercel) · Supabase (Postgres + Auth + Storage) · Resend

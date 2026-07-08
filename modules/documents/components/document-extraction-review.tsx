@@ -2,6 +2,7 @@ import { SparklesIcon, AlertTriangleIcon, Loader2Icon, ReceiptTextIcon } from "l
 import type { DocumentExtractionState } from "../queries/get-document-extraction";
 import { ExtractionReviewActions } from "./extraction-review-actions";
 import { ExtractionStatusPoller } from "./extraction-status-poller";
+import { REVIEW_STATE_LABELS } from "@/modules/review/constants/review.constants";
 
 /**
  * Review surface for Document-to-Transaction. Server component: it renders the
@@ -17,17 +18,16 @@ export function DocumentExtractionReview({
   state: DocumentExtractionState;
   canConfirm: boolean;
 }) {
-  const { extraction, financialData, items, draftTransaction, accounts, categories, contexts, classification } = state;
+  const { extraction, financialData, items, financialSuggestion, accounts, categories, contexts, classification } = state;
 
   // Currency picker inputs: a planned draft must post onto a same-currency
   // account. Surface compatible accounts so the user can reassign before confirm.
-  const draftCurrency = draftTransaction?.currency ?? null;
-  const currentAccount = accounts.find((a) => a.id === draftTransaction?.account_id) ?? null;
+  const draftCurrency = financialSuggestion?.currency ?? null;
   const compatibleAccounts = accounts
     .filter((a) => a.currency === draftCurrency)
     .map((a) => ({ id: a.id, name: a.name }));
   const needsAccount =
-    draftTransaction?.status === "planned" && currentAccount?.currency !== draftCurrency;
+    financialSuggestion?.review_state === "waiting_confirmation";
 
   if (!extraction) {
     return (
@@ -37,7 +37,7 @@ export function DocumentExtractionReview({
           This document hasn’t been processed yet.
         </p>
         <div className="mt-4">
-          <ExtractionReviewActions documentId={documentId} transactionId={null} canConfirm={canConfirm} />
+          <ExtractionReviewActions documentId={documentId} suggestionId={null} canConfirm={canConfirm} />
         </div>
       </section>
     );
@@ -118,22 +118,26 @@ export function DocumentExtractionReview({
         </div>
       )}
 
-      {/* Draft transaction */}
-      {draftTransaction && (
+      {/* Draft financial suggestion */}
+      {financialSuggestion && (
         <div className="mt-5 rounded-(--neu-radius-md) bg-surface-sunken p-4">
           <div className="flex items-center gap-2 text-text-secondary">
             <ReceiptTextIcon size={16} />
             <span className="text-sm font-semibold">
-              {draftTransaction.status === "planned" ? "Draft expense" : "Confirmed expense"}
+              Draft expense suggestion
+            </span>
+            <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-text-muted">
+              {REVIEW_STATE_LABELS[financialSuggestion.review_state]}
             </span>
           </div>
           <p className="mt-2 text-lg font-semibold text-text-primary">
-            {formatMoney(draftTransaction.amount, draftTransaction.currency)}
+            {formatMoney(financialSuggestion.amount, financialSuggestion.currency)}
             <span className="ml-2 text-sm font-normal text-text-muted">
-              · {draftTransaction.merchant_name ?? "Unknown merchant"}
+              · {financialSuggestion.vendor_name ?? "Unknown merchant"}
             </span>
           </p>
-          {draftTransaction.note && <p className="mt-1 text-xs text-accent-yellow">{draftTransaction.note}</p>}
+          {typeof financialSuggestion.metadata.duplicate_of === "string" && <p className="mt-1 text-xs text-accent-yellow">Possible duplicate of an existing transaction.</p>}
+          {financialSuggestion.rejected_reason && <p className="mt-1 text-xs text-danger">{financialSuggestion.rejected_reason}</p>}
           {classification && (
             <div className="mt-3 border-t border-border pt-3 text-xs text-text-muted">
               <p>
@@ -151,19 +155,19 @@ export function DocumentExtractionReview({
       <div className="mt-5">
         <ExtractionReviewActions
           documentId={documentId}
-          transactionId={draftTransaction?.status === "planned" ? draftTransaction.id : null}
+          suggestionId={financialSuggestion?.review_state === "waiting_confirmation" ? financialSuggestion.id : null}
           canConfirm={canConfirm}
           needsAccount={needsAccount}
           requiredCurrency={draftCurrency}
           compatibleAccounts={compatibleAccounts}
           categories={categories}
           contexts={contexts}
-          initialCategoryId={draftTransaction?.category_id ?? null}
-          initialContextId={draftTransaction?.expense_context_id ?? null}
-          initialMerchantName={draftTransaction?.merchant_name ?? financialData?.merchant_name ?? null}
-          initialAmount={draftTransaction?.amount ?? financialData?.total_amount ?? null}
-          initialTransactionDate={draftTransaction?.transaction_date ?? financialData?.transaction_date ?? null}
-          initialCurrency={draftTransaction?.currency ?? financialData?.currency ?? null}
+          initialCategoryId={financialSuggestion?.category_id ?? null}
+          initialContextId={financialSuggestion?.expense_context_id ?? null}
+          initialMerchantName={financialSuggestion?.vendor_name ?? financialData?.merchant_name ?? null}
+          initialAmount={financialSuggestion?.amount ?? financialData?.total_amount ?? null}
+          initialTransactionDate={financialSuggestion?.issue_date ?? financialData?.transaction_date ?? null}
+          initialCurrency={financialSuggestion?.currency ?? financialData?.currency ?? null}
         />
       </div>
     </section>

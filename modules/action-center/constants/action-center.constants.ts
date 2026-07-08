@@ -1,24 +1,22 @@
 import type {
   ActionItemType,
-  ActionSection,
   ActionSourceType,
+  PhaseBSection,
 } from "../types/action-item.types";
 
-export const SECTION_LABELS: Record<ActionSection, string> = {
-  due_soon: "Due Soon",
-  waiting_for_action: "Waiting For Action",
-  missing_information: "Missing Information",
-  ai_suggestions: "AI Suggestions",
-  recently_resolved: "Recently Resolved",
+/**
+ * Phase B / B5 section headings. The three answer "what needs a decision", "what
+ * needs doing", "what just happened" — in that order, which is the render order.
+ *
+ * These replaced SECTION_LABELS/SECTION_ORDER, which labelled the raw
+ * `ActionSection` taxonomy. That taxonomy still exists as the query's transport
+ * shape (see TYPE_SECTION), it just no longer reaches the screen.
+ */
+export const PHASE_B_SECTION_LABELS: Record<PhaseBSection, string> = {
+  needs_your_review: "Needs your review",
+  next_actions: "Next actions",
+  recently_updated: "Recently updated",
 };
-
-export const SECTION_ORDER: ActionSection[] = [
-  "due_soon",
-  "waiting_for_action",
-  "missing_information",
-  "ai_suggestions",
-  "recently_resolved",
-];
 
 export const TYPE_LABELS: Record<ActionItemType, string> = {
   approval_required: "Approval required",

@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
+import { emitDomainEvent } from "@/lib/events";
 import type { ActionResult } from "@/lib/validators/common";
 import { changePlanSchema, type ChangePlanInput } from "../schemas/billing.schemas";
 import { billingProvider } from "../services/billing-provider";
@@ -47,6 +48,14 @@ export async function createCheckoutSessionForCurrentOrganization(
   }
 
   if (input.planSlug === "trial") {
+    await emitDomainEvent({
+      organizationId: ctx.org.id,
+      workspaceId: ctx.workspace.id,
+      eventName: "trial_reuse_blocked",
+      aggregateType: "organization",
+      aggregateId: ctx.org.id,
+      payload: { reason: "trial_checkout_not_allowed" },
+    });
     return {
       error: "The free trial can only be used once. Please choose Start, Pro or Business to continue.",
     };
@@ -77,6 +86,39 @@ export async function createCheckoutSessionForCurrentOrganization(
     };
   }
 
+  await emitDomainEvent({
+    organizationId: ctx.org.id,
+    workspaceId: ctx.workspace.id,
+    eventName: input.source === "upgrade_prompt" ? "upgrade_prompt_clicked" : "checkout_started",
+    aggregateType: "organization",
+    aggregateId: ctx.org.id,
+    payload: input.source === "upgrade_prompt"
+      ? {
+          metric_key: input.metricKey,
+          target_plan_slug: input.planSlug,
+        }
+      : {
+          plan_slug: input.planSlug,
+          billing_cycle: input.billingCycle,
+          provider: session.provider,
+        },
+  });
+
+  if (input.source === "upgrade_prompt") {
+    await emitDomainEvent({
+      organizationId: ctx.org.id,
+      workspaceId: ctx.workspace.id,
+      eventName: "checkout_started",
+      aggregateType: "organization",
+      aggregateId: ctx.org.id,
+      payload: {
+        plan_slug: input.planSlug,
+        billing_cycle: input.billingCycle,
+        provider: session.provider,
+      },
+    });
+  }
+
   return { success: "Redirecting to secure checkout.", redirectUrl: session.url };
 }
 
@@ -87,6 +129,8 @@ export async function createCheckoutSessionAction(
   const parsed = changePlanSchema.safeParse({
     planSlug: formData.get("planSlug") as string,
     billingCycle: formData.get("billingCycle") as string,
+    source: formData.get("source") || undefined,
+    metricKey: formData.get("metricKey") || undefined,
   });
   if (!parsed.success) {
     return { fieldErrors: fieldErrorsFromIssues(parsed.error.issues) };

@@ -9,7 +9,10 @@ import type { EntityRef } from "../types/relation.types";
 export interface NormalizedRelation {
   relationId: string;
   relationType: EntityLink["link_type"];
+  relationStatus: EntityLink["status"];
+  relationSource: EntityLink["source"];
   relationDirection: EntityLink["relation_direction"];
+  confidenceScore: EntityLink["confidence_score"];
   perspective: "outgoing" | "incoming";
   metadata: EntityLink["metadata"];
   createdAt: string;
@@ -43,7 +46,10 @@ export function normalizeRelation(
   return {
     relationId: link.id,
     relationType: link.link_type,
+    relationStatus: link.status,
+    relationSource: link.source,
     relationDirection: link.relation_direction,
+    confidenceScore: link.confidence_score,
     perspective: isSource ? "outgoing" : "incoming",
     metadata: link.metadata ?? {},
     createdAt: link.created_at,

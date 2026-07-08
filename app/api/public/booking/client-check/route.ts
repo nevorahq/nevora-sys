@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getClientIp } from "@/lib/http/client-ip";
 import { checkRateLimit, tooManyRequestsResponse } from "@/lib/rate-limit/rate-limit";
+import { pausedModuleGuard } from "@/shared/config/paused-modules";
 
 /**
  * GET /api/public/booking/client-check
@@ -24,6 +25,11 @@ import { checkRateLimit, tooManyRequestsResponse } from "@/lib/rate-limit/rate-l
  * PII (email/phone) никогда не логируется и не попадает в ключ лимита.
  */
 export async function GET(request: NextRequest) {
+  // Booking is paused for the private beta: the route handler must 404 too,
+  // otherwise the module stays reachable as a public API even with no UI.
+  const paused = pausedModuleGuard("booking");
+  if (paused) return paused;
+
   const { searchParams } = request.nextUrl;
 
   const org = searchParams.get("org")?.trim();

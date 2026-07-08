@@ -1,6 +1,8 @@
 import { requireOrg } from "@/lib/auth/require-org";
 import { canDo, isAdmin } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
+import { getDictionary } from "@/shared/i18n/get-dictionary";
+import { FirstActionWizard, getWizardState } from "@/modules/onboarding";
 import { getActionCenterFeed } from "../queries/get-action-center-feed";
 import { getActionCenterSummary } from "../queries/get-action-center-summary";
 import { getActivityLog } from "../queries/get-activity-log";
@@ -55,10 +57,13 @@ export async function ActionCenterPage() {
     name: (p.display_name as string | null)?.trim() || "Member",
   }));
 
-  const [feed, summary, activity] = await Promise.all([
+  const [feed, summary, activity, wizard, { dict }] = await Promise.all([
     getActionCenterFeed({ limit: 50 }),
     getActionCenterSummary(),
     getActivityLog(supabase, ctx.org.id),
+    // Also the only place the onboarding funnel advances; fails soft.
+    getWizardState(supabase, ctx),
+    getDictionary(),
   ]);
 
   const actors: Record<string, string> = Object.fromEntries(members.map((m) => [m.id, m.name]));
@@ -67,8 +72,17 @@ export async function ActionCenterPage() {
     <div className="space-y-6">
       <MarkActionsSeen />
       <ActionCenterHeader />
+      <FirstActionWizard state={wizard} dict={dict.firstRun} />
       <ActionSummaryStrip summary={summary} />
-      <ActionFeed initialFeed={feed} members={members} currentUserId={ctx.user.id} />
+      <ActionFeed
+        initialFeed={feed}
+        members={members}
+        currentUserId={ctx.user.id}
+        firstRunDict={dict.firstRun}
+        // The wizard right above already offers the first actions.
+        showFirstActions={!wizard.visible}
+        noMatchesLabel={dict.common.noMatches}
+      />
       <ActivityLog entries={activity} actors={actors} canViewSecurity={isAdmin(ctx)} />
     </div>
   );

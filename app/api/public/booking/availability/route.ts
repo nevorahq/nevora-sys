@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveAvailability, type AvailabilityDataSource } from "@/modules/booking";
 import { getClientIp } from "@/lib/http/client-ip";
 import { checkRateLimit, tooManyRequestsResponse } from "@/lib/rate-limit/rate-limit";
+import { pausedModuleGuard } from "@/shared/config/paused-modules";
 
 const querySchema = z.object({
   organizationSlug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/),
@@ -26,6 +27,11 @@ const querySchema = z.object({
  * расписания — слоты не предлагаются (никакого fallback-графика).
  */
 export async function GET(request: NextRequest) {
+  // Booking is paused for the private beta: the route handler must 404 too,
+  // otherwise the module stays reachable as a public API even with no UI.
+  const paused = pausedModuleGuard("booking");
+  if (paused) return paused;
+
   const params = Object.fromEntries(request.nextUrl.searchParams);
   const parsed = querySchema.safeParse(params);
 

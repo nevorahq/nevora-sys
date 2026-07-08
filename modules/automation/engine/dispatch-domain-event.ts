@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { uuidSchema } from "@/lib/validators/common";
 import { DOMAIN_EVENT_NAMES } from "@/lib/events/domain-event-names";
+import { assertPlanEntitlement, assertPlanLimit } from "@/modules/billing";
 import { createAutomationLog } from "../logs/create-automation-log";
 import { getHandlersForEvent } from "./automation-registry";
 import type { AutomationContext } from "./automation-handler.types";
@@ -82,6 +83,9 @@ export async function dispatchDomainEvent(
 
   for (const handler of handlers) {
     try {
+      await assertPlanEntitlement(input.organizationId, "automations.run");
+      await assertPlanLimit(input.organizationId, "automation_runs.monthly", 1);
+
       const result = await handler.run(context);
 
       await createAutomationLog({
@@ -98,6 +102,24 @@ export async function dispatchDomainEvent(
     } catch (err) {
       // Хендлер бросил вместо возврата status:'failed' — страховка.
       const message = err instanceof Error ? err.message : String(err);
+      const isCommercialBlock =
+        message.includes("automation_runs.monthly") ||
+        message.includes("automations.run") ||
+        message.includes("Upgrade to continue");
+      if (isCommercialBlock) {
+        await createAutomationLog({
+          organizationId: input.organizationId,
+          workspaceId: input.workspaceId ?? null,
+          automationName: handler.name,
+          automationEvent: input.eventName,
+          triggerEventId: input.eventId,
+          status: "skipped",
+          inputPayload: context.payload,
+          errorMessage: "Automation usage limit reached. Upgrade your plan to run more automations.",
+        });
+        continue;
+      }
+
       console.error(
         `[dispatchDomainEvent] handler "${handler.name}" threw:`,
         message,

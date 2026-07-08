@@ -64,9 +64,15 @@ export async function executeActionItem(
     return { ok: false, error: exec.error };
   }
 
+  const terminalStatus = parsed.data.executeKind === "reject_financial_suggestion" ? "dismissed" : "resolved";
+  const terminalPatch =
+    terminalStatus === "dismissed"
+      ? { status: terminalStatus, dismissed_at: new Date().toISOString() }
+      : { status: terminalStatus, resolved_at: new Date().toISOString() };
+
   await supabase
     .from("action_items")
-    .update({ status: "resolved", resolved_at: new Date().toISOString() })
+    .update(terminalPatch)
     .eq("id", item.id)
     .eq("organization_id", ctx.org.id);
 
@@ -76,7 +82,7 @@ export async function executeActionItem(
     actionItemId: item.id,
     eventName: "action_item.executed",
     oldStatus: item.status,
-    newStatus: "resolved",
+    newStatus: terminalStatus,
     payload: { action: parsed.data.executeKind, confirmed: parsed.data.confirmed },
     audit: {
       action: "update",

@@ -18,6 +18,12 @@ export { RelationEmptyState } from "./components/relation-empty-state";
 // Server Actions
 export { createEntityRelation } from "./actions/create-relation.action";
 export { deleteEntityRelation } from "./actions/delete-relation.action";
+export {
+  confirmRelation,
+  getEntityRelations,
+  rejectRelation,
+  unlinkRelation,
+} from "./actions/review-relation.action";
 export { searchRelationCandidates } from "./actions/search-relation-candidates.action";
 
 // Services (server-only orchestration)

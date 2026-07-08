@@ -13,6 +13,9 @@ import { createClient } from "@/lib/supabase/server";
  * Load balancer и мониторинг используют HTTP status code:
  * - 200 → всё OK, направлять трафик
  * - 503 → проблемы, не направлять трафик
+ *
+ * Роут обязан отвечать одинаково С сессией и БЕЗ неё: monitoring и load balancer
+ * не отправляют cookies.
  */
 export async function GET() {
   const checks: Record<string, "ok" | "error"> = {
@@ -22,11 +25,20 @@ export async function GET() {
 
   try {
     const supabase = await createClient();
-    // Простой запрос для проверки соединения с БД.
-    // count вместо select * — не тянем данные, только проверяем связь.
+    // Проверяем связь с БД через `plans` — таблицу, читаемую ролью `anon`.
+    //
+    // Раньше здесь был `todos`, и health был сломан ровно для тех, ради кого
+    // существует. `createClient()` берёт сессию из cookies; у monitoring и
+    // load balancer'а их нет, значит роль — `anon`, а у неё нет SELECT на
+    // `todos` → PostgREST отвечает `42501 permission denied` → database:"error"
+    // → 503 всегда. В браузере с сессией тот же роут отдавал 200 и маскировал баг.
+    //
+    // Чинить это грантом `SELECT ON todos TO anon` нельзя — это утечка данных.
+    // `plans` не содержит PII и уже публична (её читает лендинг с ценами).
+    // head:true — строки не тянем; пустая таблица всё равно доказывает связь.
     const { error } = await supabase
-      .from("todos")
-      .select("id", { count: "exact", head: true });
+      .from("plans")
+      .select("*", { count: "exact", head: true });
 
     checks.database = error ? "error" : "ok";
   } catch {

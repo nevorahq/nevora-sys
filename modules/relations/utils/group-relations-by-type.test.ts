@@ -6,7 +6,10 @@ function related(type: RelatedEntity["entity"]["type"], id: string): RelatedEnti
   return {
     relationId: `rel-${id}`,
     relationType: "related_to",
+    relationStatus: "confirmed",
+    relationSource: "user",
     relationDirection: "bidirectional",
+    confidenceScore: null,
     perspective: "outgoing",
     metadata: {},
     createdAt: "2026-06-01T00:00:00Z",

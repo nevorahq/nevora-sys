@@ -32,11 +32,12 @@ export async function InboxPage() {
   const canDeleteEntries = canDo(ctx, "planner.entry.delete");
 
   const reviewSlot =
-    data.pendingSuggestions.length > 0 ? (
+    data.pendingDrafts.length > 0 ? (
       <div className="flex flex-col gap-3">
-        {data.pendingSuggestions.map((s) => (
-          <div key={s.id} className="soft-card p-4">
-            <PlannerSuggestionCard suggestion={s} dict={dict} />
+        {data.pendingDrafts.map(({ suggestion, entry }) => (
+          <div key={suggestion.id} className="soft-card p-4">
+            {/* The Review tab is the confirm surface, so it carries the B3 panel. */}
+            <PlannerSuggestionCard suggestion={suggestion} entry={entry} showExplanation dict={dict} />
           </div>
         ))}
       </div>
@@ -62,6 +63,7 @@ export async function InboxPage() {
           <PlannerEntryList
             entries={data.entries}
             dict={dict}
+            firstRunDict={fullDict.firstRun}
             canUpdate={canUpdateEntries}
             canDelete={canDeleteEntries}
           />

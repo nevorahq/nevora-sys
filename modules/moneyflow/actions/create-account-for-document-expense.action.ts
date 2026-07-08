@@ -21,7 +21,7 @@ export type InlineAccountCreationResult = {
 };
 
 const inlineAccountSchema = z.object({
-  transactionId: z.string().uuid("Invalid transaction ID."),
+  transactionId: z.string().uuid("Invalid suggestion ID."),
   creationRequestId: z.string().uuid("Invalid account creation request."),
   name: z.string().trim().min(1, "Account name is required.").max(ACCOUNT_NAME_MAX),
   type: z.enum(ACCOUNT_TYPES, { error: "Choose a valid account type." }),
@@ -54,25 +54,25 @@ export async function createAccountForDocumentExpenseAction(
 
   try {
     const supabase = await createClient();
-    const { data: draft, error: draftError } = await supabase
-      .from("money_transactions")
-      .select("id, currency, source_document_id")
+    const { data: suggestion, error: suggestionError } = await supabase
+      .from("financial_suggestions")
+      .select("id, currency, source_id")
       .eq("id", parsed.data.transactionId)
       .eq("organization_id", ctx.org.id)
-      .eq("status", "planned")
-      .not("source_document_id", "is", null)
-      .is("deleted_at", null)
+      .eq("source_type", "document")
+      .eq("suggestion_type", "create_expense")
+      .eq("review_state", "waiting_confirmation")
       .maybeSingle();
 
-    if (draftError) {
-      console.error("createAccountForDocumentExpense draft error:", draftError);
+    if (suggestionError) {
+      console.error("createAccountForDocumentExpense suggestion error:", suggestionError);
       return { error: "The expense could not be loaded. Please try again." };
     }
-    if (!draft) {
-      return { error: "Draft expense not found or already confirmed." };
+    if (!suggestion?.currency) {
+      return { error: "Expense suggestion not found or already handled." };
     }
 
-    const currency = draft.currency as string;
+    const currency = suggestion.currency as string;
     const { data: compatibleAccounts, error: accountLookupError } =
       await findActiveMoneyAccountsByCurrency(supabase, ctx.org.id, currency);
 
@@ -83,7 +83,7 @@ export async function createAccountForDocumentExpenseAction(
 
     const existing = compatibleAccounts?.[0] as MoneyAccountOption | undefined;
     if (existing) {
-      revalidateAccountPaths(draft.source_document_id as string);
+      revalidateAccountPaths(suggestion.source_id as string);
       return { account: existing, created: false };
     }
 
@@ -100,7 +100,7 @@ export async function createAccountForDocumentExpenseAction(
       return { error: "The account could not be created. Please try again." };
     }
 
-    revalidateAccountPaths(draft.source_document_id as string);
+    revalidateAccountPaths(suggestion.source_id as string);
     return { account: result.account, created: result.created };
   } catch (error) {
     console.error("createAccountForDocumentExpense unexpected error:", error);

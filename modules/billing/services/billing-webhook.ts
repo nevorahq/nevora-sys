@@ -26,6 +26,16 @@ const providerEventSchema = z.object({
     plan_slug: z.enum(PLAN_SLUGS).optional(),
     billingCycle: z.enum(BILLING_CYCLES).optional(),
     billing_cycle: z.enum(BILLING_CYCLES).optional(),
+    currentPeriodStart: z.union([z.number(), z.string()]).optional(),
+    current_period_start: z.union([z.number(), z.string()]).optional(),
+    currentPeriodEnd: z.union([z.number(), z.string()]).optional(),
+    current_period_end: z.union([z.number(), z.string()]).optional(),
+    trialStart: z.union([z.number(), z.string()]).nullable().optional(),
+    trial_start: z.union([z.number(), z.string()]).nullable().optional(),
+    trialEnd: z.union([z.number(), z.string()]).nullable().optional(),
+    trial_end: z.union([z.number(), z.string()]).nullable().optional(),
+    cancelAtPeriodEnd: z.boolean().optional(),
+    cancel_at_period_end: z.boolean().optional(),
     status: z
       .enum([
         "trialing",
@@ -76,6 +86,11 @@ export interface NormalizedBillingWebhookEvent {
   planSlug: Exclude<PlanSlug, "trial"> | null;
   billingCycle: BillingCycle | null;
   internalStatus: Exclude<InternalBillingStatus, "developer_unlimited">;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  trialStart: string | null;
+  trialEnd: string | null;
+  cancelAtPeriodEnd: boolean | null;
   payload: Record<string, unknown>;
 }
 
@@ -95,6 +110,14 @@ function normalizeCreatedAt(value: number | string | undefined): string {
     if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
   }
   return new Date().toISOString();
+}
+
+export function normalizeProviderTimestamp(value: number | string | null | undefined): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return new Date(value * 1000).toISOString();
+  const numeric = Number(value);
+  const parsed = Number.isFinite(numeric) ? new Date(numeric * 1000) : new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
 function providerStatusToInternal(
@@ -195,11 +218,21 @@ export function parseBillingWebhookEvent(
     planSlug: (planSlug as Exclude<PlanSlug, "trial"> | null) ?? null,
     billingCycle: data.billingCycle ?? data.billing_cycle ?? null,
     internalStatus,
+    currentPeriodStart: normalizeProviderTimestamp(data.currentPeriodStart ?? data.current_period_start),
+    currentPeriodEnd: normalizeProviderTimestamp(data.currentPeriodEnd ?? data.current_period_end),
+    trialStart: normalizeProviderTimestamp(data.trialStart ?? data.trial_start),
+    trialEnd: normalizeProviderTimestamp(data.trialEnd ?? data.trial_end),
+    cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? data.cancel_at_period_end ?? null,
     payload: {
       source: "billing_provider_webhook",
       event_type: parsed.type,
       provider_status: data.status ?? null,
       internal_status: internalStatus,
+      current_period_start: normalizeProviderTimestamp(data.currentPeriodStart ?? data.current_period_start),
+      current_period_end: normalizeProviderTimestamp(data.currentPeriodEnd ?? data.current_period_end),
+      trial_start: normalizeProviderTimestamp(data.trialStart ?? data.trial_start),
+      trial_end: normalizeProviderTimestamp(data.trialEnd ?? data.trial_end),
+      cancel_at_period_end: data.cancelAtPeriodEnd ?? data.cancel_at_period_end ?? null,
     },
   };
 }

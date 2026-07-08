@@ -1,5 +1,6 @@
+import { readdirSync } from "node:fs";
 import { describe, it, expect } from "vitest";
-import { isPublicRoute, ROUTES } from "./routes";
+import { isMachineRoute, isPublicRoute, MACHINE_ROUTES, ROUTES } from "./routes";
 
 /**
  * Логика proxy: какие пути доступны без сессии. Регрессия по этому набору
@@ -34,6 +35,72 @@ describe("isPublicRoute", () => {
   it("защищённые пути требуют сессию", () => {
     expect(isPublicRoute("/dashboard")).toBe(false);
     expect(isPublicRoute("/dashboard/crm")).toBe(false);
+  });
+
+  it("машинные маршруты не считаются публичными", () => {
+    // Прокси пропускает их отдельной проверкой; «публичность» тут ни при чём.
+    for (const route of MACHINE_ROUTES) expect(isPublicRoute(route)).toBe(false);
+  });
+
+  it("пропускает cron и внутренние метрики", () => {
+    expect(isMachineRoute("/api/cron/reminders")).toBe(true);
+    expect(isMachineRoute("/api/cron/suggestions-sweep")).toBe(true);
+    expect(isMachineRoute("/api/internal/activation-funnel")).toBe(true);
+  });
+
+  it("сверяет только точное совпадение — префикс не открывает соседей", () => {
+    expect(isMachineRoute("/api/cron")).toBe(false);
+    expect(isMachineRoute("/api/cron/")).toBe(false);
+    expect(isMachineRoute("/api/cron/reminders/secret")).toBe(false);
+    expect(isMachineRoute("/api/internal/activation-funnel/raw")).toBe(false);
+  });
+
+  it("не открывает сессионные internal API", () => {
+    expect(isMachineRoute("/api/internal/booking/availability-rules")).toBe(false);
+    expect(isMachineRoute("/dashboard")).toBe(false);
+  });
+
+  /**
+   * Drift guard: добавить папку в app/api/cron и забыть про MACHINE_ROUTES —
+   * значит отгрузить cron, который всегда отвечает 302. Компилятор об этом не
+   * скажет; этот тест скажет.
+   */
+  it("каждый существующий cron-роут объявлен машинным", () => {
+    const cronDirs = readdirSync("app/api/cron", { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => `/api/cron/${entry.name}`);
+
+    expect(cronDirs.length).toBeGreaterThan(0);
+    for (const route of cronDirs) expect(isMachineRoute(route)).toBe(true);
+  });
+
+  it("каждый объявленный машинный маршрут существует на диске", () => {
+    // Обратная сторона: мёртвая запись в списке — это разрешение на путь,
+    // которого никто не ревьюил.
+    const cronRoutes = MACHINE_ROUTES.filter((route) => route.startsWith("/api/cron/"));
+    const cronDirs = new Set(
+      readdirSync("app/api/cron", { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => `/api/cron/${entry.name}`),
+    );
+
+    for (const route of cronRoutes) expect(cronDirs.has(route)).toBe(true);
+  });
+
+  /**
+   * Phase A: /dashboard IS the Action Center — the primary operating screen.
+   * The generic metrics roll-up became secondary at /dashboard/overview.
+   */
+  it("Action Center is the dashboard; overview is secondary", () => {
+    expect(ROUTES.dashboard).toBe("/dashboard");
+    expect(ROUTES.actions).toBe(ROUTES.dashboard);
+    expect(ROUTES.overview).toBe("/dashboard/overview");
+  });
+
+  it("legacy /dashboard/actions is not a public route (it 307s to /dashboard)", () => {
+    // Persisted notification target_urls still point at the legacy path; it must
+    // stay session-gated, not become an open redirect surface.
+    expect(isPublicRoute("/dashboard/actions")).toBe(false);
   });
 
   it("Settings owns profile, workspace, members, and billing routes", () => {

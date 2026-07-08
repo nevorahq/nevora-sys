@@ -9,6 +9,7 @@ import { updateBookingRequestStatusSchema } from "../schemas/booking-request.sch
 import { uuidSchema } from "@/lib/validators/common";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
+import { assertPausedModuleAction } from "@/shared/config/paused-modules";
 
 type BookingRequestEmailContext = {
   id: string;
@@ -26,6 +27,10 @@ export async function updateBookingRequestStatusAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
+  // BOOKING is paused for the private beta. A "use server" export stays
+  // reachable over POST even while its page 404s — gate the mutation itself.
+  assertPausedModuleAction("booking");
+
   const { org, workspace } = await requireOrg();
   const supabase = await createClient();
 

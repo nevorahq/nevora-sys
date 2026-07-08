@@ -6,6 +6,8 @@
  * кандидаты для поиска.
  */
 import type {
+  EntityLinkSource,
+  EntityLinkStatus,
   EntityLinkType,
   EntityLinkMetadata,
   RelationDirection,
@@ -27,7 +29,10 @@ export interface EntityRef {
 export interface RelatedEntity {
   relationId: string;
   relationType: EntityLinkType;
+  relationStatus: EntityLinkStatus;
+  relationSource: EntityLinkSource;
   relationDirection: RelationDirection;
+  confidenceScore: number | null;
   perspective: "outgoing" | "incoming";
   metadata: EntityLinkMetadata;
   createdAt: string;

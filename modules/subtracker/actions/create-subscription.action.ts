@@ -6,7 +6,8 @@ import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
 import { getSubscriptionSchemas } from "../schemas/subscription.schema";
-import { provisionSubscriptionPaymentCycle } from "../services/provision-subscription-payment-cycle";
+import { createSubscriptionPaymentCycle } from "../services/create-subscription-payment-cycle";
+import { createSubscriptionTaskSuggestionRecord } from "@/modules/review/services/financial-suggestion.service";
 import type { SubscriptionForPayment } from "../types/payment-cycle.types";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
@@ -111,10 +112,9 @@ export async function createSubscriptionAction(
       },
     });
 
-    // Workflow bootstrap: first payment cycle + payment task. This deliberately
-    // creates NO money transaction — an expense is posted only on Mark as paid.
-    // Best-effort: a missing cycle/task is a repairable state (safety cron), so
-    // provisioning never fails a committed subscription.
+    // Workflow bootstrap: first payment cycle + reviewable task suggestion.
+    // Phase C: task creation is explicit; no task or transaction is created
+    // until the user confirms the suggestion.
     const subscriptionForPayment: SubscriptionForPayment = {
       id: newSubId,
       name: parsed.data.name,
@@ -130,18 +130,30 @@ export async function createSubscriptionAction(
       workspace_id: workspace.id,
     };
     try {
-      const provisioned = await provisionSubscriptionPaymentCycle({
+      const cycle = await createSubscriptionPaymentCycle({
         supabase,
         ctx,
         subscription: subscriptionForPayment,
         dueDate: parsed.data.next_billing_date,
       });
-      if (!provisioned.ok) {
-        console.error("createSubscription: payment cycle provisioning failed:", provisioned.error);
+      if (cycle.ok) {
+        await createSubscriptionTaskSuggestionRecord(supabase, ctx, {
+          subscriptionId: newSubId,
+          taskType: "pay_subscription",
+          billingPeriodKey: cycle.cycle.billing_period_key,
+          dueDate: cycle.cycle.due_date,
+          amount: cycle.cycle.expected_amount,
+          currency: cycle.cycle.currency,
+          reason: "Upcoming billing date detected for a new subscription.",
+          confidenceScore: 1,
+          metadata: { cycle_id: cycle.cycle.id },
+        });
+      } else {
+        console.error("createSubscription: payment cycle creation failed:", cycle.error);
       }
     } catch (provisionErr) {
       // Never fail a committed subscription on a best-effort workflow step;
-      // the safety cron repairs a missing cycle/task.
+      // the safety cron repairs a missing cycle/suggestion.
       console.error("createSubscription: payment cycle provisioning threw:", provisionErr);
     }
   } catch (err) {

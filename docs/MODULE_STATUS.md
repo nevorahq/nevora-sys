@@ -1,7 +1,7 @@
 # Module Status — Nevora Business OS
 
 > Honest snapshot of what is actually implemented, verified against the
-> repository on **2026-06-30**. Status legend:
+> repository on **2026-07-08** (Phase A). Status legend:
 > `Not Started` · `Planned` · `In Progress` · `Partial` · `MVP Ready` ·
 > `Paused` · `Needs Refactor` · `Blocked`.
 >
@@ -40,30 +40,54 @@ or waiting on a dependency.
 
 ## Current product direction
 
-- **CRM / Clients is Paused.** The module is implemented but hidden from the
-  sidebar; it is not the current priority.
-- **Booking is built but hidden** from the main sidebar (the nav entry is
-  commented out) while focus is elsewhere; the public booking flow still works.
-- Priority focus is the **Business OS foundation**: stabilization, Settings,
-  Tasks, Money, Documents, Subscriptions, and cross-module automation later.
+Nevora is an **AI-assisted operating desk for small businesses** — not a broad
+mini-ERP. It turns documents, subscriptions, payments, tasks and AI suggestions
+into a clear daily action list, and the user confirms before business data changes.
+
+- **The Action Center is the product's primary screen.** As of Phase A,
+  `/dashboard` *is* the Action Center. The generic metrics roll-up moved to
+  `/dashboard/overview` and is secondary. `/dashboard/actions` 307s to `/dashboard`.
+- **CRM / Clients is Paused and hard-gated.** Not merely hidden: its pages,
+  Server Actions **and** route handlers return 404 / reject server-side.
+- **Booking is Paused and hard-gated — including its public surface.**
+  `/booking/*` and `/api/public/booking/*` now 404. A previously published booking
+  page no longer serves anonymous visitors.
+- Paused modules are removed from the active public product promise: no landing
+  copy, no pricing entitlement, no navigation entry.
+- Priority focus is the **Business OS foundation**: Action Center, Tasks, Money,
+  Documents, Subscriptions, Capture Inbox, and confirm-first financial workflows.
+
+Gate implementation: `shared/config/paused-modules.ts`
+(`assertPausedModuleEnabled` for pages, `assertPausedModuleAction` for Server
+Actions, `pausedModuleGuard` for route handlers). Re-enable per environment with
+`NEVORA_ENABLE_CRM` / `NEVORA_ENABLE_BOOKING`; both must be unset in production.
+Coverage is enforced by `shared/config/paused-modules.coverage.test.ts`, which
+scans the tree so a *newly added* ungated file fails CI.
 
 | Module | Status | In nav |
 | --- | --- | --- |
 | Auth / Organizations / Workspaces | MVP Ready | core |
+| Action Center | MVP Ready | **yes — `/dashboard` (primary)** |
+| Dashboard Overview | MVP Ready | yes — `/dashboard/overview` (secondary) |
 | Tasks | MVP Ready | yes |
+| Financial Tasks | MVP Ready | under Tasks |
 | Money (moneyflow) | MVP Ready | yes |
+| Money Intelligence | Partial | within Money |
 | Documents | MVP Ready | yes |
-| Subscriptions (subtracker) | Partial | yes |
+| Subscriptions (subtracker) | MVP Ready | yes |
+| Subscription Payment Workflow | MVP Ready | within Subscriptions |
+| Capture Inbox (planner) | MVP Ready | yes — `/dashboard/inbox` |
 | Settings | MVP Ready | yes |
 | Members | Partial | under Settings |
 | Billing | Partial | under Settings |
+| Developer Access | Partial | under Settings |
 | Analytics | Partial | yes |
 | AI | Partial | yes |
+| Notifications | MVP Ready | bell |
 | Relations (cross-module) | In Progress | — |
-| Action Center | In Progress | `/dashboard/actions` |
 | Automation | In Progress (foundation) | — |
-| Booking | Partial | hidden (commented) |
-| CRM / Clients | Paused | hidden |
+| **Booking** | **Paused (hard-gated, incl. public)** | no |
+| **CRM / Clients / Leads / Deals / Contacts / Pipelines** | **Paused (hard-gated)** | no |
 
 ---
 
@@ -122,17 +146,30 @@ Known Issues: extraction depends on `ANTHROPIC_API_KEY` (mockable via `DOCUMENT_
 Risks: storage RLS correctness for private buckets; cron auth (`CRON_SECRET`) must be fail-closed.
 Next Step: extraction reliability + retry/backoff observability.
 
-## Subscriptions (subtracker)
+## Subscriptions (subtracker) + Subscription Payment Workflow
 
-Status: **Partial**
-Current implementation: 5 actions, 3 queries, 8 components; subscriptions +
-upcoming renewals + next-billing-date calculation.
+Status: **MVP Ready**
+Current implementation: 8 actions, 4 queries, 10 components, 12 services;
+subscriptions, upcoming renewals, next-billing-date calculation, and the managed
+payment workflow (planned cycle → payment task → Mark as paid → expense + advance
++ next cycle).
 Routes: `/dashboard/subscriptions`, `/subscriptions/[subscriptionId]`.
-Database: subscriptions schema; links to money via `entity_links` (`paid_by`).
-Server Actions / API: create/manage subscription; `api/subscriptions/[id]/document`.
-Known Issues: thinner action surface than Money; limited bulk operations.
-Risks: renewal date math across billing cycles.
-Next Step: broaden lifecycle actions (pause/resume/cancel) and reminders.
+Database: subscriptions schema; `078_subscription_payment_cycles` (cycles +
+`mark_subscription_payment_paid` RPC); links to money via `entity_links` (`paid_by`).
+Server Actions / API: create/manage subscription, `markSubscriptionPaymentAction`;
+`api/subscriptions/[id]/document`; cron `subscription-sweep`.
+Invariants (see `docs/contracts/financial-workflows.md`):
+- Creating a subscription posts **no** money transaction.
+- Attaching a document posts **no** money transaction.
+- **Mark as paid is idempotent** — `FOR UPDATE` row lock + `status='paid'` early
+  return + `UNIQUE (organization_id, idempotency_key)`. A double click cannot
+  create a second expense.
+- `subscription-sweep` is repair-only; it never marks anything paid.
+Known Issues: legacy `renewSubscriptionAction` still exists; its quick-renew button
+is hidden when a managed cycle exists (avoids a double `next_billing_date` advance).
+Risks: renewal date math across billing cycles; anchor-day preservation when paying late.
+Next Step: broaden lifecycle actions (pause/resume); stamp payment tasks with
+`task_context_type` so they surface in the Financial Tasks view.
 
 ## Settings
 
@@ -223,15 +260,24 @@ Next Step: consistent relation UI across Tasks/Money/Documents/Subscriptions.
 
 ## Action Center
 
-Status: **In Progress**
-Current implementation: 8 actions, 5 queries, 9 components, services;
-orchestration layer normalizing module signals into `action_items`.
-Routes: `/dashboard/actions` (thin composition over `modules/action-center`).
-Database: `048` (action center).
-Server Actions / API: confirm/dismiss/resolve action items.
-Known Issues: not yet in the main sidebar; generation is partly manual.
-Risks: signal normalization correctness across modules.
-Next Step: cron-based generation of action items; add to primary nav.
+Status: **MVP Ready** — the product's primary operating screen
+Current implementation: 11 actions, 9 queries, 11 components, services;
+orchestration layer normalizing module signals into `action_items`; summary strip
+(Needs Attention / Due Today / Upcoming / Overdue / Snoozed / Recently Resolved),
+grouped feed, detail drawer, activity log.
+Routes: **`/dashboard`** (primary; thin composition over `modules/action-center`).
+`/dashboard/actions` remains as a 307 redirect for old bookmarks and for
+`notifications.target_url` values already persisted in the database.
+Database: `048` (action center), counters via `075`/`082`/`083`/`084`.
+Server Actions / API: confirm/dismiss/resolve/snooze/assign/execute action items.
+Known Issues: `syncActionItems()` runs best-effort on page load (idempotent,
+wrapped in try/catch) — now on the most-visited route. Cron-based generation
+remains the intended long-term source.
+Invariant: an action item's lifecycle is **independent of notification read
+state**. See `docs/contracts/notification-lifecycle.md`.
+Risks: signal normalization correctness across modules; sync latency on first load.
+Next Step: move generation fully to cron; restructure feed sections around
+Requires Confirmation / Due Soon / Overdue / Money Attention / Inbox.
 
 ## Automation
 
@@ -248,29 +294,53 @@ Next Step: expand handlers; consider a user-facing automation rules layer (later
 
 ## Booking
 
-Status: **Partial / Paused until product decision**
-Booking exists in the codebase but is **hidden from navigation and is not part of
-the active MVP scope.** The nav entry is commented out; it is not advertised as an
-active module.
+Status: **Paused — hard-gated, including the public surface**
+Booking exists in the codebase but is **not part of the active product promise**
+and is not reachable in production. It is not advertised, not in navigation, not
+in pricing.
 Current implementation: public online booking — hosts, services, availability
 rules, slot calculation, requests; 11 components, 5 dashboard pages.
-Routes: `/dashboard/booking[/hosts|/services|/availability|/requests]` (nav entry
-commented out); public `/booking/[organizationSlug]/[hostSlug]`.
+Routes (all 404 while paused):
+- `/dashboard/booking[/hosts|/services|/availability|/requests]` — gated at
+  `app/(dashboard)/dashboard/booking/layout.tsx`
+- public `/booking/[organizationSlug][/hostSlug]` — gated at `app/booking/layout.tsx`
+- `api/public/booking/*` (6 routes) + `api/internal/booking/availability-rules` —
+  each returns 404 via `pausedModuleGuard("booking")`
+- 10 Server Actions — each rejects via `assertPausedModuleAction("booking")`
 Database: booking schema; public SECURITY DEFINER RPC resolving org/host/service by slug.
-Server Actions / API: `api/public/booking/*`, `api/internal/booking/*`.
-Known Issues: hidden from sidebar; not the current priority.
-Risks: public endpoints — rate-limited; slot/conflict correctness.
-Next Step: **product decision** — return Booking to active scope or keep paused;
-keep the public flow tested either way.
+Known Issues:
+- **An org that published a booking page before the pause no longer serves it.**
+  Intentional — a paused module must not remain a live public product surface.
+- ⚠️ **The app-layer gate does not cover the data layer.** Migration `016` grants
+  `anon` SELECT on `booking_pages` (policy `booking_pages_select_anon`), so anyone
+  holding the *public* anon key can still enumerate published booking pages
+  straight from the Supabase REST endpoint — bypassing Next.js entirely. Verified
+  2026-07-08: 3 rows with `public_enabled = true` are readable. This predates
+  Phase A and is not a regression, but it means "Booking is fully gated publicly"
+  is true of the **application**, not of the **database**.
+  To close, pick one (needs a product decision):
+  1. set `public_enabled = false` on those rows (data change, reversible), or
+  2. drop/narrow the `anon` SELECT policy on booking + host/service tables
+     (migration `094`, must be reverted when Booking un-pauses).
+Risks: the residual anon read above. If un-paused, public endpoints are
+rate-limited; slot/conflict correctness needs re-verification.
+Next Step: **product decision** — keep paused. Un-pausing means: set
+`NEVORA_ENABLE_BOOKING`, restore nav + pricing + landing copy, and delete the
+Booking block in `paused-modules.coverage.test.ts` in the same PR.
 
-## CRM / Clients
+## CRM / Clients / Leads / Deals / Contacts / Pipelines
 
-Status: **Paused**
+Status: **Paused — hard-gated**
 Current implementation: 9 actions, 7 queries; clients, contacts, leads, deals,
-pipeline/stages, activities (UI in `features/crm`). Hidden from sidebar.
-Routes: `/dashboard/crm` (reachable directly, not linked in nav).
-Database: CRM schema + default pipeline RPC.
-Server Actions / API: CRM CRUD actions.
+pipeline/stages, activities (UI in `features/crm`).
+Routes (404 while paused): `/dashboard/crm` — gated in the page component.
+Server Actions: 9, each rejecting via `assertPausedModuleAction("crm")`. This
+matters: a `"use server"` export stays reachable over POST even when the page that
+renders its form 404s, so gating the page alone left a live mutation surface.
+Database: CRM schema + default pipeline RPC. Defense-in-depth already present —
+CRM RLS gates writes on `can_write_data()`.
 Known Issues: paused per product direction; not maintained as priority.
 Risks: drift from the rest of the platform while paused.
-Next Step: keep building until after Business OS foundation is stabilized.
+Relations: CRM entity types are **not** mapped in `RELATION_ENTITY_CONFIG`;
+`verifyEntityOrganization` fails closed for them.
+Next Step: keep paused until the Business OS foundation is stabilized.

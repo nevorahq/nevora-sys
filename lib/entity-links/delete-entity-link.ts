@@ -22,7 +22,7 @@ import {
  *   - PostgREST перепроверяет SELECT после скрытия строки → soft-delete идёт
  *     через RPC, а не UPDATE-политику (зеркалит soft_delete_document).
  *
- * Side effects: domain event relation.deleted + audit log.
+ * Side effects: domain events relation.deleted/relation.unlinked + audit log.
  */
 export async function deleteEntityLink(
   input: DeleteEntityLinkInput,
@@ -78,14 +78,24 @@ export async function deleteEntityLink(
     relation_type: link.link_type,
   };
 
-  await emitDomainEvent({
-    organizationId: ctx.org.id,
-    workspaceId: ctx.workspace.id,
-    eventName: "relation.deleted",
-    aggregateType: "entity_relation",
-    aggregateId: link.id,
-    payload: eventPayload,
-  });
+  await Promise.all([
+    emitDomainEvent({
+      organizationId: ctx.org.id,
+      workspaceId: ctx.workspace.id,
+      eventName: "relation.deleted",
+      aggregateType: "entity_relation",
+      aggregateId: link.id,
+      payload: eventPayload,
+    }),
+    emitDomainEvent({
+      organizationId: ctx.org.id,
+      workspaceId: ctx.workspace.id,
+      eventName: "relation.unlinked",
+      aggregateType: "entity_relation",
+      aggregateId: link.id,
+      payload: eventPayload,
+    }),
+  ]);
 
   await emitAuditLog({
     organizationId: ctx.org.id,

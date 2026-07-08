@@ -69,6 +69,12 @@ export type PlannerSuggestionType = (typeof PLANNER_SUGGESTION_TYPES)[number];
 
 export const PLANNER_SUGGESTION_STATUSES = [
   "pending",
+  /**
+   * Transient claim held by an in-flight accept (migration 094). Exactly one
+   * caller can move pending|edited -> processing, which is what makes a confirm
+   * once-only. Never reviewable: the Inbox queue filters on pending|edited.
+   */
+  "processing",
   "accepted",
   "edited",
   "rejected",
@@ -76,6 +82,9 @@ export const PLANNER_SUGGESTION_STATUSES = [
   "failed",
 ] as const;
 export type PlannerSuggestionStatus = (typeof PLANNER_SUGGESTION_STATUSES)[number];
+
+/** Statuses a user may still accept / edit / reject. */
+export const PLANNER_SUGGESTION_OPEN_STATUSES = ["pending", "edited"] as const satisfies readonly PlannerSuggestionStatus[];
 
 /**
  * Suggestion types that carry money semantics. On accept they route to the
@@ -105,6 +114,8 @@ export interface PlannerSuggestion {
   accepted_entity_type: string | null;
   accepted_entity_id: string | null;
   reject_reason: string | null;
+  /** Set only while status is 'processing' (migration 094 keeps the two in lockstep). */
+  claimed_at: string | null;
   created_by: string;
   /** Owner of this private suggestion (migration 087). Equals created_by. */
   owner_user_id: string;
@@ -115,7 +126,7 @@ export interface PlannerSuggestion {
 }
 
 export const PLANNER_SUGGESTION_COLUMNS =
-  "id, organization_id, workspace_id, planner_entry_id, suggestion_type, title, description, proposed_payload, confidence, status, accepted_entity_type, accepted_entity_id, reject_reason, created_by, owner_user_id, visibility, created_at, updated_at" as const;
+  "id, organization_id, workspace_id, planner_entry_id, suggestion_type, title, description, proposed_payload, confidence, status, accepted_entity_type, accepted_entity_id, reject_reason, claimed_at, created_by, owner_user_id, visibility, created_at, updated_at" as const;
 
 // ── Confidence policy (spec §15; mirrors document obligation bands) ───────────
 
@@ -158,11 +169,25 @@ export interface PlannerEntryWithSuggestions extends PlannerEntry {
   suggestions: PlannerSuggestion[];
 }
 
+/** The subset of a capture the review UI needs to answer "why was this proposed?". */
+export type DraftOriginEntry = Pick<PlannerEntry, "source" | "raw_text" | "ai_detected_intent">;
+
+/**
+ * A suggestion awaiting a decision, paired with the capture it came from. The
+ * pairing is what lets the card explain its own origin (Phase B / B3) without a
+ * second query per card.
+ */
+export interface PendingDraft {
+  suggestion: PlannerSuggestion;
+  /** Null when the capture fell outside the entries page (rare, older captures). */
+  entry: DraftOriginEntry | null;
+}
+
 export interface InboxDashboardData {
   /** Recent captures (any status), newest first. */
   entries: PlannerEntryWithSuggestions[];
-  /** Suggestions awaiting a decision (status pending | edited). */
-  pendingSuggestions: PlannerSuggestion[];
+  /** Suggestions awaiting a decision (status pending | edited), with their origin. */
+  pendingDrafts: PendingDraft[];
   counts: {
     captured: number;
     pending: number;

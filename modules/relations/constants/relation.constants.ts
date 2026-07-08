@@ -75,6 +75,10 @@ export const MANUAL_RELATION_TYPES: EntityLinkType[] = [
   "contract_for_subscription",
   "renewal_task",
   "requires_action_task",
+  "evidence_for",
+  "created_from",
+  "suggested_for",
+  "confirmed_as",
 ];
 
 /** Подписи всех типов связей (включая legacy 040 для отображения). */
@@ -93,4 +97,8 @@ export const RELATION_TYPE_LABELS: Record<EntityLinkType, string> = {
   invoice_for_transaction: "Invoice for transaction",
   contract_for_subscription: "Contract for subscription",
   renewal_task: "Renewal task",
+  evidence_for: "Evidence for",
+  created_from: "Created from",
+  suggested_for: "Suggested for",
+  confirmed_as: "Confirmed as",
 };

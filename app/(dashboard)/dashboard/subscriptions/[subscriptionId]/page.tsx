@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { UniversalRelationViewer } from "@/modules/relations";
 import { getPaymentCyclesForSubscription } from "@/modules/subtracker/queries/get-payment-cycles";
 import { SubscriptionPaymentWorkflowPanel } from "@/modules/subtracker/components/subscription-payment-workflow-panel";
+import { SubscriptionSuggestionPanel } from "@/modules/subtracker/components/subscription-suggestion-panel";
 import { getAccounts } from "@/modules/moneyflow/queries/get-accounts";
 import { ROUTES } from "@/shared/config/routes";
 
@@ -25,9 +26,17 @@ export default async function SubscriptionDetailPage({ params }: PageProps<"/das
 
   if (!sub) notFound();
 
-  const [cycles, accounts] = await Promise.all([
+  const [cycles, accounts, suggestionsRes] = await Promise.all([
     getPaymentCyclesForSubscription(org.id, sub.id),
     getAccounts(org.id),
+    supabase
+      .from("financial_suggestions")
+      .select("id, suggestion_type, review_state, amount, currency, due_date")
+      .eq("organization_id", org.id)
+      .eq("source_type", "subscription")
+      .eq("source_id", sub.id)
+      .in("review_state", ["suggested", "waiting_confirmation"])
+      .order("created_at", { ascending: false }),
   ]);
   const currentCycle = cycles.find((c) => c.status === "planned" || c.status === "task_open") ?? null;
   const history = cycles.filter((c) => c.id !== currentCycle?.id);
@@ -48,6 +57,17 @@ export default async function SubscriptionDetailPage({ params }: PageProps<"/das
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <main className="space-y-6">
+          <SubscriptionSuggestionPanel
+            suggestions={(suggestionsRes.data ?? []).map((s) => ({
+              id: s.id as string,
+              suggestion_type: s.suggestion_type as string,
+              review_state: s.review_state as "detected" | "suggested" | "waiting_confirmation" | "confirmed" | "rejected",
+              amount: s.amount == null ? null : Number(s.amount),
+              currency: (s.currency as string | null) ?? null,
+              due_date: (s.due_date as string | null) ?? null,
+            }))}
+            canWrite={canWrite}
+          />
           <SubscriptionPaymentWorkflowPanel
             subscriptionId={sub.id}
             isActive={sub.is_active}

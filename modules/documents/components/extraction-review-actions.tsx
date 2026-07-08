@@ -3,8 +3,7 @@
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckIcon, RefreshCwIcon, XIcon } from "lucide-react";
-import { confirmDocumentTransactionAction } from "@/modules/moneyflow/actions/confirm-document-transaction.action";
-import { rejectDocumentTransactionAction } from "@/modules/moneyflow/actions/reject-document-transaction.action";
+import { confirmFinancialSuggestion, rejectFinancialSuggestion } from "@/modules/review/actions/financial-suggestion.actions";
 import { retryDocumentExtractionAction } from "../actions/retry-document-extraction.action";
 import { CreateAccountInlineCTA } from "./create-account-inline-cta";
 import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
@@ -22,7 +21,7 @@ import { Toast } from "@/shared/ui/toast";
  */
 export function ExtractionReviewActions({
   documentId,
-  transactionId,
+  suggestionId,
   canConfirm,
   needsAccount = false,
   requiredCurrency = null,
@@ -37,7 +36,7 @@ export function ExtractionReviewActions({
   initialCurrency = null,
 }: {
   documentId: string;
-  transactionId: string | null;
+  suggestionId: string | null;
   canConfirm: boolean;
   needsAccount?: boolean;
   requiredCurrency?: string | null;
@@ -88,7 +87,7 @@ export function ExtractionReviewActions({
 
   const dismissToast = useCallback(() => setToastMessage(null), []);
 
-  function run(fn: () => Promise<{ error?: string }>) {
+  function run(fn: () => Promise<{ ok?: boolean; error?: string }>) {
     if (blocked) {
       setError(message);
       return;
@@ -109,10 +108,12 @@ export function ExtractionReviewActions({
   const confirmDisabled = blocked || pending || (needsAccount && !effectiveSelectedAccount);
   const canReviewClassification = categories.length > 0 && contexts.length > 0;
 
-  function confirmTransaction() {
+  function confirmSuggestion() {
     const targetAccount = needsAccount ? effectiveSelectedAccount : undefined;
     if (canReviewClassification && selectedCategory && selectedContext) {
-      return confirmDocumentTransactionAction(transactionId as string, targetAccount, {
+      return confirmFinancialSuggestion({
+        suggestionId: suggestionId as string,
+        accountId: targetAccount,
         categoryId: selectedCategory,
         expenseContextId: selectedContext,
         rememberChoice,
@@ -122,17 +123,17 @@ export function ExtractionReviewActions({
         currency: initialCurrency ?? requiredCurrency ?? "EUR",
       });
     }
-    return confirmDocumentTransactionAction(transactionId as string, targetAccount);
+    return confirmFinancialSuggestion({ suggestionId: suggestionId as string, accountId: targetAccount });
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {transactionId && canConfirm && needsAccount && (
+      {suggestionId && canConfirm && needsAccount && (
         <div className="rounded-(--neu-radius-md) border border-accent-yellow/20 bg-accent-yellow-soft p-3">
           {noCompatibleAccount ? (
-            transactionId && requiredCurrency ? (
+            suggestionId && requiredCurrency ? (
               <CreateAccountInlineCTA
-                transactionId={transactionId}
+                transactionId={suggestionId}
                 currency={requiredCurrency}
                 onAccountReady={handleAccountReady}
               />
@@ -160,7 +161,7 @@ export function ExtractionReviewActions({
         </div>
       )}
 
-      {transactionId && canConfirm && canReviewClassification && (
+      {suggestionId && canConfirm && canReviewClassification && (
         <div className="grid gap-3 rounded-(--neu-radius-md) border border-border bg-surface-sunken p-3 sm:grid-cols-2">
           <div>
             <label htmlFor="confirm-merchant" className="text-xs font-medium uppercase tracking-wide text-text-muted">
@@ -266,24 +267,24 @@ export function ExtractionReviewActions({
       )}
 
       <div className="flex flex-wrap gap-2">
-        {transactionId && canConfirm && (
-          <RestrictedActionTooltip message={blocked ? message : "Confirm transaction"}>
+        {suggestionId && canConfirm && (
+          <RestrictedActionTooltip message={blocked ? message : "Confirm expense"}>
             <button
               type="button"
               disabled={confirmDisabled || noCompatibleAccount || (canReviewClassification && (!merchantName.trim() || Number(amount) <= 0 || !transactionDate))}
-              onClick={() => run(confirmTransaction)}
+              onClick={() => run(confirmSuggestion)}
               className="inline-flex items-center gap-2 rounded-lg bg-accent-green px-4 py-2 text-sm font-semibold text-text-inverse shadow-neu-control hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <CheckIcon size={16} /> Confirm transaction
+              <CheckIcon size={16} /> Confirm expense
             </button>
           </RestrictedActionTooltip>
         )}
-        {transactionId && canConfirm && (
+        {suggestionId && canConfirm && (
           <RestrictedActionTooltip message={blocked ? message : "Reject"}>
             <button
               type="button"
               disabled={pending || blocked}
-              onClick={() => run(() => rejectDocumentTransactionAction(transactionId))}
+              onClick={() => run(() => rejectFinancialSuggestion({ suggestionId }))}
               className="inline-flex items-center gap-2 rounded-lg border border-danger/30 px-4 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-60"
             >
               <XIcon size={16} /> Reject

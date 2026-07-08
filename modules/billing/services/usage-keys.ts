@@ -4,10 +4,13 @@ export const BILLING_LIMIT_KEYS = [
   "members.count",
   "tasks.count",
   "documents.count",
+  "documents_processed.monthly",
   "subscriptions.count",
   "money_transactions.count",
   "storage.bytes",
+  "ai_suggestions.monthly",
   "ai_requests.monthly",
+  "automation_runs.monthly",
   "api_requests.monthly",
   "api_requests.minute",
   "developer_api_keys.count",
@@ -19,10 +22,16 @@ export type BillingLimitKey = (typeof BILLING_LIMIT_KEYS)[number];
 export const BILLING_ENTITLEMENT_KEYS = [
   "tasks.enabled",
   "documents.enabled",
+  "documents.upload",
+  "documents.process",
   "money.enabled",
   "subscriptions.enabled",
   "analytics.enabled",
   "ai.enabled",
+  "ai.suggestions.generate",
+  "team.members.invite",
+  "storage.files.upload",
+  "automations.run",
   "developer_access.enabled",
   "public_api.enabled",
   "developer_webhooks.enabled",
@@ -53,6 +62,8 @@ export function legacyPlanLimit(plan: Plan, key: BillingLimitKey): number | null
       return normalize(plan.max_tasks);
     case "documents.count":
       return normalize(plan.max_documents);
+    case "documents_processed.monthly":
+      return normalize(plan.max_documents);
     case "subscriptions.count":
       return normalize(plan.max_subscriptions);
     case "money_transactions.count":
@@ -63,6 +74,10 @@ export function legacyPlanLimit(plan: Plan, key: BillingLimitKey): number | null
     }
     case "ai_requests.monthly":
       return normalize(plan.max_ai_calls_mo);
+    case "ai_suggestions.monthly":
+      return normalize(plan.max_ai_calls_mo);
+    case "automation_runs.monthly":
+      return undefined;
     default:
       return undefined;
   }

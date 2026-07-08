@@ -6,7 +6,7 @@ import type { EntityLink } from "@/lib/entity-links";
 // under test only needs the ENTITY_LINK_COLUMNS constant from it.
 vi.mock("@/lib/entity-links", () => ({
   ENTITY_LINK_COLUMNS:
-    "id, organization_id, workspace_id, source_type, source_id, target_type, target_id, link_type, relation_direction, metadata, created_by, created_at, updated_at",
+    "id, organization_id, workspace_id, source_type, source_id, target_type, target_id, link_type, status, source, confidence_score, relation_direction, metadata, created_by, created_at, updated_at",
 }));
 
 const { fetchEntityRelations } = await import("./get-entity-relations.query");
@@ -30,6 +30,9 @@ function subscriptionLink(): EntityLink {
     target_type: "document",
     target_id: DOCUMENT_ID,
     link_type: "documented_by",
+    status: "confirmed",
+    source: "system",
+    confidence_score: 0.88,
     relation_direction: "bidirectional",
     metadata: { source: "auto" },
     created_by: "user-1",

@@ -1,10 +1,9 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
 import { getServiceRoleClient } from "@/lib/supabase/service-role";
 import { logger } from "@/lib/observability/logger";
 import { createBillingPeriodKey } from "./billing-period-key";
 import { calculateNextPaymentDate, previousDay } from "./calculate-next-payment-date";
-import { buildCycleIdempotencyKey, buildSubscriptionPaymentTaskTitle } from "./subscription-payment-keys";
+import { buildCycleIdempotencyKey } from "./subscription-payment-keys";
 
 /**
  * Daily safety sweep for the subscription payment workflow.
@@ -27,6 +26,8 @@ export interface SubscriptionSweepResult {
   ok: boolean;
   configured: boolean;
   cyclesCreated: number;
+  suggestionsCreated: number;
+  /** Phase C keeps this for response compatibility; the sweep no longer creates tasks. */
   tasksCreated: number;
 }
 
@@ -49,11 +50,11 @@ export async function sweepSubscriptionPaymentWorkflow(): Promise<SubscriptionSw
   const supabase = getServiceRoleClient();
   if (!supabase) {
     log.warn("skipped.no_service_role");
-    return { ok: false, configured: false, cyclesCreated: 0, tasksCreated: 0 };
+    return { ok: false, configured: false, cyclesCreated: 0, suggestionsCreated: 0, tasksCreated: 0 };
   }
 
   let cyclesCreated = 0;
-  let tasksCreated = 0;
+  let suggestionsCreated = 0;
 
   // ── 1. Active subscriptions without an open cycle → create a planned cycle ──
   const { data: openCycleRows } = await supabase
@@ -74,7 +75,7 @@ export async function sweepSubscriptionPaymentWorkflow(): Promise<SubscriptionSw
 
   if (subsError) {
     log.error("subs_select_failed", { error: subsError.message });
-    return { ok: false, configured: true, cyclesCreated, tasksCreated };
+    return { ok: false, configured: true, cyclesCreated, suggestionsCreated, tasksCreated: 0 };
   }
 
   for (const sub of (activeSubs ?? []) as ActiveSub[]) {
@@ -104,10 +105,10 @@ export async function sweepSubscriptionPaymentWorkflow(): Promise<SubscriptionSw
     if (inserted) cyclesCreated += 1;
   }
 
-  // ── 2. Planned cycles without a task → create + promote to task_open ────────
+  // ── 2. Planned cycles without a task → create reviewable suggestion ─────────
   const { data: orphanCycles } = await supabase
     .from("subscription_payment_cycles")
-    .select("id, organization_id, workspace_id, subscription_id, billing_period_key, due_date")
+    .select("id, organization_id, workspace_id, subscription_id, billing_period_key, due_date, expected_amount, currency")
     .eq("status", "planned")
     .is("task_id", null)
     .limit(BATCH_LIMIT);
@@ -120,38 +121,82 @@ export async function sweepSubscriptionPaymentWorkflow(): Promise<SubscriptionSw
       .maybeSingle();
     if (!sub || sub.auto_task_enabled === false) continue;
 
-    const taskId = randomUUID();
-    const { error: taskError } = await supabase.from("todos").insert({
-      id: taskId,
-      organization_id: cycle.organization_id,
-      workspace_id: (cycle.workspace_id as string | null) ?? (sub.workspace_id as string | null),
-      created_by: sub.created_by,
-      updated_by: sub.created_by,
-      title: buildSubscriptionPaymentTaskTitle(sub.name as string, cycle.billing_period_key as string),
-      description: "",
-      priority: "medium",
-      // Match the in-app path: subscription payment tasks start in progress.
-      status: "in_progress",
-      due_date: cycle.due_date,
-      recurrence: "none",
-    });
-    if (taskError) continue;
-
-    const { data: promoted } = await supabase
-      .from("subscription_payment_cycles")
-      .update({ status: "task_open", task_id: taskId })
-      .eq("id", cycle.id as string)
-      .is("task_id", null)
+    const idempotencyKey = `subscription:${cycle.subscription_id}:task:pay_subscription:period:${cycle.billing_period_key}`;
+    const { data: suggestion, error: suggestionError } = await supabase
+      .from("financial_suggestions")
+      .insert({
+        organization_id: cycle.organization_id,
+        workspace_id: (cycle.workspace_id as string | null) ?? (sub.workspace_id as string | null),
+        source_type: "subscription",
+        source_id: cycle.subscription_id,
+        suggestion_type: "pay_subscription",
+        review_state: "waiting_confirmation",
+        amount: cycle.expected_amount,
+        currency: cycle.currency,
+        vendor_name: sub.name,
+        due_date: cycle.due_date,
+        confidence_score: 1,
+        billing_period_key: cycle.billing_period_key,
+        idempotency_key: idempotencyKey,
+        metadata: {
+          cycle_id: cycle.id,
+          reason: "Upcoming subscription billing date detected by repair sweep.",
+        },
+        created_by: sub.created_by,
+        updated_by: sub.created_by,
+      })
       .select("id")
       .maybeSingle();
-    if (promoted) {
-      tasksCreated += 1;
-    } else {
-      // Lost the race — clean up the orphan todo we just made.
-      await supabase.from("todos").delete().eq("id", taskId);
+    if (suggestionError && suggestionError.code !== "23505") continue;
+
+    let suggestionId = suggestion?.id as string | undefined;
+    if (!suggestionId) {
+      const { data: existing } = await supabase
+        .from("financial_suggestions")
+        .select("id")
+        .eq("organization_id", cycle.organization_id as string)
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+      suggestionId = existing?.id as string | undefined;
     }
+    if (!suggestionId) continue;
+
+    const { data: actionItem } = await supabase
+      .from("action_items")
+      .insert({
+        organization_id: cycle.organization_id,
+        workspace_id: (cycle.workspace_id as string | null) ?? (sub.workspace_id as string | null),
+        title: `Pay subscription: ${sub.name as string}`,
+        description: "Suggested action: Pay subscription. State: Waiting confirmation.",
+        type: "payment_required",
+        status: "open",
+        priority: "high",
+        priority_score: 80,
+        source_type: "subscription",
+        source_id: cycle.subscription_id,
+        source_entity_type: "subscription",
+        source_entity_id: cycle.subscription_id,
+        primary_entity_type: "subscription",
+        primary_entity_id: cycle.subscription_id,
+        review_state: "waiting_confirmation",
+        suggestion_id: suggestionId,
+        ai_generated: false,
+        metadata: {
+          suggestion_id: suggestionId,
+          review_state: "waiting_confirmation",
+          suggested_action: "pay_subscription",
+          cycle_id: cycle.id,
+          billing_period_key: cycle.billing_period_key,
+          amount: cycle.expected_amount,
+          currency: cycle.currency,
+        },
+        created_by: sub.created_by,
+      })
+      .select("id")
+      .maybeSingle();
+    if (actionItem || suggestion) suggestionsCreated += 1;
   }
 
-  log.info("done", { cyclesCreated, tasksCreated });
-  return { ok: true, configured: true, cyclesCreated, tasksCreated };
+  log.info("done", { cyclesCreated, suggestionsCreated, tasksCreated: 0 });
+  return { ok: true, configured: true, cyclesCreated, suggestionsCreated, tasksCreated: 0 };
 }

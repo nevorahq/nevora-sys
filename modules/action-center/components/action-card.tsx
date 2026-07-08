@@ -5,6 +5,7 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { ActionPriorityBadge } from "./action-priority-badge";
 import { RESTORE_LABEL, TYPE_LABELS, SOURCE_LABELS, DELETED_MARKER_LABEL } from "../constants/action-center.constants";
 import type { ActionFeedItem } from "../types/action-center.types";
+import { REVIEW_STATE_LABELS } from "@/modules/review/constants/review.constants";
 
 interface ActionCardProps {
   item: ActionFeedItem;
@@ -59,6 +60,11 @@ export function ActionCard({ item, onOpen, muted, selected, onSelectedChange, on
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-muted">
           <span className="rounded-full bg-surface px-1.5 py-0.5">{SOURCE_LABELS[item.source_type]}</span>
           <span>{TYPE_LABELS[item.type]}</span>
+          {item.review_state && (
+            <span className="rounded-full bg-info-soft px-1.5 py-0.5 text-info">
+              {REVIEW_STATE_LABELS[item.review_state]}
+            </span>
+          )}
           {due && (
             <span className={`inline-flex items-center gap-1 ${due.overdue ? "text-accent-pink" : ""}`}>
               <ClockIcon size={12} /> {due.label}

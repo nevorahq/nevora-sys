@@ -10,6 +10,7 @@ import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/compon
 import { ActionPriorityBadge } from "./action-priority-badge";
 import { TYPE_LABELS, SOURCE_LABELS } from "../constants/action-center.constants";
 import type { ActionDetail } from "../types/action-center.types";
+import { REVIEW_STATE_LABELS } from "@/modules/review/constants/review.constants";
 import { getActionDetail } from "../actions/get-action-detail.action";
 import { resolveActionItem } from "../actions/resolve-action-item";
 import { dismissActionItem } from "../actions/dismiss-action-item";
@@ -117,6 +118,12 @@ export function ActionDetailDrawer({ itemId, members, currentUserId, onClose, on
   }
 
   const canAssign = detail?.availableActions.some((a) => a.kind === "assign") ?? false;
+  const metadata = detail?.item.metadata ?? {};
+  const suggestedAction = typeof metadata.suggested_action === "string" ? metadata.suggested_action : null;
+  const vendorName = typeof metadata.vendor_name === "string" ? metadata.vendor_name : null;
+  const amount = typeof metadata.amount === "number" ? metadata.amount : null;
+  const currency = typeof metadata.currency === "string" ? metadata.currency : "";
+  const hasSuggestionSummary = suggestedAction !== null || vendorName !== null || amount !== null;
 
   return (
     <Modal isOpen={itemId !== null} onClose={onClose} title="Action details">
@@ -133,10 +140,43 @@ export function ActionDetailDrawer({ itemId, members, currentUserId, onClose, on
             <p className="mt-1 text-xs text-text-muted">
               {SOURCE_LABELS[detail.item.source_type]} · {TYPE_LABELS[detail.item.type]} · {detail.item.status}
             </p>
+            {detail.item.review_state && (
+              <p className="mt-2 inline-flex rounded-full bg-info-soft px-2 py-0.5 text-xs font-medium text-info">
+                {REVIEW_STATE_LABELS[detail.item.review_state]}
+              </p>
+            )}
             {detail.item.description && (
               <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-secondary">{detail.item.description}</p>
             )}
           </div>
+
+          {hasSuggestionSummary && (
+            <div className="grid gap-2 rounded-(--neu-radius) bg-surface-sunken p-3 text-sm sm:grid-cols-2">
+              {suggestedAction && (
+                <p>
+                  <span className="text-text-muted">Suggested action</span>
+                  <br />
+                  <span className="font-medium text-text-primary">{suggestedAction.replaceAll("_", " ")}</span>
+                </p>
+              )}
+              {vendorName && (
+                <p>
+                  <span className="text-text-muted">Vendor</span>
+                  <br />
+                  <span className="font-medium text-text-primary">{vendorName}</span>
+                </p>
+              )}
+              {amount !== null && (
+                <p>
+                  <span className="text-text-muted">Amount</span>
+                  <br />
+                  <span className="font-medium text-text-primary">
+                    {amount} {currency}
+                  </span>
+                </p>
+              )}
+            </div>
+          )}
 
           {detail.item.ai_generated && detail.item.ai_reason && (
             <div className="rounded-(--neu-radius) bg-accent-lilac-soft p-3">

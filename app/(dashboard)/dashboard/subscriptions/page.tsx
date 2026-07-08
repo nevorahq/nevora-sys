@@ -69,10 +69,7 @@ export default async function SubscriptionsPage() {
             <SubList subscriptions={subscriptions} dict={dict} cycleBySub={cycleBySub} />
           </>
         ) : (
-          <SubEmptyState
-            title={dict.subscriptions.empty.title}
-            description={dict.subscriptions.empty.description}
-          />
+          <SubEmptyState dict={dict} defaultCurrency={ctx.org.baseCurrency} />
         )}
       </section>
     </>

@@ -39,7 +39,7 @@ export default async function TasksPage({
       </div>
 
       <section className="mt-6">
-        <TodoList todos={todos} dict={dict} />
+        <TodoList todos={todos} dict={dict} projects={projectOptions} />
       </section>
     </>
   );

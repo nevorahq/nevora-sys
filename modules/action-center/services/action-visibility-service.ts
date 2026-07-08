@@ -51,13 +51,44 @@ export function getAvailableActions(
     }
 
     // ── Dangerous execute (confirmation + scoped permission) ──
-    if (item.source_type === "transaction" && item.type === "draft_review" && has("action_center.execute.financial")) {
+    if (typeof item.metadata?.suggestion_id === "string" && item.source_type === "document" && item.type === "draft_review" && has("action_center.execute.financial")) {
+      actions.push({
+        kind: "execute",
+        executeKind: "confirm_financial_suggestion",
+        label: "Confirm suggestion",
+        requiresConfirmation: true,
+        permission: "action_center.execute.financial",
+      });
+      actions.push({
+        kind: "execute",
+        executeKind: "reject_financial_suggestion",
+        label: "Reject suggestion",
+        requiresConfirmation: false,
+        permission: "action_center.execute.financial",
+      });
+    } else if (item.source_type === "transaction" && item.type === "draft_review" && has("action_center.execute.financial")) {
       actions.push({
         kind: "execute",
         executeKind: "confirm_transaction",
         label: "Confirm transaction",
         requiresConfirmation: true,
         permission: "action_center.execute.financial",
+      });
+    }
+    if (typeof item.metadata?.suggestion_id === "string" && item.source_type === "subscription" && has("action_center.execute.subscription")) {
+      actions.push({
+        kind: "execute",
+        executeKind: "confirm_subscription_task_suggestion",
+        label: "Create linked task",
+        requiresConfirmation: true,
+        permission: "action_center.execute.subscription",
+      });
+      actions.push({
+        kind: "execute",
+        executeKind: "reject_financial_suggestion",
+        label: "Reject suggestion",
+        requiresConfirmation: false,
+        permission: "action_center.execute.subscription",
       });
     }
     if (item.source_type === "subscription" && has("action_center.execute.subscription")) {
@@ -109,6 +140,12 @@ export function executePermissionFor(executeKind: string): { permission: string;
       return { permission: "action_center.execute", dangerous: false };
     case "confirm_transaction":
       return { permission: "action_center.execute.financial", dangerous: true };
+    case "confirm_financial_suggestion":
+      return { permission: "action_center.execute.financial", dangerous: true };
+    case "reject_financial_suggestion":
+      return { permission: "action_center.execute", dangerous: false };
+    case "confirm_subscription_task_suggestion":
+      return { permission: "action_center.execute.subscription", dangerous: true };
     case "cancel_subscription":
       return { permission: "action_center.execute.subscription", dangerous: true };
     case "approve_document":

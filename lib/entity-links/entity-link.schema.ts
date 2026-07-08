@@ -32,6 +32,9 @@ export const createEntityLinkSchema = z
     targetType: entityTypeSchema,
     targetId: uuidSchema,
     linkType: z.enum(ENTITY_LINK_TYPES).default("related"),
+    status: z.enum(["suggested", "waiting_confirmation", "confirmed", "rejected", "unlinked"]).default("confirmed"),
+    source: z.enum(["user", "system", "ai"]).default("user"),
+    confidenceScore: z.number().min(0).max(1).nullable().optional(),
     relationDirection: z.enum(RELATION_DIRECTIONS).default("bidirectional"),
     metadata: linkMetadataSchema.optional(),
   })

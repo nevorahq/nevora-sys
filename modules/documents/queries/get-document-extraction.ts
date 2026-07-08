@@ -13,18 +13,20 @@ export interface DocumentExtractionState {
   extraction: DocumentExtraction | null;
   financialData: FinancialDocumentData | null;
   items: FinancialDocumentItem[];
-  draftTransaction: {
+  financialSuggestion: {
     id: string;
-    amount: number;
-    currency: string;
-    merchant_name: string | null;
-    transaction_date: string | null;
-    status: string;
-    note: string | null;
-    account_id: string | null;
+    amount: number | null;
+    currency: string | null;
+    vendor_name: string | null;
+    issue_date: string | null;
+    due_date: string | null;
+    review_state: "detected" | "suggested" | "waiting_confirmation" | "confirmed" | "rejected";
+    confidence_score: number | null;
     category_id: string | null;
     expense_context_id: string | null;
-    visibility: "organization" | "private";
+    created_transaction_id: string | null;
+    rejected_reason: string | null;
+    metadata: Record<string, unknown>;
   } | null;
   /** Active accounts the user can post the draft onto (for the currency picker). */
   accounts: { id: string; name: string; currency: string }[];
@@ -45,7 +47,7 @@ export interface DocumentExtractionState {
 
 /**
  * Load the latest extraction state for a document plus its normalized data and
- * the draft (planned) transaction, if one was created. Org-scoped + RLS.
+ * the review-first financial suggestion, if one was created. Org-scoped + RLS.
  */
 export async function getDocumentExtractionState(
   orgId: string,
@@ -53,7 +55,7 @@ export async function getDocumentExtractionState(
 ): Promise<DocumentExtractionState> {
   const supabase = await createClient();
 
-  const [extractionRes, financialRes, itemsRes, draftRes, accountsRes, categoriesRes, contextsRes] = await Promise.all([
+  const [extractionRes, financialRes, itemsRes, suggestionRes, accountsRes, categoriesRes, contextsRes] = await Promise.all([
     supabase
       .from("document_extractions")
       .select(DOCUMENT_EXTRACTION_COLUMNS)
@@ -75,11 +77,12 @@ export async function getDocumentExtractionState(
       .eq("document_id", documentId)
       .order("created_at", { ascending: true }),
     supabase
-      .from("money_transactions")
-      .select("id, amount, currency, merchant_name, transaction_date, status, note, account_id, category_id, expense_context_id, visibility")
+      .from("financial_suggestions")
+      .select("id, amount, currency, vendor_name, issue_date, due_date, review_state, confidence_score, category_id, expense_context_id, created_transaction_id, rejected_reason, metadata")
       .eq("organization_id", orgId)
-      .eq("source_document_id", documentId)
-      .is("deleted_at", null)
+      .eq("source_type", "document")
+      .eq("source_id", documentId)
+      .eq("suggestion_type", "create_expense")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -106,42 +109,35 @@ export async function getDocumentExtractionState(
   ]);
 
   let classification: DocumentExtractionState["classification"] = null;
-  if (draftRes.data?.id) {
-    const { data } = await supabase
-      .from("transaction_classifications")
-      .select("method, reason, category_confidence, context_confidence")
-      .eq("organization_id", orgId)
-      .eq("transaction_id", draftRes.data.id as string)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    classification = data
-      ? {
-          method: data.method as string,
-          reason: data.reason as string,
-          category_confidence: data.category_confidence == null ? null : Number(data.category_confidence),
-          context_confidence: data.context_confidence == null ? null : Number(data.context_confidence),
-        }
-      : null;
+  if (suggestionRes.data?.metadata && typeof suggestionRes.data.metadata === "object") {
+    const metadata = suggestionRes.data.metadata as Record<string, unknown>;
+    classification = {
+      method: typeof metadata.classification_method === "string" ? metadata.classification_method : "suggestion",
+      reason: typeof metadata.classification_reason === "string" ? metadata.classification_reason : "Review before confirming.",
+      category_confidence: typeof metadata.category_confidence === "number" ? metadata.category_confidence : null,
+      context_confidence: typeof metadata.context_confidence === "number" ? metadata.context_confidence : null,
+    };
   }
 
   return {
     extraction: (extractionRes.data as DocumentExtraction | null) ?? null,
     financialData: (financialRes.data as FinancialDocumentData | null) ?? null,
     items: (itemsRes.data as FinancialDocumentItem[] | null) ?? [],
-    draftTransaction: draftRes.data
+    financialSuggestion: suggestionRes.data
       ? {
-          id: draftRes.data.id as string,
-          amount: Number(draftRes.data.amount),
-          currency: draftRes.data.currency as string,
-          merchant_name: (draftRes.data.merchant_name as string | null) ?? null,
-          transaction_date: (draftRes.data.transaction_date as string | null) ?? null,
-          status: draftRes.data.status as string,
-          note: (draftRes.data.note as string | null) ?? null,
-          account_id: (draftRes.data.account_id as string | null) ?? null,
-          category_id: (draftRes.data.category_id as string | null) ?? null,
-          expense_context_id: (draftRes.data.expense_context_id as string | null) ?? null,
-          visibility: (draftRes.data.visibility as "organization" | "private" | null) ?? "organization",
+          id: suggestionRes.data.id as string,
+          amount: suggestionRes.data.amount == null ? null : Number(suggestionRes.data.amount),
+          currency: (suggestionRes.data.currency as string | null) ?? null,
+          vendor_name: (suggestionRes.data.vendor_name as string | null) ?? null,
+          issue_date: (suggestionRes.data.issue_date as string | null) ?? null,
+          due_date: (suggestionRes.data.due_date as string | null) ?? null,
+          review_state: suggestionRes.data.review_state as "detected" | "suggested" | "waiting_confirmation" | "confirmed" | "rejected",
+          confidence_score: suggestionRes.data.confidence_score == null ? null : Number(suggestionRes.data.confidence_score),
+          category_id: (suggestionRes.data.category_id as string | null) ?? null,
+          expense_context_id: (suggestionRes.data.expense_context_id as string | null) ?? null,
+          created_transaction_id: (suggestionRes.data.created_transaction_id as string | null) ?? null,
+          rejected_reason: (suggestionRes.data.rejected_reason as string | null) ?? null,
+          metadata: (suggestionRes.data.metadata as Record<string, unknown> | null) ?? {},
         }
       : null,
     accounts: (accountsRes.data as { id: string; name: string; currency: string }[] | null) ?? [],

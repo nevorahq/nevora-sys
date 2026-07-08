@@ -59,9 +59,12 @@ export interface UsageLimit {
     | "storage"
     | "tasks"
     | "documents"
+    | "documents_processed"
     | "money_transactions"
     | "subscriptions"
     | "ai_requests"
+    | "ai_suggestions"
+    | "automation_runs"
     | "api_requests";
   label: string;
   used: number;

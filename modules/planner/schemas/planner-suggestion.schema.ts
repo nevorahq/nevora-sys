@@ -57,11 +57,28 @@ export type RejectPlannerSuggestionInput = z.infer<typeof rejectPlannerSuggestio
 
 const ISO_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
 
+/**
+ * Optional relation to draw once the suggestion's entity exists (Phase B / B3:
+ * "Будет создана связь: document → task"). The entity named here is the SOURCE of
+ * the link; the newly created entity is the target.
+ *
+ * entityType stays a plain string, like linkEntitiesPayloadSchema's: createEntityLink
+ * verifies the type against the entity-link registry and fails closed, so this
+ * schema does not need to duplicate that list.
+ */
+export const suggestionLinkTargetSchema = z.object({
+  entityType: z.string().trim().min(1).max(40),
+  entityId: uuidSchema,
+  linkType: z.enum(ENTITY_LINK_TYPES).default("related_to"),
+});
+export type SuggestionLinkTarget = z.infer<typeof suggestionLinkTargetSchema>;
+
 export const createTaskPayloadSchema = z.object({
   title: z.string().trim().min(1).max(PLANNER_TITLE_MAX_LENGTH),
   description: z.string().trim().max(PLANNER_DESCRIPTION_MAX_LENGTH).optional().default(""),
   dueDate: ISO_DATE.nullish(),
   priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
+  linkTo: suggestionLinkTargetSchema.optional(),
 });
 export type CreateTaskPayload = z.infer<typeof createTaskPayloadSchema>;
 

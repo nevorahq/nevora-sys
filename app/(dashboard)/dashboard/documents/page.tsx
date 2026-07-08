@@ -5,6 +5,9 @@ import { getDocuments, getDocumentSummary } from "@/modules/documents";
 import type { Document } from "@/modules/documents";
 import { DOCUMENT_TYPE_LABELS, DOCUMENT_STATUS_LABELS } from "@/modules/documents";
 import { DocumentCreateButton } from "@/features/documents/components/document-create-button";
+import { FirstActionCta } from "@/modules/onboarding/components/first-action-cta";
+import { EmptyState } from "@/shared/ui/empty-state";
+import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 import { createClient } from "@/lib/supabase/server";
 
@@ -20,7 +23,7 @@ export default async function DocumentsPage({
   const activeFilter: DocumentFilter = FILTER_STATUSES.includes(params.status as (typeof FILTER_STATUSES)[number])
     ? (params.status as (typeof FILTER_STATUSES)[number])
     : "all";
-  const { org } = await requireOrg();
+  const [{ org }, { dict }] = await Promise.all([requireOrg(), getDictionary()]);
 
   const [summary, recentDocs] = await Promise.all([
     getDocumentSummary(org.id),
@@ -97,14 +100,23 @@ export default async function DocumentsPage({
         <DocumentSection status={activeFilter} docs={recentDocs} creatorNames={creatorNames} />
       )}
 
-      {/* Empty state */}
+      {/* Phase B / B6: an activation prompt only on a true absence of documents.
+          A filter that matched nothing is not an onboarding moment. */}
       {recentDocs.length === 0 && (
-        <div className="mt-16 flex flex-col items-center gap-3 text-center">
-          <FileTextIcon size={40} className="text-text-muted opacity-40" />
-          <p className="text-sm font-medium text-text-primary">No documents yet</p>
-          <p className="text-xs text-text-muted">
-            Create notes, contracts, reports and SOPs for your team.
-          </p>
+        <div className="mt-10">
+          {summary.total === 0 ? (
+            <EmptyState
+              icon={<FileTextIcon size={24} className="text-text-muted" strokeWidth={1.5} />}
+              title={dict.firstRun.empty.documentsTitle}
+              description={dict.firstRun.empty.documentsBody}
+              actions={<FirstActionCta action="upload_document" label={dict.firstRun.uploadDocument} />}
+            />
+          ) : (
+            <EmptyState
+              icon={<FileTextIcon size={24} className="text-text-muted" strokeWidth={1.5} />}
+              title={dict.common.noMatches}
+            />
+          )}
         </div>
       )}
     </>

@@ -144,6 +144,35 @@ async function countRows(
   return count ?? 0;
 }
 
+async function usagePeriodWindowForOrganization(
+  organizationId: string,
+  period: LimitPeriod,
+): Promise<{ start: Date | null; end: Date | null }> {
+  if (period !== "monthly") return currentPeriodWindow(period);
+
+  const subscription = await getOrganizationSubscription(organizationId);
+  const start = subscription?.current_period_start
+    ? new Date(subscription.current_period_start)
+    : null;
+  const end = subscription?.current_period_end
+    ? new Date(subscription.current_period_end)
+    : null;
+
+  if (
+    subscription &&
+    ["active", "trialing", "past_due"].includes(subscription.status) &&
+    start &&
+    end &&
+    !Number.isNaN(start.getTime()) &&
+    !Number.isNaN(end.getTime()) &&
+    start < end
+  ) {
+    return { start, end };
+  }
+
+  return currentPeriodWindow("monthly");
+}
+
 export async function getUsage(
   organizationId: string,
   key: BillingLimitKey,
@@ -205,18 +234,60 @@ export async function getUsage(
     return { key, value };
   }
 
-  if (key === "ai_requests.monthly") {
-    const { start } = currentPeriodWindow("monthly");
-    const { count } = await supabase
+  if (key === "documents_processed.monthly") {
+    const window = await usagePeriodWindowForOrganization(organizationId, "monthly");
+    let query = supabase
       .from("ai_requests")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", organizationId)
-      .gte("created_at", start?.toISOString() ?? new Date(0).toISOString());
+      .eq("action_type", "document_extraction")
+      .eq("status", "completed");
+    if (window.start) query = query.gte("created_at", window.start.toISOString()) as typeof query;
+    if (window.end) query = query.lt("created_at", window.end.toISOString()) as typeof query;
+    const { count } = await query;
+    return { key, value: count ?? 0 };
+  }
+
+  if (key === "ai_suggestions.monthly") {
+    const window = await usagePeriodWindowForOrganization(organizationId, "monthly");
+    let query = supabase
+      .from("ai_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .in("action_type", ["summary", "insights", "recommendations"]);
+    if (window.start) query = query.gte("created_at", window.start.toISOString()) as typeof query;
+    if (window.end) query = query.lt("created_at", window.end.toISOString()) as typeof query;
+    const { count } = await query;
+    return { key, value: count ?? 0 };
+  }
+
+  if (key === "ai_requests.monthly") {
+    const window = await usagePeriodWindowForOrganization(organizationId, "monthly");
+    let query = supabase
+      .from("ai_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId);
+    if (window.start) query = query.gte("created_at", window.start.toISOString()) as typeof query;
+    if (window.end) query = query.lt("created_at", window.end.toISOString()) as typeof query;
+    const { count } = await query;
+    return { key, value: count ?? 0 };
+  }
+
+  if (key === "automation_runs.monthly") {
+    const window = await usagePeriodWindowForOrganization(organizationId, "monthly");
+    let query = supabase
+      .from("automation_audit_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .in("status", ["executed", "failed"]);
+    if (window.start) query = query.gte("created_at", window.start.toISOString()) as typeof query;
+    if (window.end) query = query.lt("created_at", window.end.toISOString()) as typeof query;
+    const { count } = await query;
     return { key, value: count ?? 0 };
   }
 
   const period = key.endsWith(".minute") ? "minute" : "monthly";
-  const { start } = currentPeriodWindow(period);
+  const { start } = await usagePeriodWindowForOrganization(organizationId, period);
   const { data } = await supabase
     .from("organization_usage_counters")
     .select("value")
@@ -258,6 +329,12 @@ export async function assertPlanLimit(
   if (!limit || limit.value === null) return;
 
   if (usage.value + incrementBy > limit.value) {
+    await emitLimitReachedEvent(organizationId, {
+      key,
+      currentUsage: usage.value,
+      limit: limit.value,
+      planCode: limit.planCode,
+    });
     throw new PlanLimitExceededError({
       key,
       currentUsage: usage.value,
@@ -268,13 +345,41 @@ export async function assertPlanLimit(
   }
 }
 
+async function emitLimitReachedEvent(
+  organizationId: string,
+  payload: { key: string; currentUsage: number; limit: number | null; planCode: string },
+): Promise<void> {
+  try {
+    const supabase = await createClient();
+    await supabase.rpc("emit_domain_event", {
+      p_organization_id: organizationId,
+      p_event_name: "limit_reached",
+      p_aggregate_type: "organization",
+      p_aggregate_id: organizationId,
+      p_payload: {
+        key: payload.key,
+        current_usage: payload.currentUsage,
+        limit: payload.limit,
+        plan_code: payload.planCode,
+      },
+      p_workspace_id: null,
+    });
+  } catch (error) {
+    logger.warn("billing.limit_reached_event.failed", {
+      organizationId,
+      key: payload.key,
+      error: error instanceof Error ? error.message : "unknown",
+    });
+  }
+}
+
 export async function incrementUsage(
   organizationId: string,
   key: BillingLimitKey,
   incrementBy = 1,
 ): Promise<number> {
   const period = defaultPeriodForLimit(key);
-  const { start, end } = currentPeriodWindow(period);
+  const { start, end } = await usagePeriodWindowForOrganization(organizationId, period);
   const supabase = await createClient();
 
   const { data, error } = await supabase.rpc("increment_organization_usage_counter", {
@@ -293,8 +398,11 @@ export async function incrementUsage(
 const USAGE_KEY_LABELS: Record<string, string> = {
   "tasks.count": "task",
   "documents.count": "document",
+  "documents_processed.monthly": "processed document",
   "money_transactions.count": "transaction",
   "subscriptions.count": "subscription",
+  "ai_suggestions.monthly": "AI suggestion",
+  "automation_runs.monthly": "automation run",
   "developer_api_keys.count": "API key",
   "developer_webhooks.count": "webhook",
 };
@@ -392,7 +500,7 @@ export async function decrementUsage(
   decrementBy = 1,
 ): Promise<void> {
   const period = defaultPeriodForLimit(key);
-  const { start } = currentPeriodWindow(period);
+  const { start } = await usagePeriodWindowForOrganization(organizationId, period);
   const supabase = await createClient();
   const { data } = await supabase
     .from("organization_usage_counters")
@@ -418,10 +526,13 @@ export async function recalculateOrganizationUsage(
     "members.count",
     "tasks.count",
     "documents.count",
+    "documents_processed.monthly",
     "subscriptions.count",
     "money_transactions.count",
     "storage.bytes",
+    "ai_suggestions.monthly",
     "ai_requests.monthly",
+    "automation_runs.monthly",
     "api_requests.monthly",
     "developer_api_keys.count",
     "developer_webhooks.count",

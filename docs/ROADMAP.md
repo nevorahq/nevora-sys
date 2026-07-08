@@ -1,14 +1,21 @@
 # Roadmap — Nevora Business OS
 
 > Current source-of-truth roadmap for the repository. Status reflects the working
-> tree on **2026-07-03**: migrations are present through
-> `079_financial_task_context.sql`, local `typecheck` passes after `next typegen`,
-> and the product focus remains the connected Business OS core rather than CRM or
-> Booking expansion.
+> tree on **2026-07-08 (Phase A)**: migrations are present through
+> `093_analytics_billing_writability.sql` (**baseline `000`–`093`, next free
+> `094`** — all applied on remote), local `typecheck` passes after `next typegen`,
+> and the product focus is the **AI-assisted operating desk, Action Center first**
+> — not CRM or Booking expansion.
 >
 > Earlier internal notes numbered phases differently (e.g. "Phase 2 — relations",
 > "Phase 3 — Action Center"). Those map onto the phases below; this document keeps
 > the stabilized execution order.
+>
+> **Superseded statements elsewhere.** Any doc claiming the migration head is
+> `067`, `077`, `079`, or `086`, or that CRM/Booking are merely "hidden from the
+> sidebar", is stale. Canonical: [`OPERATIONS_MANUAL.md`](./OPERATIONS_MANUAL.md),
+> [`release/release-checklist.md`](./release/release-checklist.md),
+> [`MODULE_STATUS.md`](./MODULE_STATUS.md).
 
 ## Phase 0 — Stabilization & Source of Truth — *mostly done / keep synced*
 
@@ -18,14 +25,43 @@ CI into one consistent, honest state. No new business features.
 - README synced with the real project state.
 - `typecheck` npm script added; lint / typecheck / build verified green.
 - CI already runs install → typegen → typecheck → lint → test → build.
-- Current migration range is `000` → `079`; future docs must not refer to `067`
-  or `077` as the repository head unless explicitly describing an older release
-  checkpoint.
+- Migration baseline is **`000` → `093`, next free `094`**. Do not describe `067`,
+  `077`, `079`, or `086` as the repository head. Verify against the tree, not a doc:
+  `ls supabase/migrations | tail -1`.
 
 Open follow-ups:
 - Keep release docs aligned with the latest migration head when a new migration
   lands.
 - Replace placeholder landing contact channels before public launch.
+
+## Phase A — Product Focus & Release Closure — *done (2026-07-08)*
+
+Lock the active product scope and close release blockers before public release.
+No new product features.
+
+- **Action Center is the primary screen.** `/dashboard` now renders the Action
+  Center; the metrics roll-up moved to `/dashboard/overview`; `/dashboard/actions`
+  307s to `/dashboard` for old bookmarks and persisted `notifications.target_url`.
+- **Paused modules hard-gated at three surfaces.** CRM and Booking pages, all 19
+  Server Actions, and all 7 booking route handlers now reject server-side. The
+  public `/booking/*` surface 404s too. Hiding a nav link was never a gate: a
+  `"use server"` export stays reachable over POST even when its page 404s.
+- **Product copy already matched** the active scope (Phase-8 landing alignment);
+  Phase A added tests so it cannot drift back.
+- **Invariants encoded as tests** — `test/release-invariants.test.ts` and
+  `shared/config/paused-modules.coverage.test.ts` assert confirm-first finance,
+  mark-as-paid idempotency, "read is not resolved", and paused-module coverage by
+  scanning the source tree.
+- **Release documentation** — `OPERATIONS_MANUAL.md`, `contracts/`,
+  8 `runbooks/`, and canonical `release/{release-checklist,smoke-test-checklist,rollback-plan}.md`.
+- **No schema change.** Baseline stays `000`–`093`.
+
+Remaining (not blockers):
+- Restructure the Action Center feed sections around Requires Confirmation /
+  Due Soon / Overdue / Money Attention / Inbox. Today's sections (Due Soon /
+  Waiting for Action / Missing Information / AI Suggestions / Recently Resolved)
+  cover the same signals under different names.
+- Move `syncActionItems()` generation fully to cron (it runs best-effort on load).
 
 ## Phase 1 — Core Foundation — *done*
 

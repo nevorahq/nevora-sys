@@ -3,7 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { canDo, type CurrentContext } from "@/lib/context/current-context";
 import { emitDomainEvent } from "@/lib/events";
 import type { EditPlannerSuggestionInput } from "../schemas/planner-suggestion.schema";
-import { PLANNER_SUGGESTION_COLUMNS, type PlannerSuggestion } from "../types/planner.types";
+import {
+  PLANNER_SUGGESTION_COLUMNS,
+  PLANNER_SUGGESTION_OPEN_STATUSES,
+  type PlannerSuggestion,
+} from "../types/planner.types";
 
 export type EditResult =
   | { ok: true; suggestion: PlannerSuggestion }
@@ -48,17 +52,24 @@ export async function editPlannerSuggestion(
   if (input.suggestionType !== undefined) patch.suggestion_type = input.suggestionType;
   if (input.proposedPayload !== undefined) patch.proposed_payload = input.proposedPayload;
 
+  // Compare-and-swap on the open statuses: an edit must not land on a suggestion
+  // an in-flight accept has already claimed ('processing'), or the accept would
+  // create the entity from a payload the user changed after it was read.
   const { data: updated, error: updateError } = await supabase
     .from("planner_suggestions")
     .update(patch)
     .eq("id", input.suggestionId)
     .eq("organization_id", ctx.org.id)
+    .in("status", PLANNER_SUGGESTION_OPEN_STATUSES)
     .select(PLANNER_SUGGESTION_COLUMNS)
-    .single();
+    .maybeSingle();
 
-  if (updateError || !updated) {
-    console.error("[editPlannerSuggestion] update failed:", updateError?.message);
+  if (updateError) {
+    console.error("[editPlannerSuggestion] update failed:", updateError.message);
     return { ok: false, error: "Failed to update suggestion" };
+  }
+  if (!updated) {
+    return { ok: false, error: "This suggestion is no longer editable" };
   }
 
   await emitDomainEvent({

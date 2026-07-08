@@ -1,6 +1,12 @@
 # Phase 7.11 — Rollback Plan
 
-**Status:** Draft 1
+> ⚠️ **SUPERSEDED (2026-07-08).** Use [`rollback-plan.md`](./rollback-plan.md)
+> (strategy) and [`../runbooks/rollback.md`](../runbooks/rollback.md) (procedure).
+>
+> Kept for history. Scoped to migrations `076`/`077`; the current baseline is
+> `000`–`093`.
+
+**Status:** Superseded by `rollback-plan.md`
 **Date:** 2026-07-02
 **Scope:** how to safely undo the Phase 7 release (app + migrations `076`/`077`).
 

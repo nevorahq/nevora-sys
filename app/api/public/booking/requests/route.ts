@@ -3,6 +3,7 @@ import { createBookingRequestSchema } from "@/modules/booking";
 import { createBookingRequest } from "@/modules/booking";
 import { getClientIp } from "@/lib/http/client-ip";
 import { checkRateLimit, tooManyRequestsResponse } from "@/lib/rate-limit/rate-limit";
+import { pausedModuleGuard } from "@/shared/config/paused-modules";
 
 /**
  * POST /api/public/booking/requests
@@ -18,6 +19,11 @@ import { checkRateLimit, tooManyRequestsResponse } from "@/lib/rate-limit/rate-l
  *   - Сервер резолвит organization_id / user_id / host_id из slugs
  */
 export async function POST(request: NextRequest) {
+  // Booking is paused for the private beta: the route handler must 404 too,
+  // otherwise the module stays reachable as a public API even with no UI.
+  const paused = pausedModuleGuard("booking");
+  if (paused) return paused;
+
   const ip = getClientIp(request);
 
   // Грубый IP-лимит до парсинга тела — защита от шквала записей.

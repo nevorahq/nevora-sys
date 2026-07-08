@@ -1,28 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const emitDomainEvent = vi.fn();
-const createEntityLink = vi.fn();
-const createDraftTransactionFromDocument = vi.fn();
 const createActionItemForDocument = vi.fn();
+const createDocumentSuggestionWithClassification = vi.fn();
 const normalizeFinancialDocument = vi.fn();
 const routeExtraction = vi.fn();
-const classifyExpense = vi.fn();
-const recordClassificationDecision = vi.fn();
+const detectFinancialObligation = vi.fn();
+const assertPlanEntitlement = vi.fn();
+const assertPlanLimit = vi.fn();
 
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
-vi.mock("@/lib/entity-links", () => ({ createEntityLink }));
-vi.mock("@/modules/moneyflow/services/create-draft-transaction-from-document", () => ({
-  createDraftTransactionFromDocument,
-}));
 vi.mock("@/modules/action-center/services/create-action-item-for-document", () => ({
   createActionItemForDocument,
 }));
+vi.mock("@/modules/review/services/financial-suggestion.service", () => ({
+  createDocumentSuggestionWithClassification,
+}));
 vi.mock("@/modules/ai/services/normalize-financial-document", () => ({ normalizeFinancialDocument }));
-vi.mock("@/modules/moneyflow/services/expense-classifier", () => ({
-  classifyExpense,
-  recordClassificationDecision,
+vi.mock("@/modules/billing", () => ({
+  assertPlanEntitlement,
+  assertPlanLimit,
 }));
 vi.mock("./document-extraction-router", () => ({ routeExtraction }));
+vi.mock("./detect-financial-obligation", () => ({ detectFinancialObligation }));
 
 const { runDocumentExtraction } = await import("./document-extraction-service");
 
@@ -110,23 +110,20 @@ beforeEach(() => {
   vi.clearAllMocks();
   calls = [];
   emitDomainEvent.mockResolvedValue(undefined);
-  createEntityLink.mockResolvedValue({ ok: true });
   createActionItemForDocument.mockResolvedValue(undefined);
-  createDraftTransactionFromDocument.mockResolvedValue({ ok: true, transactionId: "tx-1", duplicateOfId: null });
-  classifyExpense.mockResolvedValue({
-    normalizedMerchant: "acme",
-    categoryId: "category-1",
-    expenseContextId: "context-1",
-    visibility: "organization",
-    ownerUserId: null,
-    categoryConfidence: 0.8,
-    contextConfidence: 0.55,
-    method: "system_rule",
-    reason: "Matched a built-in rule.",
-    matchedSignals: ["merchant"],
-    classifierVersion: "smart-categories-v1",
+  createDocumentSuggestionWithClassification.mockResolvedValue({
+    ok: true,
+    data: { suggestion: { id: "sug-1" } },
   });
-  recordClassificationDecision.mockResolvedValue(undefined);
+  assertPlanEntitlement.mockResolvedValue(undefined);
+  assertPlanLimit.mockResolvedValue(undefined);
+  detectFinancialObligation.mockResolvedValue({
+    detected: false,
+    autoCreated: false,
+    taskId: null,
+    band: "none",
+    reason: "No financial obligation detected.",
+  });
   routeExtraction.mockResolvedValue({
     ok: true,
     provider: "pdf_parse",
@@ -137,7 +134,7 @@ beforeEach(() => {
 });
 
 describe("runDocumentExtraction — persistence failures", () => {
-  it("fails the run when the header upsert fails — never marks completed, never drafts a transaction", async () => {
+  it("fails the run when the header upsert fails — never marks completed, never creates a suggestion", async () => {
     const supabase = makeSupabase(infra({ header: { error: { message: "header boom" } } }));
 
     const result = await runDocumentExtraction(supabase, ctx, DOC_ID, EXT_ID);
@@ -145,42 +142,41 @@ describe("runDocumentExtraction — persistence failures", () => {
     expect(result.ok).toBe(false);
     expect(result.status).toBe("failed");
     expect(result.errorCode).toBe("unknown_error");
-    expect(createDraftTransactionFromDocument).not.toHaveBeenCalled();
+    expect(createDocumentSuggestionWithClassification).not.toHaveBeenCalled();
   });
 
-  it("downgrades to needs_review when line items fail to persist, but still drafts the transaction", async () => {
+  it("downgrades to needs_review when line items fail to persist, but still creates the suggestion", async () => {
     const supabase = makeSupabase(infra({ items: { error: { message: "items boom" } } }));
 
     const result = await runDocumentExtraction(supabase, ctx, DOC_ID, EXT_ID);
 
     expect(result.ok).toBe(true);
     expect(result.status).toBe("needs_review");
-    expect(createDraftTransactionFromDocument).toHaveBeenCalledTimes(1);
+    expect(createDocumentSuggestionWithClassification).toHaveBeenCalledTimes(1);
   });
 
-  it("completes a fully-persisted high-confidence extraction and drafts the transaction", async () => {
+  it("completes a fully-persisted high-confidence extraction and creates a review suggestion only", async () => {
     const supabase = makeSupabase(infra());
 
     const result = await runDocumentExtraction(supabase, ctx, DOC_ID, EXT_ID);
 
     expect(result.ok).toBe(true);
     expect(result.status).toBe("completed");
-    expect(result.transactionId).toBe("tx-1");
-    expect(createDraftTransactionFromDocument).toHaveBeenCalledTimes(1);
-    expect(createDraftTransactionFromDocument).toHaveBeenCalledWith(
+    expect(result.transactionId).toBeNull();
+    expect(result.suggestionId).toBe("sug-1");
+    expect(createDocumentSuggestionWithClassification).toHaveBeenCalledTimes(1);
+    expect(createDocumentSuggestionWithClassification).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
       expect.objectContaining({
-        categoryId: "category-1",
-        expenseContextId: "context-1",
-        visibility: "organization",
+        documentId: DOC_ID,
+        extractionId: EXT_ID,
+        vendorName: "Acme",
+        amount: 99.5,
+        currency: "EUR",
+        issueDate: "2026-06-01",
+        documentType: "invoice",
       }),
-    );
-    expect(recordClassificationDecision).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      "tx-1",
-      expect.objectContaining({ method: "system_rule" }),
     );
   });
 });

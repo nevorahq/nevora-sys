@@ -6,8 +6,13 @@ import { requireOrg } from "@/lib/auth/require-org";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
 import { ROUTES } from "@/shared/config/routes";
+import { assertPausedModuleAction } from "@/shared/config/paused-modules";
 
 export async function deleteClientAction(clientId: string): Promise<{ error?: string }> {
+  // CRM is paused for the private beta. A "use server" export stays
+  // reachable over POST even while its page 404s — gate the mutation itself.
+  assertPausedModuleAction("crm");
+
   const { user, org } = await requireOrg();
 
   const parsed = uuidSchema.safeParse(clientId);

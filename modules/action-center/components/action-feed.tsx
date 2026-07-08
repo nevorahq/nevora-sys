@@ -8,22 +8,35 @@ import { Button } from "@/shared/ui/button";
 import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import { useNotificationIndicator } from "@/modules/notifications/components/notification-provider";
 import { ActionCard } from "./action-card";
+import { ActionEmptyState } from "./action-empty-state";
 import { ActionFilters, type FilterState } from "./action-filters";
 import { ActionDetailDrawer } from "./action-detail-drawer";
-import { SECTION_LABELS, SECTION_ORDER } from "../constants/action-center.constants";
+import { PHASE_B_SECTION_LABELS } from "../constants/action-center.constants";
+import { groupPhaseBSections } from "../services/phase-b-sections";
 import type { ActionFeed as ActionFeedData, ActionFilters as ActionFiltersInput } from "../types/action-center.types";
-import type { ActionItemPriority, ActionItemStatus, ActionSourceType } from "../types/action-item.types";
+import {
+  ACTIVE_PHASE_B_SECTIONS,
+  type ActionItemPriority,
+  type ActionItemStatus,
+  type ActionSourceType,
+} from "../types/action-item.types";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import { getActionFeed } from "../actions/get-feed.action";
 import { bulkDismissActionItems } from "../actions/bulk-dismiss-action-items";
+import { restoreActionItem } from "../actions/restore-action-item";
 
 interface ActionFeedProps {
   initialFeed: ActionFeedData;
   members: { id: string; name: string }[];
   currentUserId: string;
+  firstRunDict: Dictionary["firstRun"];
+  /** False while the wizard is on screen — it already shows the first actions. */
+  showFirstActions: boolean;
+  /** Shown when a filter hides everything, which is not an activation moment. */
+  noMatchesLabel: string;
 }
 
 const EMPTY_FILTERS: FilterState = { search: "", view: "attention", priority: "", sourceType: "" };
-const VISIBLE_SECTION_ORDER = SECTION_ORDER.filter((section) => section !== "recently_resolved");
 
 function toInput(f: FilterState, cursor?: string): ActionFiltersInput {
   return {
@@ -36,7 +49,19 @@ function toInput(f: FilterState, cursor?: string): ActionFiltersInput {
   };
 }
 
-export function ActionFeed({ initialFeed, members, currentUserId }: ActionFeedProps) {
+/** True when the user has not narrowed the feed — an empty feed then means "no work". */
+function isUnfiltered(f: FilterState): boolean {
+  return !f.search.trim() && f.view === "attention" && !f.priority && !f.sourceType;
+}
+
+export function ActionFeed({
+  initialFeed,
+  members,
+  currentUserId,
+  firstRunDict,
+  showFirstActions,
+  noMatchesLabel,
+}: ActionFeedProps) {
   const router = useRouter();
   const { refreshCounters } = useNotificationIndicator();
   const [feed, setFeed] = useState<ActionFeedData>(initialFeed);
@@ -44,16 +69,19 @@ export function ActionFeed({ initialFeed, members, currentUserId }: ActionFeedPr
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const mounted = useRef(false);
   const writeGate = useAccessGate("write");
 
-  const selectableIds = useMemo(() => [
-    ...feed.sections.due_soon,
-    ...feed.sections.waiting_for_action,
-    ...feed.sections.missing_information,
-    ...feed.sections.ai_suggestions,
-  ].map((item) => item.id), [feed]);
+  // Phase B / B5: regroup the fetched page into the three daily-screen sections.
+  // Purely presentational — the query, its filters and its cursor are untouched.
+  const phaseB = useMemo(() => groupPhaseBSections(feed.sections), [feed]);
+
+  const selectableIds = useMemo(
+    () => ACTIVE_PHASE_B_SECTIONS.flatMap((section) => phaseB[section]).map((item) => item.id),
+    [phaseB],
+  );
 
   const selectedVisibleIds = useMemo(() => selectableIds.filter((id) => selectedIds.has(id)), [selectableIds, selectedIds]);
   const allVisibleSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id));
@@ -137,11 +165,23 @@ export function ActionFeed({ initialFeed, members, currentUserId }: ActionFeedPr
     });
   }
 
-  const totalActive =
-    feed.sections.due_soon.length +
-    feed.sections.waiting_for_action.length +
-    feed.sections.missing_information.length +
-    feed.sections.ai_suggestions.length;
+  function restore(id: string) {
+    if (writeGate.blocked) return;
+    setRestoringId(id);
+    startTransition(async () => {
+      const result = await restoreActionItem({ actionItemId: id });
+      setRestoringId(null);
+      if (!result.ok) {
+        setBulkError(result.error);
+        return;
+      }
+      setFeed(await getActionFeed(toInput(filters)));
+      refreshCounters();
+      router.refresh();
+    });
+  }
+
+  const totalActive = selectableIds.length;
 
   return (
     <div className="space-y-5">
@@ -179,13 +219,13 @@ export function ActionFeed({ initialFeed, members, currentUserId }: ActionFeedPr
 
           {bulkError && <p className="text-sm text-danger" role="alert">{bulkError}</p>}
 
-          {VISIBLE_SECTION_ORDER.map((section) => {
-            const items = feed.sections[section];
+          {ACTIVE_PHASE_B_SECTIONS.map((section) => {
+            const items = phaseB[section];
             if (items.length === 0) return null;
             return (
               <section key={section}>
                 <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text-primary">
-                  {SECTION_LABELS[section]}
+                  {PHASE_B_SECTION_LABELS[section]}
                   <span className="text-xs font-normal text-text-muted">({items.length})</span>
                 </h2>
                 <div className="space-y-2">
@@ -217,6 +257,42 @@ export function ActionFeed({ initialFeed, members, currentUserId }: ActionFeedPr
             </div>
           )}
         </div>
+      )}
+
+      {/* Phase B / B6: an empty feed used to render nothing at all — the primary
+          operating screen looked broken. An activation prompt only when the user
+          has not filtered anything away. */}
+      {totalActive === 0 &&
+        (isUnfiltered(filters) ? (
+          <ActionEmptyState dict={firstRunDict} showFirstActions={showFirstActions} />
+        ) : (
+          <p className="rounded-(--neu-radius) bg-surface-sunken px-4 py-10 text-center text-sm text-text-muted">
+            {noMatchesLabel}
+          </p>
+        ))}
+
+      {/* History, not work: rendered outside the active block so it still shows on
+          an otherwise empty screen — "what just happened" is the proof the loop
+          closed. Never selectable; the only control is Restore. */}
+      {phaseB.recently_updated.length > 0 && (
+        <section>
+          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text-primary">
+            {PHASE_B_SECTION_LABELS.recently_updated}
+            <span className="text-xs font-normal text-text-muted">({phaseB.recently_updated.length})</span>
+          </h2>
+          <div className="space-y-2">
+            {phaseB.recently_updated.map((item) => (
+              <ActionCard
+                key={item.id}
+                item={item}
+                onOpen={setSelectedId}
+                muted
+                onRestore={writeGate.blocked ? undefined : restore}
+                restoring={restoringId === item.id}
+              />
+            ))}
+          </div>
+        </section>
       )}
 
       <ActionDetailDrawer

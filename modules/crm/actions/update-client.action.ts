@@ -8,11 +8,16 @@ import { updateClientSchema } from "../schemas/crm.schemas";
 import { uuidSchema } from "@/lib/validators/common";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
+import { assertPausedModuleAction } from "@/shared/config/paused-modules";
 
 export async function updateClientAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
+  // CRM is paused for the private beta. A "use server" export stays
+  // reachable over POST even while its page 404s — gate the mutation itself.
+  assertPausedModuleAction("crm");
+
   const { user, org } = await requireOrg();
 
   const clientId = formData.get("clientId") as string;

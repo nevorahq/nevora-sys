@@ -67,6 +67,17 @@ export const ACTION_SECTIONS = [
 ] as const;
 export type ActionSection = (typeof ACTION_SECTIONS)[number];
 
+/**
+ * Phase B / B5 UI sections. A re-grouping of the taxonomy above into the three
+ * questions a daily screen must answer: what needs a decision, what needs doing,
+ * what just happened. See services/phase-b-sections.ts for the mapping.
+ */
+export const PHASE_B_SECTIONS = ["needs_your_review", "next_actions", "recently_updated"] as const;
+export type PhaseBSection = (typeof PHASE_B_SECTIONS)[number];
+
+/** Sections holding live work. `recently_updated` is history and is never selectable. */
+export const ACTIVE_PHASE_B_SECTIONS = ["needs_your_review", "next_actions"] as const;
+
 /** type → секция (recently_resolved определяется по статусу, не по type). */
 export const TYPE_SECTION: Record<ActionItemType, Exclude<ActionSection, "recently_resolved">> = {
   due_soon: "due_soon",
@@ -96,6 +107,11 @@ export interface ActionItem {
   priority_score: number;
   source_type: ActionSourceType;
   source_id: string;
+  source_entity_type: string | null;
+  source_entity_id: string | null;
+  review_state: "detected" | "suggested" | "waiting_confirmation" | "confirmed" | "rejected" | null;
+  suggestion_id: string | null;
+  relation_id: string | null;
   source_event_id: string | null;
   primary_entity_type: string | null;
   primary_entity_id: string | null;
@@ -115,7 +131,7 @@ export interface ActionItem {
 
 /** Колонки для select (без select("*")). */
 export const ACTION_ITEM_COLUMNS =
-  "id, organization_id, workspace_id, title, description, type, status, priority, priority_score, source_type, source_id, source_event_id, primary_entity_type, primary_entity_id, due_at, snoozed_until, resolved_at, dismissed_at, assigned_to, created_by, ai_generated, ai_confidence, ai_reason, metadata, created_at, updated_at" as const;
+  "id, organization_id, workspace_id, title, description, type, status, priority, priority_score, source_type, source_id, source_entity_type, source_entity_id, review_state, suggestion_id, relation_id, source_event_id, primary_entity_type, primary_entity_id, due_at, snoozed_until, resolved_at, dismissed_at, assigned_to, created_by, ai_generated, ai_confidence, ai_reason, metadata, created_at, updated_at" as const;
 
 export interface ActionItemLink {
   id: string;

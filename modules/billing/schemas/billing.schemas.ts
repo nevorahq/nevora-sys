@@ -4,6 +4,8 @@ import { PLAN_SLUGS, BILLING_CYCLES, USAGE_METRICS } from "../constants/billing.
 export const changePlanSchema = z.object({
   planSlug:     z.enum(PLAN_SLUGS),
   billingCycle: z.enum(BILLING_CYCLES),
+  source: z.enum(["plan_card", "upgrade_prompt"]).optional(),
+  metricKey: z.string().trim().min(1).max(120).optional(),
 });
 export type ChangePlanInput = z.infer<typeof changePlanSchema>;
 

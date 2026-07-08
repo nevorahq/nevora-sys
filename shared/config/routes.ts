@@ -12,6 +12,7 @@
 export const ROUTES = {
   // Platform
   home: "/",
+  pricing: "/pricing",
   login: "/login",
   register: "/register",
 
@@ -19,9 +20,22 @@ export const ROUTES = {
   onboarding: "/onboarding",
 
   // Dashboard
+  //
+  // `/dashboard` IS the Action Center — the primary operating screen, answering
+  // "what needs my attention today?". The generic metrics overview is secondary
+  // and lives at `/dashboard/overview`.
   dashboard: "/dashboard",
+  /**
+   * Alias for the Action Center surface. Kept as its own key because ~15 call
+   * sites revalidate it *semantically* ("an action item changed"), not because
+   * they mean "the dashboard". Points at `/dashboard` since the two merged.
+   * The legacy `/dashboard/actions` path still resolves — it 307s here, so old
+   * bookmarks and `target_url`s already persisted in `notifications` keep working.
+   */
+  actions: "/dashboard",
+  /** Secondary: cross-module metrics roll-up (tasks / money / subscriptions). */
+  overview: "/dashboard/overview",
   inbox: "/dashboard/inbox",
-  actions: "/dashboard/actions",
   tasks: "/dashboard/tasks",
   tasksFinancial: "/dashboard/tasks/financial",
   projects: "/dashboard/tasks/projects",
@@ -79,6 +93,7 @@ export function bookingHostUrl(organizationSlug: string, hostSlug: string) {
  */
 export const PUBLIC_ROUTES = [
   ROUTES.home,
+  ROUTES.pricing,
   ROUTES.login,
   ROUTES.register,
   ROUTES.health,
@@ -108,6 +123,32 @@ export function isPublicRoute(pathname: string): boolean {
     PUBLIC_ROUTES.some((route) => pathname === route) ||
     PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   );
+}
+
+/**
+ * Машинные маршруты: сессии Supabase у них нет и быть не может — их вызывает
+ * планировщик (Vercel Cron) или внутренний скрипт. Прокси обязан их пропускать:
+ * редирект на /login превращает cron-запрос в 302 и sweep молча не выполняется.
+ *
+ * Это НЕ «публичные» пути. Каждый такой handler аутентифицирует себя сам по
+ * shared secret и падает закрыто: 503 без секрета, 401 при несовпадении. Прокси
+ * не проверяет их лишь потому, что проверять у них нечего.
+ *
+ * Сверка ТОЛЬКО по точному совпадению, без префиксов. Префикс `/api/cron/` сделал
+ * бы каждый новый файл в этой папке бессессионным в момент создания. Здесь путь
+ * приходится вписать руками — то есть осознанно и через ревью.
+ */
+export const MACHINE_ROUTES = [
+  "/api/cron/extraction-sweep",
+  "/api/cron/suggestions-sweep",
+  "/api/cron/reminders",
+  "/api/cron/subscription-sweep",
+  "/api/cron/trial-sweep",
+  "/api/internal/activation-funnel",
+] as const;
+
+export function isMachineRoute(pathname: string): boolean {
+  return MACHINE_ROUTES.some((route) => pathname === route);
 }
 
 /**

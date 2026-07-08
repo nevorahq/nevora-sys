@@ -99,6 +99,7 @@ export type AggregateType =
   | "category"
   | "subscription"
   | "subscription_payment_cycle"
+  | "financial_suggestion"
   | "report"
   | "snapshot"
   | "ai_insight"
@@ -117,7 +118,8 @@ export type AggregateType =
   | "money_ai_suggestion"
   | "money_category_rule"
   | "planner_entry"
-  | "planner_suggestion";
+  | "planner_suggestion"
+  | "onboarding_progress";
 
 // ── Payload map — типизированный payload для каждого события ─────────────────
 // Добавляй новые события сюда по мере роста модулей.
@@ -163,6 +165,7 @@ export interface DomainEventPayloadMap {
   "project.progress_updated": { progress: number };
   "task.assigned_to_project": { task_id: string; project_id: string; title: string };
   "task.removed_from_project": { task_id: string; project_id: string; title: string };
+  "task.created_from_subscription": Record<string, unknown>;
 
   "client.created": { name: string; email?: string | null };
   "client.updated": Record<string, unknown>;
@@ -338,6 +341,8 @@ export interface DomainEventPayloadMap {
     billing_period_key: string;
     due_date: string;
   };
+  "subscription_task_suggestion.created": Record<string, unknown>;
+  "subscription_task_suggestion.confirmed": Record<string, unknown>;
 
   "report.created": { name: string; report_type: string };
   "snapshot.created": { snapshot_date: string; period_type: string };
@@ -385,6 +390,37 @@ export interface DomainEventPayloadMap {
     user_id: string;
     reason?: string;
   };
+  pricing_viewed: Record<string, unknown>;
+  checkout_started: {
+    plan_slug: string;
+    billing_cycle: string;
+    provider?: string | null;
+  };
+  checkout_completed: Record<string, unknown>;
+  checkout_failed: Record<string, unknown>;
+  customer_portal_opened: { provider?: string | null };
+  upgrade_prompt_viewed: {
+    metric_key?: string;
+    feature_key?: string;
+    current_usage?: number;
+    limit?: number | null;
+  };
+  upgrade_prompt_clicked: {
+    metric_key?: string;
+    feature_key?: string;
+    target_plan_slug?: string;
+  };
+  limit_reached: {
+    key: string;
+    current_usage: number;
+    limit: number | null;
+    plan_code: string;
+  };
+  trial_started: { trial_end?: string | null };
+  trial_expired: { trial_end?: string | null };
+  trial_reuse_blocked: { reason?: string };
+  subscription_cancelled: Record<string, unknown>;
+  subscription_updated: Record<string, unknown>;
 
   "document.created": {
     title: string;
@@ -408,6 +444,7 @@ export interface DomainEventPayloadMap {
     confidence: number;
     created_transaction: boolean;
     transaction_id?: string | null;
+    suggestion_id?: string | null;
   };
   "document.extraction.failed": {
     extraction_id?: string | null;
@@ -424,6 +461,7 @@ export interface DomainEventPayloadMap {
     currency?: string | null;
     confidence: number;
   };
+  "document.detected_financial_data": Record<string, unknown>;
   "financial_obligation.detected": {
     context_type: string;
     confidence: number;
@@ -499,6 +537,11 @@ export interface DomainEventPayloadMap {
     source_document_id?: string | null;
     reason?: string | null;
   };
+  "transaction.created_from_suggestion": Record<string, unknown>;
+  "financial_suggestion.created": Record<string, unknown>;
+  "financial_suggestion.edited": Record<string, unknown>;
+  "financial_suggestion.confirmed": Record<string, unknown>;
+  "financial_suggestion.rejected": Record<string, unknown>;
   "action_center.item_created": {
     type: string;
     source_type: string;
@@ -546,7 +589,7 @@ export interface DomainEventPayloadMap {
     target_entity_type: string;
     target_entity_id: string;
     relation_type: string;
-    source: "manual" | "auto";
+    source: "manual" | "auto" | "user" | "system" | "ai";
   };
   "relation.deleted": {
     source_entity_type: string;
@@ -562,7 +605,7 @@ export interface DomainEventPayloadMap {
     target_entity_type: string;
     target_entity_id: string;
     relation_type: string;
-    source: "auto";
+    source: "auto" | "system" | "ai";
     confidence: number;
     matched_by: string[];
   };
@@ -573,6 +616,33 @@ export interface DomainEventPayloadMap {
     target_entity_id: string;
     relation_type: string;
     confidence: number;
+  };
+  "relation.confirmed": {
+    source_entity_type: string;
+    source_entity_id: string;
+    target_entity_type: string;
+    target_entity_id: string;
+    relation_type: string;
+    relation_id: string;
+    previous_state: string;
+    next_state: string;
+  };
+  "relation.rejected": {
+    source_entity_type: string;
+    source_entity_id: string;
+    target_entity_type: string;
+    target_entity_id: string;
+    relation_type: string;
+    relation_id: string;
+    previous_state: string;
+    next_state: string;
+  };
+  "relation.unlinked": {
+    source_entity_type: string;
+    source_entity_id: string;
+    target_entity_type: string;
+    target_entity_id: string;
+    relation_type: string;
   };
 
   // Action Center (Phase 3)
@@ -614,6 +684,23 @@ export interface DomainEventPayloadMap {
   "planner_suggestion.edited": { suggestion_type: string };
   "planner_suggestion.rejected": { reason: string | null };
   "planner_suggestion.failed": { reason: string };
+  /**
+   * Written by the daily sweep's TTL pass. The orphan pass runs inside
+   * expire_orphaned_planner_suggestions (migration 094) and emits nothing — it is
+   * a SQL-side reconciliation, not a user-visible event.
+   */
+  "planner_suggestion.expired": { reason: "ttl"; suggestion_type: string };
+
+  // ── Onboarding funnel (Phase B / B2 + B7) ──────────────────────────────────
+  /** `source` discriminates the wizard tile from an empty-state CTA (B7 metric 5). */
+  "onboarding.first_action_selected": { first_action: string; source: string };
+  "onboarding.first_action_completed": { first_action: string | null; draft_id: string | null };
+  "onboarding.first_workflow_completed": {
+    first_action: string | null;
+    /** The Phase B activation metric: time from first dashboard visit to confirm. */
+    seconds_to_activation: number;
+  };
+  "onboarding.dismissed": { step: string };
 }
 
 // ── Базовый тип записи domain_event из БД ────────────────────────────────────

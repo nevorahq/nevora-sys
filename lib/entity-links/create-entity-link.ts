@@ -60,7 +60,10 @@ export async function createEntityLink(
   }
 
   const metadata = parsed.data.metadata ?? {};
-  const source = metadata.source === "auto" ? "auto" : "manual";
+  const legacySource = metadata.source === "auto" ? "auto" : metadata.source === "ai" ? "ai" : "manual";
+  const normalizedSource = parsed.data.source ?? (legacySource === "ai" ? "ai" : legacySource === "auto" ? "system" : "user");
+  const confidenceScore =
+    parsed.data.confidenceScore ?? (typeof metadata.confidence === "number" ? metadata.confidence : null);
 
   const { data, error } = await supabase
     .from("entity_links")
@@ -72,8 +75,11 @@ export async function createEntityLink(
       target_type: parsed.data.targetType,
       target_id: parsed.data.targetId,
       link_type: parsed.data.linkType,
+      status: parsed.data.status,
+      source: normalizedSource,
+      confidence_score: confidenceScore,
       relation_direction: parsed.data.relationDirection,
-      metadata: { ...metadata, source },
+      metadata: { ...metadata, source: legacySource, status: parsed.data.status },
       created_by: ctx.user.id,
     })
     .select(ENTITY_LINK_COLUMNS)
@@ -99,7 +105,7 @@ export async function createEntityLink(
     relation_type: link.link_type,
   };
 
-  if (source === "auto") {
+  if (normalizedSource === "system" || normalizedSource === "ai") {
     await emitDomainEvent({
       organizationId: ctx.org.id,
       workspaceId: ctx.workspace.id,
@@ -108,8 +114,8 @@ export async function createEntityLink(
       aggregateId: link.id,
       payload: {
         ...eventPayload,
-        source: "auto",
-        confidence: typeof metadata.confidence === "number" ? metadata.confidence : 0,
+        source: normalizedSource,
+        confidence: confidenceScore ?? 0,
         matched_by: Array.isArray(metadata.matched_by) ? metadata.matched_by : [],
       },
     });
@@ -120,7 +126,7 @@ export async function createEntityLink(
       eventName: "relation.created",
       aggregateType: "entity_relation",
       aggregateId: link.id,
-      payload: { ...eventPayload, source: "manual" },
+      payload: { ...eventPayload, source: "user" },
     });
   }
 
@@ -130,7 +136,10 @@ export async function createEntityLink(
     entityId: link.id,
     action: "create",
     newData: eventPayload,
-    metadata: { source: source === "auto" ? "automation" : "dashboard" },
+    metadata: {
+      source: normalizedSource === "user" ? "dashboard" : "system",
+      relation_source: normalizedSource,
+    },
   });
 
   return { ok: true, data: link };

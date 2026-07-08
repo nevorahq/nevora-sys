@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { TodoItem } from "./todo-item";
 import { TodoFilters } from "./todo-filters";
-import { TodoEmptyState } from "./todo-empty-state";
+import { TodoEmptyState, TodoFilteredEmptyState } from "./todo-empty-state";
 import { useAppSelector } from "@/store/hooks";
 import { Select } from "@/shared/ui/select";
 import type { Todo } from "@/entities/todo/model";
@@ -33,9 +33,11 @@ import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 interface TodoListProps {
   todos: Todo[];
   dict: Dictionary;
+  /** Forwarded to the empty state's inline create form (Phase B / B6). */
+  projects?: { id: string; name: string }[];
 }
 
-export function TodoList({ todos, dict }: TodoListProps) {
+export function TodoList({ todos, dict, projects }: TodoListProps) {
   // Читаем UI state из Redux store (вместо useState)
   const filter = useAppSelector((state) => state.todoUi.filter);
   const searchQuery = useAppSelector((state) => state.todoUi.searchQuery);
@@ -112,18 +114,13 @@ export function TodoList({ todos, dict }: TodoListProps) {
       )}
 
       {filteredTodos.length === 0 ? (
-        <TodoEmptyState
-          title={
-            todos.length === 0
-              ? dict.todos.empty.title
-              : dict.todos.empty.filtered
-          }
-          description={
-            todos.length === 0
-              ? dict.todos.empty.description
-              : ""
-          }
-        />
+        // An absence of tasks is an activation moment; a filter that matched
+        // nothing is not (Phase B / B6).
+        todos.length === 0 ? (
+          <TodoEmptyState dict={dict} projects={projects} />
+        ) : (
+          <TodoFilteredEmptyState title={dict.todos.empty.filtered} />
+        )
       ) : (
         <div className="flex flex-col gap-2.5">
           {filteredTodos.map((todo) => (

@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
+import { emitDomainEvent } from "@/lib/events";
 import { billingProvider } from "@/modules/billing/services/billing-provider";
 import type { SettingsActionState } from "../types/settings.types";
 
@@ -39,6 +40,15 @@ export async function createBillingPortalSession(): Promise<SettingsActionState 
         "Billing provider is not connected yet. Billing portal access will be available after a provider is configured.",
     };
   }
+
+  await emitDomainEvent({
+    organizationId: ctx.org.id,
+    workspaceId: ctx.workspace.id,
+    eventName: "customer_portal_opened",
+    aggregateType: "organization",
+    aggregateId: ctx.org.id,
+    payload: { provider: session.provider },
+  });
 
   return { success: "Opening billing portal.", portalUrl: session.url };
 }

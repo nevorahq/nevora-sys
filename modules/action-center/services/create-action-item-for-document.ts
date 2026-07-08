@@ -8,10 +8,9 @@ import type { ActionItemType, ActionSourceType } from "../types/action-item.type
 /**
  * Create an Action Center item for a document/extraction outcome.
  *
- * Idempotent by design: the (org, type, source_type, source_id) unique index
- * from migration 048 makes a duplicate insert a no-op (23505 swallowed). For a
- * drafted expense we use source_type='transaction' + source_id=transactionId so
- * the key matches what the background generator would produce.
+ * Idempotent by design: the action_items dedupe index makes a duplicate insert
+ * a no-op (23505 swallowed). Phase C suggestions additionally pass
+ * suggestion_id so multiple reviewable signals from the same source can coexist.
  */
 export interface CreateActionItemInput {
   type: ActionItemType;
@@ -24,6 +23,11 @@ export interface CreateActionItemInput {
   financialImpact?: number | null;
   aiConfidence?: number | null;
   aiReason?: string | null;
+  reviewState?: "detected" | "suggested" | "waiting_confirmation" | "confirmed" | "rejected" | null;
+  suggestionId?: string | null;
+  relationId?: string | null;
+  sourceEntityType?: string | null;
+  sourceEntityId?: string | null;
   metadata?: Record<string, unknown>;
 }
 
@@ -52,8 +56,13 @@ export async function createActionItemForDocument(
       priority_score: score,
       source_type: input.sourceType,
       source_id: input.sourceId,
+      source_entity_type: input.sourceEntityType ?? input.sourceType,
+      source_entity_id: input.sourceEntityId ?? input.sourceId,
       primary_entity_type: input.primaryEntityType,
       primary_entity_id: input.primaryEntityId,
+      review_state: input.reviewState ?? null,
+      suggestion_id: input.suggestionId ?? null,
+      relation_id: input.relationId ?? null,
       ai_generated: input.aiConfidence != null,
       ai_confidence: input.aiConfidence ?? null,
       ai_reason: input.aiReason ?? null,

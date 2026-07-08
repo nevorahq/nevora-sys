@@ -64,7 +64,10 @@ export async function fetchEntityRelations(
     result.push({
       relationId: n.relationId,
       relationType: n.relationType,
+      relationStatus: n.relationStatus,
+      relationSource: n.relationSource,
       relationDirection: n.relationDirection,
+      confidenceScore: n.confidenceScore,
       perspective: n.perspective,
       metadata: n.metadata,
       createdAt: n.createdAt,

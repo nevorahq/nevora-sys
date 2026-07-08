@@ -29,6 +29,8 @@ export type {
   PlannerSuggestionStatus,
   PlannerIntentDetectionResult,
   DetectedSuggestion,
+  DraftOriginEntry,
+  PendingDraft,
   ConfidenceBand,
   InboxTab,
   InboxDashboardData,
@@ -57,6 +59,8 @@ export {
 // Services
 export { detectPlannerIntent } from "./services/detect-planner-intent";
 export { createPlannerEntry } from "./services/create-planner-entry";
+export { createSourcedPlannerEntry } from "./services/create-sourced-planner-entry";
+export type { PlannerEntrySourceEntity } from "./services/create-sourced-planner-entry";
 export { processPlannerEntry } from "./services/process-planner-entry";
 export { createPlannerSuggestion } from "./services/create-planner-suggestion";
 export { acceptPlannerSuggestion } from "./services/accept-planner-suggestion";
@@ -65,6 +69,8 @@ export { rejectPlannerSuggestion } from "./services/reject-planner-suggestion";
 
 // Utils
 export { normalizePlannerIntent } from "./utils/normalize-planner-intent";
+export { explainDraft } from "./utils/explain-draft";
+export type { DraftEffect, DraftExplanation, DraftOrigin } from "./utils/explain-draft";
 
 // Queries
 export { getPlannerEntries } from "./queries/get-planner-entries";

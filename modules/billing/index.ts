@@ -27,6 +27,32 @@ export {
   changePlanSchema, cancelSubscriptionSchema,
   setFeatureFlagSchema, recordUsageSchema,
 } from "./schemas/billing.schemas";
+
+export {
+  commercialPlanCatalog,
+  commercialPlans,
+  commercialFeatureLabels,
+  commercialUsageLabels,
+  featureKeyToEntitlementKey,
+  usageMetricToLimitKey,
+  planKeyForSlug,
+  nextCommercialPlanKey,
+  formatCommercialLimit,
+  assertCatalogConsistency,
+} from "./plan-catalog";
+export {
+  commercialPlanKeys,
+  commercialFeatureKeys,
+  commercialUsageMetricKeys,
+  commercialPlanKeySchema,
+  commercialFeatureKeySchema,
+  commercialUsageMetricKeySchema,
+} from "./plan-catalog.schema";
+export type {
+  CommercialPlanKey,
+  CommercialFeatureKey,
+  CommercialUsageMetricKey,
+} from "./plan-catalog.schema";
 export type {
   ChangePlanInput, CancelSubscriptionInput,
   SetFeatureFlagInput, RecordUsageInput,
@@ -129,6 +155,12 @@ export {
   getConfiguredBillingProvider,
   parseBillingProvider,
 } from "./services/billing-provider";
+export { StripeBillingAdapter, stripePriceIdForPlan, verifyStripeWebhookSignature } from "./services/stripe.adapter";
+export { billingRepository } from "./services/billing-repository";
+export { entitlementService, canUseFeatureForOrganization } from "./services/entitlement-service";
+export { usageService } from "./services/usage-service";
+export { featureGateService } from "./services/feature-gate-service";
+export { getUpgradePromptForUsage, getUpgradePromptsForUsage } from "./services/upgrade-prompt.service";
 export type {
   BillingProvider,
   BillingProviderAdapter,

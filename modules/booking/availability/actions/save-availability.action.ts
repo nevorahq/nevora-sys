@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
+import { assertPausedModuleAction } from "@/shared/config/paused-modules";
 
 export interface DayRule {
   day_of_week: number; // 0=Sun..6=Sat
@@ -17,6 +18,10 @@ export async function saveAvailabilityAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
+  // BOOKING is paused for the private beta. A "use server" export stays
+  // reachable over POST even while its page 404s — gate the mutation itself.
+  assertPausedModuleAction("booking");
+
   const { org } = await requireOrg();
   const supabase = await createClient();
 

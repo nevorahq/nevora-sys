@@ -2,15 +2,11 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { emitDomainEvent } from "@/lib/events";
-import { createEntityLink } from "@/lib/entity-links";
 import { logger } from "@/lib/observability/logger";
-import { createDraftTransactionFromDocument } from "@/modules/moneyflow/services/create-draft-transaction-from-document";
-import {
-  classifyExpense,
-  recordClassificationDecision,
-} from "@/modules/moneyflow/services/expense-classifier";
 import { createActionItemForDocument } from "@/modules/action-center/services/create-action-item-for-document";
+import { createDocumentSuggestionWithClassification } from "@/modules/review/services/financial-suggestion.service";
 import { normalizeFinancialDocument } from "@/modules/ai/services/normalize-financial-document";
+import { assertPlanEntitlement, assertPlanLimit } from "@/modules/billing";
 import { routeExtraction } from "./document-extraction-router";
 import { evaluateExtraction } from "./confidence-rules";
 import { detectFinancialObligation } from "./detect-financial-obligation";
@@ -31,6 +27,7 @@ export type ExtractionRunResult = {
   extractionId: string | null;
   status: "completed" | "needs_review" | "failed" | "skipped";
   transactionId?: string | null;
+  suggestionId?: string | null;
   errorCode?: ExtractionErrorCode;
   message?: string;
 };
@@ -140,6 +137,18 @@ export async function runDocumentExtraction(
     .maybeSingle();
   if (docError || !document) {
     return fail(supabase, ctx, { documentId, extractionId, code: "no_attachment", message: "Document not found." });
+  }
+
+  try {
+    await assertPlanEntitlement(ctx.org.id, "documents.process");
+    await assertPlanLimit(ctx.org.id, "documents_processed.monthly", 1);
+  } catch (error) {
+    return fail(supabase, ctx, {
+      documentId,
+      extractionId,
+      code: "usage_limit_exceeded",
+      message: error instanceof Error ? error.message : "Document processing limit reached. Upgrade your plan to continue.",
+    });
   }
 
   const { data: attachment } = await supabase
@@ -264,83 +273,34 @@ export async function runDocumentExtraction(
     });
   }
 
-  let transactionId: string | null = null;
+  let suggestionId: string | null = null;
 
   if (decision.createTransaction) {
-    const classification = await classifyExpense(supabase, ctx, {
-      merchantName: extracted.merchant.name,
-      itemNames: extracted.items.map((item) => item.name),
-      aiCategoryHints: extracted.items.map((item) => item.category),
-    });
-
-    const draft = await createDraftTransactionFromDocument(supabase, ctx, {
+    const suggestion = await createDocumentSuggestionWithClassification(supabase, ctx, {
       documentId,
       extractionId,
-      merchantName: extracted.merchant.name,
-      totalAmount: extracted.transaction.total as number,
+      vendorName: extracted.merchant.name,
+      amount: extracted.transaction.total as number,
       currency: extracted.transaction.currency,
-      transactionDate: normalizeDate(extracted.transaction.date),
-      categoryId: classification.categoryId,
-      expenseContextId: classification.expenseContextId,
-      visibility: classification.visibility,
-      ownerUserId: classification.ownerUserId,
-      confidence: extracted.confidence.overall,
+      issueDate: normalizeDate(extracted.transaction.date),
+      dueDate: normalizeDate(extracted.obligation?.paymentDueDate ?? extracted.obligation?.nextPaymentDate ?? null),
+      documentType: extracted.documentType,
+      taxAmount: extracted.transaction.tax,
+      paymentStatus: extracted.documentType === "payment_confirmation" ? "paid" : null,
+      confidenceScore: extracted.confidence.overall,
+      rawExtractionJson: extracted as unknown as Record<string, unknown>,
+      itemNames: extracted.items.map((item) => item.name),
+      aiCategoryHints: extracted.items.map((item) => item.category),
+      metadata: {
+        needs_field_review: decision.requiresFieldReview,
+        decision_reason: decision.reason,
+      },
     });
 
-    if (draft.ok) {
-      transactionId = draft.transactionId;
-      await recordClassificationDecision(supabase, ctx, draft.transactionId, classification);
-
-      // Link document → transaction (auto, with confidence metadata).
-      const link = await createEntityLink({
-        sourceType: "document",
-        sourceId: documentId,
-        targetType: "transaction",
-        targetId: draft.transactionId,
-        linkType: "invoice_for_transaction",
-        relationDirection: "direct",
-        metadata: { source: "auto", confidence: extracted.confidence.overall, matched_by: ["document_extraction"] },
-      });
-      if (!link.ok) logger.error("extraction.run.link_failed", { documentId, extractionId, error: link.error });
-
-      // Action Center: confirm the drafted expense.
-      const amountLabel = formatAmount(extracted.transaction.total as number, extracted.transaction.currency);
-      const merchant = extracted.merchant.name?.trim() || "Unknown merchant";
-      await createActionItemForDocument(supabase, ctx, {
-        type: "draft_review",
-        title: `Confirm expense from ${merchant} — ${amountLabel}`,
-        description: draft.duplicateOfId
-          ? `Business OS extracted a possible expense from your document, but it may duplicate an existing transaction. Review before confirming.`
-          : `Business OS extracted a possible expense from the uploaded document. Review and confirm it before adding it to Money.`,
-        sourceType: "transaction",
-        sourceId: draft.transactionId,
-        primaryEntityType: "transaction",
-        primaryEntityId: draft.transactionId,
-        financialImpact: extracted.transaction.total as number,
-        aiConfidence: extracted.confidence.overall,
-        aiReason: `${decision.reason} ${classification.reason}`,
-        metadata: {
-          source_document_id: documentId,
-          extraction_id: extractionId,
-          duplicate_of: draft.duplicateOfId,
-          needs_field_review: decision.requiresFieldReview,
-          classification_method: classification.method,
-          category_confidence: classification.categoryConfidence,
-          context_confidence: classification.contextConfidence,
-        },
-      });
-    } else if (draft.errorCode === "already_confirmed") {
-      // Re-extraction of an already-confirmed document is a no-op: the expense is
-      // already in the ledger. No new draft is minted (transactionId stays null)
-      // and no review item is opened, so the user isn't asked to confirm a duplicate.
-      logger.info("extraction.run.already_confirmed", {
-        documentId,
-        extractionId,
-        existingTransactionId: draft.existingTransactionId,
-      });
+    if (suggestion.ok) {
+      suggestionId = suggestion.data.suggestion.id;
     } else {
-      // Draft couldn't be created (e.g. no account) → ask the user to act.
-      await openDocumentReview(supabase, ctx, { documentId, title: document.title as string, reason: draft.errorMessage, confidence: extracted.confidence.overall });
+      await openDocumentReview(supabase, ctx, { documentId, title: document.title as string, reason: suggestion.error, confidence: extracted.confidence.overall });
     }
   } else {
     await openDocumentReview(supabase, ctx, { documentId, title: document.title as string, reason: decision.reason, confidence: extracted.confidence.overall });
@@ -369,8 +329,9 @@ export async function runDocumentExtraction(
       extraction_id: extractionId,
       provider: route.provider,
       confidence: extracted.confidence.overall,
-      created_transaction: transactionId != null,
-      transaction_id: transactionId,
+      created_transaction: false,
+      transaction_id: null,
+      suggestion_id: suggestionId,
     },
   });
 
@@ -379,9 +340,9 @@ export async function runDocumentExtraction(
     extractionId,
     status: extractionStatus,
     provider: route.provider,
-    transactionId: transactionId ?? null,
+    suggestionId: suggestionId ?? null,
   });
-  return { ok: true, extractionId, status: extractionStatus, transactionId };
+  return { ok: true, extractionId, status: extractionStatus, transactionId: null, suggestionId };
 }
 
 /**
@@ -605,12 +566,4 @@ function normalizeDate(value: string | null): string | null {
   if (match) return match[0];
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
-}
-
-function formatAmount(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
-  } catch {
-    return `${amount.toFixed(2)} ${currency}`;
-  }
 }

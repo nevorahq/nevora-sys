@@ -48,7 +48,7 @@ function makeSupabase() {
 beforeEach(() => {
   vi.clearAllMocks();
   draftResult = {
-    data: { id: TX_ID, currency: "USD", source_document_id: DOCUMENT_ID },
+    data: { id: TX_ID, currency: "USD", source_id: DOCUMENT_ID },
     error: null,
   };
   requireOrg.mockResolvedValue(ctx);
@@ -76,10 +76,10 @@ describe("createAccountForDocumentExpenseAction", () => {
     expect(createClient).not.toHaveBeenCalled();
   });
 
-  it("rejects a transaction that is not an active document draft", async () => {
+  it("rejects a suggestion that is not active document review", async () => {
     draftResult = { data: null, error: null };
     const result = await createAccountForDocumentExpenseAction({}, makeForm());
-    expect(result.error).toMatch(/not found or already confirmed/i);
+    expect(result.error).toMatch(/not found or already handled/i);
     expect(createMoneyAccount).not.toHaveBeenCalled();
   });
 

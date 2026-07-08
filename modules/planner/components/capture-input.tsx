@@ -10,6 +10,9 @@ interface CaptureInputProps {
   dict: Dictionary["inbox"];
 }
 
+/** Shared with the Inbox empty state, whose CTA focuses this box (Phase B / B6). */
+export const CAPTURE_INPUT_ID = "capture-raw-text";
+
 /**
  * The single capture box. Text-first MVP: submit a raw thought, the server
  * captures it and runs intent detection, and the review surfaces update on
@@ -32,11 +35,11 @@ export function CaptureInput({ dict }: CaptureInputProps) {
   return (
     <form ref={formRef} action={formAction} className="soft-card p-4">
       <input type="hidden" name="entryType" value="text" />
-      <label htmlFor="capture-raw-text" className="sr-only">
+      <label htmlFor={CAPTURE_INPUT_ID} className="sr-only">
         {dict.capturePlaceholder}
       </label>
       <textarea
-        id="capture-raw-text"
+        id={CAPTURE_INPUT_ID}
         name="rawText"
         rows={3}
         required

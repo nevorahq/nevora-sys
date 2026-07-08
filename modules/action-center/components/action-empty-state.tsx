@@ -1,16 +1,43 @@
-import { CheckCircle2Icon } from "lucide-react";
+"use client";
 
-/** Пустое состояние Action Center — «всё под контролем». */
-export function ActionEmptyState({ label }: { label?: string }) {
+import { CheckCircle2Icon } from "lucide-react";
+import { EmptyState } from "@/shared/ui/empty-state";
+import { FirstActionCta } from "@/modules/onboarding/components/first-action-cta";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
+
+interface ActionEmptyStateProps {
+  dict: Dictionary["firstRun"];
+  /**
+   * Suppressed while the First Action Wizard is on screen — it already offers the
+   * four first actions right above, and showing them twice would read as a bug.
+   */
+  showFirstActions: boolean;
+}
+
+/**
+ * The Action Center with nothing in it (Phase B / B6).
+ *
+ * Until now this component existed but had no caller: an empty feed rendered
+ * literally nothing, which is the worst kind of dead end — the primary operating
+ * screen looked broken. It now offers the two cheapest ways to start the loop.
+ *
+ * Phase B edge case #6: the first actions stay reachable from here once the wizard
+ * is finished or skipped.
+ */
+export function ActionEmptyState({ dict, showFirstActions }: ActionEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-(--neu-radius) bg-surface-sunken px-4 py-10 text-center">
-      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface text-accent-green">
-        <CheckCircle2Icon size={20} />
-      </span>
-      <p className="text-sm font-medium text-text-primary">{label ?? "Nothing needs your attention"}</p>
-      <p className="max-w-xs text-xs text-text-muted">
-        You&apos;re all caught up. New action items appear here as your business data changes.
-      </p>
-    </div>
+    <EmptyState
+      icon={<CheckCircle2Icon size={24} className="text-accent-green" strokeWidth={1.5} />}
+      title={dict.empty.actionsTitle}
+      description={dict.empty.actionsBody}
+      actions={
+        showFirstActions ? (
+          <>
+            <FirstActionCta action="upload_document" label={dict.uploadDocument} />
+            <FirstActionCta action="capture_inbox_item" label={dict.captureInboxItem} variant="secondary" />
+          </>
+        ) : undefined
+      }
+    />
   );
 }

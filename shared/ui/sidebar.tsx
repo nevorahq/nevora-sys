@@ -45,18 +45,22 @@ export function Sidebar({ dict }: SidebarProps) {
   const pathname = usePathname();
   const { counters } = useNotificationIndicator();
 
+  // `/dashboard` is the Action Center — the primary operating screen. The generic
+  // metrics roll-up is secondary and sits further down as "Overview".
+  //
+  // CRM and Booking are PAUSED modules: they are absent here on purpose, and the
+  // hiding is cosmetic only — `shared/config/paused-modules` gates their pages,
+  // Server Actions and route handlers server-side.
   const navItems: NavItem[] = [
-    { href: ROUTES.dashboard,     label: dict.nav.dashboard,     icon: LayoutDashboardIcon },
+    { href: ROUTES.dashboard,     label: dict.nav.actions,       icon: ListChecksIcon },
     { href: ROUTES.inbox,         label: dict.nav.inbox,         icon: InboxIcon },
-    { href: ROUTES.actions,       label: dict.nav.actions,       icon: ListChecksIcon },
     { href: ROUTES.tasks,         label: dict.nav.tasks,         icon: CheckSquareIcon },
     { href: ROUTES.money,         label: dict.nav.money,         icon: WalletIcon },
     { href: ROUTES.documents,     label: dict.nav.documents,     icon: FileTextIcon },
     { href: ROUTES.subscriptions, label: dict.nav.subscriptions, icon: RepeatIcon },
     { href: ROUTES.analytics,     label: dict.nav.analytics,     icon: BarChart2Icon },
+    { href: ROUTES.overview,      label: dict.nav.overview,      icon: LayoutDashboardIcon },
     { href: ROUTES.ai,            label: dict.nav.ai,            icon: SparklesIcon },
-    // Временно скрыт модуль "Запись" (вернуть — раскомментировать строку)
-    // { href: ROUTES.booking,       label: dict.nav.booking,       icon: CalendarCheckIcon },
     { href: ROUTES.settings,      label: dict.nav.settings,      icon: SettingsIcon },
   ];
 

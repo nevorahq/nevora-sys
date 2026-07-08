@@ -19,22 +19,29 @@ export const ENTITY_LINK_TYPES = [
   "requires_action",
   "belongs_to",
   // Phase 2
-  "related_to",
-  "documented_by",
-  "requires_action_task",
-  "belongs_to_subscription",
-  "invoice_for_transaction",
-  "contract_for_subscription",
-  "renewal_task",
-] as const;
+    "related_to",
+    "documented_by",
+    "requires_action_task",
+    "belongs_to_subscription",
+    "invoice_for_transaction",
+    "contract_for_subscription",
+    "renewal_task",
+    // Phase C
+    "evidence_for",
+    "created_from",
+    "suggested_for",
+    "confirmed_as",
+  ] as const;
 
 export type EntityLinkType = (typeof ENTITY_LINK_TYPES)[number];
 
 export const RELATION_DIRECTIONS = ["bidirectional", "direct", "derived"] as const;
 export type RelationDirection = (typeof RELATION_DIRECTIONS)[number];
 
-/** Источник связи — manual (пользователь) или auto (automation engine). */
-export type RelationSource = "manual" | "auto";
+/** Legacy metadata source. New rows also store normalized `source` column. */
+export type RelationSource = "manual" | "auto" | "user" | "system" | "ai";
+export type EntityLinkStatus = "suggested" | "waiting_confirmation" | "confirmed" | "rejected" | "unlinked";
+export type EntityLinkSource = "user" | "system" | "ai";
 
 /**
  * Metadata-конверт связи. Готовит почву под Automation/AI:
@@ -59,6 +66,9 @@ export interface EntityLink {
   target_type: string;
   target_id: string;
   link_type: EntityLinkType;
+  status: EntityLinkStatus;
+  source: EntityLinkSource;
+  confidence_score: number | null;
   relation_direction: RelationDirection;
   metadata: EntityLinkMetadata;
   created_by: string | null;
@@ -68,7 +78,7 @@ export interface EntityLink {
 
 /** Колонки, которые мы безопасно читаем (без select("*")). */
 export const ENTITY_LINK_COLUMNS =
-  "id, organization_id, workspace_id, source_type, source_id, target_type, target_id, link_type, relation_direction, metadata, created_by, created_at, updated_at" as const;
+  "id, organization_id, workspace_id, source_type, source_id, target_type, target_id, link_type, status, source, confidence_score, relation_direction, metadata, created_by, created_at, updated_at" as const;
 
 export interface CreateEntityLinkInput {
   sourceType: string;
@@ -78,6 +88,9 @@ export interface CreateEntityLinkInput {
   linkType?: EntityLinkType;
   relationDirection?: RelationDirection;
   metadata?: EntityLinkMetadata;
+  status?: EntityLinkStatus;
+  source?: EntityLinkSource;
+  confidenceScore?: number | null;
 }
 
 export interface GetEntityLinksInput {
