@@ -87,5 +87,5 @@ The **last** file listed is what is live. The one before it is your target.
 - [ ] Re-run the ⚑ items in `docs/release/smoke-test-checklist.md`.
 - [ ] Record: what broke, what was rolled back, when, and the follow-up.
 - [ ] Confirm the migration baseline still matches `supabase/migrations/`
-      (tree `000`–`098`, next free `099`; remote applied through `097` until
-      `098` is deployed).
+      (tree `000`–`099`, next free `100`; remote applied through `097` until
+      `098`/`099` are deployed).

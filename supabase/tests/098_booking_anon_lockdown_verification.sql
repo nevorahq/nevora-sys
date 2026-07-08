@@ -33,7 +33,14 @@ BEGIN
 END;
 $$;
 
--- Count rows visible to the *current* role, treating a missing grant as 0.
+-- Rows visible to the *current* role.
+--   >= 0  -> the role holds SELECT; this many rows passed RLS
+--   -1    -> the role holds no SELECT grant at all (strictly stronger than 0 rows)
+--
+-- The two are kept distinct on purpose. Collapsing "no grant" into "0 rows" makes
+-- every anon assertion below pass on a database where nobody has any grant — which
+-- is exactly the state of a from-scratch local Supabase stack, and would have
+-- turned this whole harness into a rubber stamp.
 CREATE OR REPLACE FUNCTION pg_temp.visible_rows(p_table text)
 RETURNS integer
 LANGUAGE plpgsql
@@ -45,9 +52,22 @@ BEGIN
   RETURN v_count;
 EXCEPTION
   WHEN insufficient_privilege THEN
-    RETURN 0;  -- no grant at all: strictly stronger than "no rows"
+    RETURN -1;
 END;
 $$;
+
+-- Does `authenticated` hold SELECT on ordinary business tables here?
+--
+-- Hosted Supabase grants table privileges to anon/authenticated/service_role; a
+-- local `supabase db reset` does not, so no role can SELECT anything. That is an
+-- environment artifact, not a finding — and 098 must not be blamed for it. The
+-- member/non-member assertions below are therefore gated on this, and use `todos`
+-- (a table 098 never touches) as the control.
+CREATE OR REPLACE FUNCTION pg_temp.authenticated_has_grants()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+AS $$ SELECT has_table_privilege('authenticated', 'public.todos', 'SELECT') $$;
 
 -- ---------------------------------------------------------------------------
 -- Fixtures: two organizations, a member of org A, and a stranger.
@@ -108,7 +128,9 @@ BEGIN
     'booking_blackout_dates', 'booking_requests'
   ] LOOP
     n := pg_temp.visible_rows(t);
-    IF n <> 0 THEN
+    -- -1 (no grant) and 0 (grant, but no policy admits anon) both pass.
+    -- Anything > 0 is the leak this migration exists to close.
+    IF n > 0 THEN
       EXECUTE 'RESET ROLE';
       RAISE EXCEPTION
         'Booking anon lockdown verification failed: anon can read %.% (% rows). '
@@ -169,11 +191,15 @@ DECLARE
   v_stranger uuid := (SELECT id FROM ids WHERE key = 'stranger');
   n INTEGER;
 BEGIN
+  IF NOT pg_temp.authenticated_has_grants() THEN
+    RAISE NOTICE 'SKIP (4): local stack grants authenticated no table privileges; RLS cannot be exercised';
+    RETURN;
+  END IF;
   EXECUTE format('SET LOCAL request.jwt.claims = %L', json_build_object('sub', v_stranger)::text);
   EXECUTE 'SET LOCAL ROLE authenticated';
   n := pg_temp.visible_rows('booking_pages');
   EXECUTE 'RESET ROLE';
-  IF n <> 0 THEN
+  IF n > 0 THEN
     RAISE EXCEPTION
       'Booking anon lockdown verification failed: authenticated non-member sees % booking_pages rows', n;
   END IF;
@@ -190,14 +216,34 @@ DECLARE
   v_member uuid := (SELECT id FROM ids WHERE key = 'member');
   n INTEGER;
 BEGIN
+  -- Control first: 098 must leave `authenticated` exactly as it found it. Compare
+  -- against `todos`, a table this migration never mentions. If authenticated can
+  -- read neither, the stack simply has no grants and there is nothing to test; if
+  -- it can read todos but not booking_pages, 098 over-reached.
+  IF NOT pg_temp.authenticated_has_grants() THEN
+    PERFORM pg_temp.assert_true(
+      NOT has_table_privilege('authenticated', 'public.booking_pages', 'SELECT'),
+      '098 over-reached: authenticated lost SELECT on booking_pages while retaining '
+      'it nowhere else either — inconsistent'
+    );
+    RAISE NOTICE 'SKIP (5): local stack grants authenticated no table privileges; '
+                 'confirmed booking_pages matches the control table todos';
+    RETURN;
+  END IF;
+
+  PERFORM pg_temp.assert_true(
+    has_table_privilege('authenticated', 'public.booking_pages', 'SELECT'),
+    '098 over-reached: authenticated can SELECT todos but not booking_pages'
+  );
+
   EXECUTE format('SET LOCAL request.jwt.claims = %L', json_build_object('sub', v_member)::text);
   EXECUTE 'SET LOCAL ROLE authenticated';
   n := pg_temp.visible_rows('booking_pages');
   EXECUTE 'RESET ROLE';
-  IF n = 0 THEN
+  IF n <= 0 THEN
     RAISE EXCEPTION
       'Booking anon lockdown verification failed: org member can no longer read their own '
-      'booking_pages — 098 revoked too much';
+      'booking_pages (visible_rows = %) — 098 revoked too much', n;
   END IF;
 END;
 $$;

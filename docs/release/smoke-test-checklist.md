@@ -157,8 +157,11 @@ All must return **404** (not 403, not a redirect to login for the dashboard ones
       Repeat for `extraction-sweep`, `subscription-sweep`, `suggestions-sweep`,
       `trial-sweep`.
 - [ ] Cron runs complete within one cycle; failures logged.
-- [ ] ⚑ Migration baseline matches `supabase/migrations/` (tree: `000`–`098`,
-      98 files, `054` a known gap; next free `099`).
+- [ ] ⚑ Migration baseline matches `supabase/migrations/` (tree: `000`–`099`,
+      99 files, `054` a known gap; next free `100`).
+- [ ] ⚑ `099_planner_confirmation_exactly_once.sql` applied **before** the app code
+      that writes `todos.source_suggestion_id`. Confirm a draft twice: the second
+      confirm must resolve to the SAME task id, not create a second task.
 - [ ] ⚑ `098_booking_anon_lockdown.sql` applied on remote. Verify from the outside,
       with the **public anon key**, not with service-role:
       `curl "$URL/rest/v1/booking_pages?select=id" -H "apikey: $ANON_KEY"` → must

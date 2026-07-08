@@ -5,10 +5,18 @@ import { PLANNER_SUGGESTION_TYPES, type PlannerSuggestion } from "../types/plann
 import { explainDraft } from "../utils/explain-draft";
 
 const DOC_ID = "11111111-1111-4111-8111-111111111111";
+const TASK_ID = "22222222-2222-4222-8222-222222222222";
 
 const canDo = vi.fn((_ctx: unknown, _permission: string) => true);
-const emitDomainEvent = vi.fn(async () => undefined);
-const createStandardTask = vi.fn(async () => ({ ok: true as const, taskId: "task-1" }));
+// Parameters are declared so the assertions can read `.mock.calls[i][n]`.
+const emitDomainEvent = vi.fn(async (_event: { eventName: string }) => undefined);
+const createStandardTask = vi.fn(
+  async (_supabase: unknown, _ctx: unknown, _input: { sourceSuggestionId?: string | null }) => ({
+    ok: true as const,
+    taskId: "task-1",
+    created: true,
+  }),
+);
 const createFinancialTask = vi.fn(async () => ({ ok: true as const, taskId: "task-1", created: true }));
 interface EntityLinkInput {
   sourceType: string;
@@ -118,6 +126,12 @@ function makeSupabase(store: Map<string, Row>, options: SupabaseDoubleOptions = 
       filters.push({ kind: "in", column, value });
       return builder;
     });
+    // `.is("deleted_at", null)` is a real filter, not a no-op: soft-deleted rows
+    // must not satisfy a lookup that mirrors a `WHERE deleted_at IS NULL` index.
+    builder.is = vi.fn((column: string, value: unknown) => {
+      filters.push({ kind: "eq", column, value });
+      return builder;
+    });
 
     const matches = (row: Row) =>
       filters.every((f) =>
@@ -148,10 +162,31 @@ function makeSupabase(store: Map<string, Row>, options: SupabaseDoubleOptions = 
   return { from } as unknown as SupabaseClient;
 }
 
+/**
+ * As `makeSupabase`, but `entity_links` holds one active row. Models the state
+ * after a crashed confirm: the link exists, so the retry's INSERT hits
+ * `entity_links_unique_active_idx` and the lookup must find the survivor.
+ */
+function makeSupabaseWithEntityLink(store: Map<string, Row>, linkId: string): SupabaseClient {
+  const base = makeSupabase(store) as unknown as { from: (t: string) => unknown };
+  const from = vi.fn((table: string) => {
+    if (table !== "entity_links") return base.from(table);
+
+    const builder: Record<string, unknown> = {};
+    builder.select = vi.fn(() => builder);
+    builder.eq = vi.fn(() => builder);
+    builder.is = vi.fn(() => builder);
+    builder.maybeSingle = vi.fn(() => Promise.resolve({ data: { id: linkId }, error: null }));
+    return builder;
+  });
+
+  return { from } as unknown as SupabaseClient;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   canDo.mockReturnValue(true);
-  createStandardTask.mockResolvedValue({ ok: true as const, taskId: "task-1" });
+  createStandardTask.mockResolvedValue({ ok: true as const, taskId: "task-1", created: true });
   createEntityLink.mockResolvedValue({ ok: true as const, data: { id: "link-1" } });
 });
 
@@ -289,6 +324,151 @@ describe("acceptPlannerSuggestion — the promised relation", () => {
 
     expect(result).toMatchObject({ ok: true });
     expect(createEntityLink).not.toHaveBeenCalled();
+  });
+});
+
+// ── Migration 099: exactly-once survives a crash, not just a double click ──
+//
+// 094's claim state makes confirm at-most-once *within one process*. It cannot
+// help when the process dies between "entity created" and "accepted_entity_id
+// written": the reconciler sees a null witness, releases the claim to 'pending',
+// and the retry runs the whole route again. These tests pin the behaviour that
+// makes that retry safe — the module service resolves to the entity that already
+// exists, because a UNIQUE index says it must.
+
+describe("acceptPlannerSuggestion — exactly-once across a retried confirm", () => {
+  it("passes the suggestion id as the task's idempotency key", async () => {
+    const store = new Map([["sug-1", baseSuggestion()]]);
+
+    await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+
+    // Without this key nothing links the todo back to the draft, so migration
+    // 099's todos_source_suggestion_unique_idx can never fire.
+    expect(createStandardTask.mock.calls[0][2]).toMatchObject({ sourceSuggestionId: "sug-1" });
+  });
+
+  it("records the pre-existing task and does not duplicate it on retry", async () => {
+    // What createStandardTask returns after it hits 23505 and re-reads the winner.
+    createStandardTask.mockResolvedValue({ ok: true as const, taskId: "task-1", created: false });
+    const store = new Map([["sug-1", baseSuggestion()]]);
+
+    const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+
+    expect(result).toEqual({ ok: true, entityType: "task", entityId: "task-1", created: false });
+    const row = store.get("sug-1")!;
+    expect(row.status).toBe("accepted");
+    expect(row.accepted_entity_id).toBe("task-1"); // the FIRST task, not a second one
+  });
+
+  it("does not redraw the promised link when the task already existed", async () => {
+    createStandardTask.mockResolvedValue({ ok: true as const, taskId: "task-1", created: false });
+    const store = new Map([
+      ["sug-1", baseSuggestion({ proposed_payload: { linkTo: { entityType: "document", entityId: DOC_ID, linkType: "requires_action_task" } } })],
+    ]);
+
+    await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+
+    // The first confirm already drew it; redrawing only logs a duplicate error.
+    expect(createEntityLink).not.toHaveBeenCalled();
+  });
+
+  it("treats an already-existing entity_link as a successful confirm, not a dead end", async () => {
+    // entity_links_unique_active_idx rejected the insert: the link this draft
+    // promised is already there. Before 099 this returned an error, the claim was
+    // released, and every retry hit the same wall — the draft could never leave
+    // 'pending'.
+    createEntityLink.mockResolvedValue({ ok: false, error: "Entity link already exists" } as never);
+
+    const store = new Map([
+      [
+        "sug-1",
+        baseSuggestion({
+          suggestion_type: "link_entities",
+          proposed_payload: {
+            sourceType: "document",
+            sourceId: DOC_ID,
+            targetType: "task",
+            targetId: TASK_ID,
+            linkType: "requires_action_task",
+          },
+        }),
+      ],
+    ]);
+
+    const supabase = makeSupabaseWithEntityLink(store, "link-existing");
+    const result = await acceptPlannerSuggestion(supabase, ctx, "sug-1");
+
+    expect(result).toEqual({
+      ok: true,
+      entityType: "entity_link",
+      entityId: "link-existing",
+      created: false,
+    });
+    expect(store.get("sug-1")!.status).toBe("accepted");
+  });
+
+  it("still fails when the link is absent and creation genuinely failed", async () => {
+    createEntityLink.mockResolvedValue({ ok: false, error: "unverifiable entity" } as never);
+    const store = new Map([
+      [
+        "sug-1",
+        baseSuggestion({
+          suggestion_type: "link_entities",
+          proposed_payload: {
+            sourceType: "document",
+            sourceId: DOC_ID,
+            targetType: "task",
+            targetId: TASK_ID,
+            linkType: "requires_action_task",
+          },
+        }),
+      ],
+    ]);
+
+    // No existing link to fall back on.
+    const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+
+    expect(result).toEqual({ ok: false, error: "unverifiable entity" });
+    // Claim released so the user can retry once the underlying problem is fixed.
+    expect(store.get("sug-1")!.status).toBe("pending");
+  });
+
+  it("refuses a second confirm of an already accepted suggestion", async () => {
+    const store = new Map([["sug-1", baseSuggestion({ status: "accepted", accepted_entity_id: "task-1" })]]);
+
+    const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+
+    expect(result).toEqual({ ok: false, error: "Suggestion is already accepted" });
+    expect(createStandardTask).not.toHaveBeenCalled();
+  });
+
+  it("refuses to confirm a rejected suggestion", async () => {
+    const store = new Map([["sug-1", baseSuggestion({ status: "rejected" })]]);
+
+    const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+
+    expect(result).toEqual({ ok: false, error: "Suggestion is already rejected" });
+    expect(createStandardTask).not.toHaveBeenCalled();
+  });
+
+  it("cannot confirm a suggestion belonging to another organization", async () => {
+    const store = new Map([["sug-1", baseSuggestion({ organization_id: "org-2" })]]);
+
+    const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+
+    expect(result).toEqual({ ok: false, error: "Suggestion not found" });
+    expect(createStandardTask).not.toHaveBeenCalled();
+  });
+
+  it("emits planner_suggestion.accepted exactly once per confirm", async () => {
+    const store = new Map([["sug-1", baseSuggestion()]]);
+
+    await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+
+    const accepted = emitDomainEvent.mock.calls.filter(
+      ([event]) => event.eventName === "planner_suggestion.accepted",
+    );
+    expect(accepted).toHaveLength(1);
   });
 });
 

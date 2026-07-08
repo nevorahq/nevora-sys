@@ -13,10 +13,17 @@ export interface CreateStandardTaskInput {
   status?: TaskStatus;
   /** Task's own deadline (YYYY-MM-DD). */
   dueDate?: string | null;
+  /**
+   * The planner_suggestion this task was confirmed from, when it came from the
+   * Capture Inbox. Supplying it makes the creation idempotent: a retry after a
+   * crashed confirm collides with `todos_source_suggestion_unique_idx` (099) and
+   * returns the task that already exists instead of a duplicate.
+   */
+  sourceSuggestionId?: string | null;
 }
 
 export type CreateStandardTaskResult =
-  | { ok: true; taskId: string }
+  | { ok: true; taskId: string; created: boolean }
   | { ok: false; error: string };
 
 /**
@@ -32,6 +39,14 @@ export type CreateStandardTaskResult =
  * Reserves the tasks.count plan counter (a standard task is a real task and must
  * respect the plan). Financial obligations go through createFinancialTask, which
  * is intentionally exempt.
+ *
+ * Idempotent when `sourceSuggestionId` is given: keyed on
+ * (organization_id, source_suggestion_id) by a partial unique index (099). The
+ * planner claim in 094 stops two *concurrent* confirms; this stops a confirm that
+ * is retried after the process died between "task inserted" and
+ * "accepted_entity_id written". Without it that retry silently creates a second
+ * task, which is the one failure mode nobody notices until their task list is
+ * wrong.
  */
 export async function createStandardTask(
   supabase: SupabaseClient,
@@ -53,6 +68,8 @@ export async function createStandardTask(
     return { ok: false, error: error instanceof Error ? error.message : "Plan limit reached." };
   }
 
+  const sourceSuggestionId = input.sourceSuggestionId ?? null;
+
   const taskId = randomUUID();
   const { error } = await supabase.from("todos").insert({
     id: taskId,
@@ -66,15 +83,39 @@ export async function createStandardTask(
     status,
     due_date: dueDate,
     recurrence: "none",
+    source_suggestion_id: sourceSuggestionId,
   });
 
   if (error) {
+    // 23505 on todos_source_suggestion_unique_idx → this suggestion already
+    // produced a task. A crashed confirm was retried. Return the existing task:
+    // the caller records it as the accepted entity and the confirm becomes a
+    // no-op, which is precisely what exactly-once means here.
+    if (error.code === "23505" && sourceSuggestionId) {
+      const { data: existing } = await supabase
+        .from("todos")
+        .select("id")
+        .eq("organization_id", ctx.org.id)
+        .eq("source_suggestion_id", sourceSuggestionId)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (existing) {
+        // No new row, so the reservation must go back — otherwise every retry
+        // burns a slot of tasks.count against a task that was never created.
+        if (reserved) await releaseOrganizationUsage(ctx.org.id, "tasks.count", 1);
+        return { ok: true, taskId: existing.id as string, created: false };
+      }
+    }
+
     console.error("[createStandardTask] insert failed:", error.message);
     if (reserved) await releaseOrganizationUsage(ctx.org.id, "tasks.count", 1);
     return { ok: false, error: "Failed to create task" };
   }
 
-  // Row committed — the reservation now legitimately backs it.
+  // Row committed — the reservation now legitimately backs it. Events are emitted
+  // only on this path: the dedup branch above returned early, so a retried confirm
+  // never re-emits task.created for a task that already existed.
   await Promise.all([
     emitDomainEvent({
       organizationId: ctx.org.id,
@@ -94,5 +135,5 @@ export async function createStandardTask(
     }),
   ]);
 
-  return { ok: true, taskId };
+  return { ok: true, taskId, created: true };
 }

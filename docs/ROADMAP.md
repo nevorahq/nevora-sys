@@ -2,9 +2,9 @@
 
 > Current source-of-truth roadmap for the repository. Status reflects the tree on
 > **2026-07-08 (Phases A–D committed)**: migrations are present through
-> `097_phase_c_documents_money_subscriptions_integration.sql` (**baseline
-> `000`–`098`, next free `099`** — `000`–`097` applied on remote, `098` written
-> but **not yet applied**), local `typecheck`
+> `099_planner_confirmation_exactly_once.sql` (**baseline
+> `000`–`099`, next free `100`** — `000`–`097` applied on remote, `098`/`099`
+> written and locally verified but **not yet applied**), local `typecheck`
 > passes after `next typegen`, and the product focus is the **AI-assisted
 > operating desk, Action Center first** — not CRM or Booking expansion.
 >
@@ -41,7 +41,7 @@ CI into one consistent, honest state. No new business features.
 - README synced with the real project state.
 - `typecheck` npm script added; lint / typecheck / build verified green.
 - CI already runs install → typegen → typecheck → lint → test → build.
-- Migration baseline is **`000` → `098` in the tree, next free `099`**; remote is
+- Migration baseline is **`000` → `099` in the tree, next free `100`**; remote is
   applied through `097` (`054` is a known, intentional gap). Do not describe `067`,
   `077`, `079`, `086`, or `093` as the repository head. Verify against the tree,
   not a doc: `ls supabase/migrations | tail -1`. And verify *remote* by probing an
@@ -73,7 +73,8 @@ No new product features.
 - **Release documentation** — `OPERATIONS_MANUAL.md`, `contracts/`,
   8 `runbooks/`, and canonical `release/{release-checklist,smoke-test-checklist,rollback-plan}.md`.
 - **No schema change in Phase A itself** (the baseline was `000`–`093` at the time).
-  Phases B–D later added `094`–`097`; the current baseline is `000`–`097`.
+  Phases B–D later added `094`–`097`, and release closure added `098`/`099`; the
+  current baseline is `000`–`099`.
 
 Remaining (not blockers):
 - Restructure the Action Center feed sections around Requires Confirmation /

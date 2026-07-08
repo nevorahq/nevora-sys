@@ -66,11 +66,27 @@ export type AcceptResult =
  *   3. Money safety: financial types route to createFinancialTask, which can
  *      never post a money transaction. This layer has no path to a posted
  *      expense/income.
- *   4. Once-only: the suggestion is CLAIMED (pending|edited -> 'processing') by a
- *      guarded UPDATE before the entity is created. Exactly one concurrent caller
- *      wins that transition, so a double click / retry / second tab cannot create
- *      two entities. A failed creation releases the claim (retryable); a crashed
- *      claim is repaired by reconcile_stuck_planner_suggestions (migration 094).
+ *   4. Exactly-once, at two levels:
+ *
+ *      (a) The suggestion is CLAIMED (pending|edited -> 'processing') by a guarded
+ *          UPDATE before the entity is created. Exactly one concurrent caller wins
+ *          that transition, so a double click / second tab cannot create two
+ *          entities (migration 094).
+ *
+ *      (b) The claim alone is at-most-once *per process*. It cannot survive a
+ *          crash between "entity created" and "accepted_entity_id written": the
+ *          reconciler sees a null witness, releases the claim, and the retry
+ *          creates a duplicate. So every accept route now terminates in a UNIQUE
+ *          index keyed on the suggestion, and a retry resolves to the entity that
+ *          already exists (migration 099):
+ *            create_task        -> todos_source_suggestion_unique_idx
+ *            create_financial_* -> todos_financial_source_unique_idx
+ *            create_action_item -> action_items_dedupe_idx
+ *            link_entities      -> entity_links_unique_active_idx
+ *          The database, not this file, is what makes duplicates impossible.
+ *
+ *      A failed creation releases the claim (retryable); a crashed claim is
+ *      repaired by reconcile_stuck_planner_suggestions.
  *
  * Note the write order after a successful creation: accepted_entity_id lands
  * FIRST, the status flip second. That ordering is what lets the reconciler tell
@@ -234,6 +250,38 @@ async function drawSuggestedLink(
   }
 }
 
+/**
+ * Resolve the active link matching the tuple `entity_links_unique_active_idx`
+ * keys on. Mirrors that index exactly — including `deleted_at IS NULL`, since a
+ * soft-deleted link does not occupy the key and must not be resurrected here.
+ */
+async function findActiveEntityLink(
+  supabase: SupabaseClient,
+  ctx: CurrentContext,
+  link: {
+    sourceType: string;
+    sourceId: string;
+    targetType: string;
+    targetId: string;
+    linkType: string;
+  },
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("entity_links")
+    .select("id")
+    .eq("organization_id", ctx.org.id)
+    .eq("source_type", link.sourceType)
+    .eq("source_id", link.sourceId)
+    .eq("target_type", link.targetType)
+    .eq("target_id", link.targetId)
+    .eq("link_type", link.linkType)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data.id as string;
+}
+
 const FINANCIAL_CONTEXT_BY_TYPE: Partial<Record<PlannerSuggestionType, Exclude<TaskContextType, "standard">>> = {
   create_financial_task: "invoice_payment",
   create_money_reminder: "expense_review",
@@ -259,11 +307,18 @@ async function routeAccept(
         description: parsed.data.description,
         priority,
         dueDate: parsed.data.dueDate ?? null,
+        // Exactly-once key (099). A retry after a crashed confirm resolves to the
+        // task this suggestion already created instead of a second one.
+        sourceSuggestionId: suggestion.id,
       });
       if (!res.ok) return { ok: false, error: res.error };
       // Phase B / B3: the draft told the user "a link will be created". Draw it.
-      await drawSuggestedLink(ctx, parsed.data.linkTo, "task", res.taskId);
-      return { ok: true, entityType: "task", entityId: res.taskId, created: true };
+      // Skipped on the dedup path: the link was already drawn by the first confirm,
+      // and drawSuggestedLink would only log a duplicate-link error.
+      if (res.created) {
+        await drawSuggestedLink(ctx, parsed.data.linkTo, "task", res.taskId);
+      }
+      return { ok: true, entityType: "task", entityId: res.taskId, created: res.created };
     }
 
     case "create_financial_task":
@@ -306,8 +361,24 @@ async function routeAccept(
         relationDirection: "direct",
         metadata: { source: "manual", via: "planner" },
       });
-      if (!res.ok) return { ok: false, error: res.error };
-      return { ok: true, entityType: "entity_link", entityId: res.data.id, created: true };
+
+      if (res.ok) {
+        return { ok: true, entityType: "entity_link", entityId: res.data.id, created: true };
+      }
+
+      // `entity_links_unique_active_idx` already prevented a duplicate link, so
+      // createEntityLink reports "already exists". For a *retried confirm* that is
+      // success, not failure: the link this draft promised is there. Returning the
+      // error instead would release the claim and strand the draft in `pending`
+      // forever — every retry hitting the same wall.
+      //
+      // createEntityLink's contract is left alone: for the manual relations UI,
+      // "already exists" is the right answer. Only the confirm path reinterprets it.
+      const existing = await findActiveEntityLink(supabase, ctx, parsed.data);
+      if (existing) {
+        return { ok: true, entityType: "entity_link", entityId: existing, created: false };
+      }
+      return { ok: false, error: res.error };
     }
 
     case "create_action_item": {

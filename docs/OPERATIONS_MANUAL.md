@@ -75,15 +75,24 @@ not a gate. Re-enable per environment with `NEVORA_ENABLE_CRM` /
 
 ## Database
 
-- **Baseline in the tree:** migrations `000`–`098` (98 files; `054` is a known,
-  intentional numbering gap). **Next free number: `099`.**
+- **Baseline in the tree:** migrations `000`–`099` (99 files; `054` is a known,
+  intentional numbering gap). **Next free number: `100`.**
 - **Applied on remote: `000`–`097` only** (verified 2026-07-08: `096` confirmed
   via its seeded `plan_entitlements` keys, `097` via its
   `document_processing_results` and `financial_suggestions` tables).
-- ⚠️ **`098_booking_anon_lockdown.sql` is written and locally verified but NOT yet
-  applied to remote.** Until it is, `anon` can still read published booking data
-  and EXECUTE `create_booking_request_public` straight from Supabase REST. This is
-  a live P0 — see `docs/SECURITY.md` and `MODULE_STATUS.md`.
+- ⚠️ **`098` and `099` are written and verified on a local harness, but NOT yet
+  applied to remote.**
+  - `098_booking_anon_lockdown.sql` — until applied, `anon` can still read
+    published booking data **and** EXECUTE `create_booking_request_public`
+    (a `SECURITY DEFINER` write path) straight from Supabase REST. Live P0.
+  - `099_planner_confirmation_exactly_once.sql` — until applied, a confirm that
+    crashes between "entity created" and "accepted_entity_id written" duplicates
+    the task on retry. It also carries the app-side `source_suggestion_id`
+    column: **deploy the migration before or with the app code**, since
+    `createStandardTask` writes that column.
+- Both were run against a from-scratch `supabase db reset` (all of `000`–`099`
+  apply cleanly in order) and each has a verification harness under
+  `supabase/tests/` that is negative-tested — reintroduce the bug and it fails.
 - Migrations are applied **manually** by the maintainer; the Supabase CLI is not
   logged in and there is no automated `down`.
 - Verify the baseline against the tree, never against a doc:
