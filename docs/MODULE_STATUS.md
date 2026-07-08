@@ -57,8 +57,13 @@ into a clear daily action list, and the user confirms before business data chang
   endpoint using the public anon key (verified against remote 2026-07-08: 3 booking
   pages across 3 organizations; 2 host profiles exposing `display_name`,
   `avatar_url`, `user_id`, `membership_id`).
-  **A closed route is not a closed data surface.** Tracked as a release-blocking
-  P0; migration `098` will revoke the `anon` grants.
+  Worse, `anon` also retains `EXECUTE` on `create_booking_request_public` — a
+  `SECURITY DEFINER` RPC that bypasses RLS entirely, i.e. an **anonymous write
+  path** into `booking_requests`. Confirmed live 2026-07-08.
+  **A closed route is not a closed data surface.** Release-blocking P0.
+  `098_booking_anon_lockdown.sql` closes both (read + write) and is verified on a
+  local harness — but it is **not yet applied to remote**, so the exposure is live
+  until it is.
 - Paused modules are removed from the active public product promise: no landing
   copy, no pricing entitlement, no navigation entry.
 - Priority focus is the **Business OS foundation**: Action Center, Tasks, Money,

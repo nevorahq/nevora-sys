@@ -3,7 +3,8 @@
 > Current source-of-truth roadmap for the repository. Status reflects the tree on
 > **2026-07-08 (Phases A–D committed)**: migrations are present through
 > `097_phase_c_documents_money_subscriptions_integration.sql` (**baseline
-> `000`–`097`, next free `098`** — all applied on remote), local `typecheck`
+> `000`–`098`, next free `099`** — `000`–`097` applied on remote, `098` written
+> but **not yet applied**), local `typecheck`
 > passes after `next typegen`, and the product focus is the **AI-assisted
 > operating desk, Action Center first** — not CRM or Booking expansion.
 >
@@ -25,8 +26,10 @@
 > - Phase D: `featureGateService` and `usageService` have **zero external call
 >   sites** — the live enforcement path is still `checkPlanLimit` from `lib/billing`.
 >   The entitlement keys seeded by `096` are not gated in active product flows.
-> - Booking: routes are closed, but `anon` REST access to booking data has not been
->   verified as closed at the database layer.
+> - Booking: routes are closed, but at the database layer `anon` can still read
+>   published booking data **and** EXECUTE the `SECURITY DEFINER` RPC
+>   `create_booking_request_public` (an anonymous write path). `098` fixes both;
+>   it is written and locally verified but **not yet applied to remote**.
 > - Pricing: `modules/landing` and `modules/billing/plan-catalog.ts` are separate
 >   sources of truth and disagree on currency and limits.
 
@@ -38,10 +41,11 @@ CI into one consistent, honest state. No new business features.
 - README synced with the real project state.
 - `typecheck` npm script added; lint / typecheck / build verified green.
 - CI already runs install → typegen → typecheck → lint → test → build.
-- Migration baseline is **`000` → `097`, next free `098`** (`054` is a known,
-  intentional gap). Do not describe `067`, `077`, `079`, `086`, or `093` as the
-  repository head. Verify against the tree, not a doc:
-  `ls supabase/migrations | tail -1`.
+- Migration baseline is **`000` → `098` in the tree, next free `099`**; remote is
+  applied through `097` (`054` is a known, intentional gap). Do not describe `067`,
+  `077`, `079`, `086`, or `093` as the repository head. Verify against the tree,
+  not a doc: `ls supabase/migrations | tail -1`. And verify *remote* by probing an
+  object the migration creates — never by trusting this line.
 
 Open follow-ups:
 - Keep release docs aligned with the latest migration head when a new migration

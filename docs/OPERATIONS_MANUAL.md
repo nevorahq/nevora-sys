@@ -75,11 +75,15 @@ not a gate. Re-enable per environment with `NEVORA_ENABLE_CRM` /
 
 ## Database
 
-- **Baseline:** migrations `000`–`097` (97 files; `054` is a known, intentional
-  numbering gap). **Next free number: `098`.**
-- All of `000`–`097` are applied on remote (verified 2026-07-08: `096` confirmed
+- **Baseline in the tree:** migrations `000`–`098` (98 files; `054` is a known,
+  intentional numbering gap). **Next free number: `099`.**
+- **Applied on remote: `000`–`097` only** (verified 2026-07-08: `096` confirmed
   via its seeded `plan_entitlements` keys, `097` via its
   `document_processing_results` and `financial_suggestions` tables).
+- ⚠️ **`098_booking_anon_lockdown.sql` is written and locally verified but NOT yet
+  applied to remote.** Until it is, `anon` can still read published booking data
+  and EXECUTE `create_booking_request_public` straight from Supabase REST. This is
+  a live P0 — see `docs/SECURITY.md` and `MODULE_STATUS.md`.
 - Migrations are applied **manually** by the maintainer; the Supabase CLI is not
   logged in and there is no automated `down`.
 - Verify the baseline against the tree, never against a doc:

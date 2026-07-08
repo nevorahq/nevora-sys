@@ -12,9 +12,10 @@ Run top-to-bottom before deploying. Do not skip §2 (migrations) or §3 (scope g
 
 | | |
 |---|---|
-| **Current baseline** | `000` – `097` (97 files, no duplicate prefixes; `054` is a known, intentional gap) |
-| **Next free number** | **`098`** |
-| **Remote state** | All of `000`–`097` verified applied on `uimpykbnatzhykzpastd` (2026-07-08) |
+| **Current baseline (tree)** | `000` – `098` (98 files, no duplicate prefixes; `054` is a known, intentional gap) |
+| **Next free number** | **`099`** |
+| **Remote state** | `000`–`097` verified applied on `uimpykbnatzhykzpastd` (2026-07-08). **`098` NOT applied — release blocker.** |
+| **`098` status** | Written + verified on a local harness (leak reproduced, then closed). Awaiting manual apply; migrations are applied by hand. |
 | **Phase A schema change** | **None.** Phase A is code + docs only. |
 | **Phase B–D schema change** | `094` (planner confirmation), `095` (onboarding progress), `096` (Phase D commercial readiness), `097` (documents↔money↔subscriptions). |
 
