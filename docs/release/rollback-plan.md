@@ -19,10 +19,12 @@ history; scoped to migrations 076/077)
 
 ## 1. Phase A specifics
 
-Phase A introduced **no schema change**. The baseline is unchanged at `000`–`093`.
+Phase A introduced **no schema change**. Phases B–D did: `094`–`097` landed after
+this section was first written, so the baseline is now `000`–`097`.
 
-That makes Phase A rollback purely an app rollback: promote the previous
-deployment. The database needs no attention at all.
+That makes *Phase A* rollback purely an app rollback: promote the previous
+deployment. The database needs no attention at all. A rollback that also unwinds
+Phase B–D must account for `094`–`097`, which have no automated `down`.
 
 Two Phase A behaviours worth knowing during a rollback:
 

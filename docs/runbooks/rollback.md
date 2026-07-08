@@ -87,4 +87,4 @@ The **last** file listed is what is live. The one before it is your target.
 - [ ] Re-run the ⚑ items in `docs/release/smoke-test-checklist.md`.
 - [ ] Record: what broke, what was rolled back, when, and the follow-up.
 - [ ] Confirm the migration baseline still matches `supabase/migrations/`
-      (`000`–`093`, next free `094`).
+      (`000`–`097`, next free `098`).

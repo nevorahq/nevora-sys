@@ -12,14 +12,16 @@ Run top-to-bottom before deploying. Do not skip §2 (migrations) or §3 (scope g
 
 | | |
 |---|---|
-| **Current baseline** | `000` – `093` (93 files, no gaps, no duplicate prefixes) |
-| **Next free number** | **`094`** |
-| **Remote state** | All of `000`–`093` verified applied on `uimpykbnatzhykzpastd` (2026-07-08) |
+| **Current baseline** | `000` – `097` (97 files, no duplicate prefixes; `054` is a known, intentional gap) |
+| **Next free number** | **`098`** |
+| **Remote state** | All of `000`–`097` verified applied on `uimpykbnatzhykzpastd` (2026-07-08) |
 | **Phase A schema change** | **None.** Phase A is code + docs only. |
+| **Phase B–D schema change** | `094` (planner confirmation), `095` (onboarding progress), `096` (Phase D commercial readiness), `097` (documents↔money↔subscriptions). |
 
-> ⚠️ Earlier drafts of the Phase A brief stated a baseline of "000–086, next 087".
-> That was accurate on 2026-07-05 and went stale when 087–093 landed. **Do not
-> reintroduce it.** Verify against the tree, not against a doc:
+> ⚠️ This table has gone stale twice: first at "000–086, next 087", then at
+> "000–093, next 094" (which also wrongly claimed "93 files, no gaps" — there are
+> 97 files and `054` is absent). **Do not reintroduce either.** Verify against the
+> tree, not against a doc:
 >
 > ```sh
 > ls supabase/migrations | tail -1                          # highest file

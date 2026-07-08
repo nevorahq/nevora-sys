@@ -157,8 +157,8 @@ All must return **404** (not 403, not a redirect to login for the dashboard ones
       Repeat for `extraction-sweep`, `subscription-sweep`, `suggestions-sweep`,
       `trial-sweep`.
 - [ ] Cron runs complete within one cycle; failures logged.
-- [ ] ⚑ Migration baseline matches `supabase/migrations/` (currently `000`–`093`,
-      next free `094`).
+- [ ] ⚑ Migration baseline matches `supabase/migrations/` (currently `000`–`097`,
+      97 files, `054` a known gap; next free `098`).
 - [ ] Billing subscription reconciliation: `billing_subscriptions` rows agree with
       trial/plan state; no org is both `trialing` and `expired`.
 

@@ -70,6 +70,49 @@ Run through this before opening a PR that touches data, schema, or mutations:
   (Bearer auth). Generate with `openssl rand -hex 32`.
 - `ANTHROPIC_API_KEY`, `RESEND_API_KEY` are server-only; never expose to the
   client. Only `NEXT_PUBLIC_*` values reach the browser.
+- `.env.example` carries **empty values only** — never a real key, not even a
+  test-mode one. Committed placeholders must stay blank (`STRIPE_SECRET_KEY=`),
+  not fake-but-plausible strings, so secret scanners stay useful.
+
+### Stripe test key — 2026-07-08 finding
+
+A real Stripe **test-mode** secret key (`sk_test_51Tqy5z…`) was found inside this
+repository's local git object store. Scope, established by scanning every object
+and every remote ref:
+
+- It appears in **two blobs of `.env.example`**, reachable only from local
+  `refs/codex/turn-diffs/checkpoints/*` — snapshots the Codex CLI takes of the
+  working tree.
+- It is **not** in any commit on `main`, **not** in `HEAD`'s `.env.example` (which
+  has empty values), and **not** on the public GitHub remote — `git ls-remote origin`
+  returns exactly four refs (`HEAD`, `refs/heads/main`, `refs/pull/1/head`,
+  `refs/pull/2/head`), none containing the key.
+
+So the key was **never published**, even though the repository is public. The
+exposure is local-disk only. Nonetheless:
+
+1. **Rotate the key in the Stripe Dashboard.** It is a real credential of a real
+   Stripe account and it sat unencrypted on disk. Rotation is cheap; assurance is not.
+2. Prune the local Codex checkpoint refs that carry it (they are local-only and
+   safe to delete — they are not part of project history).
+3. Never place a live value in `.env.example`, including test-mode keys.
+
+Verify the current tree stays clean:
+
+```sh
+rg 'sk_test_|sk_live_|whsec_[A-Za-z0-9]{10,}|pk_live_' -g '!node_modules' .
+```
+
+Verify git history stays clean (note: a `while read | git` loop silently fails
+here — use the pipeline form):
+
+```sh
+git rev-list --all --objects \
+  | git cat-file --batch-check='%(objectname) %(objecttype) %(rest)' \
+  | awk '$2=="blob"{print $1}' \
+  | git cat-file --batch \
+  | grep -c 'sk_test_\|sk_live_'
+```
 
 ## Migrations & validation
 

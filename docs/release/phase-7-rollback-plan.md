@@ -4,7 +4,7 @@
 > (strategy) and [`../runbooks/rollback.md`](../runbooks/rollback.md) (procedure).
 >
 > Kept for history. Scoped to migrations `076`/`077`; the current baseline is
-> `000`–`093`.
+> `000`–`097`.
 
 **Status:** Superseded by `rollback-plan.md`
 **Date:** 2026-07-02

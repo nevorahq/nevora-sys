@@ -23,7 +23,7 @@ const MIGRATIONS = join(ROOT, "supabase/migrations");
 
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
 
-/** Migration filenames in applied order (000_, 001_, … 093_). */
+/** Migration filenames in applied order (000_, 001_, … 097_; 054_ is a known gap). */
 function migrationsInOrder(): string[] {
   return readdirSync(MIGRATIONS)
     .filter((f) => f.endsWith(".sql"))

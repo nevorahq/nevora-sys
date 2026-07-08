@@ -4,7 +4,7 @@
 > [`release-checklist.md`](./release-checklist.md).
 >
 > Kept for history. Its migration section stops at `077`; the current baseline is
-> `000`–`093` (next free `094`). It also predates the Phase A scope gate (paused
+> `000`–`097` (next free `098`). It also predates the Phase A scope gate (paused
 > CRM/Booking) and the Action Center-first dashboard. **Do not run this document.**
 
 **Status:** Superseded by `release-checklist.md`

@@ -1,21 +1,34 @@
 # Roadmap — Nevora Business OS
 
-> Current source-of-truth roadmap for the repository. Status reflects the working
-> tree on **2026-07-08 (Phase A)**: migrations are present through
-> `093_analytics_billing_writability.sql` (**baseline `000`–`093`, next free
-> `094`** — all applied on remote), local `typecheck` passes after `next typegen`,
-> and the product focus is the **AI-assisted operating desk, Action Center first**
-> — not CRM or Booking expansion.
+> Current source-of-truth roadmap for the repository. Status reflects the tree on
+> **2026-07-08 (Phases A–D committed)**: migrations are present through
+> `097_phase_c_documents_money_subscriptions_integration.sql` (**baseline
+> `000`–`097`, next free `098`** — all applied on remote), local `typecheck`
+> passes after `next typegen`, and the product focus is the **AI-assisted
+> operating desk, Action Center first** — not CRM or Booking expansion.
 >
 > Earlier internal notes numbered phases differently (e.g. "Phase 2 — relations",
 > "Phase 3 — Action Center"). Those map onto the phases below; this document keeps
 > the stabilized execution order.
 >
 > **Superseded statements elsewhere.** Any doc claiming the migration head is
-> `067`, `077`, `079`, or `086`, or that CRM/Booking are merely "hidden from the
-> sidebar", is stale. Canonical: [`OPERATIONS_MANUAL.md`](./OPERATIONS_MANUAL.md),
+> `067`, `077`, `079`, `086`, or `093`, or that CRM/Booking are merely "hidden from
+> the sidebar", is stale. Canonical: [`OPERATIONS_MANUAL.md`](./OPERATIONS_MANUAL.md),
 > [`release/release-checklist.md`](./release/release-checklist.md),
 > [`MODULE_STATUS.md`](./MODULE_STATUS.md).
+>
+> **Known truthfulness gaps (open, tracked as release blockers).** Do not read this
+> document as claiming these are done:
+> - Stripe: the adapter and webhook code exist and `billing-provider.ts` resolves
+>   them, but no `STRIPE_*` runtime configuration is present. Paid self-serve
+>   checkout is **not operational**. Billing mode is not yet explicitly declared.
+> - Phase D: `featureGateService` and `usageService` have **zero external call
+>   sites** — the live enforcement path is still `checkPlanLimit` from `lib/billing`.
+>   The entitlement keys seeded by `096` are not gated in active product flows.
+> - Booking: routes are closed, but `anon` REST access to booking data has not been
+>   verified as closed at the database layer.
+> - Pricing: `modules/landing` and `modules/billing/plan-catalog.ts` are separate
+>   sources of truth and disagree on currency and limits.
 
 ## Phase 0 — Stabilization & Source of Truth — *mostly done / keep synced*
 
@@ -25,8 +38,9 @@ CI into one consistent, honest state. No new business features.
 - README synced with the real project state.
 - `typecheck` npm script added; lint / typecheck / build verified green.
 - CI already runs install → typegen → typecheck → lint → test → build.
-- Migration baseline is **`000` → `093`, next free `094`**. Do not describe `067`,
-  `077`, `079`, or `086` as the repository head. Verify against the tree, not a doc:
+- Migration baseline is **`000` → `097`, next free `098`** (`054` is a known,
+  intentional gap). Do not describe `067`, `077`, `079`, `086`, or `093` as the
+  repository head. Verify against the tree, not a doc:
   `ls supabase/migrations | tail -1`.
 
 Open follow-ups:
@@ -54,7 +68,8 @@ No new product features.
   scanning the source tree.
 - **Release documentation** — `OPERATIONS_MANUAL.md`, `contracts/`,
   8 `runbooks/`, and canonical `release/{release-checklist,smoke-test-checklist,rollback-plan}.md`.
-- **No schema change.** Baseline stays `000`–`093`.
+- **No schema change in Phase A itself** (the baseline was `000`–`093` at the time).
+  Phases B–D later added `094`–`097`; the current baseline is `000`–`097`.
 
 Remaining (not blockers):
 - Restructure the Action Center feed sections around Requires Confirmation /
@@ -172,18 +187,30 @@ Insights and recommendations via Anthropic exist. Direction: scheduled
 generation, more domain-event-driven sources, summaries. **AI assistance is
 scoped — not an autonomous business agent.**
 
-## Phase 10 — SaaS Monetization — *partial / provider not connected*
+## Phase 10 — SaaS Monetization — *partial / provider coded, not configured*
 
 Billing/trials and plan limits exist. Phase 6 added normalized plan/developer
 access structures (`071`) and atomic usage reservations (`072`); Phase 7 added
-member-seat atomicity (`076`). Real checkout/payment provider and self-serve
-plan selection are not built yet.
+member-seat atomicity (`076`); Phase D added the commercial-readiness schema
+(`096`).
+
+The payment provider **has been chosen and coded**: `StripeBillingAdapter`
+(checkout, webhook signature verification, customer portal), resolved through
+`billing-provider.ts` on `BILLING_PROVIDER`. What is missing is *runtime
+configuration* — no `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` or `STRIPE_PRICE_*`
+values — so self-serve checkout cannot complete. This is a configuration and
+honesty gap, not a "we haven't picked a provider" gap.
 
 Remaining:
-- Choose and integrate payment provider.
+- Declare the billing mode explicitly: **Stripe runtime-ready** *or* **private
+  beta**. Do not ship the hybrid state where the UI offers checkout that cannot run.
 - Activate paid plans only from trusted provider webhooks.
-- Keep dashboard billing UI honest until provider checkout exists.
-- Retire or isolate legacy `checkPlanLimit` paths when CRM remains paused.
+- Unify the public plan catalog: `modules/landing` (EUR, stale limits) and
+  `modules/billing/plan-catalog.ts` (USD) currently disagree.
+- Wire Phase D's `featureGateService` / `usageService` into real product flows —
+  today both have zero external call sites and `checkPlanLimit` does the work.
+- Retire or isolate legacy `checkPlanLimit` paths for the paused CRM keys
+  (`clients`, `deals`).
 
 ## Phase 11 — Notifications, Reminders & Attention — *in progress*
 
@@ -217,9 +244,11 @@ Current required gates before controlled beta:
 
 Known gaps to keep visible:
 - DB/E2E harness for cross-org RLS denial and concurrent limit overshoot.
-- Remote migration status must be verified through `079`.
-- Payment provider is not connected.
-- CRM and Booking remain out of active MVP scope.
+- Remote migration status must be verified through `097`.
+- Payment provider adapter exists (Stripe); its **runtime configuration is absent**,
+  so paid self-serve checkout is not operational.
+- CRM and Booking remain out of active MVP scope. Booking's `anon` REST surface is
+  still open at the database layer (P0 — see `MODULE_STATUS.md`).
 
 ---
 
@@ -234,7 +263,7 @@ Known gaps to keep visible:
 
 - Replace placeholder landing contact channels (`hello@nevora.com`, `@nevora`)
   with real ones before launch.
-- Verify remote migrations are applied through `079` before beta.
+- Verify remote migrations are applied through `097` before beta.
 - Re-run the release checklist after every migration head change.
 
 ### Resolved operational follow-ups
