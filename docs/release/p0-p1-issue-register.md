@@ -36,7 +36,7 @@ closure, with owner and state. Public launch stays **No-Go** while any P0/P1 is 
 | **I-07** | **Rotate the leaked payment test key** in the provider dashboard, even though it was never published. | Billing-data owner | **ACTION REQUIRED** |
 | **I-09** | Run the **interactive smoke suite** (upload→extract→confirm→transaction, mark-as-paid idempotency, cross-org isolation, notifications read≠resolve, Capture Inbox) against a deployed authed environment. Currently **NOT EXECUTED** (see smoke report). | Release owner | **OPEN** |
 | **I-10** | Line-by-line review of the parallel-session `§7`/`§8` code (billing checkout/portal, document/AI gates) — committed green (typecheck+1011 tests) but not deeply reviewed in this session. | Release owner | **OPEN** |
-| **I-11** | Run `next build` and a fresh `supabase db reset` + `supabase test db` in CI before deploy. | Release owner | **OPEN** |
+| **I-11** | Run `next build` and a fresh from-scratch DB apply + SQL harnesses in CI before deploy. | Release owner | **CI DONE / deploy gate open** — CI job `db` (`.github/workflows/ci.yml`, PR #7 → main `bae9f32`) seeds hosted-like grants, applies migrations `000`–`101` from scratch via psql, and runs all `supabase/tests/*.sql` (green 2026-07-09); `build` runs in the `verify` job. The harnesses are psql scripts, not pgTAP, so `psql` is used instead of `supabase test db`. Remaining: run this same CI green **on the deploy commit** before shipping. |
 | **I-12** | Replace placeholder landing contact channels before public launch (if not final). | Release owner | **OPEN** |
 
 ---
