@@ -14,6 +14,11 @@ export type ActionResult = {
   taskId?: string;
   subscriptionId?: string;
   warning?: string;
+  /**
+   * Регистрация прошла, но проект требует подтверждения email — сессии ещё нет.
+   * Форма показывает экран «проверьте почту» вместо редиректа на dashboard.
+   */
+  emailConfirmationRequired?: boolean;
 };
 
 /**

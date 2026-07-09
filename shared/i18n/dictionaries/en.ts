@@ -197,6 +197,9 @@ export const en = {
       submitButton: "Create Account",
       hasAccount: "Already have an account?",
       loginLink: "Sign In",
+      checkEmailTitle: "Confirm your email",
+      checkEmailBody:
+        "We've sent a confirmation link to your inbox. Click it to activate your account, then sign in.",
     },
     errors: {
       invalidCredentials: "Invalid email or password",

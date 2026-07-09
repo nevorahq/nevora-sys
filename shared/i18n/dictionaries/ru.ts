@@ -180,6 +180,9 @@ export const ru: Dictionary = {
       submitButton: "Зарегистрироваться",
       hasAccount: "Уже есть аккаунт?",
       loginLink: "Войти",
+      checkEmailTitle: "Подтвердите email",
+      checkEmailBody:
+        "Мы отправили ссылку для подтверждения на вашу почту. Перейдите по ней, чтобы активировать аккаунт, затем войдите.",
     },
     errors: {
       invalidCredentials: "Неверный email или пароль",
