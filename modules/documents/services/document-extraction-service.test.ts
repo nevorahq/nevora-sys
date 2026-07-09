@@ -180,3 +180,44 @@ describe("runDocumentExtraction — persistence failures", () => {
     );
   });
 });
+
+// Phase D §8: the feature gate + usage check must run BEFORE the expensive OCR/AI
+// step, never as a cleanup after it. These pin that a blocked plan (a) short-circuits
+// with a usage_limit_exceeded outcome, (b) leaves the document retryable
+// (needs_review, not failed — so an upgrade lets the same document proceed), and
+// (c) never spends an extraction/AI call. Without them the wiring exists but nothing
+// proves it actually stops the costly work.
+describe("runDocumentExtraction — plan enforcement runs before any OCR", () => {
+  it("refuses when documents.process is not in the plan, and never routes extraction", async () => {
+    getBlockedReason.mockResolvedValue({
+      featureKey: "documents.process",
+      title: "Process documents is not included in your current plan",
+      message: "Choose a higher plan to unlock this workflow for your workspace.",
+      cta: "Upgrade",
+    });
+    const supabase = makeSupabase(infra());
+
+    const result = await runDocumentExtraction(supabase, ctx, DOC_ID, EXT_ID);
+
+    expect(result.ok).toBe(false);
+    expect(result.errorCode).toBe("usage_limit_exceeded");
+    // Retryable, not a hard failure: an upgrade should let this document proceed.
+    expect(result.status).toBe("needs_review");
+    // The costly step never ran, and the usage counter was never consulted once the
+    // feature gate said no.
+    expect(routeExtraction).not.toHaveBeenCalled();
+    expect(assertWithinLimit).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the monthly processing quota is exhausted, and never routes extraction", async () => {
+    assertWithinLimit.mockRejectedValue(new Error("Document processing limit reached."));
+    const supabase = makeSupabase(infra());
+
+    const result = await runDocumentExtraction(supabase, ctx, DOC_ID, EXT_ID);
+
+    expect(result.ok).toBe(false);
+    expect(result.errorCode).toBe("usage_limit_exceeded");
+    expect(result.status).toBe("needs_review");
+    expect(routeExtraction).not.toHaveBeenCalled();
+  });
+});
