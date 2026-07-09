@@ -14,8 +14,19 @@ import type {
  */
 export const PHASE_B_SECTION_LABELS: Record<PhaseBSection, string> = {
   needs_your_review: "Needs your review",
+  money_attention: "Money attention",
   next_actions: "Next actions",
   recently_updated: "Recently updated",
+};
+
+/**
+ * One-line explainer under a section heading. Only Money attention carries one:
+ * it groups by TOPIC rather than by the review/work question, so a word about what
+ * lands there — and, when it is empty, what a clear-of-money-issues day looks like —
+ * keeps it from reading as an arbitrary bucket.
+ */
+export const PHASE_B_SECTION_DESCRIPTIONS: Partial<Record<PhaseBSection, string>> = {
+  money_attention: "Uncategorized, unusual, overdue or upcoming money — and drafts awaiting your confirmation.",
 };
 
 export const TYPE_LABELS: Record<ActionItemType, string> = {

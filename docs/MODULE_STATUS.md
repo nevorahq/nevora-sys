@@ -284,6 +284,13 @@ Current implementation: 11 actions, 9 queries, 11 components, services;
 orchestration layer normalizing module signals into `action_items`; summary strip
 (Needs Attention / Due Today / Upcoming / Overdue / Snoozed / Recently Resolved),
 grouped feed, detail drawer, activity log.
+Daily-screen sections (§9): **Needs your review / Money attention / Next actions /
+Recently updated**. Money attention is a pure per-item regrouping in
+`services/phase-b-sections.ts` — an item is financial when its type is
+payment/renewal or its source/primary entity is a transaction or subscription — so
+"what money needs attention today?" is answerable at a glance. No new data model,
+org-scoped like the rest of the feed, and read ≠ resolved still holds (a money item
+leaves the section only on an explicit resolve/dismiss).
 Routes: **`/dashboard`** (primary; thin composition over `modules/action-center`).
 `/dashboard/actions` remains as a 307 redirect for old bookmarks and for
 `notifications.target_url` values already persisted in the database.

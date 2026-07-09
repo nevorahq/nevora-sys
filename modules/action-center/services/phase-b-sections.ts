@@ -1,4 +1,4 @@
-import type { ActionItemType, PhaseBSection } from "../types/action-item.types";
+import type { ActionItemType, ActionSourceType, PhaseBSection } from "../types/action-item.types";
 import type { ActionFeedItem, ActionFeedSections } from "../types/action-center.types";
 
 /**
@@ -21,13 +21,20 @@ import type { ActionFeedItem, ActionFeedSections } from "../types/action-center.
  */
 
 /**
- * Where each item type lives. Exhaustive by construction: adding an
- * ActionItemType without placing it here is a compile error, so a new signal can
- * never quietly vanish from the daily screen.
+ * The BASE section for an item type, ignoring what entity it is about. Exhaustive
+ * by construction: adding an ActionItemType without placing it here is a compile
+ * error, so a new signal can never quietly vanish from the daily screen.
  *
- * The split is "does this need a decision from me?" (review) versus "is this work
- * to carry out?" (next). A draft, a missing link and an unassigned item all wait
- * on a human choice; an overdue payment or a due task waits on effort.
+ * Three anchors:
+ *   - "does this need a decision from me?" → needs_your_review (a draft, a missing
+ *     link, an unassigned item all wait on a human choice);
+ *   - "is this money?" → money_attention (payment_required / renewal_required are
+ *     financial by definition, whatever their source);
+ *   - "is this work to carry out?" → next_actions (a due task waits on effort).
+ *
+ * Types that are only SOMETIMES about money (a draft_review or missing_information
+ * ON a transaction) anchor to review/work here and are re-routed to money_attention
+ * per-item by `phaseBSectionOfItem` below, based on the item's source/primary entity.
  */
 const SECTION_BY_TYPE: Record<ActionItemType, Exclude<PhaseBSection, "recently_updated">> = {
   // Awaiting a human decision.
@@ -39,14 +46,51 @@ const SECTION_BY_TYPE: Record<ActionItemType, Exclude<PhaseBSection, "recently_u
   missing_relation: "needs_your_review",
   assignment_required: "needs_your_review",
 
+  // Money by definition, regardless of source.
+  payment_required: "money_attention",
+  renewal_required: "money_attention",
+
   // Awaiting work.
   overdue: "next_actions",
-  payment_required: "next_actions",
-  renewal_required: "next_actions",
   due_soon: "next_actions",
   document_review: "next_actions",
   follow_up_required: "next_actions",
 };
+
+/**
+ * An item belongs in Money Attention when it is financial. The signal is drawn
+ * only from fields the item already carries (§9 adds no data model):
+ *   - its type is payment_required / renewal_required (money by definition), or
+ *   - its source or primary entity is a transaction or a subscription — which is
+ *     how the generators stamp every money signal: a document-derived draft expense
+ *     (`draft_review`, source `transaction`), an uncategorized/unusual transaction
+ *     (`missing_information` / `risk_detected`, source `transaction`), an upcoming
+ *     subscription payment (`renewal_required` / `payment_required`, source
+ *     `subscription`), a payment cycle awaiting confirmation, and so on.
+ */
+const MONEY_SOURCE_TYPES: ReadonlySet<ActionSourceType> = new Set(["transaction", "subscription"]);
+const MONEY_ENTITY_TYPES: ReadonlySet<string> = new Set(["transaction", "subscription"]);
+
+export function isMoneyAttentionItem(
+  item: Pick<ActionFeedItem, "type" | "source_type" | "primary_entity_type">,
+): boolean {
+  return (
+    SECTION_BY_TYPE[item.type] === "money_attention" ||
+    MONEY_SOURCE_TYPES.has(item.source_type) ||
+    (item.primary_entity_type !== null && MONEY_ENTITY_TYPES.has(item.primary_entity_type))
+  );
+}
+
+/**
+ * The actual section for a concrete item: Money Attention wins over the base
+ * type anchor, so a draft_review ON a transaction lands in Money Attention while a
+ * draft_review on anything else stays in Needs your review.
+ */
+export function phaseBSectionOfItem(
+  item: Pick<ActionFeedItem, "type" | "source_type" | "primary_entity_type">,
+): Exclude<PhaseBSection, "recently_updated"> {
+  return isMoneyAttentionItem(item) ? "money_attention" : SECTION_BY_TYPE[item.type];
+}
 
 /**
  * The Phase B priority order, 1 (most urgent) to 5. Applied within a section, so
@@ -82,6 +126,8 @@ export function phaseBRank(type: ActionItemType): number {
   return RANK_BY_TYPE[type];
 }
 
+/** The base (type-only) section anchor — used by the exhaustiveness test. Actual
+ * placement of a concrete item goes through `phaseBSectionOfItem`. */
 export function phaseBSectionOf(type: ActionItemType): Exclude<PhaseBSection, "recently_updated"> {
   return SECTION_BY_TYPE[type];
 }
@@ -89,14 +135,17 @@ export function phaseBSectionOf(type: ActionItemType): Exclude<PhaseBSection, "r
 export type PhaseBFeedSections = Record<PhaseBSection, ActionFeedItem[]>;
 
 /**
- * Regroup a fetched feed page into the three Phase B sections.
+ * Regroup a fetched feed page into the four Phase B sections.
  *
  * `recently_updated` is fed by the query's `recently_resolved` bucket, which until
- * now was fetched, hydrated — and never rendered.
+ * now was fetched, hydrated — and never rendered. `money_attention` (§9) is filled
+ * per-item, not per-type, so a financial draft leaves review and a financial
+ * follow-up leaves next-actions — grouped by what the SMB actually asks about money.
  */
 export function groupPhaseBSections(sections: ActionFeedSections): PhaseBFeedSections {
   const grouped: PhaseBFeedSections = {
     needs_your_review: [],
+    money_attention: [],
     next_actions: [],
     recently_updated: sections.recently_resolved,
   };
@@ -109,10 +158,11 @@ export function groupPhaseBSections(sections: ActionFeedSections): PhaseBFeedSec
   ];
 
   for (const item of active) {
-    grouped[phaseBSectionOf(item.type)].push(item);
+    grouped[phaseBSectionOfItem(item)].push(item);
   }
 
   grouped.needs_your_review.sort(byUrgency);
+  grouped.money_attention.sort(byUrgency);
   grouped.next_actions.sort(byUrgency);
 
   return grouped;

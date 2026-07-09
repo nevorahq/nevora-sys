@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { ACTION_ITEM_TYPES, type ActionItemType } from "../types/action-item.types";
 import type { ActionFeedItem, ActionFeedSections } from "../types/action-center.types";
-import { groupPhaseBSections, phaseBRank, phaseBSectionOf } from "./phase-b-sections";
+import {
+  groupPhaseBSections,
+  isMoneyAttentionItem,
+  phaseBRank,
+  phaseBSectionOf,
+  phaseBSectionOfItem,
+} from "./phase-b-sections";
 
 function item(overrides: Partial<ActionFeedItem> & { id: string; type: ActionItemType }): ActionFeedItem {
   return {
@@ -49,13 +55,13 @@ function sections(active: ActionFeedItem[], resolved: ActionFeedItem[] = []): Ac
 describe("phase-b section mapping", () => {
   it("places every action item type — a new type cannot vanish from the screen", () => {
     for (const type of ACTION_ITEM_TYPES) {
-      expect(["needs_your_review", "next_actions"]).toContain(phaseBSectionOf(type));
+      expect(["needs_your_review", "money_attention", "next_actions"]).toContain(phaseBSectionOf(type));
       expect(phaseBRank(type)).toBeGreaterThanOrEqual(1);
       expect(phaseBRank(type)).toBeLessThanOrEqual(5);
     }
   });
 
-  it("routes decisions to review and work to next actions", () => {
+  it("routes decisions to review, money-by-type to money attention, and work to next actions", () => {
     const review: ActionItemType[] = [
       "approval_required",
       "draft_review",
@@ -65,16 +71,13 @@ describe("phase-b section mapping", () => {
       "missing_relation",
       "assignment_required",
     ];
-    const work: ActionItemType[] = [
-      "overdue",
-      "payment_required",
-      "renewal_required",
-      "due_soon",
-      "document_review",
-      "follow_up_required",
-    ];
+    // payment_required / renewal_required are financial by definition, so their
+    // base anchor is money_attention regardless of source.
+    const money: ActionItemType[] = ["payment_required", "renewal_required"];
+    const work: ActionItemType[] = ["overdue", "due_soon", "document_review", "follow_up_required"];
 
     for (const type of review) expect(phaseBSectionOf(type)).toBe("needs_your_review");
+    for (const type of money) expect(phaseBSectionOf(type)).toBe("money_attention");
     for (const type of work) expect(phaseBSectionOf(type)).toBe("next_actions");
   });
 
@@ -91,6 +94,60 @@ describe("phase-b section mapping", () => {
   });
 });
 
+// §9 — Money Attention. A financial item is pulled OUT of review/next-actions into
+// its own section, decided per-item from fields it already carries (no new model).
+describe("money attention (§9)", () => {
+  it("treats payment/renewal types as money whatever their source", () => {
+    expect(isMoneyAttentionItem({ type: "payment_required", source_type: "system", primary_entity_type: null })).toBe(true);
+    expect(isMoneyAttentionItem({ type: "renewal_required", source_type: "system", primary_entity_type: null })).toBe(true);
+  });
+
+  it("treats a transaction/subscription source or primary entity as money", () => {
+    // A document-derived draft expense: draft_review sourced from a transaction.
+    expect(isMoneyAttentionItem({ type: "draft_review", source_type: "transaction", primary_entity_type: "transaction" })).toBe(true);
+    // An uncategorized transaction: missing_information on a transaction.
+    expect(isMoneyAttentionItem({ type: "missing_information", source_type: "transaction", primary_entity_type: null })).toBe(true);
+    // A subscription payment cycle awaiting confirmation.
+    expect(isMoneyAttentionItem({ type: "approval_required", source_type: "subscription", primary_entity_type: "subscription" })).toBe(true);
+    // Primary entity alone is enough, even if the source is generic.
+    expect(isMoneyAttentionItem({ type: "risk_detected", source_type: "ai", primary_entity_type: "transaction" })).toBe(true);
+  });
+
+  it("leaves non-money items where they were", () => {
+    // A draft on a document is still a review decision, not a money matter.
+    expect(isMoneyAttentionItem({ type: "draft_review", source_type: "document", primary_entity_type: "document" })).toBe(false);
+    expect(phaseBSectionOfItem({ type: "draft_review", source_type: "document", primary_entity_type: "document" })).toBe("needs_your_review");
+    // An ordinary task due soon is work, not money.
+    expect(phaseBSectionOfItem({ type: "due_soon", source_type: "task", primary_entity_type: "task" })).toBe("next_actions");
+  });
+
+  it("a financial draft leaves review and a financial follow-up leaves next-actions", () => {
+    const financialDraft = item({ id: "fin-draft", type: "draft_review", source_type: "transaction", primary_entity_type: "transaction" });
+    const plainDraft = item({ id: "plain-draft", type: "draft_review", source_type: "document" });
+    const subRenewal = item({ id: "renewal", type: "renewal_required", source_type: "subscription" });
+    const plainTask = item({ id: "task", type: "due_soon", source_type: "task" });
+
+    const grouped = groupPhaseBSections(sections([financialDraft, plainDraft, subRenewal, plainTask]));
+
+    expect(grouped.money_attention.map((i) => i.id)).toEqual(["fin-draft", "renewal"]);
+    expect(grouped.needs_your_review.map((i) => i.id)).toEqual(["plain-draft"]);
+    expect(grouped.next_actions.map((i) => i.id)).toEqual(["task"]);
+  });
+
+  it("orders money attention by urgency: a draft to confirm above an overdue payment above a renewal", () => {
+    const renewal = item({ id: "renewal", type: "renewal_required", source_type: "subscription" });
+    const overduePay = item({ id: "overdue-pay", type: "payment_required", source_type: "subscription" });
+    const draft = item({ id: "draft", type: "draft_review", source_type: "transaction" });
+
+    const grouped = groupPhaseBSections(sections([renewal, overduePay, draft]));
+
+    // rank 1 (draft) → rank 2 (payment/renewal share the rank, tie broken by score/date/id).
+    expect(grouped.money_attention[0].id).toBe("draft");
+    expect(grouped.money_attention.map((i) => i.id)).toContain("overdue-pay");
+    expect(grouped.money_attention).toHaveLength(3);
+  });
+});
+
 describe("groupPhaseBSections", () => {
   it("puts the draft first even when a stale capture scores higher", () => {
     const grouped = groupPhaseBSections(
@@ -104,11 +161,14 @@ describe("groupPhaseBSections", () => {
     expect(grouped.needs_your_review.map((i) => i.id)).toEqual(["draft", "capture"]);
   });
 
-  it("puts an overdue payment above a task that is merely due", () => {
+  it("puts an overdue item above a task that is merely due", () => {
+    // Both are non-money work, so they share the Next actions section; rank (late
+    // before due) beats the higher score on the merely-due one. (An overdue
+    // *payment* would instead move to Money attention — covered in the §9 block.)
     const grouped = groupPhaseBSections(
       sections([
         item({ id: "due", type: "due_soon", priority_score: 90 }),
-        item({ id: "late", type: "payment_required", priority_score: 10 }),
+        item({ id: "late", type: "overdue", priority_score: 10 }),
       ]),
     );
 

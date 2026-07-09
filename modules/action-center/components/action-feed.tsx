@@ -11,7 +11,7 @@ import { ActionCard } from "./action-card";
 import { ActionEmptyState } from "./action-empty-state";
 import { ActionFilters, type FilterState } from "./action-filters";
 import { ActionDetailDrawer } from "./action-detail-drawer";
-import { PHASE_B_SECTION_LABELS } from "../constants/action-center.constants";
+import { PHASE_B_SECTION_DESCRIPTIONS, PHASE_B_SECTION_LABELS } from "../constants/action-center.constants";
 import { groupPhaseBSections } from "../services/phase-b-sections";
 import type { ActionFeed as ActionFeedData, ActionFilters as ActionFiltersInput } from "../types/action-center.types";
 import {
@@ -222,12 +222,14 @@ export function ActionFeed({
           {ACTIVE_PHASE_B_SECTIONS.map((section) => {
             const items = phaseB[section];
             if (items.length === 0) return null;
+            const description = PHASE_B_SECTION_DESCRIPTIONS[section];
             return (
               <section key={section}>
                 <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text-primary">
                   {PHASE_B_SECTION_LABELS[section]}
                   <span className="text-xs font-normal text-text-muted">({items.length})</span>
                 </h2>
+                {description && <p className="mb-2 -mt-1 text-xs text-text-muted">{description}</p>}
                 <div className="space-y-2">
                   {items.map((item) => (
                     <ActionCard

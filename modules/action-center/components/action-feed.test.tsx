@@ -86,12 +86,15 @@ const props = {
 };
 
 describe("ActionFeed — Phase B sections", () => {
-  it("renders the three daily-screen headings, not the raw taxonomy", () => {
+  it("renders the daily-screen headings including Money attention, not the raw taxonomy", () => {
     render(
       <ActionFeed
         initialFeed={feed({
           ai_suggestions: [item("draft", "ai_suggestion")],
-          due_soon: [item("late", "payment_required")],
+          due_soon: [
+            item("payment", "payment_required"), // money-by-type → Money attention
+            item("task", "due_soon"), // plain work (source system) → Next actions
+          ],
           recently_resolved: [item("done", "due_soon", { status: "resolved" })],
         })}
         {...props}
@@ -99,6 +102,7 @@ describe("ActionFeed — Phase B sections", () => {
     );
 
     expect(screen.getByText(PHASE_B_SECTION_LABELS.needs_your_review)).toBeDefined();
+    expect(screen.getByText(PHASE_B_SECTION_LABELS.money_attention)).toBeDefined();
     expect(screen.getByText(PHASE_B_SECTION_LABELS.next_actions)).toBeDefined();
     expect(screen.getByText(PHASE_B_SECTION_LABELS.recently_updated)).toBeDefined();
 

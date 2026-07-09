@@ -79,10 +79,12 @@ No new product features.
   current baseline is `000`–`099`.
 
 Remaining (not blockers):
-- Restructure the Action Center feed sections around Requires Confirmation /
-  Due Soon / Overdue / Money Attention / Inbox. Today's sections (Due Soon /
-  Waiting for Action / Missing Information / AI Suggestions / Recently Resolved)
-  cover the same signals under different names.
+- The daily screen now groups into **Needs your review / Money attention / Next
+  actions / Recently updated** (§9). Money attention is a product decision, not a
+  new data model: an item is financial when its type is payment/renewal or its
+  source/primary entity is a transaction or subscription, decided per-item in
+  `services/phase-b-sections.ts`. A finer split (Requires Confirmation / Overdue /
+  Inbox naming) is still open if wanted.
 - Move `syncActionItems()` generation fully to cron (it runs best-effort on load).
 
 ## Phase 1 — Core Foundation — *done*

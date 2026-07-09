@@ -68,15 +68,26 @@ export const ACTION_SECTIONS = [
 export type ActionSection = (typeof ACTION_SECTIONS)[number];
 
 /**
- * Phase B / B5 UI sections. A re-grouping of the taxonomy above into the three
- * questions a daily screen must answer: what needs a decision, what needs doing,
- * what just happened. See services/phase-b-sections.ts for the mapping.
+ * Phase B / B5 UI sections, in render order. They answer the questions a daily
+ * screen must answer: what needs a decision, **what money needs attention**, what
+ * needs doing, what just happened. See services/phase-b-sections.ts for the mapping.
+ *
+ * `money_attention` (§9) cuts across the review/work split by TOPIC: an SMB's
+ * sharpest daily question is "where's the money — what's uncategorized, unusual,
+ * overdue or due?". Money items (a transaction/subscription source, or a
+ * payment/renewal type) are pulled out of the other two sections into this one so
+ * that question is answerable at a glance instead of buried among tasks.
  */
-export const PHASE_B_SECTIONS = ["needs_your_review", "next_actions", "recently_updated"] as const;
+export const PHASE_B_SECTIONS = [
+  "needs_your_review",
+  "money_attention",
+  "next_actions",
+  "recently_updated",
+] as const;
 export type PhaseBSection = (typeof PHASE_B_SECTIONS)[number];
 
 /** Sections holding live work. `recently_updated` is history and is never selectable. */
-export const ACTIVE_PHASE_B_SECTIONS = ["needs_your_review", "next_actions"] as const;
+export const ACTIVE_PHASE_B_SECTIONS = ["needs_your_review", "money_attention", "next_actions"] as const;
 
 /** type → секция (recently_resolved определяется по статусу, не по type). */
 export const TYPE_SECTION: Record<ActionItemType, Exclude<ActionSection, "recently_resolved">> = {
