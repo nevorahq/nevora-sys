@@ -71,16 +71,15 @@ Run through this before opening a PR that touches data, schema, or mutations:
 - `ANTHROPIC_API_KEY`, `RESEND_API_KEY` are server-only; never expose to the
   client. Only `NEXT_PUBLIC_*` values reach the browser.
 - `.env.example` carries placeholders only — never a real key, not even a
-  test-mode one. Stripe placeholders use obvious non-secret samples such as
-  `sk_test_your_stripe_secret_key`, `whsec_your_webhook_secret`, and
-  `price_your_*_price_id`.
+  test-mode one. Paddle placeholders use obvious non-secret samples such as
+  `pdl_sdbx_your_api_key`, `pdl_ntfset_your_notification_destination_secret`,
+  and `pri_your_*_price_id`.
 
-### Stripe test key — 2026-07-08 finding
+### Legacy payment test key — 2026-07-08 finding
 
-A real Stripe **test-mode** secret key was found inside this repository's local git
-object store. (The value is deliberately not reproduced here — this repo is public,
-and even a key's account prefix identifies the Stripe account.) Scope, established
-by scanning every object and every remote ref:
+A real legacy payment-provider **test-mode** secret key was found inside this
+repository's local git object store. The value is deliberately not reproduced
+here. Scope, established by scanning every object and every remote ref:
 
 - It appears in **two blobs of `.env.example`**, reachable only from local
   `refs/codex/turn-diffs/checkpoints/*` — snapshots the Codex CLI takes of the
@@ -98,10 +97,10 @@ exposure was local-disk only.
 1. The two carrying refs were deleted (`git update-ref -d`), unreachable objects
    expired and `git gc --prune=now` run. Both blobs are now unresolvable; `main`,
    `origin/main` and the stash were untouched and `git fsck` is clean.
-   A real Stripe test key was removed from `.env.example`.
-2. **Rotate the key in the Stripe Dashboard anyway.** It is a real credential of a
-   real Stripe account and it sat unencrypted on disk. Rotation is cheap; assurance
-   is not.
+   A real legacy payment test key was removed from `.env.example`.
+2. **Rotate the key in the provider dashboard anyway.** It is a real credential
+   of a real account and it sat unencrypted on disk. Rotation is cheap;
+   assurance is not.
 3. Never place a live value in `.env.example`, including test-mode keys.
 
 Verify the current tree stays clean (the character classes keep this command from

@@ -1,6 +1,6 @@
 # Smoke Test Checklist — Nevora Business OS
 
-**Status:** Canonical · **Last updated:** 2026-07-08 (Phase A)
+**Status:** Canonical · **Last updated:** 2026-07-09 (Paddle billing replacement)
 **Run:** by a human, against the deployed environment, after every release.
 
 Structural tests in CI prove a forbidden construct is *absent*. This checklist
@@ -120,15 +120,15 @@ org owned by a different user (for isolation checks).
 - [ ] ⚑ Billing mode is honest:
       - Private Beta: plan buttons show request/contact/private-beta state; no
         checkout session is created; Customer Portal is unavailable.
-      - Stripe mode: owner/admin can start Checkout only when all Stripe Price IDs
+      - Paddle mode: owner/admin can start Checkout only when all Paddle Price IDs
         and secrets are configured.
 - [ ] ⚑ Checkout success redirect does **not** activate a paid plan. Local paid
       state changes only after a verified webhook updates `billing_subscriptions`.
-- [ ] ⚑ Stripe webhook rejects an invalid signature and accepts a valid event
+- [ ] ⚑ Paddle webhook rejects an invalid signature and accepts a valid event
       idempotently; duplicate event delivery does not duplicate subscription updates.
 - [ ] Customer Portal opens only for authenticated owner/admin with an existing
-      Stripe customer id, or returns an honest private-beta/config error.
-- [ ] Cancel subscription in Stripe Customer Portal → webhook updates local status;
+      Paddle customer id, or returns an honest private-beta/config error.
+- [ ] Cancel subscription in Paddle Customer Portal → webhook updates local status;
       no app action mutates subscription state directly.
 - [ ] Developer Access: create/revoke an API key; `/api/v1/me` honours it.
 
@@ -168,8 +168,9 @@ All must return **404** (not 403, not a redirect to login for the dashboard ones
       Repeat for `extraction-sweep`, `subscription-sweep`, `suggestions-sweep`,
       `trial-sweep`.
 - [ ] Cron runs complete within one cycle; failures logged.
-- [ ] ⚑ Migration baseline matches `supabase/migrations/` (tree: `000`–`099`,
-      99 files, `054` a known gap; next free `100`).
+- [ ] ⚑ Migration baseline matches `supabase/migrations/` (tree: `000`–`101`,
+      101 files, `054` a known gap; next free `102`). `100`/`101` are the Paddle
+      billing boundary; both applied on remote.
 - [ ] ⚑ `099_planner_confirmation_exactly_once.sql` applied **before** the app code
       that writes `todos.source_suggestion_id`. Confirm a draft twice: the second
       confirm must resolve to the SAME task id, not create a second task.

@@ -215,16 +215,17 @@ Database: `027` (trial lifecycle), `033` (start-plan enforcement), `059` (dev un
 Server Actions / API: trial/plan actions; document processing, AI suggestions
 and storage upload now pass through Phase D `featureGateService` / `usageService`
 boundaries.
-Known Issues: a Stripe adapter, webhook verifier and portal path **do exist**
-(`modules/billing/services/stripe.adapter.ts`, resolved by `billing-provider.ts`),
-but the repository default is explicit **Private Beta** (`BILLING_MODE=private_beta`).
-Paid self-serve checkout and Customer Portal are intentionally disabled until
-Stripe runtime config is complete outside the repo.
+Known Issues: Paddle is the only paid billing provider, but checkout, final
+webhook verification, and Customer Portal still need the dedicated Paddle
+implementation pass. The repository default is explicit **Private Beta**
+(`BILLING_MODE=private_beta`), so paid self-serve checkout and Customer Portal
+are intentionally disabled until Paddle runtime config and smoke tests are
+complete.
 Risks: legacy `checkPlanLimit` paths still exist in older product surfaces and
 must be retired gradually. Paid plan activation must continue to happen only
 through verified provider webhooks, never checkout redirects.
-Next Step: configure Stripe test/live env outside the repo, run webhook smoke,
-then switch `BILLING_MODE=stripe`.
+Next Step: finish Paddle checkout/webhook/portal, configure sandbox env outside
+the repo, run webhook smoke, then switch `BILLING_MODE=paid_beta`.
 
 ## Analytics
 

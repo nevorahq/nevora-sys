@@ -1,5 +1,15 @@
 # Release Evidence — Phase A–D Closure — 2026-07-09
 
+> **Snapshot — do not rewrite the tested commit.** This records the Phase A–D
+> closure smoke exactly as run against commit `bb9c486` on 2026-07-09. It is kept
+> as historical evidence. The **current release line** has since moved on: branch
+> `billing-paddle-replacement-20260709`, committed HEAD `6cf165f`, migration
+> baseline `000`–`101` (Paddle billing replacement + boundary migrations
+> `100`/`101`, applied on remote). For current state see
+> [`release-checklist.md`](./release-checklist.md). The Stripe→Paddle wording
+> below reflects the renamed provider; the commit and baseline figures are frozen
+> at what was actually tested.
+
 Consolidated evidence for the release-blocker closure. Companion docs:
 [`smoke-test-report-2026-07-09.md`](./smoke-test-report-2026-07-09.md) (per-scenario)
 and [`p0-p1-issue-register.md`](./p0-p1-issue-register.md) (issues + owners).
@@ -10,7 +20,7 @@ and [`p0-p1-issue-register.md`](./p0-p1-issue-register.md) (issues + owners).
 - **Head:** `bb9c486`
 - **Closure commits:**
   - `e1d8023` docs(release): repair migration baseline and remove false readiness claims
-  - `936a800` docs(security): record Stripe key purge; avoid self-matching scan patterns
+  - `936a800` docs(security): record legacy payment key purge; avoid self-matching scan patterns
   - `d96a35d` feat(security): 098 — close Booking's anon data surface (read + write)
   - `e2307ee` feat(planner): 099 — draft confirmation exactly-once at the database
   - `fc51d76` feat(billing): pricing/landing single-source in EUR (private beta) + §7/§8 scaffolding
@@ -22,7 +32,7 @@ and [`p0-p1-issue-register.md`](./p0-p1-issue-register.md) (issues + owners).
 ## Blockers closed
 
 - [x] Working tree preserved in git (was already committed + pushed; branch created)
-- [x] Stripe secret removed from tree/history — **rotation still pending** (I-07)
+- [x] Legacy payment secret removed from tree/history — **rotation still pending** (I-07)
 - [x] Migration baseline repaired (`000`–`099`, next free `100`; `054` a known gap)
 - [x] Booking anon SELECT **and** the SECURITY DEFINER write RPC closed (098, applied)
 - [x] Draft confirmation exactly-once, DB-enforced (099, applied)
@@ -46,8 +56,8 @@ and [`p0-p1-issue-register.md`](./p0-p1-issue-register.md) (issues + owners).
 ## Billing / monetization changes
 
 - **Billing mode:** explicit **private beta** (`BILLING_MODE=private_beta` default).
-  No `STRIPE_*` runtime config; checkout intentionally disabled; `stripe-env.ts`
-  fails closed in production when mode=stripe but secrets/price IDs are missing.
+  No paid Paddle runtime config; checkout intentionally disabled; `paddle-env.ts`
+  fails closed in production when paid mode is missing secrets/price IDs.
 - **Plan catalog:** single source of truth `modules/billing/plan-catalog.ts`, **EUR**
   (typed literal), matching the enforced `plan_limits` on remote.
 - **Public surfaces:** `/pricing` and landing both render from `getPublicPlanViews()`
@@ -95,7 +105,7 @@ interactive smoke evidence and an empty P0/P1 action list — neither holds yet:
 - **I-09** — the interactive smoke suite (upload→extract→confirm→transaction,
   mark-as-paid idempotency, cross-org isolation, read≠resolve, Capture Inbox) is
   **NOT EXECUTED**; no deployed authed environment was available.
-- **I-07** — the leaked Stripe test key must be **rotated** in the Stripe Dashboard.
+- **I-07** — the leaked payment test key must be **rotated** in the provider dashboard.
 - **I-10/I-11** — parallel-session §7/§8 code needs review; `next build` + a fresh
   `supabase db reset`/`supabase test db` must pass in CI.
 

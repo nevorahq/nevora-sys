@@ -1,5 +1,13 @@
 # Smoke Test Report — 2026-07-09
 
+> **Snapshot — do not rewrite the tested commit.** This is the smoke run as
+> executed against commit `bb9c486` (baseline `000`–`099`) on 2026-07-09, kept as
+> historical evidence. The **current release line** has since moved to branch
+> `billing-paddle-replacement-20260709`, committed HEAD `6cf165f`, baseline
+> `000`–`101` (`100`/`101` = Paddle billing boundary, applied). This run has NOT
+> been re-executed against the Paddle branch. For current state see
+> [`release-checklist.md`](./release-checklist.md).
+
 **Status legend:** `PASS` (evidence recorded) · `FAIL` (issue logged) ·
 `BLOCKED` (cannot run — missing dependency) · `NOT EXECUTED` (no environment to run it).
 
@@ -20,7 +28,7 @@
 | **App** | local `next dev` (Next 16.2.7) on `http://localhost:3000` — **not** a deployed prod build |
 | **Database** | remote Supabase `uimpykbnatzhykzpastd` via REST (service-role + public anon key) |
 | **Auth session** | none — unauthenticated only |
-| **Billing mode** | `private_beta` (no `STRIPE_*` runtime config) |
+| **Billing mode** | `private_beta` (no paid Paddle runtime config) |
 
 ---
 
@@ -95,7 +103,7 @@ running authed system, so runtime behaviour is unproven here.
 | Document processing limit → `usage_limit_exceeded`, no OCR | `document-extraction-service.test.ts` | NOT EXECUTED |
 | UpgradePrompt at the limit boundary | `document-extraction-review` render | NOT EXECUTED |
 | Money Attention section grouping | `phase-b-sections.test.ts`, `action-feed.test.tsx` | NOT EXECUTED (no authed dashboard) |
-| Stripe webhook signature validation | `stripe.adapter.test.ts` | BLOCKED (no Stripe config — private beta) |
+| Paddle webhook signature validation | Paddle adapter tests | BLOCKED (private beta) |
 | Private-beta billing CTA (no checkout session) | `plan-catalog.test.ts` | NOT EXECUTED (needs authed billing page) |
 | Mark-as-paid idempotency | RPC + service tests | NOT EXECUTED |
 
