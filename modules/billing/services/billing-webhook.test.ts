@@ -45,6 +45,18 @@ describe("billing webhook boundary", () => {
     ).toBe(false);
   });
 
+  it("rejects a signature with no timestamp (no timestamp-less fallback)", () => {
+    const rawBody = JSON.stringify({ id: "evt_1", type: "subscription.updated", data: {} });
+    const now = Date.parse("2026-07-07T12:00:00.000Z");
+
+    // A correct HMAC over the raw body alone, offered as a bare hex header or as
+    // `v1=` without `t=`, must still be rejected: without a timestamp there is no
+    // replay window to enforce.
+    const bareSig = crypto.createHmac("sha256", "secret").update(rawBody).digest("hex");
+    expect(verifyBillingWebhookSignature(rawBody, bareSig, "secret", now)).toBe(false);
+    expect(verifyBillingWebhookSignature(rawBody, `v1=${bareSig}`, "secret", now)).toBe(false);
+  });
+
   it("accepts a valid HMAC signature", () => {
     const rawBody = JSON.stringify({ id: "evt_1", type: "subscription.updated", data: {} });
     const now = Date.parse("2026-07-07T12:00:00.000Z");
