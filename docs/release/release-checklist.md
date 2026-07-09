@@ -16,6 +16,9 @@ in the working tree on top of this HEAD and is not yet committed.
 **Private Beta Ready**, public launch No-Go) ·
 [`smoke-test-report-2026-07-09.md`](./smoke-test-report-2026-07-09.md) (partial —
 interactive flows NOT EXECUTED) ·
+[`smoke-test-report-2026-07-09-paddle.md`](./smoke-test-report-2026-07-09-paddle.md)
+(post-merge local run on `331f154`/`676b73b`: unauthenticated surface all PASS,
+interactive flows still NOT EXECUTED) ·
 [`p0-p1-issue-register.md`](./p0-p1-issue-register.md) (P0/P1 closed; I-07 key
 rotation + I-09 interactive smoke still open).
 
