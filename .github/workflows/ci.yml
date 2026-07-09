@@ -48,3 +48,55 @@ jobs:
           # Реальные значения подставляются в рантайме на хостинге.
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+
+  # Fresh-from-scratch database verification (I-11): apply every migration in
+  # supabase/migrations/ onto a clean local Postgres seeded with hosted-like
+  # default privileges, then run the SQL assertion harnesses in supabase/tests/.
+  # The harnesses are plain psql scripts (RAISE EXCEPTION + ON_ERROR_STOP), NOT
+  # pgTAP — so we invoke psql directly rather than `supabase test db`. Everything
+  # runs against the LOCAL stack: no `supabase login`/`link`, no remote credentials.
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase (Postgres + Auth)
+        run: supabase start
+
+      - name: Apply grant baseline + migrations from scratch
+        # A local reset applies migrations as role `postgres`, whose default
+        # privileges (unlike hosted) don't grant `authenticated` SELECT — so the
+        # RLS/isolation harnesses would fail for the wrong reason. We instead set
+        # the hosted-like baseline (scripts/db/ci-grant-baseline.sql) BEFORE the
+        # migrations, then apply every migration in order so their explicit
+        # GRANT/REVOKE lines layer on top. This is faithful to remote, not a reset.
+        run: |
+          set -euo pipefail
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f scripts/db/ci-grant-baseline.sql
+          shopt -s nullglob
+          for f in supabase/migrations/*.sql; do
+            echo "── applying $(basename "$f")"
+            psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+
+      - name: Run SQL verification harnesses
+        # ON_ERROR_STOP=1 turns any failed assertion (RAISE EXCEPTION) into a
+        # non-zero exit that fails the job.
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in supabase/tests/*.sql; do
+            echo "── running $(basename "$f")"
+            psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+          done
