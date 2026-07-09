@@ -6,6 +6,14 @@
 
 Run top-to-bottom before deploying. Do not skip §2 (migrations) or §3 (scope gate).
 
+**Latest evidence (2026-07-09, commit `bb9c486`):**
+[`release-evidence-2026-07-09.md`](./release-evidence-2026-07-09.md) (verdict:
+**Private Beta Ready**, public launch No-Go) ·
+[`smoke-test-report-2026-07-09.md`](./smoke-test-report-2026-07-09.md) (partial —
+interactive flows NOT EXECUTED) ·
+[`p0-p1-issue-register.md`](./p0-p1-issue-register.md) (P0/P1 closed; I-07 key
+rotation + I-09 interactive smoke still open).
+
 ---
 
 ## 0. Migration baseline
