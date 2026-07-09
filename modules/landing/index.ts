@@ -1,4 +1,5 @@
 export { LandingHeader } from "./components/landing-header";
+export { LandingPage } from "./components/landing-page";
 export { HeroSection } from "./components/hero-section";
 export { ValueSection } from "./components/value-section";
 export { AboutSection } from "./components/about-section";

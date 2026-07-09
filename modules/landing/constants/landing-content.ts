@@ -1,23 +1,28 @@
-import type { Locale } from "@/shared/i18n/constants";
-
 /**
- * Контент лендинга Nevora Business OS — локализованный (en / ru).
+ * Контент лендинга Nevora Business OS — локализованный (en / ro / ru).
  *
  * Почему не в общих словарях shared/i18n: их тип `DeepString<typeof en>`
  * сводит листья к `string` и не поддерживает массивы — а лендинг состоит
  * из списков (features, limits, questions, items). Здесь мы держим
- * собственный строго типизированный контент: `LandingContent = typeof en`,
- * а `ru` структурно проверяется на соответствие `en`.
+ * собственный строго типизированный контент: `LandingContent = typeof en`.
  *
- * Язык выбирается по той же locale-cookie, что и всё приложение
- * (см. getLandingContent ниже). Контакты — PLACEHOLDER: замени значения
- * в channels на реальные, когда появятся (они одинаковы для всех локалей).
+ * Публичный лендинг поддерживает RO отдельно от shared app locale, потому что
+ * dashboard-словари пока есть только для en / ru.
  *
  * Тон: честный founder-led копирайт. Без хайпа, фейковых цифр,
  * фейковых отзывов, фейковых скидок и логотипов.
  */
 
 export const BRAND = "Nevora Business OS";
+export const LANDING_LOCALES = ["en", "ro", "ru"] as const;
+
+export type LandingLocale = (typeof LANDING_LOCALES)[number];
+
+export const LANDING_LOCALE_LABELS: Record<LandingLocale, string> = {
+  en: "EN",
+  ro: "RO",
+  ru: "RU",
+};
 
 const en = {
   nav: [
@@ -190,11 +195,191 @@ const en = {
   footer: {
     text: "A simple operating system for focused business work.",
     note: "Built for clarity, productivity and real daily use.",
+    terms: "Terms",
+    privacy: "Privacy",
+    refunds: "Refunds",
   },
 };
 
 /** Форма контента лендинга. Источник истины — английский объект `en`. */
 export type LandingContent = typeof en;
+
+const ro: LandingContent = {
+  nav: [
+    { label: "Acasă", href: "#home" },
+    { label: "Despre", href: "#about" },
+    { label: "Planuri", href: "#plan" },
+    { label: "Contact", href: "#contact" },
+  ],
+  header: {
+    login: "Autentificare",
+    startFree: "Solicită acces",
+  },
+  hero: {
+    title: "Operațiuni de business conectate.",
+    subtitle:
+      "Nevora Business OS conectează taskuri, proiecte, bani, documente, abonamente, Action Center și workflow-uri asistate de AI într-un singur strat operațional clar.",
+    supporting: [
+      "AI asistă, nu controlează.",
+      "Control financiar fără erori automate.",
+    ],
+    goal: "Capturezi mai întâi. Decizi după. Obligațiile importante rămân vizibile până sunt rezolvate.",
+    primaryCta: "Solicită acces timpuriu",
+    secondaryCta: "Vezi planurile",
+    microcopy: "Private beta. Trial de 14 zile, 500 MB stocare, workflow-uri cu verificare.",
+  },
+  value: {
+    title: "Ce te ajută să faci Nevora Business OS",
+    text: "Sistemul aduce părțile active ale operațiunilor într-un singur loc, ca să înțelegi mai repede ce se întâmplă și ce are nevoie de atenție.",
+    items: [
+      "Taskuri",
+      "Proiecte",
+      "Action Center",
+      "Relații",
+      "Documente",
+      "Abonamente",
+      "Evidența banilor",
+      "Capture Inbox",
+      "Analitică de business",
+      "Sugestii AI",
+      "Developer Access",
+    ],
+    supporting:
+      "Deschizi workspace-ul, vezi obligațiile, revizuiești sugestiile, confirmi acțiunile financiare și mergi mai departe cu un workflow înregistrat.",
+  },
+  about: {
+    title: "Despre proiect",
+    paragraphs: [
+      "Nevora Business OS este construit pentru că multe instrumente de business devin prea grele prea devreme.",
+      "Mai întâi ai nevoie de un loc conectat pentru taskuri, proiecte, bani, documente, abonamente și obligații recurente. Apoi software-ul se transformă des în meniuri complicate, dashboard-uri în plus, limite și funcții pe care nimeni nu le folosește.",
+      "Vreau să construiesc produsul într-o direcție diferită.",
+    ],
+    principles: [
+      {
+        title: "Simplu implicit",
+        text: "Ar trebui să înțelegi workspace-ul fără training.",
+      },
+      {
+        title: "Util înainte de complex",
+        text: "Fiecare modul trebuie să rezolve o problemă reală de lucru, nu să existe doar pentru impresie.",
+      },
+      {
+        title: "Valoare onestă",
+        text: "Produsul trebuie să câștige încredere prin utilitate, transparență și confort.",
+      },
+    ],
+    closing:
+      "Nu este un instrument făcut ca să vândă complexitate înapoi utilizatorului. Este un sistem de lucru pentru oameni care au nevoie de ordine în business.",
+  },
+  philosophy: {
+    title: "Mai puțin zgomot. Mai mult control.",
+    paragraphs: [
+      "Businessul nu are nevoie de încă zece taburi. Are nevoie de un loc clar unde munca, documentele, abonamentele, banii și deciziile sunt conectate.",
+      "Nevora Business OS este construit ca un sistem operațional practic pentru afaceri mici și în creștere.",
+    ],
+    questionsIntro: "Un sistem util ar trebui să te ajute să răspunzi la întrebări simple:",
+    questions: [
+      "Ce trebuie făcut?",
+      "Cine este responsabil?",
+      "Ce obligație are nevoie de atenție acum?",
+      "Ce acțiune financiară este gata de confirmare?",
+      "Ce are nevoie de atenție astăzi?",
+    ],
+    closing: "Obligațiile importante nu dispar doar pentru că o notificare a fost citită.",
+  },
+  plans: {
+    title: "Planuri",
+    subtitle:
+      "Începe simplu. Treci mai sus doar atunci când produsul îți oferă valoare reală.",
+    explanation:
+      "Fiecare plan este previzibil: membri incluși, limite pentru module active și context de preț transparent.",
+    trialNote: {
+      lead: "Poți încerca Nevora Business OS timp de 14 zile cu până la 500 MB de stocare.",
+      body: "Trialul există ca să testezi produsul în muncă reală, cât timp produsul rămâne în private beta.",
+      points: [
+        "AI cu revizuire.",
+        "Finanțe doar după confirmare.",
+        "Folosește, testează și decide dacă te ajută.",
+      ],
+    },
+  },
+  trialDetails: {
+    title: "Ce este inclus în trial?",
+    intro: [
+      "Trialul oferă 14 zile de acces private beta la Nevora Business OS. Poți adăuga până la 2 membri, folosi 500 MB de stocare și testa taskuri, proiecte, evidența banilor, documente, abonamente, Action Center, analitică de bază și sugestii AI.",
+      "Nu este un demo de dragul unui demo. Trialul există ca să verifici sistemul pe un workflow real: capturezi munca, conectezi documente, revizuiești obligațiile de abonament și confirmi acțiunile financiare doar când sunt pregătite.",
+      "După 14 zile poți decide calm dacă Start, Pro sau Business ți se potrivește. Fără presiune, fără upgrade forțat și fără capcane de marketing.",
+    ],
+    items: [
+      {
+        title: "2 membri",
+        text: "Verifică sistemul singur sau împreună cu un coleg.",
+      },
+      {
+        title: "500 MB stocare",
+        text: "Suficient pentru a testa documente, fișiere și materiale de lucru.",
+      },
+      {
+        title: "Taskuri și proiecte",
+        text: "Creează lucru, atribuie responsabili și păstrează execuția conectată la context.",
+      },
+      {
+        title: "Evidența banilor",
+        text: "Urmărește venituri, cheltuieli și cashflow fără să tratezi sugestiile ca fapte contabile.",
+      },
+      {
+        title: "Documente și relații",
+        text: "Stochează materiale de lucru și conectează-le cu taskuri, bani și abonamente.",
+      },
+      {
+        title: "Abonamente",
+        text: "Urmărește obligațiile recurente și folosește Mark as paid doar când plata chiar s-a întâmplat.",
+      },
+      {
+        title: "Action Center",
+        text: "Păstrează obligațiile vizibile până sunt rezolvate, nu doar până este citită notificarea.",
+      },
+      {
+        title: "Capture Inbox",
+        text: "Capturezi mai întâi, revizuiești intenția și decizi ce trebuie să devină acțiune.",
+      },
+      {
+        title: "Sugestii AI",
+        text: "Testează rezumate și recomandări care cer revizuire înainte de execuție.",
+      },
+      {
+        title: "Analitică de bază",
+        text: "Primești o vedere simplă asupra taskurilor, cheltuielilor, abonamentelor și acțiunilor apropiate.",
+      },
+      {
+        title: "Fără presiune pentru upgrade",
+        text: "Folosește cele 14 zile, verifică valoarea și treci la un plan plătit doar dacă produsul chiar ajută.",
+      },
+    ],
+  },
+  contact: {
+    title: "Contact",
+    text: "Ai o întrebare, idee sau un scenariu de lucru?",
+    text2:
+      "Sunt deschis la feedback de la oameni care gestionează efectiv taskuri, documente, bani, abonamente și procese zilnice de business.",
+    cta: "Ia legătura",
+    ctaHref: "mailto:hello@nevora.com",
+    channels: [
+      { label: "Email", value: "nevorahq@gmail.com", href: "mailto:nevorahq@gmail.com" },
+      { label: "Telegram", value: "@NEVORAHQ", href: "https://t.me/NEVORAHQ" },
+      { label: "Instagram", value: "@nevorahq", href: "https://www.instagram.com/nevorahq/" },
+      // Facebook временно скрыт — вернуть, когда появится страница проекта.
+      // { label: "Facebook", value: "Nevora", href: "https://facebook.com/nevora" },
+    ],
+  },
+  footer: {
+    text: "Un sistem operațional simplu pentru lucru de business concentrat.",
+    note: "Construit pentru claritate, productivitate și utilizare zilnică reală.",
+    terms: "Termeni",
+    privacy: "Confidențialitate",
+    refunds: "Rambursări",
+  },
+};
 
 const ru: LandingContent = {
   nav: [
@@ -208,7 +393,7 @@ const ru: LandingContent = {
     startFree: "Запросить доступ",
   },
   hero: {
-    title: "Connected Business Operations.",
+    title: "Связанные бизнес-операции.",
     subtitle:
       "Nevora Business OS связывает задачи, проекты, деньги, документы, подписки, Action Center и AI-assisted workflows в одном понятном операционном слое.",
     supporting: [
@@ -367,12 +552,15 @@ const ru: LandingContent = {
   footer: {
     text: "Простая операционная система для сфокусированной бизнес-работы.",
     note: "Создано для ясности, продуктивности и реального ежедневного использования.",
+    terms: "Условия",
+    privacy: "Конфиденциальность",
+    refunds: "Возвраты",
   },
 };
 
-const CONTENT: Record<Locale, LandingContent> = { en, ru };
+const CONTENT: Record<LandingLocale, LandingContent> = { en, ro, ru };
 
-/** Возвращает контент лендинга для текущей локали (по locale-cookie). */
-export function getLandingContent(locale: Locale): LandingContent {
+/** Возвращает контент лендинга для текущей публичной локали. */
+export function getLandingContent(locale: LandingLocale): LandingContent {
   return CONTENT[locale];
 }

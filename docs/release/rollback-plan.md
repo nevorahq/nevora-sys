@@ -1,6 +1,6 @@
 # Rollback Plan — Nevora Business OS
 
-**Status:** Canonical · **Last updated:** 2026-07-08 (Phase A)
+**Status:** Canonical · **Last updated:** 2026-07-09 (Paddle billing replacement)
 **Supersedes:** [`phase-7-rollback-plan.md`](./phase-7-rollback-plan.md) (kept for
 history; scoped to migrations 076/077)
 **Operational detail:** [`docs/runbooks/rollback.md`](../runbooks/rollback.md)
@@ -19,12 +19,17 @@ history; scoped to migrations 076/077)
 
 ## 1. Phase A specifics
 
-Phase A introduced **no schema change**. Phases B–D did: `094`–`097` landed after
-this section was first written, so the baseline is now `000`–`097`.
+Phase A introduced **no schema change**. Later phases did: `094`–`097` (Phase
+B–D), `098`/`099` (Booking anon lockdown + planner exactly-once) and `100`/`101`
+(Paddle billing boundary) all landed after this section was first written, so the
+baseline is now `000`–`101` (`054` a known gap).
 
 That makes *Phase A* rollback purely an app rollback: promote the previous
 deployment. The database needs no attention at all. A rollback that also unwinds
-Phase B–D must account for `094`–`097`, which have no automated `down`.
+later phases must account for `094`–`101`, which have no automated `down`.
+Note `101` deliberately widens the `billing_subscriptions` provider CHECK so
+`create_organization` (default provider `'manual'`) does not roll back — do not
+revert `101` without also reverting `100`, or org creation breaks.
 
 Two Phase A behaviours worth knowing during a rollback:
 

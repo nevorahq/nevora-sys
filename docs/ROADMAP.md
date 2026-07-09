@@ -2,8 +2,9 @@
 
 > Current source-of-truth roadmap for the repository. Status reflects the tree on
 > **2026-07-08 (Phases A–D committed)**: migrations are present through
-> `099_planner_confirmation_exactly_once.sql` (**baseline
-> `000`–`099`, next free `100`** — all applied on remote; `098`/`099` confirmed
+> `100_paddle_only_billing_boundary.sql` (**baseline
+> `000`–`100`, next free `101`** — remote verified through `099`; `100` is new
+> and must be applied before paid billing smoke; `098`/`099` confirmed
 > applied 2026-07-09 by probing: anon is denied `booking_pages` and the public
 > booking RPC, and `todos.source_suggestion_id` exists), local `typecheck`
 > passes after `next typegen`, and the product focus is the **AI-assisted
@@ -21,10 +22,10 @@
 >
 > **Known truthfulness gaps (open, tracked as release blockers).** Do not read this
 > document as claiming these are done:
-> - Stripe: the adapter and webhook code exist and `billing-provider.ts` resolves
->   them, but the repository default is now `BILLING_MODE=private_beta`. Paid
->   self-serve checkout is intentionally disabled until production Stripe secrets,
->   webhook secret, and Price IDs are configured outside the repo.
+> - Paddle: it is now the only paid billing provider, but the dedicated
+>   checkout/webhook/portal pass is still pending. The repository default is
+>   `BILLING_MODE=private_beta`, so paid self-serve checkout is intentionally
+>   disabled until Paddle runtime config and smoke tests are complete.
 > - Phase D: `featureGateService` and `usageService` now guard document
 >   processing, AI suggestions, and storage upload boundaries; legacy
 >   `checkPlanLimit` still exists in older surfaces and should be retired
@@ -43,8 +44,8 @@ CI into one consistent, honest state. No new business features.
 - README synced with the real project state.
 - `typecheck` npm script added; lint / typecheck / build verified green.
 - CI already runs install → typegen → typecheck → lint → test → build.
-- Migration baseline is **`000` → `099` in the tree, next free `100`**; remote is
-  applied through `097` (`054` is a known, intentional gap). Do not describe `067`,
+- Migration baseline is **`000` → `100` in the tree, next free `101`**; remote is
+  verified through `099` and `100` is pending apply (`054` is a known, intentional gap). Do not describe `067`,
   `077`, `079`, `086`, or `093` as the repository head. Verify against the tree,
   not a doc: `ls supabase/migrations | tail -1`. And verify *remote* by probing an
   object the migration creates — never by trusting this line.
@@ -75,8 +76,8 @@ No new product features.
 - **Release documentation** — `OPERATIONS_MANUAL.md`, `contracts/`,
   8 `runbooks/`, and canonical `release/{release-checklist,smoke-test-checklist,rollback-plan}.md`.
 - **No schema change in Phase A itself** (the baseline was `000`–`093` at the time).
-  Phases B–D later added `094`–`097`, and release closure added `098`/`099`; the
-  current baseline is `000`–`099`.
+  Phases B–D later added `094`–`097`, release closure added `098`/`099`, and
+  Paddle billing boundary cleanup added `100`; the current baseline is `000`–`100`.
 
 Remaining (not blockers):
 - The daily screen now groups into **Needs your review / Money attention / Next
@@ -196,23 +197,21 @@ Insights and recommendations via Anthropic exist. Direction: scheduled
 generation, more domain-event-driven sources, summaries. **AI assistance is
 scoped — not an autonomous business agent.**
 
-## Phase 10 — SaaS Monetization — *private beta / provider coded, not runtime-ready*
+## Phase 10 — SaaS Monetization — *private beta / Paddle replacement in progress*
 
 Billing/trials and plan limits exist. Phase 6 added normalized plan/developer
 access structures (`071`) and atomic usage reservations (`072`); Phase 7 added
 member-seat atomicity (`076`); Phase D added the commercial-readiness schema
 (`096`).
 
-The payment provider **has been chosen and coded**: `StripeBillingAdapter`
-(checkout, webhook signature verification, customer portal), resolved through
-`billing-provider.ts` when `BILLING_MODE=stripe` and `BILLING_PROVIDER=stripe`.
-The repository default is **Private Beta** (`BILLING_MODE=private_beta`), so
-self-serve checkout and Customer Portal are intentionally unavailable until
-Stripe runtime configuration is complete.
+The payment provider has been narrowed to **Paddle only**. The repository
+default is **Private Beta** (`BILLING_MODE=private_beta`), so self-serve
+checkout and Customer Portal are intentionally unavailable until the Paddle
+checkout, webhook, portal, and smoke-test pass is complete.
 
 Remaining:
-- Configure `BILLING_MODE=stripe`, `BILLING_PROVIDER=stripe`, Stripe secrets and
-  paid Price IDs outside the repo before enabling self-serve checkout.
+- Configure `BILLING_MODE=paid_beta`, `BILLING_PROVIDER=paddle`, Paddle secrets
+  and paid Price IDs outside the repo before enabling self-serve checkout.
 - Activate paid plans only from trusted provider webhooks; `success_url` must
   remain display-only.
 - Keep public pricing on `modules/billing/public-plan-view.ts`; landing and
@@ -255,8 +254,8 @@ Current required gates before controlled beta:
 Known gaps to keep visible:
 - DB/E2E harness for cross-org RLS denial and concurrent limit overshoot.
 - Remote migration status must be verified through `097`.
-- Payment provider adapter exists (Stripe); its **runtime configuration is absent**,
-  so paid self-serve checkout is not operational.
+- Paddle runtime configuration and checkout/webhook/portal implementation are
+  still pending, so paid self-serve checkout is not operational.
 - CRM and Booking remain out of active MVP scope. Booking's `anon` REST surface is
   still open at the database layer (P0 — see `MODULE_STATUS.md`).
 

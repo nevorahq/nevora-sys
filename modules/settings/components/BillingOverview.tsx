@@ -147,7 +147,7 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
       <div className="grid gap-5 md:grid-cols-2">
         <section className="soft-card-sm p-5">
           <div className="flex items-center gap-2"><CreditCardIcon size={17} className="text-text-muted" /><h2 className="text-sm font-semibold text-text-primary">Payment method</h2></div>
-          <p className="mt-4 text-sm text-text-muted">{privateBeta ? "Private beta: paid checkout and customer portal are intentionally disabled." : overview.providerConnected ? "Managed securely by the billing provider." : "Billing provider is not connected yet."}</p>
+          <p className="mt-4 text-sm text-text-muted">{privateBeta ? "Private beta: paid checkout and customer portal are intentionally disabled." : overview.providerConnected ? "Managed securely by Paddle." : "Paddle billing is not connected yet."}</p>
           {!privateBeta && overview.billingConfigMissing.length > 0 && (
             <p className="mt-2 text-xs text-text-muted">Billing config missing: {overview.billingConfigMissing.join(", ")}</p>
           )}

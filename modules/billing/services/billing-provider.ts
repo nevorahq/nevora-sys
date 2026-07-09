@@ -7,10 +7,10 @@ import {
   verifyBillingWebhookSignature,
   type AppliedBillingWebhookResult,
 } from "./billing-webhook";
-import { getStripeConfig } from "../config/stripe-env";
-import { StripeBillingAdapter } from "./stripe.adapter";
+import { getPaddleConfig } from "../config/paddle-env";
+import { PaddleBillingAdapter } from "./paddle-billing.adapter";
 
-export type BillingProvider = "stripe" | "paddle" | "lemonsqueezy";
+export type BillingProvider = "paddle";
 
 export type ProviderSubscriptionStatus =
   | "trialing"
@@ -110,12 +110,12 @@ class ProviderAgnosticBillingAdapter implements BillingProviderAdapter {
     headers: globalThis.Headers,
   ): Promise<BillingWebhookResult> {
     const provider = this.provider;
-    const secret = process.env.BILLING_WEBHOOK_SECRET;
+    const secret = process.env.PADDLE_WEBHOOK_SECRET;
     const signature = headers.get("billing-signature") ?? headers.get("x-billing-signature");
 
     if (!provider || !secret) {
       throw new BillingProviderNotConfiguredError(
-        "Billing webhook is not configured. Set BILLING_PROVIDER and BILLING_WEBHOOK_SECRET.",
+        "Billing webhook is not configured. Set BILLING_PROVIDER=paddle and PADDLE_WEBHOOK_SECRET.",
       );
     }
 
@@ -140,19 +140,19 @@ class ProviderAgnosticBillingAdapter implements BillingProviderAdapter {
 }
 
 export function parseBillingProvider(value: string | undefined): BillingProvider | null {
-  if (value === "stripe" || value === "paddle" || value === "lemonsqueezy") {
+  if (value === "paddle") {
     return value;
   }
   return null;
 }
 
 export function getConfiguredBillingProvider(): BillingProviderAdapter {
-  const stripeConfig = getStripeConfig();
-  if (stripeConfig.mode === "private_beta") return new ProviderAgnosticBillingAdapter(null);
+  const paddleConfig = getPaddleConfig();
+  if (paddleConfig.mode === "private_beta") return new ProviderAgnosticBillingAdapter(null);
 
-  const provider = parseBillingProvider(process.env.BILLING_PROVIDER);
-  if (provider === "stripe") return new StripeBillingAdapter(stripeConfig);
-  return new ProviderAgnosticBillingAdapter(provider);
+  const provider = parseBillingProvider(process.env.BILLING_PROVIDER) ?? "paddle";
+  if (provider === "paddle") return new PaddleBillingAdapter(paddleConfig);
+  return new ProviderAgnosticBillingAdapter(null);
 }
 
 export const billingProvider: BillingProviderAdapter = getConfiguredBillingProvider();

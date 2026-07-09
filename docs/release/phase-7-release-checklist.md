@@ -36,7 +36,7 @@ sections.
 - [ ] `DOCUMENT_EXTRACTION_MOCK` is **off** in production.
 - [ ] No secret is exposed via a `NEXT_PUBLIC_` name by mistake.
 
-**Billing note:** there is **no payment provider** (no Stripe keys). Billing is an
+**Billing note:** paid billing remains private-beta gated until Paddle runtime is configured. Billing is an
 internal trial/plan model (`billing_subscriptions` + `plan_limits`). No payment
 webhook/secret checklist applies. When a provider is added, extend this section.
 

@@ -155,7 +155,7 @@ export {
   getConfiguredBillingProvider,
   parseBillingProvider,
 } from "./services/billing-provider";
-export { StripeBillingAdapter, stripePriceIdForPlan, verifyStripeWebhookSignature } from "./services/stripe.adapter";
+export { PaddleBillingAdapter, paddlePriceIdForPlan } from "./services/paddle-billing.adapter";
 export { billingRepository } from "./services/billing-repository";
 export { entitlementService, canUseFeatureForOrganization } from "./services/entitlement-service";
 export { usageService } from "./services/usage-service";
@@ -164,12 +164,12 @@ export { getUpgradePromptForUsage, getUpgradePromptsForUsage } from "./services/
 export { getPublicPlanViews } from "./public-plan-view";
 export type { PublicPlanView } from "./public-plan-view";
 export {
-  getStripeConfig,
-  getStripeConfigMissing,
-  isStripeCheckoutAvailable,
-  stripePriceIdForPlanFromConfig,
-} from "./config/stripe-env";
-export type { StripeConfig, StripeRuntimeMode } from "./config/stripe-env";
+  getPaddleConfig,
+  getPaddleConfigMissing,
+  isPaddleCheckoutAvailable,
+  paddlePriceIdForPlanFromConfig,
+} from "./config/paddle-env";
+export type { BillingMode, PaddleConfig, PaddleEnvironment } from "./config/paddle-env";
 export type {
   BillingProvider,
   BillingProviderAdapter,

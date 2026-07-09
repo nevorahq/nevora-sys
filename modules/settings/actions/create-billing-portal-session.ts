@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
-import { getStripeConfig } from "@/modules/billing/config/stripe-env";
+import { getPaddleConfig } from "@/modules/billing/config/paddle-env";
 import { billingProvider } from "@/modules/billing/services/billing-provider";
 import type { SettingsActionState } from "../types/settings.types";
 
@@ -30,10 +30,10 @@ export async function createBillingPortalSession(): Promise<SettingsActionState 
     return { error: "You do not have permission to manage billing." };
   }
 
-  if (getStripeConfig().mode === "private_beta") {
+  if (getPaddleConfig().mode === "private_beta") {
     return {
       error:
-        "Nevora billing is in private beta. Customer Portal will be enabled after Stripe runtime configuration is complete.",
+        "Nevora billing is in private beta. Customer Portal will be enabled after Paddle runtime configuration is complete.",
     };
   }
 

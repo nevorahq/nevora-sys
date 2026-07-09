@@ -76,11 +76,11 @@ describe("billing webhook boundary", () => {
           email: "owner@example.com",
         },
       }),
-      "stripe",
+      "paddle",
     );
 
     expect(event).toMatchObject({
-      provider: "stripe",
+      provider: "paddle",
       providerEventId: "evt_active",
       providerCustomerId: "cus_123",
       providerSubscriptionId: "sub_123",
@@ -101,7 +101,7 @@ describe("billing webhook boundary", () => {
             internalStatus: "developer_unlimited",
           },
         }),
-        "stripe",
+        "paddle",
       ),
     ).toThrow();
   });
@@ -131,7 +131,7 @@ describe("billing webhook boundary", () => {
           status: "active",
         },
       }),
-      "stripe",
+      "paddle",
     );
 
     await expect(applyBillingProviderEvent(event)).resolves.toMatchObject({
@@ -140,7 +140,7 @@ describe("billing webhook boundary", () => {
       organizationId: "11111111-1111-4111-8111-111111111111",
     });
     expect(rpcMock).toHaveBeenCalledWith("apply_billing_provider_event", {
-      p_provider: "stripe",
+      p_provider: "paddle",
       p_provider_event_id: "evt_apply",
       p_event_type: "subscription.updated",
       p_event_created_at: "2026-07-07T12:00:00.000Z",
@@ -169,7 +169,7 @@ describe("billing webhook boundary", () => {
           status: "past_due",
         },
       }),
-      "stripe",
+      "paddle",
     );
 
     await expect(applyBillingProviderEvent(event)).resolves.toMatchObject({
@@ -195,7 +195,7 @@ describe("billing webhook boundary", () => {
           status: "canceled",
         },
       }),
-      "stripe",
+      "paddle",
     );
 
     await expect(applyBillingProviderEvent(event)).resolves.toMatchObject({

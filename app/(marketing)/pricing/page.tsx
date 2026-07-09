@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { CheckIcon } from "lucide-react";
 import { getPublicPlanViews } from "@/modules/billing/public-plan-view";
-import { getStripeConfig } from "@/modules/billing/config/stripe-env";
+import { getPaddleConfig } from "@/modules/billing/config/paddle-env";
 import { ROUTES } from "@/shared/config/routes";
 import { cn } from "@/shared/utils/cn";
 
@@ -25,7 +25,7 @@ function planHref(plan: ReturnType<typeof getPublicPlanViews>[number]) {
 }
 
 export default function PricingPage() {
-  const billingMode = getStripeConfig().mode;
+  const billingMode = getPaddleConfig().mode;
   const plans = getPublicPlanViews();
   const limitKeys = plans[0]?.limits.map((limit) => limit.key) ?? [];
 
@@ -41,7 +41,7 @@ export default function PricingPage() {
             </p>
             {billingMode === "private_beta" && (
               <p className="mt-3 max-w-2xl text-sm leading-6 text-text-muted">
-                Nevora is in private beta. Paid checkout is not available yet; request access and we will activate billing when Stripe runtime configuration is complete.
+                Nevora is in private beta. Paid checkout is not available yet; request access and we will activate billing when Paddle runtime configuration is complete.
               </p>
             )}
           </div>

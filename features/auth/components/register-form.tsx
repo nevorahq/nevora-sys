@@ -21,6 +21,23 @@ export function RegisterForm({ dict }: RegisterFormProps) {
     {},
   );
 
+  if (state.emailConfirmationRequired) {
+    return (
+      <Card className="w-full max-w-md text-center">
+        <h1 className="text-2xl font-semibold text-text-primary">
+          {t.checkEmailTitle}
+        </h1>
+        <p className="mt-2 text-sm text-text-secondary">{t.checkEmailBody}</p>
+        <Link
+          href={ROUTES.login}
+          className="mt-6 inline-block font-semibold text-text-primary underline-offset-4 hover:underline"
+        >
+          {t.loginLink}
+        </Link>
+      </Card>
+    );
+  }
+
   return (
     <Card className="w-full max-w-md">
       <div className="mb-6 text-center">

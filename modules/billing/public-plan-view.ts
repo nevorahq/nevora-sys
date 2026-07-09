@@ -7,10 +7,10 @@ import {
   formatCommercialLimit,
 } from "./plan-catalog";
 import {
-  getStripeConfig,
-  stripePriceIdForPlanFromConfig,
-  type StripeConfig,
-} from "./config/stripe-env";
+  getPaddleConfig,
+  paddlePriceIdForPlanFromConfig,
+  type PaddleConfig,
+} from "./config/paddle-env";
 import type { CommercialPlanKey, CommercialUsageMetricKey } from "./plan-catalog.schema";
 
 export type PublicPlanView = {
@@ -39,19 +39,19 @@ export type PublicPlanView = {
 
 function ctaForPlan(
   plan: (typeof commercialPlans)[number],
-  config: StripeConfig,
+  config: PaddleConfig,
 ): PublicPlanView["cta"] {
-  if (config.mode !== "stripe") return { label: "Request access", mode: "private_beta" };
+  if (config.mode === "private_beta") return { label: "Request access", mode: "private_beta" };
   if (plan.key === "free") return { label: "Start free", mode: "current" };
   if (plan.contactSales) return { label: "Contact sales", mode: "contact" };
 
-  const priceId = stripePriceIdForPlanFromConfig(config, plan.planSlug, "monthly");
+  const priceId = paddlePriceIdForPlanFromConfig(config, plan.planSlug, "monthly");
   return priceId && plan.checkoutEnabled
     ? { label: "Choose plan", mode: "checkout" }
     : { label: "Contact us", mode: "contact" };
 }
 
-export function getPublicPlanViews(config = getStripeConfig()): PublicPlanView[] {
+export function getPublicPlanViews(config = getPaddleConfig()): PublicPlanView[] {
   return commercialPlans.map((plan) => ({
     key: plan.key,
     planSlug: plan.planSlug,

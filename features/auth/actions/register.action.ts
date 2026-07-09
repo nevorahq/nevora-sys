@@ -37,7 +37,7 @@ export async function registerAction(
   try {
     const supabase = await createClient();
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: parsed.data.email,
       password: parsed.data.password,
       options: {
@@ -47,6 +47,14 @@ export async function registerAction(
 
     if (error) {
       return { error: error.message };
+    }
+
+    // Если проект требует подтверждения email, signUp НЕ создаёт сессию.
+    // Тогда редирект на /dashboard бессмысленен (proxy отобьёт на /login) —
+    // показываем экран «проверьте почту». Когда подтверждение выключено,
+    // session присутствует сразу и мы уходим на dashboard как раньше.
+    if (!data.session) {
+      return { emailConfirmationRequired: true };
     }
 
     shouldRedirect = true;

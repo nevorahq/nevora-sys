@@ -12,7 +12,14 @@
 export const ROUTES = {
   // Platform
   home: "/",
+  landingEn: "/en",
+  landingRo: "/ro",
+  landingRu: "/ru",
   pricing: "/pricing",
+  terms: "/terms",
+  privacy: "/privacy",
+  refunds: "/refunds",
+  privacyTypo: "/privasy",
   login: "/login",
   register: "/register",
 
@@ -93,7 +100,14 @@ export function bookingHostUrl(organizationSlug: string, hostSlug: string) {
  */
 export const PUBLIC_ROUTES = [
   ROUTES.home,
+  ROUTES.landingEn,
+  ROUTES.landingRo,
+  ROUTES.landingRu,
   ROUTES.pricing,
+  ROUTES.terms,
+  ROUTES.privacy,
+  ROUTES.refunds,
+  ROUTES.privacyTypo,
   ROUTES.login,
   ROUTES.register,
   ROUTES.health,

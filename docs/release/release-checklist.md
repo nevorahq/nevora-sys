@@ -1,12 +1,17 @@
 # Release Checklist — Nevora Business OS
 
-**Status:** Canonical · **Last updated:** 2026-07-08 (Phase A)
+**Status:** Canonical · **Last updated:** 2026-07-09 (Paddle billing replacement)
 **Supersedes:** [`phase-7-release-checklist.md`](./phase-7-release-checklist.md)
 (kept for history; its migration section stops at 077 and is stale)
 
 Run top-to-bottom before deploying. Do not skip §2 (migrations) or §3 (scope gate).
 
-**Latest evidence (2026-07-09, commit `bb9c486`):**
+**Current release line:** branch `billing-paddle-replacement-20260709`, HEAD
+`6cf165f` (committed). The Paddle billing replacement (Stripe adapter removed,
+`paddle-billing.adapter.ts` + `paddle-env.ts` added, migrations `100`/`101`) sits
+in the working tree on top of this HEAD and is not yet committed.
+
+**Latest smoke/verdict evidence (2026-07-09, commit `bb9c486`):**
 [`release-evidence-2026-07-09.md`](./release-evidence-2026-07-09.md) (verdict:
 **Private Beta Ready**, public launch No-Go) ·
 [`smoke-test-report-2026-07-09.md`](./smoke-test-report-2026-07-09.md) (partial —
@@ -20,13 +25,15 @@ rotation + I-09 interactive smoke still open).
 
 | | |
 |---|---|
-| **Current baseline (tree)** | `000` – `099` (99 files, no duplicate prefixes; `054` is a known, intentional gap) |
-| **Next free number** | **`100`** |
-| **Remote state** | `000`–`099` verified applied on `uimpykbnatzhykzpastd` (`098`/`099` confirmed 2026-07-09 by probing anon denial + the `source_suggestion_id` column). |
+| **Current baseline (tree)** | `000` – `101` (101 files, no duplicate prefixes; `054` is a known, intentional gap) |
+| **Next free number** | **`102`** |
+| **Remote state** | `000`–`101` applied on `uimpykbnatzhykzpastd` (`098`/`099` confirmed 2026-07-09; `100`/`101` = Paddle billing boundary, applied — `101` widens the `billing_subscriptions` provider CHECK to unblock org creation). |
 | **`098` status** | Applied. Anon can no longer read booking tables or EXECUTE the public booking RPCs (verified with the public anon key). |
 | **`099` status** | Applied. `todos.source_suggestion_id` + the four exactly-once indexes are live; the migration went in before the app deploy that writes the column. |
+| **`100`/`101` status** | Applied. `100` enforces the Paddle-only billing provider boundary; `101` fixes it to still allow the internal `'manual'` default so `create_organization` does not roll back. |
 | **Phase A schema change** | **None.** Phase A is code + docs only. |
 | **Phase B–D schema change** | `094` (planner confirmation), `095` (onboarding progress), `096` (Phase D commercial readiness), `097` (documents↔money↔subscriptions). |
+| **Paddle billing schema change** | `100` (Paddle-only billing boundary), `101` (fix boundary to allow internal `'manual'` provider). |
 
 > ⚠️ This table has gone stale twice: first at "000–086, next 087", then at
 > "000–093, next 094" (which also wrongly claimed "93 files, no gaps" — there are
@@ -53,6 +60,8 @@ arity" and is **not** proof of absence.
 | `089` Trial Identity Hardening | table `billing_identities`; RPC `get_organization_access_state` | ✅ |
 | `092` Billing Provider Boundary | table `billing_provider_events` | ✅ |
 | `093` Analytics Writability | table `analytics_reports`; RPC `can_write_data` | ✅ |
+| `100` Paddle-only billing boundary | `billing_subscriptions` provider CHECK constraint | ✅ (2026-07-09) |
+| `101` Fix Paddle boundary (allow `manual`) | `create_organization` succeeds with default `'manual'` provider | ✅ (2026-07-09) |
 
 Migrations are applied **manually** by the maintainer (the Supabase CLI is not
 logged in). See `docs/runbooks/rollback.md` before applying anything irreversible.
@@ -71,12 +80,13 @@ logged in). See `docs/runbooks/rollback.md` before applying anything irreversibl
 | `DOCUMENT_EXTRACTION_MOCK` | mock OCR in non-prod | **must be unset/false in prod** |
 | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | invite / notification email | secret + verified sender |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | web push | keypair matched |
-| `BILLING_MODE` | billing runtime mode | `private_beta` until Stripe smoke passes |
-| `BILLING_PROVIDER` | provider selector | `stripe` only with `BILLING_MODE=stripe` |
-| `STRIPE_SECRET_KEY` | Stripe API access | **secret**, server only; required for `stripe` mode |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signature | **secret**, server only; required for `stripe` mode |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key | public; never a live key in examples |
-| `STRIPE_PRICE_STARTER_*`, `STRIPE_PRICE_PRO_*`, `STRIPE_PRICE_BUSINESS_*` | Stripe Price IDs | required for paid checkout in `stripe` mode |
+| `BILLING_MODE` | billing runtime mode | `private_beta` until Paddle smoke passes |
+| `BILLING_PROVIDER` | provider selector | `paddle` only |
+| `PADDLE_ENV` | Paddle environment | `sandbox` for smoke, `production` for live |
+| `PADDLE_API_KEY` | Paddle API access | **secret**, server only; required for paid modes |
+| `PADDLE_WEBHOOK_SECRET` | Paddle webhook signature | **secret**, server only; required for paid modes |
+| `PADDLE_CLIENT_TOKEN` | Paddle client token | public-ish token; set only when checkout flow needs it |
+| `PADDLE_PRICE_STARTER_*`, `PADDLE_PRICE_PRO_*`, `PADDLE_PRICE_BUSINESS_*` | Paddle Price IDs | required for paid checkout |
 | `RUN_DB_TESTS` | gate DB tests | leave unset in prod |
 | `NEVORA_ENABLE_CRM` | paused-module flag | **must be unset/false in prod** |
 | `NEVORA_ENABLE_BOOKING` | paused-module flag | **must be unset/false in prod** |
@@ -86,20 +96,21 @@ logged in). See `docs/runbooks/rollback.md` before applying anything irreversibl
 - [ ] `NEVORA_ENABLE_CRM` and `NEVORA_ENABLE_BOOKING` are **unset** (any value other
       than `true`/`1` keeps the modules paused; unset is preferred).
 - [ ] No secret exposed via a `NEXT_PUBLIC_` name by mistake.
-- [ ] Billing mode is explicit. Use `BILLING_MODE=private_beta` unless Stripe
+- [ ] Billing mode is explicit. Use `BILLING_MODE=private_beta` unless Paddle
       checkout, webhook, portal and plan unlock smoke tests are complete.
-- [ ] If `BILLING_MODE=stripe`, all Stripe secrets and paid Price IDs are set in
-      Production scope and are absent from the repository.
+- [ ] If `BILLING_MODE=paid_beta` or `BILLING_MODE=production`, all Paddle
+      secrets and paid Price IDs are set in Production scope and are absent from
+      the repository.
 
 **Billing note:** the repository default is Private Beta. Paid plan activation
 must arrive through the verified `/api/billing/webhook` provider path; checkout
 success redirects never mutate `billing_subscriptions`. Customer Portal is
 disabled in Private Beta and available only to authenticated billing managers
-when Stripe runtime config is complete.
+when Paddle runtime config is complete.
 
-**Security note:** a real Stripe test key was previously removed from
-`.env.example`. Rotate the leaked test key in Stripe Dashboard before making or
-keeping the repository public.
+**Security note:** a real legacy payment-provider test key was previously
+removed from `.env.example`. Rotate the leaked test key in the provider
+dashboard before making or keeping the repository public.
 
 ---
 
