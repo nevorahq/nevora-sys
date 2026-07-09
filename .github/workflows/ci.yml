@@ -48,3 +48,43 @@ jobs:
           # Реальные значения подставляются в рантайме на хостинге.
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+
+  # Fresh-from-scratch database verification (I-11): apply every migration in
+  # supabase/migrations/ onto a clean local Postgres, then run the SQL assertion
+  # harnesses in supabase/tests/. These are plain psql scripts (RAISE EXCEPTION +
+  # ON_ERROR_STOP), NOT pgTAP — so we invoke psql directly rather than
+  # `supabase test db`. Everything runs against the LOCAL stack: no `supabase
+  # login`/`link` and no remote credentials are involved.
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase (Postgres + Auth)
+        run: supabase start
+
+      - name: Fresh migration apply (db reset)
+        run: supabase db reset
+
+      - name: Run SQL verification harnesses
+        # ON_ERROR_STOP=1 turns any failed assertion (RAISE EXCEPTION) into a
+        # non-zero exit that fails the job. NOTE: a from-scratch local reset
+        # grants SELECT to no role, so anon-denial assertions can pass vacuously
+        # here — this job catches schema/index/RPC regressions, it does not
+        # replace verifying grants against the remote project.
+        run: |
+          set -euo pipefail
+          DB_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          shopt -s nullglob
+          for f in supabase/tests/*.sql; do
+            echo "── running $f"
+            psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+          done
