@@ -33,14 +33,20 @@ export async function proxy(request: NextRequest) {
   if (!user && !isPublicRoute(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = ROUTES.login;
-    return Response.redirect(url);
+    // ВАЖНО: NextResponse.redirect, а не Response.redirect. Next пост-обрабатывает
+    // только NextResponse и добавляет заголовки, по которым клиентский рантайм
+    // Server Actions распознаёт редирект при RSC-навигации. Сырой Response.redirect
+    // возвращает голый 302, который flight-клиент трактует как ошибку
+    // "An unexpected response was received from the server" (редирект из
+    // loginAction/registerAction → protected route → сюда).
+    return NextResponse.redirect(url);
   }
 
   // Авторизован + на странице логина/регистрации → на дашборд
   if (user && (pathname === ROUTES.login || pathname === ROUTES.register)) {
     const url = request.nextUrl.clone();
     url.pathname = ROUTES.dashboard;
-    return Response.redirect(url);
+    return NextResponse.redirect(url);
   }
 
   return supabaseResponse;
