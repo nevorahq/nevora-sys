@@ -7,6 +7,7 @@ import {
   verifyBillingWebhookSignature,
   type AppliedBillingWebhookResult,
 } from "./billing-webhook";
+import { getStripeConfig } from "../config/stripe-env";
 import { StripeBillingAdapter } from "./stripe.adapter";
 
 export type BillingProvider = "stripe" | "paddle" | "lemonsqueezy";
@@ -34,6 +35,7 @@ export type InternalBillingStatus =
 
 export interface CreateCheckoutInput {
   organizationId: string;
+  actorId: string;
   planCode: PlanSlug;
   billingCycle: BillingCycle;
   returnUrl: string;
@@ -145,8 +147,11 @@ export function parseBillingProvider(value: string | undefined): BillingProvider
 }
 
 export function getConfiguredBillingProvider(): BillingProviderAdapter {
+  const stripeConfig = getStripeConfig();
+  if (stripeConfig.mode === "private_beta") return new ProviderAgnosticBillingAdapter(null);
+
   const provider = parseBillingProvider(process.env.BILLING_PROVIDER);
-  if (provider === "stripe") return new StripeBillingAdapter();
+  if (provider === "stripe") return new StripeBillingAdapter(stripeConfig);
   return new ProviderAgnosticBillingAdapter(provider);
 }
 

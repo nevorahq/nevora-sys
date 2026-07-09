@@ -161,6 +161,15 @@ export { entitlementService, canUseFeatureForOrganization } from "./services/ent
 export { usageService } from "./services/usage-service";
 export { featureGateService } from "./services/feature-gate-service";
 export { getUpgradePromptForUsage, getUpgradePromptsForUsage } from "./services/upgrade-prompt.service";
+export { getPublicPlanViews } from "./public-plan-view";
+export type { PublicPlanView } from "./public-plan-view";
+export {
+  getStripeConfig,
+  getStripeConfigMissing,
+  isStripeCheckoutAvailable,
+  stripePriceIdForPlanFromConfig,
+} from "./config/stripe-env";
+export type { StripeConfig, StripeRuntimeMode } from "./config/stripe-env";
 export type {
   BillingProvider,
   BillingProviderAdapter,

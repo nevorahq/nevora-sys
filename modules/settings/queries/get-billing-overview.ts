@@ -3,12 +3,14 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAccountLimits } from "@/lib/billing";
 import { getInvoices, getOrganizationAccessState, getPlanEntitlement, getPlanLimit, getPlans, getSubscription, getTrialEligibilityForCurrentUser, getUsage } from "@/modules/billing";
+import { getStripeConfig, getStripeConfigMissing } from "@/modules/billing/config/stripe-env";
 import { requireSettingsPermission } from "../utils/settings-permissions";
 import type { BillingSettingsOverview, UsageLimit } from "../types/settings.types";
 
 export async function getBillingOverview(): Promise<BillingSettingsOverview> {
   const { org, user } = await requireSettingsPermission("billing.read");
   const supabase = await createClient();
+  const stripeConfig = getStripeConfig();
 
   const [
     subscription,
@@ -86,6 +88,8 @@ export async function getBillingOverview(): Promise<BillingSettingsOverview> {
     plans,
     invoices,
     usage,
+    billingMode: stripeConfig.mode,
+    billingConfigMissing: getStripeConfigMissing(stripeConfig),
     providerConnected: Boolean(subscription?.external_id),
     unlimitedAccess: limits.unlimitedAccess,
     trialEligibility,

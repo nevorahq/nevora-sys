@@ -70,9 +70,10 @@ Run through this before opening a PR that touches data, schema, or mutations:
   (Bearer auth). Generate with `openssl rand -hex 32`.
 - `ANTHROPIC_API_KEY`, `RESEND_API_KEY` are server-only; never expose to the
   client. Only `NEXT_PUBLIC_*` values reach the browser.
-- `.env.example` carries **empty values only** — never a real key, not even a
-  test-mode one. Committed placeholders must stay blank (`STRIPE_SECRET_KEY=`),
-  not fake-but-plausible strings, so secret scanners stay useful.
+- `.env.example` carries placeholders only — never a real key, not even a
+  test-mode one. Stripe placeholders use obvious non-secret samples such as
+  `sk_test_your_stripe_secret_key`, `whsec_your_webhook_secret`, and
+  `price_your_*_price_id`.
 
 ### Stripe test key — 2026-07-08 finding
 
@@ -97,6 +98,7 @@ exposure was local-disk only.
 1. The two carrying refs were deleted (`git update-ref -d`), unreachable objects
    expired and `git gc --prune=now` run. Both blobs are now unresolvable; `main`,
    `origin/main` and the stash were untouched and `git fsck` is clean.
+   A real Stripe test key was removed from `.env.example`.
 2. **Rotate the key in the Stripe Dashboard anyway.** It is a real credential of a
    real Stripe account and it sat unencrypted on disk. Rotation is cheap; assurance
    is not.

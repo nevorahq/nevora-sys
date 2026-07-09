@@ -18,6 +18,11 @@ import {
   type NormalizedBillingWebhookEvent,
 } from "./billing-webhook";
 import { billingRepository } from "./billing-repository";
+import {
+  getStripeConfig,
+  stripePriceIdForPlanFromConfig,
+  type StripeConfig,
+} from "../config/stripe-env";
 
 type StripeEvent = {
   id: string;
@@ -29,32 +34,11 @@ type StripeEvent = {
 const STRIPE_API = "https://api.stripe.com/v1";
 const STRIPE_SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
 
-function configuredSecret(): string | null {
-  return process.env.STRIPE_SECRET_KEY || null;
-}
-
-function configuredWebhookSecret(): string | null {
-  return process.env.STRIPE_WEBHOOK_SECRET || process.env.BILLING_WEBHOOK_SECRET || null;
-}
-
-function stripePriceEnvKeys(planCode: PlanSlug, billingCycle: BillingCycle): string[] {
-  const upperCycle = billingCycle.toUpperCase();
-  if (planCode === "start") {
-    return [`STRIPE_PRICE_START_${upperCycle}`, `STRIPE_PRICE_STARTER_${upperCycle}`];
-  }
-  return [`STRIPE_PRICE_${planCode.toUpperCase()}_${upperCycle}`];
-}
-
 export function stripePriceIdForPlan(
   planCode: PlanSlug,
   billingCycle: BillingCycle,
 ): string | null {
-  if (planCode === "trial" || planCode === "free" || planCode === "enterprise") return null;
-  for (const key of stripePriceEnvKeys(planCode, billingCycle)) {
-    const value = process.env[key];
-    if (value) return value;
-  }
-  return null;
+  return stripePriceIdForPlanFromConfig(getStripeConfig(), planCode, billingCycle);
 }
 
 function planForStripePrice(priceId: string | null | undefined): Exclude<PlanSlug, "trial"> | null {
@@ -95,12 +79,18 @@ function encodeForm(data: Record<string, string | number | boolean | null | unde
   return body;
 }
 
-async function stripePost<T>(path: string, body: URLSearchParams, secretKey: string): Promise<T> {
+async function stripePost<T>(
+  path: string,
+  body: URLSearchParams,
+  secretKey: string,
+  idempotencyKey?: string,
+): Promise<T> {
   const response = await fetch(`${STRIPE_API}${path}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${secretKey}`,
       "Content-Type": "application/x-www-form-urlencoded",
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
     body,
   });
@@ -250,15 +240,17 @@ function normalizeStripeEvent(event: StripeEvent): NormalizedBillingWebhookEvent
 export class StripeBillingAdapter implements BillingProviderAdapter {
   readonly provider = "stripe" as const;
   readonly configured: boolean;
+  private readonly config: StripeConfig;
 
-  constructor() {
-    this.configured = Boolean(configuredSecret());
+  constructor(config = getStripeConfig()) {
+    this.config = config;
+    this.configured = config.mode === "stripe" && Boolean(config.secretKey);
   }
 
   async createCheckoutSession(input: CreateCheckoutInput): Promise<CheckoutSession> {
-    const secretKey = configuredSecret();
-    const priceId = stripePriceIdForPlan(input.planCode, input.billingCycle);
-    if (!secretKey || !priceId) {
+    const secretKey = this.config.secretKey;
+    const priceId = stripePriceIdForPlanFromConfig(this.config, input.planCode, input.billingCycle);
+    if (this.config.mode !== "stripe" || !secretKey || !priceId) {
       return {
         provider: this.provider,
         configured: false,
@@ -284,15 +276,26 @@ export class StripeBillingAdapter implements BillingProviderAdapter {
       "metadata[organization_id]": input.organizationId,
       "metadata[plan_code]": input.planCode,
       "metadata[billing_cycle]": input.billingCycle,
+      "metadata[actor_id]": input.actorId,
       "subscription_data[metadata][organization_id]": input.organizationId,
       "subscription_data[metadata][plan_code]": input.planCode,
       "subscription_data[metadata][billing_cycle]": input.billingCycle,
+      "subscription_data[metadata][actor_id]": input.actorId,
     });
+
+    const idempotencyKey = [
+      "checkout",
+      input.organizationId,
+      input.actorId,
+      input.planCode,
+      input.billingCycle,
+    ].join(":");
 
     const session = await stripePost<{ id: string; url: string | null }>(
       "/checkout/sessions",
       body,
       secretKey,
+      idempotencyKey,
     );
 
     return {
@@ -304,9 +307,9 @@ export class StripeBillingAdapter implements BillingProviderAdapter {
   }
 
   async createCustomerPortal(input: CustomerPortalInput): Promise<CustomerPortalSession> {
-    const secretKey = configuredSecret();
+    const secretKey = this.config.secretKey;
     const customerId = await billingRepository.getProviderCustomerId(input.organizationId, this.provider);
-    if (!secretKey || !customerId) {
+    if (this.config.mode !== "stripe" || !secretKey || !customerId) {
       return { provider: this.provider, configured: false, url: null };
     }
 
@@ -323,7 +326,7 @@ export class StripeBillingAdapter implements BillingProviderAdapter {
     rawBody: string,
     headers: globalThis.Headers,
   ): Promise<BillingWebhookResult> {
-    const webhookSecret = configuredWebhookSecret();
+    const webhookSecret = this.config.webhookSecret;
     const signature = headers.get("stripe-signature");
     if (!verifyStripeWebhookSignature(rawBody, signature, webhookSecret)) {
       return {

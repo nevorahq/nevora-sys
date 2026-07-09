@@ -6,7 +6,7 @@ import { logger } from "@/lib/observability/logger";
 import { createActionItemForDocument } from "@/modules/action-center/services/create-action-item-for-document";
 import { createDocumentSuggestionWithClassification } from "@/modules/review/services/financial-suggestion.service";
 import { normalizeFinancialDocument } from "@/modules/ai/services/normalize-financial-document";
-import { assertPlanEntitlement, assertPlanLimit } from "@/modules/billing";
+import { featureGateService, usageService } from "@/modules/billing";
 import { routeExtraction } from "./document-extraction-router";
 import { evaluateExtraction } from "./confidence-rules";
 import { detectFinancialObligation } from "./detect-financial-obligation";
@@ -140,8 +140,9 @@ export async function runDocumentExtraction(
   }
 
   try {
-    await assertPlanEntitlement(ctx.org.id, "documents.process");
-    await assertPlanLimit(ctx.org.id, "documents_processed.monthly", 1);
+    const blocked = await featureGateService.getBlockedReason(ctx.workspace.id, "documents.process");
+    if (blocked) throw new Error(blocked.message);
+    await usageService.assertWithinLimit(ctx.workspace.id, "documents_processed_monthly", 1);
   } catch (error) {
     return fail(supabase, ctx, {
       documentId,

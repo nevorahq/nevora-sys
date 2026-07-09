@@ -30,8 +30,8 @@ describe("Stripe billing adapter helpers", () => {
     expect(
       verifyStripeWebhookSignature(
         rawBody,
-        stripeSignature(rawBody, "whsec_test", timestamp),
-        "whsec_test",
+        stripeSignature(rawBody, "stripe_webhook_test_secret", timestamp),
+        "stripe_webhook_test_secret",
         now,
       ),
     ).toBe(true);
@@ -39,15 +39,15 @@ describe("Stripe billing adapter helpers", () => {
       verifyStripeWebhookSignature(
         rawBody,
         stripeSignature(rawBody, "wrong", timestamp),
-        "whsec_test",
+        "stripe_webhook_test_secret",
         now,
       ),
     ).toBe(false);
     expect(
       verifyStripeWebhookSignature(
         rawBody,
-        stripeSignature(rawBody, "whsec_test", timestamp - 600),
-        "whsec_test",
+        stripeSignature(rawBody, "stripe_webhook_test_secret", timestamp - 600),
+        "stripe_webhook_test_secret",
         now,
       ),
     ).toBe(false);

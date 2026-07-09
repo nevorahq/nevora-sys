@@ -14,9 +14,9 @@ Run top-to-bottom before deploying. Do not skip §2 (migrations) or §3 (scope g
 |---|---|
 | **Current baseline (tree)** | `000` – `099` (99 files, no duplicate prefixes; `054` is a known, intentional gap) |
 | **Next free number** | **`100`** |
-| **Remote state** | `000`–`097` verified applied on `uimpykbnatzhykzpastd` (2026-07-08). **`098` and `099` NOT applied — release blockers.** |
-| **`098` status** | Written + verified on a local harness (anon leak reproduced, then closed). Awaiting manual apply. |
-| **`099` status** | Written + verified (duplicate insert accepted without the index, rejected with it). Ships **with** app code that writes `todos.source_suggestion_id` — apply the migration first. |
+| **Remote state** | `000`–`099` verified applied on `uimpykbnatzhykzpastd` (`098`/`099` confirmed 2026-07-09 by probing anon denial + the `source_suggestion_id` column). |
+| **`098` status** | Applied. Anon can no longer read booking tables or EXECUTE the public booking RPCs (verified with the public anon key). |
+| **`099` status** | Applied. `todos.source_suggestion_id` + the four exactly-once indexes are live; the migration went in before the app deploy that writes the column. |
 | **Phase A schema change** | **None.** Phase A is code + docs only. |
 | **Phase B–D schema change** | `094` (planner confirmation), `095` (onboarding progress), `096` (Phase D commercial readiness), `097` (documents↔money↔subscriptions). |
 
@@ -63,6 +63,12 @@ logged in). See `docs/runbooks/rollback.md` before applying anything irreversibl
 | `DOCUMENT_EXTRACTION_MOCK` | mock OCR in non-prod | **must be unset/false in prod** |
 | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | invite / notification email | secret + verified sender |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | web push | keypair matched |
+| `BILLING_MODE` | billing runtime mode | `private_beta` until Stripe smoke passes |
+| `BILLING_PROVIDER` | provider selector | `stripe` only with `BILLING_MODE=stripe` |
+| `STRIPE_SECRET_KEY` | Stripe API access | **secret**, server only; required for `stripe` mode |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signature | **secret**, server only; required for `stripe` mode |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key | public; never a live key in examples |
+| `STRIPE_PRICE_STARTER_*`, `STRIPE_PRICE_PRO_*`, `STRIPE_PRICE_BUSINESS_*` | Stripe Price IDs | required for paid checkout in `stripe` mode |
 | `RUN_DB_TESTS` | gate DB tests | leave unset in prod |
 | `NEVORA_ENABLE_CRM` | paused-module flag | **must be unset/false in prod** |
 | `NEVORA_ENABLE_BOOKING` | paused-module flag | **must be unset/false in prod** |
@@ -72,11 +78,20 @@ logged in). See `docs/runbooks/rollback.md` before applying anything irreversibl
 - [ ] `NEVORA_ENABLE_CRM` and `NEVORA_ENABLE_BOOKING` are **unset** (any value other
       than `true`/`1` keeps the modules paused; unset is preferred).
 - [ ] No secret exposed via a `NEXT_PUBLIC_` name by mistake.
+- [ ] Billing mode is explicit. Use `BILLING_MODE=private_beta` unless Stripe
+      checkout, webhook, portal and plan unlock smoke tests are complete.
+- [ ] If `BILLING_MODE=stripe`, all Stripe secrets and paid Price IDs are set in
+      Production scope and are absent from the repository.
 
-**Billing note:** no payment provider is connected. `cancelSubscriptionAction`
-opens a provider portal or returns `BILLING_PROVIDER_NOT_CONNECTED`; it never
-mutates `billing_subscriptions` directly. The provider-agnostic webhook still
-carries a `TODO(before public launch)` for native signature verification.
+**Billing note:** the repository default is Private Beta. Paid plan activation
+must arrive through the verified `/api/billing/webhook` provider path; checkout
+success redirects never mutate `billing_subscriptions`. Customer Portal is
+disabled in Private Beta and available only to authenticated billing managers
+when Stripe runtime config is complete.
+
+**Security note:** a real Stripe test key was previously removed from
+`.env.example`. Rotate the leaked test key in Stripe Dashboard before making or
+keeping the repository public.
 
 ---
 

@@ -10,12 +10,14 @@ export function UpgradePrompt({
   onViewPricing,
   onDismiss,
   isLoading,
+  upgradeLabel = "Upgrade",
 }: {
   prompt: UpgradePromptModel;
   onUpgrade: () => void;
   onViewPricing: () => void;
   onDismiss: () => void;
   isLoading?: boolean;
+  upgradeLabel?: string;
 }) {
   return (
     <section className="soft-card-sm border border-border-soft p-4">
@@ -45,7 +47,7 @@ export function UpgradePrompt({
       <div className="mt-4 flex flex-wrap gap-2">
         <Button type="button" onClick={onUpgrade} isLoading={isLoading}>
           <ArrowUpCircleIcon size={15} />
-          Upgrade
+          {upgradeLabel}
         </Button>
         <Button type="button" variant="secondary" onClick={onViewPricing}>
           View pricing

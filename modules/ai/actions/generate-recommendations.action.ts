@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import { getAnthropicClient, AI_MODELS, buildRecommendationsPrompt } from "@/lib/ai";
-import { checkPlanLimit } from "@/lib/billing";
+import { featureGateService, usageService } from "@/modules/billing";
 import { getDashboardMetrics } from "@/modules/analytics";
 import { rawRecommendationSchema } from "../schemas/ai.schemas";
 import { ROUTES } from "@/shared/config/routes";
@@ -26,9 +26,15 @@ export async function generateRecommendationsAction(
   }
   const { user, org, workspace } = ctx;
 
-  const limitCheck = await checkPlanLimit(org.id, "ai_calls");
-  if (!limitCheck.allowed) {
-    return { error: limitCheck.reason ?? "AI request limit reached. Upgrade your plan." };
+  const blocked = await featureGateService.getBlockedReason(workspace.id, "ai.suggestions.generate");
+  if (blocked) {
+    return { error: blocked.message };
+  }
+
+  try {
+    await usageService.assertWithinLimit(workspace.id, "ai_suggestions_monthly", 1);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "AI suggestion limit reached. Upgrade your plan." };
   }
 
   try {

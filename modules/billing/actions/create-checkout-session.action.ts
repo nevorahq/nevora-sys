@@ -6,11 +6,13 @@ import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import type { ActionResult } from "@/lib/validators/common";
 import { changePlanSchema, type ChangePlanInput } from "../schemas/billing.schemas";
+import { getStripeConfig } from "../config/stripe-env";
 import { billingProvider } from "../services/billing-provider";
 
 export interface CheckoutActionState extends ActionResult {
   success?: string;
   redirectUrl?: string;
+  code?: "PRIVATE_BETA" | "BILLING_CONFIG_MISSING";
 }
 
 async function getReturnUrl(): Promise<string> {
@@ -72,8 +74,16 @@ export async function createCheckoutSessionForCurrentOrganization(
   if (error) return { error: "Could not load the selected plan." };
   if (!plan || plan.slug === "trial") return { error: "Please choose an available paid plan." };
 
+  if (getStripeConfig().mode === "private_beta") {
+    return {
+      code: "PRIVATE_BETA",
+      error: "Nevora is in private beta. Paid checkout is not available yet; contact us to activate a paid plan.",
+    };
+  }
+
   const session = await billingProvider.createCheckoutSession({
     organizationId: ctx.org.id,
+    actorId: ctx.user.id,
     planCode: input.planSlug,
     billingCycle: input.billingCycle,
     returnUrl: await getReturnUrl(),
@@ -81,6 +91,7 @@ export async function createCheckoutSessionForCurrentOrganization(
 
   if (!session.url) {
     return {
+      code: "BILLING_CONFIG_MISSING",
       error:
         "Billing provider is not connected yet. Paid plans can only be activated after provider checkout and verified webhook are configured.",
     };

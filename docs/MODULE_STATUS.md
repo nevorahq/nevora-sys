@@ -49,21 +49,19 @@ into a clear daily action list, and the user confirms before business data chang
   `/dashboard/overview` and is secondary. `/dashboard/actions` 307s to `/dashboard`.
 - **CRM / Clients is Paused and hard-gated.** Not merely hidden: its pages,
   Server Actions **and** route handlers return 404 / reject server-side.
-- **Booking is Paused and route-gated, but its data surface is still OPEN.**
-  `/booking/*` and `/api/public/booking/*` now 404 — the *Next.js* surface is
-  closed. **The database surface is not.** The `anon` SELECT policies from `016`
-  are still live, so `booking_pages`, `booking_host_profiles`, `booking_services`
-  and `booking_host_services` remain readable straight from the Supabase REST
-  endpoint using the public anon key (verified against remote 2026-07-08: 3 booking
-  pages across 3 organizations; 2 host profiles exposing `display_name`,
-  `avatar_url`, `user_id`, `membership_id`).
-  Worse, `anon` also retains `EXECUTE` on `create_booking_request_public` — a
-  `SECURITY DEFINER` RPC that bypasses RLS entirely, i.e. an **anonymous write
-  path** into `booking_requests`. Confirmed live 2026-07-08.
-  **A closed route is not a closed data surface.** Release-blocking P0.
-  `098_booking_anon_lockdown.sql` closes both (read + write) and is verified on a
-  local harness — but it is **not yet applied to remote**, so the exposure is live
-  until it is.
+- **Booking is Paused and closed at BOTH surfaces.** `/booking/*` and
+  `/api/public/booking/*` return 404 (the Next.js surface), and since `098` the
+  database surface is closed too. Before `098`, a closed route was *not* a closed
+  data surface: the `anon` SELECT policies from `016` left `booking_pages`,
+  `booking_host_profiles`, `booking_services` and `booking_host_services` readable
+  straight from Supabase REST with the public anon key (3 pages / 3 orgs; host
+  profiles exposed `display_name`, `avatar_url`, `user_id`, `membership_id`), and
+  `anon` retained `EXECUTE` on the `SECURITY DEFINER` RPC
+  `create_booking_request_public` — an anonymous **write** path into
+  `booking_requests`. `098` (applied on remote, confirmed 2026-07-09) dropped the
+  anon policies, revoked anon table privileges and revoked anon EXECUTE on both
+  public booking RPCs. Verified: anon now gets `42501` on every booking table and
+  both RPCs. Data preserved; `authenticated` untouched; Booking not reactivated.
 - Paused modules are removed from the active public product promise: no landing
   copy, no pricing entitlement, no navigation entry.
 - Priority focus is the **Business OS foundation**: Action Center, Tasks, Money,
@@ -214,18 +212,19 @@ Current implementation: 3 actions, 5 queries, 3 components; trial lifecycle,
 plan-limit enforcement, developer unlimited access, trial banner.
 Routes: `/dashboard/settings/billing`.
 Database: `027` (trial lifecycle), `033` (start-plan enforcement), `059` (dev unlimited access).
-Server Actions / API: trial/plan actions; limits resolved by `lib/billing`.
+Server Actions / API: trial/plan actions; document processing, AI suggestions
+and storage upload now pass through Phase D `featureGateService` / `usageService`
+boundaries.
 Known Issues: a Stripe adapter, webhook verifier and portal path **do exist**
 (`modules/billing/services/stripe.adapter.ts`, resolved by `billing-provider.ts`),
-but **no `STRIPE_*` runtime configuration is present**, so paid self-serve checkout
-does not work end-to-end. The billing mode has not been explicitly declared as
-either "Stripe runtime-ready" or "private beta" — the UI must not promise a working
-paid checkout while it is unconfigured.
-Also: Phase D's `featureGateService` / `usageService` have **zero external call
-sites**; live enforcement is still `checkPlanLimit` from `lib/billing`.
-Risks: limit enforcement must match plan copy on the landing page — and today
-`modules/landing` (EUR) and `modules/billing/plan-catalog.ts` (USD) disagree.
-Next Step: integrate a payment/checkout flow; wire `?plan=<id>` from landing.
+but the repository default is explicit **Private Beta** (`BILLING_MODE=private_beta`).
+Paid self-serve checkout and Customer Portal are intentionally disabled until
+Stripe runtime config is complete outside the repo.
+Risks: legacy `checkPlanLimit` paths still exist in older product surfaces and
+must be retired gradually. Paid plan activation must continue to happen only
+through verified provider webhooks, never checkout redirects.
+Next Step: configure Stripe test/live env outside the repo, run webhook smoke,
+then switch `BILLING_MODE=stripe`.
 
 ## Analytics
 

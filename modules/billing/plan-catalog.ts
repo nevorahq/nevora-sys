@@ -16,7 +16,12 @@ export interface CommercialPlanCatalogEntry {
   description: string;
   monthlyPrice: number;
   yearlyPrice: number;
-  currency: string;
+  /**
+   * Commercial currency. EUR is the single public currency (see
+   * public-plan-view.ts and the landing/pricing consistency test). Typed as a
+   * literal so a stray "USD" fails to compile rather than silently diverging.
+   */
+  currency: "EUR";
   recommended: boolean;
   checkoutEnabled: boolean;
   contactSales: boolean;
@@ -33,7 +38,7 @@ export const commercialPlanCatalog = {
     description: "Validate the workspace with the core workflow and honest limits.",
     monthlyPrice: 0,
     yearlyPrice: 0,
-    currency: "USD",
+    currency: "EUR",
     recommended: false,
     checkoutEnabled: false,
     contactSales: false,
@@ -54,7 +59,7 @@ export const commercialPlanCatalog = {
     description: "For solo operators and very small teams.",
     monthlyPrice: 9,
     yearlyPrice: 108,
-    currency: "USD",
+    currency: "EUR",
     recommended: false,
     checkoutEnabled: true,
     contactSales: false,
@@ -75,7 +80,7 @@ export const commercialPlanCatalog = {
     description: "For small teams that need stronger workflow capacity.",
     monthlyPrice: 29,
     yearlyPrice: 348,
-    currency: "USD",
+    currency: "EUR",
     recommended: true,
     checkoutEnabled: true,
     contactSales: false,
@@ -96,7 +101,7 @@ export const commercialPlanCatalog = {
     description: "For teams that need higher limits and operational control.",
     monthlyPrice: 69,
     yearlyPrice: 828,
-    currency: "USD",
+    currency: "EUR",
     recommended: false,
     checkoutEnabled: true,
     contactSales: true,

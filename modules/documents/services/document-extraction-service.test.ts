@@ -6,8 +6,8 @@ const createDocumentSuggestionWithClassification = vi.fn();
 const normalizeFinancialDocument = vi.fn();
 const routeExtraction = vi.fn();
 const detectFinancialObligation = vi.fn();
-const assertPlanEntitlement = vi.fn();
-const assertPlanLimit = vi.fn();
+const getBlockedReason = vi.fn();
+const assertWithinLimit = vi.fn();
 
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
 vi.mock("@/modules/action-center/services/create-action-item-for-document", () => ({
@@ -18,8 +18,8 @@ vi.mock("@/modules/review/services/financial-suggestion.service", () => ({
 }));
 vi.mock("@/modules/ai/services/normalize-financial-document", () => ({ normalizeFinancialDocument }));
 vi.mock("@/modules/billing", () => ({
-  assertPlanEntitlement,
-  assertPlanLimit,
+  featureGateService: { getBlockedReason },
+  usageService: { assertWithinLimit },
 }));
 vi.mock("./document-extraction-router", () => ({ routeExtraction }));
 vi.mock("./detect-financial-obligation", () => ({ detectFinancialObligation }));
@@ -115,8 +115,8 @@ beforeEach(() => {
     ok: true,
     data: { suggestion: { id: "sug-1" } },
   });
-  assertPlanEntitlement.mockResolvedValue(undefined);
-  assertPlanLimit.mockResolvedValue(undefined);
+  getBlockedReason.mockResolvedValue(null);
+  assertWithinLimit.mockResolvedValue(undefined);
   detectFinancialObligation.mockResolvedValue({
     detected: false,
     autoCreated: false,

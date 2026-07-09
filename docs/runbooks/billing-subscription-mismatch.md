@@ -7,14 +7,17 @@ both `trialing` and `expired`; plan limits do not match the plan.
 
 ## 0. Ground truth
 
-Stripe can be connected through `BILLING_PROVIDER=stripe`. Billing remains an
-internal trial/plan model where `billing_subscriptions` + `plan_limits` are the
-source of truth, and `get_organization_access_state` (089) is the single
-entitlement oracle the app reads. Paid state must arrive through the verified
+The repository default is `BILLING_MODE=private_beta`: paid checkout and Stripe
+Customer Portal are intentionally disabled. Stripe runtime-ready mode requires
+`BILLING_MODE=stripe`, `BILLING_PROVIDER=stripe`, `STRIPE_SECRET_KEY`,
+`STRIPE_WEBHOOK_SECRET`, and all paid Stripe Price IDs outside the repo.
+
+Stripe is the payment/subscription lifecycle source of truth once runtime-ready.
+The local plan catalog and `plan_limits` remain the product entitlement source
+of truth, and `get_organization_access_state` (089) is the single entitlement
+oracle the app reads. Paid state must arrive through the verified
 `/api/billing/webhook` path; checkout success redirects never grant access by
-themselves. `cancelSubscriptionAction` never mutates `billing_subscriptions`
-directly — it opens the provider portal or returns
-`BILLING_PROVIDER_NOT_CONNECTED`.
+themselves. App actions never mutate paid subscription state directly.
 
 So a mismatch is usually **state drift in `billing_subscriptions`** or a
 provider webhook/mapping issue.
@@ -54,7 +57,9 @@ SELECT * FROM public.billing_identities  WHERE user_id = '<owner>';
 | Expired trial can still write | `trial_ends_at` in the future, or 027 enforcement not firing | Verify `get_organization_access_state`; do not patch the app |
 | Org gets a second trial | Missing `billing_trial_claims` row | 086 backfill; check `claim_trial_for_current_user` |
 | `trialing` **and** `expired` | Two rows, or a stale row after plan change | Keep one row; `changePlanAction` must never target `plan_slug='trial'` |
-| Limits don't match plan copy | `plan_limits` disagrees with landing copy | Fix `plan_limits`; the landing page must not promise ungated features |
+| Limits don't match plan copy | `plan_limits` disagrees with `modules/billing/plan-catalog.ts` / `public-plan-view.ts` | Fix the billing catalog + seeded limits together; never add a second pricing source |
+| Paid checkout button appears in Private Beta | UI bypassed billing mode | Verify `BILLING_MODE=private_beta`, `getPublicPlanViews()`, and `BillingOverview.billingMode` |
+| Stripe event delivered but local state unchanged | invalid signature, missing mapping, duplicate, out-of-order event, or missing Price ID/plan slug | Inspect `billing_provider_events.ignored_reason`, then repair mapping or replay event |
 | `[syncActionItems] insert failed RLS` | Expired-trial **write lock**, not an isolation bug | Expected. Restore entitlement or ignore. |
 
 ## 3. Reconcile
@@ -72,6 +77,9 @@ SELECT * FROM public.billing_identities  WHERE user_id = '<owner>';
 
 - [ ] `get_organization_access_state('<org>')` returns the intended state.
 - [ ] The org can (or cannot) write, as intended.
+- [ ] Billing mode matches release posture: Private Beta or Stripe runtime-ready.
+- [ ] If Stripe mode, latest provider event exists in `billing_provider_events`
+      and was processed once.
 - [ ] Trial reuse still blocked: a new org by the same identity gets no trial.
 - [ ] `supabase/tests/trial_reuse_verification.sql` and
       `trial_identity_verification.sql` pass.

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAppAccess, isAccessError, redactFilenameForEvent } from "@/lib/security";
-import { assertPlanLimit } from "@/modules/billing";
+import { featureGateService, usageService } from "@/modules/billing";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
 import { hasDocumentPermission } from "@/modules/documents/services/document-permissions";
@@ -28,7 +28,9 @@ export async function POST(request: Request, context: RouteContext<"/api/documen
     if (!filesValidation.ok) return NextResponse.json(filesValidation, { status: 400 });
 
     try {
-      await assertPlanLimit(ctx.org.id, "storage.bytes", files.reduce((total, file) => total + file.size, 0));
+      const blocked = await featureGateService.getBlockedReason(ctx.workspace.id, "storage.files.upload");
+      if (blocked) throw new Error(blocked.message);
+      await usageService.assertWithinLimit(ctx.workspace.id, "storage_used_bytes", files.reduce((total, file) => total + file.size, 0));
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Storage limit reached." }, { status: 403 });
     }

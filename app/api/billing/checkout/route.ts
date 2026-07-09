@@ -22,8 +22,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const result = await createCheckoutSessionForCurrentOrganization(parsed.data);
   if (result.error) {
-    const status = result.error.includes("not connected yet") ? 501 : 403;
-    return NextResponse.json({ error: result.error }, { status });
+    const status = result.code === "PRIVATE_BETA" ? 409 : result.code === "BILLING_CONFIG_MISSING" ? 503 : 403;
+    return NextResponse.json({ error: result.error, code: result.code }, { status });
   }
 
   return NextResponse.json({ url: result.redirectUrl }, { status: 200 });

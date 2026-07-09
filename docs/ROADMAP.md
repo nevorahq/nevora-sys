@@ -3,8 +3,9 @@
 > Current source-of-truth roadmap for the repository. Status reflects the tree on
 > **2026-07-08 (Phases A–D committed)**: migrations are present through
 > `099_planner_confirmation_exactly_once.sql` (**baseline
-> `000`–`099`, next free `100`** — `000`–`097` applied on remote, `098`/`099`
-> written and locally verified but **not yet applied**), local `typecheck`
+> `000`–`099`, next free `100`** — all applied on remote; `098`/`099` confirmed
+> applied 2026-07-09 by probing: anon is denied `booking_pages` and the public
+> booking RPC, and `todos.source_suggestion_id` exists), local `typecheck`
 > passes after `next typegen`, and the product focus is the **AI-assisted
 > operating desk, Action Center first** — not CRM or Booking expansion.
 >
@@ -21,17 +22,18 @@
 > **Known truthfulness gaps (open, tracked as release blockers).** Do not read this
 > document as claiming these are done:
 > - Stripe: the adapter and webhook code exist and `billing-provider.ts` resolves
->   them, but no `STRIPE_*` runtime configuration is present. Paid self-serve
->   checkout is **not operational**. Billing mode is not yet explicitly declared.
-> - Phase D: `featureGateService` and `usageService` have **zero external call
->   sites** — the live enforcement path is still `checkPlanLimit` from `lib/billing`.
->   The entitlement keys seeded by `096` are not gated in active product flows.
-> - Booking: routes are closed, but at the database layer `anon` can still read
->   published booking data **and** EXECUTE the `SECURITY DEFINER` RPC
->   `create_booking_request_public` (an anonymous write path). `098` fixes both;
->   it is written and locally verified but **not yet applied to remote**.
-> - Pricing: `modules/landing` and `modules/billing/plan-catalog.ts` are separate
->   sources of truth and disagree on currency and limits.
+>   them, but the repository default is now `BILLING_MODE=private_beta`. Paid
+>   self-serve checkout is intentionally disabled until production Stripe secrets,
+>   webhook secret, and Price IDs are configured outside the repo.
+> - Phase D: `featureGateService` and `usageService` now guard document
+>   processing, AI suggestions, and storage upload boundaries; legacy
+>   `checkPlanLimit` still exists in older surfaces and should be retired
+>   gradually.
+> - Booking: `098` (applied) closed the `anon` read + `SECURITY DEFINER` write
+>   surface at the database layer, on top of the route 404s.
+> - Pricing: `modules/billing/plan-catalog.ts` is the single source of truth, in
+>   EUR, matching the enforced `plan_limits`. `modules/landing` renders the same
+>   commercial numbers through `public-plan-view.ts`; a consistency test pins them.
 
 ## Phase 0 — Stabilization & Source of Truth — *mostly done / keep synced*
 
@@ -192,7 +194,7 @@ Insights and recommendations via Anthropic exist. Direction: scheduled
 generation, more domain-event-driven sources, summaries. **AI assistance is
 scoped — not an autonomous business agent.**
 
-## Phase 10 — SaaS Monetization — *partial / provider coded, not configured*
+## Phase 10 — SaaS Monetization — *private beta / provider coded, not runtime-ready*
 
 Billing/trials and plan limits exist. Phase 6 added normalized plan/developer
 access structures (`071`) and atomic usage reservations (`072`); Phase 7 added
@@ -201,19 +203,20 @@ member-seat atomicity (`076`); Phase D added the commercial-readiness schema
 
 The payment provider **has been chosen and coded**: `StripeBillingAdapter`
 (checkout, webhook signature verification, customer portal), resolved through
-`billing-provider.ts` on `BILLING_PROVIDER`. What is missing is *runtime
-configuration* — no `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` or `STRIPE_PRICE_*`
-values — so self-serve checkout cannot complete. This is a configuration and
-honesty gap, not a "we haven't picked a provider" gap.
+`billing-provider.ts` when `BILLING_MODE=stripe` and `BILLING_PROVIDER=stripe`.
+The repository default is **Private Beta** (`BILLING_MODE=private_beta`), so
+self-serve checkout and Customer Portal are intentionally unavailable until
+Stripe runtime configuration is complete.
 
 Remaining:
-- Declare the billing mode explicitly: **Stripe runtime-ready** *or* **private
-  beta**. Do not ship the hybrid state where the UI offers checkout that cannot run.
-- Activate paid plans only from trusted provider webhooks.
-- Unify the public plan catalog: `modules/landing` (EUR, stale limits) and
-  `modules/billing/plan-catalog.ts` (USD) currently disagree.
-- Wire Phase D's `featureGateService` / `usageService` into real product flows —
-  today both have zero external call sites and `checkPlanLimit` does the work.
+- Configure `BILLING_MODE=stripe`, `BILLING_PROVIDER=stripe`, Stripe secrets and
+  paid Price IDs outside the repo before enabling self-serve checkout.
+- Activate paid plans only from trusted provider webhooks; `success_url` must
+  remain display-only.
+- Keep public pricing on `modules/billing/public-plan-view.ts`; landing and
+  `/pricing` must not add their own tariff numbers.
+- Continue retiring legacy `checkPlanLimit` paths where Phase D services now
+  provide the commercial gate.
 - Retire or isolate legacy `checkPlanLimit` paths for the paused CRM keys
   (`clients`, `deals`).
 

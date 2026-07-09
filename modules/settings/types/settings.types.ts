@@ -1,5 +1,6 @@
 import type { Invoice, Plan, SubscriptionWithPlan, TrialEligibility } from "@/modules/billing";
 import type { OrgAccessState } from "@/modules/billing";
+import type { StripeRuntimeMode } from "@/modules/billing/config/stripe-env";
 
 export type SettingsPermission =
   | "profile.read"
@@ -78,6 +79,8 @@ export interface BillingSettingsOverview {
   plans: Plan[];
   invoices: Invoice[];
   usage: UsageLimit[];
+  billingMode: StripeRuntimeMode;
+  billingConfigMissing: string[];
   providerConnected: boolean;
   unlimitedAccess: boolean;
   trialEligibility: TrialEligibility;

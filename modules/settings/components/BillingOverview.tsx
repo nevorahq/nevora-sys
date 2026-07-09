@@ -20,6 +20,7 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
   const [message, setMessage] = useState<string | null>(null);
   const [dismissedPrompts, setDismissedPrompts] = useState<string[]>([]);
   const subscription = overview.subscription;
+  const privateBeta = overview.billingMode === "private_beta";
   const accessView = getAccessStateView(overview.accessState);
   const trialEndsAt = subscription?.trial_ends_at
     ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(subscription.trial_ends_at))
@@ -37,6 +38,11 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
   ).filter((prompt) => !dismissedPrompts.includes(prompt.id));
 
   function manageBilling() {
+    if (privateBeta) {
+      setMessage("Nevora billing is in private beta. Contact us to change billing or request paid access.");
+      return;
+    }
+
     setMessage(null);
     startTransition(async () => {
       const result = await createBillingPortalSession();
@@ -49,6 +55,11 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
   }
 
   function startCheckout(planId: string, planSlug: string, source?: "plan_card" | "upgrade_prompt", metricKey?: string) {
+    if (privateBeta) {
+      setMessage("Paid checkout is not available in private beta. Contact us to request access.");
+      return;
+    }
+
     setMessage(null);
     setPendingPlanId(planId);
     startTransition(async () => {
@@ -87,9 +98,19 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
         <div>
           <p className="text-xs uppercase tracking-wide text-text-muted">Current plan</p>
           <h2 className="mt-1 text-2xl font-semibold text-text-primary">{subscription ? PLAN_LABELS[subscription.plan.slug] : "No active plan"}</h2>
-          <p className="mt-1 text-sm text-text-muted">{subscription?.status === "trialing" && subscription.trial_ends_at ? `Trial ends ${new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(subscription.trial_ends_at))}` : subscription ? `Status: ${subscription.status}` : "Contact support to initialize billing."}</p>
+          <p className="mt-1 text-sm text-text-muted">{privateBeta ? "Private beta: paid checkout and customer portal are not enabled yet." : subscription?.status === "trialing" && subscription.trial_ends_at ? `Trial ends ${new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(subscription.trial_ends_at))}` : subscription ? `Status: ${subscription.status}` : "Contact support to initialize billing."}</p>
         </div>
-        <Button type="button" onClick={manageBilling} isLoading={pending}>{pending ? "Opening…" : "Manage billing"}<ExternalLinkIcon size={14} /></Button>
+        {privateBeta ? (
+          <a
+            href="mailto:nevorahq@gmail.com?subject=Nevora%20billing%20access"
+            className="inline-flex items-center justify-center gap-2 rounded-(--neu-radius-pill) border border-border-soft bg-surface px-5 py-2.5 text-sm font-semibold text-text-primary shadow-neu-control"
+          >
+            Contact us
+            <ExternalLinkIcon size={14} />
+          </a>
+        ) : (
+          <Button type="button" onClick={manageBilling} isLoading={pending}>{pending ? "Opening…" : "Manage billing"}<ExternalLinkIcon size={14} /></Button>
+        )}
       </section>
       {message && <p className="text-sm text-text-secondary" role="status">{message}</p>}
 
@@ -113,6 +134,7 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
               prompt={prompt}
               isLoading={pending && overview.plans.some((plan) => plan.slug === prompt.targetPlanSlug && plan.id === pendingPlanId)}
               onUpgrade={() => startPromptCheckout(prompt.targetPlanSlug, prompt.metricKey)}
+              upgradeLabel={privateBeta ? "Request access" : "Upgrade"}
               onViewPricing={() => {
                 window.location.href = "/pricing";
               }}
@@ -125,7 +147,10 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
       <div className="grid gap-5 md:grid-cols-2">
         <section className="soft-card-sm p-5">
           <div className="flex items-center gap-2"><CreditCardIcon size={17} className="text-text-muted" /><h2 className="text-sm font-semibold text-text-primary">Payment method</h2></div>
-          <p className="mt-4 text-sm text-text-muted">{overview.providerConnected ? "Managed securely by the billing provider." : "Billing provider is not connected yet."}</p>
+          <p className="mt-4 text-sm text-text-muted">{privateBeta ? "Private beta: paid checkout and customer portal are intentionally disabled." : overview.providerConnected ? "Managed securely by the billing provider." : "Billing provider is not connected yet."}</p>
+          {!privateBeta && overview.billingConfigMissing.length > 0 && (
+            <p className="mt-2 text-xs text-text-muted">Billing config missing: {overview.billingConfigMissing.join(", ")}</p>
+          )}
         </section>
         <section className="soft-card-sm p-5">
           <div className="flex items-center gap-2"><FileTextIcon size={17} className="text-text-muted" /><h2 className="text-sm font-semibold text-text-primary">Invoice history</h2></div>
@@ -152,13 +177,13 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
               <Button
                 type="button"
                 variant="secondary"
-                disabled={isCurrent || isTrial || pending}
+                disabled={isCurrent || isTrial || pending || privateBeta}
                 isLoading={isPending}
                 aria-label={isCurrent ? `${PLAN_LABELS[plan.slug]} is your current plan` : `Choose ${PLAN_LABELS[plan.slug]} plan`}
                 onClick={() => startCheckout(plan.id, plan.slug)}
                 className="mt-4 w-full"
               >
-                {isCurrent ? "Current plan" : isTrial ? "Trial at signup" : isPending ? "Opening..." : "Choose plan"}
+                {isCurrent ? "Current plan" : isTrial ? "Trial at signup" : privateBeta ? "Private beta" : isPending ? "Opening..." : "Choose plan"}
               </Button>
             </div>
           );

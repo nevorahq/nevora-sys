@@ -117,8 +117,19 @@ org owned by a different user (for isolation checks).
 - [ ] Plan limits enforced (hit a limit → clear, honest message).
 - [ ] Trial banner reflects real trial state; an expired trial is read-only.
 - [ ] ⚑ Trial reuse: a second org by the same identity does **not** get a new trial.
-- [ ] Cancel subscription → provider portal or an honest
-      `BILLING_PROVIDER_NOT_CONNECTED`; `billing_subscriptions` is not mutated directly.
+- [ ] ⚑ Billing mode is honest:
+      - Private Beta: plan buttons show request/contact/private-beta state; no
+        checkout session is created; Customer Portal is unavailable.
+      - Stripe mode: owner/admin can start Checkout only when all Stripe Price IDs
+        and secrets are configured.
+- [ ] ⚑ Checkout success redirect does **not** activate a paid plan. Local paid
+      state changes only after a verified webhook updates `billing_subscriptions`.
+- [ ] ⚑ Stripe webhook rejects an invalid signature and accepts a valid event
+      idempotently; duplicate event delivery does not duplicate subscription updates.
+- [ ] Customer Portal opens only for authenticated owner/admin with an existing
+      Stripe customer id, or returns an honest private-beta/config error.
+- [ ] Cancel subscription in Stripe Customer Portal → webhook updates local status;
+      no app action mutates subscription state directly.
 - [ ] Developer Access: create/revoke an API key; `/api/v1/me` honours it.
 
 ## 11. Paused-module gates ⚑
@@ -170,7 +181,7 @@ All must return **404** (not 403, not a redirect to login for the dashboard ones
       `curl -X POST "$URL/rest/v1/rpc/check_client_booking_conflict_public" …` →
       must be `permission denied`, not `{"conflict": …}`.
 - [ ] Billing subscription reconciliation: `billing_subscriptions` rows agree with
-      trial/plan state; no org is both `trialing` and `expired`.
+      trial/plan/provider state; no org is both `trialing` and `expired`.
 
 ---
 

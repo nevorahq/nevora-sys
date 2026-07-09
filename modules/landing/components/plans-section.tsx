@@ -1,12 +1,10 @@
 import type { LandingContent } from "../constants/landing-content";
 import { PricingCard } from "./pricing-card";
+import { getPublicPlanViews } from "@/modules/billing/public-plan-view";
 
-/**
- * Plans — 4 тарифа (Free Trial / Start / Pro / Business) + trial-note.
- * Сетка: 1 колонка на мобильном, 2 на планшете, 4 на больших экранах.
- * Цены/лимиты живут в constants/landing-content.ts (PricingPlan[]).
- */
 export function PlansSection({ content }: { content: LandingContent["plans"] }) {
+  const plans = getPublicPlanViews();
+
   return (
     <section id="plan" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
       <div className="max-w-2xl">
@@ -20,12 +18,10 @@ export function PlansSection({ content }: { content: LandingContent["plans"] }) 
       </div>
 
       <div className="mt-10 grid gap-5 sm:grid-cols-2">
-        {content.items.map((plan, i) => (
+        {plans.map((plan, i) => (
           <PricingCard
-            key={plan.id}
+            key={plan.key}
             plan={plan}
-            storageLabel={content.storageLabel}
-            bestForLabel={content.bestForLabel}
             index={i}
           />
         ))}
