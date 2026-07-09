@@ -49,14 +49,14 @@ describe("cancelSubscriptionAction — provider boundary", () => {
   it("opens the provider portal instead of cancelling internally when a provider is configured", async () => {
     grant("owner");
     createCustomerPortal.mockResolvedValue({
-      provider: "stripe",
+      provider: "paddle",
       configured: true,
-      url: "https://billing.stripe.test/session/abc",
+      url: "https://billing.paddle.test/session/abc",
     });
 
     await expect(cancelSubscriptionAction({}, new FormData())).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(redirect).toHaveBeenCalledWith("https://billing.stripe.test/session/abc");
+    expect(redirect).toHaveBeenCalledWith("https://billing.paddle.test/session/abc");
     expect(createClient).not.toHaveBeenCalled();
   });
 

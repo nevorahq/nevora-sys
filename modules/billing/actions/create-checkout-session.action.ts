@@ -6,7 +6,7 @@ import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import type { ActionResult } from "@/lib/validators/common";
 import { changePlanSchema, type ChangePlanInput } from "../schemas/billing.schemas";
-import { getStripeConfig } from "../config/stripe-env";
+import { getPaddleConfig } from "../config/paddle-env";
 import { billingProvider } from "../services/billing-provider";
 
 export interface CheckoutActionState extends ActionResult {
@@ -74,7 +74,7 @@ export async function createCheckoutSessionForCurrentOrganization(
   if (error) return { error: "Could not load the selected plan." };
   if (!plan || plan.slug === "trial") return { error: "Please choose an available paid plan." };
 
-  if (getStripeConfig().mode === "private_beta") {
+  if (getPaddleConfig().mode === "private_beta") {
     return {
       code: "PRIVATE_BETA",
       error: "Nevora is in private beta. Paid checkout is not available yet; contact us to activate a paid plan.",

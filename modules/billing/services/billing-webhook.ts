@@ -144,16 +144,9 @@ function providerStatusToInternal(
 }
 
 /**
- * Provider-agnostic HMAC-SHA256 verification (timestamped `t=…,v1=…` header,
- * 5-minute replay window, constant-time compare). This is acceptable BEFORE a
- * billing provider is selected.
- *
- * TODO(before public launch): once the billing provider is chosen, replace this
- * generic HMAC with the provider's native signature verification —
- * `stripe.webhooks.constructEvent`, Paddle's public-key signature check, or
- * LemonSqueezy's `X-Signature` HMAC — using that provider's official SDK and
- * secret. Do NOT ship real Stripe/Paddle/LemonSqueezy traffic on the generic
- * HMAC. See migration 092 (billing provider boundary) for the state model.
+ * HMAC-SHA256 verification (timestamped `t=…,v1=…` header, 5-minute replay
+ * window, constant-time compare). Paddle-specific webhook verification is
+ * completed in the provider implementation layer.
  */
 export function verifyBillingWebhookSignature(
   rawBody: string,

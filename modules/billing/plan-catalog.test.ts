@@ -7,7 +7,7 @@ import {
   usageMetricToLimitKey,
 } from "./plan-catalog";
 import { getPublicPlanViews } from "./public-plan-view";
-import { getStripeConfig } from "./config/stripe-env";
+import { getPaddleConfig } from "./config/paddle-env";
 import { commercialFeatureKeys, commercialUsageMetricKeys } from "./plan-catalog.schema";
 
 describe("commercial plan catalog", () => {
@@ -32,7 +32,7 @@ describe("commercial plan catalog", () => {
   });
 
   it("renders public pricing from the commercial catalog in private beta mode", () => {
-    const plans = getPublicPlanViews(getStripeConfig({ BILLING_MODE: "private_beta" }));
+    const plans = getPublicPlanViews(getPaddleConfig({ BILLING_MODE: "private_beta" }));
 
     expect(plans.map((plan) => plan.key)).toEqual(commercialPlans.map((plan) => plan.key));
     expect(plans.every((plan) => plan.cta.mode === "private_beta")).toBe(true);
@@ -48,17 +48,17 @@ describe("commercial plan catalog", () => {
     });
   });
 
-  it("enables checkout CTAs only when Stripe mode has price IDs", () => {
-    const plans = getPublicPlanViews(getStripeConfig({
-      BILLING_MODE: "stripe",
-      STRIPE_SECRET_KEY: "stripe_secret_placeholder",
-      STRIPE_WEBHOOK_SECRET: "stripe_webhook_secret_placeholder",
-      STRIPE_PRICE_STARTER_MONTHLY: "price_starter_monthly",
-      STRIPE_PRICE_STARTER_YEARLY: "price_starter_yearly",
-      STRIPE_PRICE_PRO_MONTHLY: "price_pro_monthly",
-      STRIPE_PRICE_PRO_YEARLY: "price_pro_yearly",
-      STRIPE_PRICE_BUSINESS_MONTHLY: "price_business_monthly",
-      STRIPE_PRICE_BUSINESS_YEARLY: "price_business_yearly",
+  it("enables checkout CTAs only when Paddle mode has price IDs", () => {
+    const plans = getPublicPlanViews(getPaddleConfig({
+      BILLING_MODE: "paid_beta",
+      PADDLE_API_KEY: "pdl_sdbx_placeholder",
+      PADDLE_WEBHOOK_SECRET: "pdl_ntfset_placeholder",
+      PADDLE_PRICE_STARTER_MONTHLY: "pri_starter_monthly",
+      PADDLE_PRICE_STARTER_YEARLY: "pri_starter_yearly",
+      PADDLE_PRICE_PRO_MONTHLY: "pri_pro_monthly",
+      PADDLE_PRICE_PRO_YEARLY: "pri_pro_yearly",
+      PADDLE_PRICE_BUSINESS_MONTHLY: "pri_business_monthly",
+      PADDLE_PRICE_BUSINESS_YEARLY: "pri_business_yearly",
     }));
 
     expect(plans.find((plan) => plan.key === "starter")?.cta.mode).toBe("checkout");

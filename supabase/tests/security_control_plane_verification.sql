@@ -89,7 +89,7 @@ VALUES (
 -- ---------------------------------------------------------------------------
 SELECT pg_temp.assert_true(
   (public.apply_billing_provider_event(
-    'stripe',
+    'paddle',
     'evt_security_active',
     'subscription.updated',
     '2026-07-07T12:00:00Z',
@@ -123,7 +123,7 @@ SELECT pg_temp.assert_true(
     SELECT 1
     FROM public.billing_provider_mappings
     WHERE organization_id = 'f1000000-0000-4000-8000-000000000001'
-      AND provider = 'stripe'
+      AND provider = 'paddle'
       AND provider_customer_id = 'cus_security'
       AND provider_subscription_id = 'sub_security'
       AND is_active
@@ -143,7 +143,7 @@ SELECT pg_temp.assert_true(
 
 SELECT pg_temp.assert_true(
   (public.apply_billing_provider_event(
-    'stripe',
+    'paddle',
     'evt_security_active',
     'subscription.updated',
     '2026-07-07T12:00:00Z',
@@ -160,7 +160,7 @@ SELECT pg_temp.assert_true(
 
 SELECT pg_temp.assert_true(
   (public.apply_billing_provider_event(
-    'stripe',
+    'paddle',
     'evt_security_old_cancel',
     'subscription.deleted',
     '2026-07-06T12:00:00Z',
@@ -186,7 +186,7 @@ SELECT pg_temp.assert_true(
 
 SELECT pg_temp.assert_true(
   (public.apply_billing_provider_event(
-    'stripe',
+    'paddle',
     'evt_security_dev',
     'subscription.updated',
     '2026-07-08T12:00:00Z',
