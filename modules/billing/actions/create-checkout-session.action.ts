@@ -34,8 +34,17 @@ function fieldErrorsFromIssues(issues: { path: PropertyKey[]; message: string }[
 }
 
 export async function createCheckoutSessionForCurrentOrganization(
-  input: ChangePlanInput,
+  rawInput: ChangePlanInput,
 ): Promise<CheckoutActionState> {
+  // This is an exported Server Action, so it is a callable endpoint on its own —
+  // never trust the caller to have validated. Re-parse with the same schema the
+  // formData wrapper uses (defense-in-depth; cheap, idempotent).
+  const parsedInput = changePlanSchema.safeParse(rawInput);
+  if (!parsedInput.success) {
+    return { fieldErrors: fieldErrorsFromIssues(parsedInput.error.issues) };
+  }
+  const input = parsedInput.data;
+
   let ctx: Awaited<ReturnType<typeof requireAppAccess>>;
   try {
     ctx = await requireAppAccess({ permission: "billing.manage", intent: "billing" });

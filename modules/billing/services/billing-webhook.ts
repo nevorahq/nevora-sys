@@ -163,17 +163,18 @@ export function verifyBillingWebhookSignature(
     }),
   );
   const timestamp = parts.t;
-  const provided = parts.v1 ?? header;
-  if (!provided || !/^[a-f0-9]{64}$/i.test(provided)) return false;
+  const provided = parts.v1;
+  // Require an explicit `t=` timestamp and `v1=` signature — no timestamp-less
+  // fallback. Every accepted event is therefore bound to the replay window, and
+  // a captured signature cannot be stripped of its timestamp to bypass it.
+  if (!timestamp || !provided || !/^[a-f0-9]{64}$/i.test(provided)) return false;
 
-  const signedPayload = timestamp ? `${timestamp}.${rawBody}` : rawBody;
-  if (timestamp) {
-    const timestampMs = Number(timestamp) * 1000;
-    if (!Number.isFinite(timestampMs) || Math.abs(now - timestampMs) > 5 * 60 * 1000) {
-      return false;
-    }
+  const timestampMs = Number(timestamp) * 1000;
+  if (!Number.isFinite(timestampMs) || Math.abs(now - timestampMs) > 5 * 60 * 1000) {
+    return false;
   }
 
+  const signedPayload = `${timestamp}.${rawBody}`;
   const expected = crypto.createHmac("sha256", secret).update(signedPayload).digest("hex");
   const providedBuffer = Buffer.from(provided, "hex");
   const expectedBuffer = Buffer.from(expected, "hex");
