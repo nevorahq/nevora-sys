@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ROUTES } from "@/shared/config/routes";
 import { BRAND, type LandingContent } from "../constants/landing-content";
 
 interface LandingFooterProps {
@@ -31,6 +33,24 @@ export function LandingFooter({ nav, footer }: LandingFooterProps) {
                 {link.label}
               </a>
             ))}
+            <Link
+              href={ROUTES.terms}
+              className="text-sm text-text-secondary transition-colors hover:text-text-primary"
+            >
+              {footer.terms}
+            </Link>
+            <Link
+              href={ROUTES.privacy}
+              className="text-sm text-text-secondary transition-colors hover:text-text-primary"
+            >
+              {footer.privacy}
+            </Link>
+            <Link
+              href={ROUTES.refunds}
+              className="text-sm text-text-secondary transition-colors hover:text-text-primary"
+            >
+              {footer.refunds}
+            </Link>
           </nav>
         </div>
 

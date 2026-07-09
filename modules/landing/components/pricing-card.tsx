@@ -96,7 +96,7 @@ export function PricingCard({ plan, index }: PricingCardProps) {
 
       {plan.cta.mode === "private_beta" && (
         <p className="mt-3 text-center text-xs text-text-muted">
-          Private beta. We will enable paid checkout after Stripe is configured.
+          Private beta. We will enable paid checkout after Paddle is configured.
         </p>
       )}
     </div>

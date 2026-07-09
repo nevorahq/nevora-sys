@@ -1,25 +1,29 @@
 import Link from "next/link";
+import { KeyRoundIcon } from "lucide-react";
 import { ROUTES } from "@/shared/config/routes";
-import type { Locale } from "@/shared/i18n/constants";
 import { ThemeToggle } from "@/shared/ui/theme-toggle";
-import { LanguageSwitcher } from "@/shared/ui/language-switcher";
-import { BRAND, type LandingContent } from "../constants/landing-content";
+import {
+  BRAND,
+  type LandingContent,
+  type LandingLocale,
+} from "../constants/landing-content";
+import { LandingLanguageMenu } from "./landing-language-menu";
 
 interface LandingHeaderProps {
   nav: LandingContent["nav"];
   header: LandingContent["header"];
-  locale: Locale;
+  locale: LandingLocale;
 }
 
 /**
- * Sticky-хедер лендинга. Server Component: anchor-навигация — обычные <a>,
- * интерактивные острова — ThemeToggle и LanguageSwitcher (оба client).
- * На мобильных nav-ссылки скрыты, остаётся бренд + переключатели + CTA.
+ * Sticky-хедер лендинга. Server Component: anchor-навигация обычная,
+ * интерактивные острова — language menu и ThemeToggle.
+ * На мобильных nav-ссылки скрыты, остаётся знак бренда + переключатели + CTA.
  */
 export function LandingHeader({ nav, header, locale }: LandingHeaderProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-border-soft bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:flex-nowrap sm:px-6">
         <Link
           href="#home"
           className="flex items-center gap-2 font-semibold tracking-tight text-text-primary"
@@ -27,7 +31,7 @@ export function LandingHeader({ nav, header, locale }: LandingHeaderProps) {
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-(--neu-radius-md) bg-text-primary text-sm font-bold text-text-inverse shadow-neu-control">
             N
           </span>
-          <span className="text-sm sm:text-base">{BRAND}</span>
+          <span className="hidden text-sm sm:inline sm:text-base">{BRAND}</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
@@ -42,8 +46,8 @@ export function LandingHeader({ nav, header, locale }: LandingHeaderProps) {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
-          <LanguageSwitcher locale={locale} />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <LandingLanguageMenu locale={locale} />
           <ThemeToggle />
           <Link
             href={ROUTES.login}
@@ -53,9 +57,12 @@ export function LandingHeader({ nav, header, locale }: LandingHeaderProps) {
           </Link>
           <Link
             href={ROUTES.register}
-            className="inline-flex items-center justify-center rounded-(--neu-radius-pill) bg-text-primary px-4 py-2 text-sm font-semibold text-text-inverse shadow-neu-control transition-all hover:shadow-neu-card active:scale-[0.98] active:shadow-neu-inset"
+            aria-label={header.startFree}
+            title={header.startFree}
+            className="nv-access-pulse inline-flex h-9 w-9 items-center justify-center rounded-(--neu-radius-pill) bg-text-primary text-sm font-semibold text-text-inverse shadow-neu-control transition-all hover:shadow-neu-card active:scale-[0.98] active:shadow-neu-inset sm:w-auto sm:px-4"
           >
-            {header.startFree}
+            <KeyRoundIcon size={17} strokeWidth={1.9} className="sm:hidden" aria-hidden="true" />
+            <span className="hidden sm:inline">{header.startFree}</span>
           </Link>
         </div>
       </div>

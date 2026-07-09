@@ -362,6 +362,18 @@ body {
   }
 }
 
+@keyframes nv-access-pulse {
+  0%,
+  100% {
+    box-shadow: var(--neu-shadow-control);
+  }
+  50% {
+    box-shadow:
+      var(--neu-shadow-control),
+      0 0 0 6px color-mix(in srgb, var(--text-primary) 14%, transparent);
+  }
+}
+
 .nv-fade-up {
   opacity: 0;
   animation: nv-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -382,9 +394,14 @@ body {
   box-shadow: var(--neu-shadow-soft-lg);
 }
 
+.nv-access-pulse {
+  animation: nv-access-pulse 2.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .nv-fade-up,
-  .nv-fade-in {
+  .nv-fade-in,
+  .nv-access-pulse {
     animation: none;
     opacity: 1;
   }

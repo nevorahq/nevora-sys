@@ -14,6 +14,14 @@ describe("isPublicRoute", () => {
 
   it("платформенные публичные пути доступны", () => {
     expect(isPublicRoute("/")).toBe(true);
+    expect(isPublicRoute("/en")).toBe(true);
+    expect(isPublicRoute("/ro")).toBe(true);
+    expect(isPublicRoute("/ru")).toBe(true);
+    expect(isPublicRoute("/pricing")).toBe(true);
+    expect(isPublicRoute("/terms")).toBe(true);
+    expect(isPublicRoute("/privacy")).toBe(true);
+    expect(isPublicRoute("/refunds")).toBe(true);
+    expect(isPublicRoute("/privasy")).toBe(true);
     expect(isPublicRoute("/login")).toBe(true);
     expect(isPublicRoute("/register")).toBe(true);
   });
