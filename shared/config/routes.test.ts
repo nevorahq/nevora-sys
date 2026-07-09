@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import { isMachineRoute, isPublicRoute, MACHINE_ROUTES, ROUTES } from "./routes";
 
@@ -54,6 +54,17 @@ describe("isPublicRoute", () => {
     expect(isMachineRoute("/api/cron/reminders")).toBe(true);
     expect(isMachineRoute("/api/cron/suggestions-sweep")).toBe(true);
     expect(isMachineRoute("/api/internal/activation-funnel")).toBe(true);
+  });
+
+  it("пропускает webhook платёжного провайдера", () => {
+    // Paddle POST'ит без сессии; без bypass прокси редиректит его на /login (307),
+    // хендлер не бежит и платный план не активируется. Хендлер сам проверяет
+    // HMAC-подпись, так что сессия ему не нужна.
+    expect(isMachineRoute("/api/billing/webhook")).toBe(true);
+    // и он не «публичный» — bypass делается отдельной проверкой isMachineRoute
+    expect(isPublicRoute("/api/billing/webhook")).toBe(false);
+    // drift guard: объявленный машинным путь должен существовать на диске
+    expect(existsSync("app/api/billing/webhook/route.ts")).toBe(true);
   });
 
   it("сверяет только точное совпадение — префикс не открывает соседей", () => {
