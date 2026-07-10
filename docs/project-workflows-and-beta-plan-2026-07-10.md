@@ -19,7 +19,7 @@ context, контракты confirm-first finance и notification lifecycle.
 | Контур | Статус | Что значит |
 |---|---:|---|
 | Private beta | ~85% | Основные модули работают, P0/P1 закрыты, unit gates зелёные. |
-| Public launch | ~55-60% | Нет машинного e2e, I-09 не выполнен, нет внешней observability/alerts, billing paid-flow не прошёл end-to-end. |
+| Public launch | ~55-60% | Нет машинного e2e, I-09 не выполнен, observability подключена (Sentry, PR #21) но alert-правила и Vercel-env ещё не настроены, billing paid-flow не прошёл end-to-end. |
 
 Главный риск не в количестве кода. Главный риск - продукт уже большой, а живые
 пользовательские workflows ещё не доказаны на реальных пользователях.
@@ -626,15 +626,27 @@ Action Center, иначе smoke придётся гонять дважды.
      тогда как `098` уже закрыла её и это зафиксировано в том же файле выше;
    - `OPERATIONS_MANUAL.md` and `ROADMAP.md` migration baseline drift.
 
-### Phase 2 - observability before proof
+### Phase 2 - observability before proof — **код закрыт 2026-07-10 (PR #21)**
 
 Goal: сделать следующий шаг наблюдаемым. Ручной прогон по неинструментированному
 окружению не даёт доказательства — только впечатление.
 
-1. Add external observability:
-   - Sentry or OpenTelemetry/log drain;
-   - alert on `cron.*.threw`, `cron.*.misconfigured`, upload/extraction failures,
-     billing webhook failures, 5xx rate.
+1. ~~Add external observability (Sentry / log drain)~~ — **DONE 2026-07-10 (PR
+   #21, `157f29e`).** Sentry подключён через vendor-neutral seam
+   `lib/observability/monitoring.ts` на минимальном core-SDK пути (`@sentry/node`
+   + `@sentry/browser`, без `@sentry/nextjs`-плагина → next.config не тронут).
+   Пойманные ошибки идут через `reportError`, непойманные — через
+   `instrumentation.ts` `onRequestError` (сервер) и global-handlers
+   `@sentry/browser` (клиент). Smoke-проверено против реального DSN в dev
+   (`monitoring.initialized` в логе + доставленный тестовый ивент). Лимиты и путь
+   апгрейда до полного `@sentry/nextjs`: `docs/observability/sentry-setup.md`.
+2. **Осталось (внешняя настройка, вне кода):**
+   - продублировать `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN` в env проекта на
+     Vercel (сейчас только в локальном `.env.local`) — иначе задеплой не шлёт;
+   - завести в Sentry alert-правила на события из
+     `docs/observability/logging-and-errors.md` §4: `cron.*.threw`,
+     `cron.*.misconfigured`, upload/extraction failures, billing webhook
+     failures, 5xx rate (события уже эмитятся; нужны сами правила в дашборде).
 
 ### Phase 3 - proof, then people
 
