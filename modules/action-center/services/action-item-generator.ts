@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
+import { isPausedModuleEnabled } from "@/shared/config/paused-modules";
 import { computePriority } from "./priority-engine";
 import { deliverNotification } from "@/modules/notifications/delivery/notification-delivery";
 import type { NotificationCategory, NotificationPriority } from "@/modules/notifications/types";
@@ -67,7 +68,10 @@ export async function syncActionItems(
     detectSubscriptions(supabase, orgId, candidates),
     detectTransactions(supabase, orgId, candidates),
     detectDocuments(supabase, orgId, candidates),
-    detectDeals(supabase, orgId, candidates),
+    // CRM is paused: scanning its tables would surface a paused module's data
+    // on the primary screen. Gated at the call site so the tables are not read
+    // at all, and re-enabling the module restores the scan with no code change.
+    ...(isPausedModuleEnabled("crm") ? [detectDeals(supabase, orgId, candidates)] : []),
   ]);
 
   const fresh = candidates.filter((c) => !existingKeys.has(dedupeKey(c.type, c.sourceType, c.sourceId)));

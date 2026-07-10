@@ -1,12 +1,11 @@
 # Roadmap — Nevora Business OS
 
 > Current source-of-truth roadmap for the repository. Status reflects the tree on
-> **2026-07-08 (Phases A–D committed)**: migrations are present through
-> `100_paddle_only_billing_boundary.sql` (**baseline
-> `000`–`100`, next free `101`** — remote verified through `099`; `100` is new
-> and must be applied before paid billing smoke; `098`/`099` confirmed
-> applied 2026-07-09 by probing: anon is denied `booking_pages` and the public
-> booking RPC, and `todos.source_suggestion_id` exists), local `typecheck`
+> **2026-07-10**: migrations are present through
+> `101_fix_paddle_boundary_allows_internal.sql` (**baseline
+> `000`–`101`, next free `102`** — all 101 applied on remote; `100`/`101` are the
+> Paddle billing boundary, applied 2026-07-09; `054` is a known, intentional gap),
+> local `typecheck`
 > passes after `next typegen`, and the product focus is the **AI-assisted
 > operating desk, Action Center first** — not CRM or Booking expansion.
 >
@@ -44,8 +43,8 @@ CI into one consistent, honest state. No new business features.
 - README synced with the real project state.
 - `typecheck` npm script added; lint / typecheck / build verified green.
 - CI already runs install → typegen → typecheck → lint → test → build.
-- Migration baseline is **`000` → `100` in the tree, next free `101`**; remote is
-  verified through `099` and `100` is pending apply (`054` is a known, intentional gap). Do not describe `067`,
+- Migration baseline is **`000` → `101` in the tree, next free `102`**; all 101
+  are applied on remote (`054` is a known, intentional gap). Do not describe `067`,
   `077`, `079`, `086`, or `093` as the repository head. Verify against the tree,
   not a doc: `ls supabase/migrations | tail -1`. And verify *remote* by probing an
   object the migration creates — never by trusting this line.
@@ -76,8 +75,8 @@ No new product features.
 - **Release documentation** — `OPERATIONS_MANUAL.md`, `contracts/`,
   8 `runbooks/`, and canonical `release/{release-checklist,smoke-test-checklist,rollback-plan}.md`.
 - **No schema change in Phase A itself** (the baseline was `000`–`093` at the time).
-  Phases B–D later added `094`–`097`, release closure added `098`/`099`, and
-  Paddle billing boundary cleanup added `100`; the current baseline is `000`–`100`.
+  Phases B–D later added `094`–`097`, release closure added `098`/`099`, and the
+  Paddle billing boundary added `100`/`101`; the current baseline is `000`–`101`.
 
 Remaining (not blockers):
 - The daily screen now groups into **Needs your review / Money attention / Next

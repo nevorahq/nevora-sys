@@ -5,6 +5,7 @@ import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import { getAnthropicClient, AI_MODELS, buildSummaryPrompt } from "@/lib/ai";
 import { checkPlanLimit } from "@/lib/billing";
+import { isPausedModuleEnabled } from "@/shared/config/paused-modules";
 import { generateSummarySchema } from "../schemas/ai.schemas";
 import { SUMMARY_TTL_HOURS } from "../constants/ai.constants";
 import type { ActionResult } from "@/lib/validators/common";
@@ -134,9 +135,14 @@ async function fetchEntityData(
 ): Promise<Record<string, unknown> | null> {
   const tableMap: Record<string, string> = {
     task:     "todos",
-    deal:     "crm_deals",
-    client:   "crm_clients",
     document: "documents",
+    // CRM is paused. Its entity types stay out of the map, so a summary request
+    // for one is refused as an unsupported type rather than reading a paused
+    // module's table — the same refusal `modules/relations` gives for a kind
+    // outside the active scope.
+    ...(isPausedModuleEnabled("crm")
+      ? { deal: "crm_deals", client: "crm_clients" }
+      : {}),
   };
 
   const table = tableMap[entityType];
