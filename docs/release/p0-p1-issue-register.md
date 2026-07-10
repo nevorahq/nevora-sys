@@ -18,7 +18,7 @@ closure, with owner and state. Public launch stays **No-Go** while any P0/P1 is 
 |---|---|---|---|
 | **I-01** | Booking anon **data** surface open despite 404 routes: anon could READ `booking_pages`/host/service tables and EXECUTE the `SECURITY DEFINER` write RPC `create_booking_request_public`. | **FIXED (applied/verified)** | Migration `098` (applied on remote). Verified 2026-07-09: anon → `42501` on tables, `401` on the RPC. Harness `supabase/tests/098_*` (negative-tested). |
 | **I-02** | Draft confirmation not exactly-once: a crash between entity creation and `accepted_entity_id` write duplicated the task on retry; `createFinancialTask` idempotency was decorative (no unique index). | **FIXED (applied/verified)** | Migration `099` (applied): 4 unique indexes; `todos.source_suggestion_id` live (`200`). Direct proof: duplicate insert accepted without the index, rejected with it. |
-| **I-03** | Real legacy payment **test** secret key present in local git object store (public repo). | **FIXED (in tree) + ACTION REQUIRED** | Never published (not in any commit on `main`, not on remote; only in local `refs/codex/*` snapshots, now pruned + gc'd). **Human action still required: rotate the key in the provider dashboard** (I-07). |
+| **I-03** | Real legacy payment **test** secret key present in local git object store (public repo). | **FIXED (in tree); rotation DEFERRED as I-07** | Never published (not in any commit on `main`, not on remote; only in local `refs/codex/*` snapshots, now pruned + gc'd). Dashboard rotation is tracked and **deferred** as I-07 (see below), not dropped. |
 
 ## P1
 
@@ -33,7 +33,7 @@ closure, with owner and state. Public launch stays **No-Go** while any P0/P1 is 
 
 | ID | Item | Owner | State |
 |---|---|---|---|
-| **I-07** | **Rotate the leaked payment test key** in the provider dashboard, even though it was never published. | Billing-data owner | **ACTION REQUIRED** |
+| **I-07** | **Rotate the leaked payment test key** in the provider dashboard, even though it was never published. | Billing-data owner | **DEFERRED 2026-07-10 by billing-data owner** — decision: rotate when connecting Paddle to production, not before. **Still a public-launch blocker** (see roll-up); deferral only reorders it, does not close it. Defensible because the key is a **test-mode Stripe key** (`sk_test_`), and the project no longer references Stripe at runtime (no `STRIPE_*` in code or env; billing provider is Paddle). Exposure re-checked 2026-07-10: gitleaks over the full history (51 commits) → no leaks; no `refs/codex/*` on the remote; GitHub secret-scanning + push-protection enabled with zero alerts; 0 matches across all local git objects. Residual risk is the plaintext-on-disk history (Time Machine, backups, other clones) that `git gc` cannot reach — which is exactly why rotation is still owed. Recurrence guarded since 2026-07-10 by gitleaks in CI + a pre-commit hook (PR #18 → main `9a5f0f2`). |
 | **I-09** | Run the **interactive smoke suite** (upload→extract→confirm→transaction, mark-as-paid idempotency, cross-org isolation, notifications read≠resolve, Capture Inbox) against a deployed authed environment. Currently **NOT EXECUTED** (see smoke report). | Release owner | **OPEN** |
 | **I-10** | Line-by-line review of the parallel-session `§7`/`§8` code (billing checkout/portal, document/AI gates). | Release owner | **REVIEWED 2026-07-09** — one HIGH found + fixed: `/api/billing/webhook` was not a machine route, so the proxy 307-redirected Paddle's session-less POST to `/login` and the handler never ran (paid events silently dropped once live). Fixed in PR #9 → main `0c1d6d4` (added to `MACHINE_ROUTES` + `routes.test.ts` drift guard; verified 307→503-handler). §7 (checkout authz, HMAC webhook verify + idempotent RPC, fail-closed env) and §8 (pre-OCR gates, non-decorative usage counting, leak-safe upload reservation) reviewed clean. Remaining **low** (not blockers, tracked below as I-13): server-action input re-validation on `createCheckoutSessionForCurrentOrganization`; the timestamp-less signature fallback branch; assert-only soft usage-limit races. |
 | **I-11** | Run `next build` and a fresh from-scratch DB apply + SQL harnesses in CI before deploy. | Release owner | **CI DONE / deploy gate open** — CI job `db` (`.github/workflows/ci.yml`, PR #7 → main `bae9f32`) seeds hosted-like grants, applies migrations `000`–`101` from scratch via psql, and runs all `supabase/tests/*.sql` (green 2026-07-09); `build` runs in the `verify` job. The harnesses are psql scripts, not pgTAP, so `psql` is used instead of `supabase test db`. Remaining: run this same CI green **on the deploy commit** before shipping. |
@@ -44,7 +44,9 @@ closure, with owner and state. Public launch stays **No-Go** while any P0/P1 is 
 
 ## Roll-up
 
-- **P0:** 0 open (I-01, I-02 fixed+verified; I-03 fixed in tree, rotation tracked as I-07).
+- **P0:** 0 open (I-01, I-02 fixed+verified; I-03 fixed in tree, rotation deferred as I-07).
 - **P1:** 0 open (all fixed/verified).
-- **Blocking public launch:** I-07 (key rotation) and I-09 (interactive smoke evidence)
-  remain. Until both are closed, public launch is **No-Go**; **private beta** is viable.
+- **Blocking public launch:** I-07 (key rotation, **deferred** 2026-07-10 to the
+  Paddle-production cutover — still a blocker, just re-ordered) and I-09
+  (interactive smoke evidence) remain. Until both are closed, public launch is
+  **No-Go**; **private beta** is viable.
