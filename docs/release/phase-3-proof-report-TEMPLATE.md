@@ -91,6 +91,15 @@
   |---|---|---|---|---|---|---|
   | `<…>` | `<…>` | `<paid>` | `<uuid>` | `<1>` | `<1>` | `<PASS/FAIL>` |
 
+  > **Use a cycle you just created in this run — not a pre-existing paid cycle.**
+  > The remote already holds ≥1 **legacy paid cycle** (`status='paid'` but
+  > `transaction_id IS NULL`, its task `financial_status='open'`) that predates /
+  > bypassed the atomic mark-as-paid RPC ([`078_subscription_payment_cycles.sql`](../../supabase/migrations/078_subscription_payment_cycles.sql#L319),
+  > which sets `transaction_id` **and** `financial_status='paid'` in one
+  > transaction). A2 will correctly report `FAIL` on such a row — that is a stale
+  > data artifact, **not** a P0 from this run. See the legacy-row note under the
+  > P0 rule below before logging it as an incident.
+
 - **Notes:**
 
 ### A-S6 · plain task complete posts no money  ⚑ (money · A3)
@@ -119,8 +128,18 @@
 - **Notes:**
 
 > **P0 rule:** if any of A1–A3 shows `FAIL` (a money double or a phantom
-> transaction), stop Phase 3, log it as a P0 incident, fix, and re-run. A money
-> double is an incident, not a listed bug.
+> transaction) **on a row this run produced**, stop Phase 3, log it as a P0
+> incident, fix, and re-run. A money double is an incident, not a listed bug.
+>
+> **Legacy-row caveat (verified on remote 2026-07-10):** an A1/A2 `FAIL` on a row
+> that existed *before* this run may be a stale data artifact, not a live-code
+> defect. Known example: a paid `subscription_payment_cycles` row with
+> `transaction_id IS NULL` and its task `financial_status='open'` — impossible via
+> the current atomic RPC, so it was seeded / created by an older path. Before
+> declaring P0: confirm the failing row was created **during this smoke** (check
+> `paid_at` / `created_at` against the run). If it is pre-existing, record it as a
+> **data cleanup** item (not a Phase 3 blocker) and re-run the scenario on a
+> freshly created row.
 
 ### Part A summary
 
