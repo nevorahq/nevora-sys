@@ -191,6 +191,7 @@ Action Center → Documents Automation → Analytics → AI → SaaS Monetizatio
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — целевая архитектура и жёсткие правила.
 - [`docs/MODULE_STATUS.md`](docs/MODULE_STATUS.md) — честный статус каждого модуля.
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — фазы, начиная с Phase 0.
+- [`docs/project-workflows-and-beta-plan-2026-07-10.md`](docs/project-workflows-and-beta-plan-2026-07-10.md) — карта рабочих процессов, готовность к private/public beta и план закрытия рисков.
 - [`docs/PRODUCT_COPY.md`](docs/PRODUCT_COPY.md) — позиционирование и копирайт лендинга.
 - [`docs/SECURITY.md`](docs/SECURITY.md) — чек-лист безопасности и tenant-изоляция.
 - [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — запуск, проверки, как добавлять модули.
