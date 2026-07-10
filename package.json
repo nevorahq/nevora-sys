@@ -12,7 +12,10 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "hooks:install": "git config core.hooksPath .githooks && echo 'pre-commit hook enabled (gitleaks)'",
+    "scan:secrets": "gitleaks git --redact --no-banner",
+    "scan:secrets:staged": "gitleaks git --staged --redact --no-banner"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

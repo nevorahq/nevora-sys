@@ -110,6 +110,40 @@ export async function doThingAction(
 - Validate every input with Zod; never interpolate raw SQL.
 - Emit a `domain_event` for meaningful changes; create an audit log for critical ones.
 
+## Secret scanning
+
+A real test-mode payment key once reached this repository's local git object
+store (I-03/I-07). `.gitignore` and GitHub push protection guard the *remote*;
+nothing guarded the moment of `git add`. Now something does.
+
+Install the tool, then enable the hook — once per clone:
+
+```bash
+brew install gitleaks     # or: https://github.com/gitleaks/gitleaks#installing
+npm run hooks:install     # sets core.hooksPath=.githooks
+```
+
+The hook scans **staged** changes and blocks the commit on a finding, before
+anything becomes a git object. It is deliberately **not** silent when gitleaks
+is missing — it fails and tells you to install it, because a hook that reports
+success it never checked is worse than no hook. To bypass it you have to say so
+out loud: `SKIP_GITLEAKS=1 git commit ...`.
+
+Scan by hand:
+
+```bash
+npm run scan:secrets          # whole history
+npm run scan:secrets:staged   # what you are about to commit
+```
+
+CI runs the same history scan on every PR (`secrets` job), with the binary
+pinned and checksum-verified. Findings are always `--redact`ed: a secret must
+never be printed into a public CI log.
+
+Never allowlist a whole path in `.gitleaks.toml` to silence a false positive —
+that also hides a real key added to the same file later. Allowlist the specific
+finding by fingerprint.
+
 ## Security before a PR
 
 Run through the checklist in [`SECURITY.md`](./SECURITY.md): RLS enabled,

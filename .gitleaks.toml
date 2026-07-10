@@ -1,0 +1,40 @@
+# Secret scanning for nevora-sys.
+#
+# Why this exists: a real (test-mode) payment secret key once reached this
+# repository's local git object store — see I-03/I-07 in
+# docs/release/p0-p1-issue-register.md. `.gitignore` and GitHub push protection
+# both cover the remote; nothing covered the moment of `git add`. This does.
+#
+# Run locally:   npm run scan:secrets        (history)
+#                npm run scan:secrets:staged (what you are about to commit)
+# Installed as a pre-commit hook by:  npm run hooks:install
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Build output and vendored code — never committed, never authored here."
+
+# Scanned only by `gitleaks dir` on a developer machine. `.next` alone yields
+# ~157 generic-api-key false positives from minified bundles, and node_modules
+# carries other projects' test fixtures. Both are gitignored, so nothing here
+# weakens what CI actually gates on: the git history.
+paths = [
+  '''^\.next/''',
+  '''^node_modules/''',
+  '''^\.pnpm-store/''',
+  '''^graphify-out/''',
+  '''^\.git/''',
+  '''package-lock\.json$''',
+  '''tsconfig\.tsbuildinfo$''',
+]
+
+# Deliberately NOT allowlisted:
+#   - .env / .env.local  → they hold real secrets. They are gitignored, so the
+#     history scan never sees them, and `gitleaks dir` *should* flag them if a
+#     developer ever points it at the working tree. Silence there would be a lie.
+#   - modules/billing/**/*.test.ts → the frozen Paddle signature vector and the
+#     `pdl_ntfset_test_secret` fixture are fake. If a future rule starts
+#     flagging them, allowlist that specific finding by fingerprint, not the
+#     whole path — a blanket path rule would also hide a real key added later
+#     to the same file.
