@@ -404,6 +404,12 @@ Status: **partial / private beta honest**.
 
 Gaps:
 
+- **Обработка вебхука реализует формат Stripe, а не Paddle** (заголовок
+  `t=,v1=` вместо `ts=;h1=`, signed payload через `.` вместо `:`, конверт
+  `id`/`type` вместо `event_id`/`event_type`). Ни одно реальное событие Paddle
+  не будет принято. Поскольку платная активация возможна только через webhook,
+  платный путь сломан целиком, а не наполовину. Подробности и порядок починки —
+  Phase 5.
 - Paddle adapter currently returns `url: null`; checkout/portal are not complete.
 - Paid activation must remain webhook-only.
 - AI and task limits still have mixed legacy/new mechanisms:
@@ -562,7 +568,7 @@ Residual cleanup:
 | Relations/entity links | In progress | Medium | Active scope is correct; UX partial. |
 | Notifications/reminders | Working MVP | Medium | Needs reminder de-dup and push smoke. |
 | Billing private beta | Working | Medium | Honest private-beta state. |
-| Paddle paid billing | Partial | Low | Checkout/portal not complete, webhook path exists. |
+| Paddle paid billing | **Broken** | Low | Webhook verifies a Stripe-format signature; no real Paddle event is accepted. Checkout/portal return `url: null`. DB idempotency (`092`) is sound. |
 | AI insights/recs/summaries | Partial | Medium | Mixed limit mechanisms. |
 | Analytics | Partial | Medium | Needs caching later. |
 | Cron repair jobs | Working structurally | Medium | No external alerting. |
@@ -796,17 +802,78 @@ Goal: make money-in/product-out billing real.
 продукта, чей основной цикл ещё никто не прошёл, — оплата опциона, который
 может не понадобиться.
 
-1. Implement Paddle checkout URL creation in `PaddleBillingAdapter`
-   (сейчас возвращает `url: null`, `modules/billing/services/paddle-billing.adapter.ts:44`).
-2. Implement Customer Portal session.
-3. Keep success redirect display-only.
-4. Verify webhook signatures and idempotent provider event apply on real Paddle sandbox events.
-5. Add reconciliation/reporting workflow for provider/local mismatch.
-6. Run smoke in `BILLING_MODE=paid_beta` before exposing checkout.
-7. **Rollback plan для каждой миграции этой фазы.** Миграции `100`/`101` уже
+> **Сверено с кодом и документацией Paddle 2026-07-10.** Порядок пунктов был
+> опасен, а пункт 4 назван «проверить» там, где требуется переписать. Код
+> верификации вебхуков реализует формат **Stripe**, а не Paddle.
+
+**Webhook чинится первым, checkout — вторым.** Исходный план начинался с
+checkout, то есть с видимой половины. Но checkout поверх нерабочего вебхука даёт
+худший из возможных исходов: пользователь платит, а план не включается. Платная
+активация по замыслу возможна **только** через webhook (пункт 4 ниже) — значит
+он и есть критический путь.
+
+1. **Переписать обработку вебхука Paddle.** Сейчас она не примет ни одного
+   реального события — ломается на четырёх независимых уровнях:
+
+   | Уровень | Код ожидает | Paddle присылает |
+   |---|---|---|
+   | Заголовок | `t=<ts>,v1=<hex>` (запятая) | `ts=<ts>;h1=<hex>` (точка с запятой) |
+   | Signed payload | `${ts}.${rawBody}` (точка) | `${ts}:${rawBody}` (двоеточие) |
+   | Конверт события | `id`, `type`, `created` | `event_id`, `event_type`, `occurred_at` |
+   | Привязка | `data.organizationId`, `data.planCode` | организация в `custom_data`, план как `items[].price.id` |
+
+   Первый уровень отвергает 100% настоящих вебхуков: `header.split(",")` даёт
+   одну часть, `parts.t` — `undefined`, функция возвращает `false`
+   (`modules/billing/services/billing-webhook.ts:151`).
+
+   Обратного маппинга `price_id → plan` в проекте нет — есть только прямой,
+   `paddlePriceIdForPlan`. Его нужно добавить.
+
+   Отказ **молчалив**: route отвечает 401, Paddle ретраит и сдаётся, локально не
+   активируется ничего. Ровно тот класс, что закрывал I-10 (proxy разворачивал
+   вебхуки на `/login`, платные события терялись). Логирование есть
+   (`billing.webhook.rejected`), но увидеть его будет некому до Phase 2.
+
+   ⚠ **Тест проходит вхолостую.** `billing-webhook.test.ts:23` сам строит
+   заголовок как `` `t=${timestamp},v1=${signature}` `` — то есть проверяет
+   верификатор против его же конвенции. Новый тест обязан подавать **фикстуру
+   настоящего заголовка Paddle**, а не конструировать её тем же кодом, что
+   проверяет. Иначе он снова ничего не докажет.
+
+   Обманчиво и то, что адаптер читает заголовок под верным именем
+   (`headers.get("paddle-signature")`): снаружи Paddle-осведомлён, внутри Stripe.
+
+2. **Прогнать sandbox-события Paddle** и убедиться, что событие доходит до
+   `apply_billing_provider_event`.
+
+   Идемпотентность **уже реальна и работы не требует**: миграция `092` даёт
+   `UNIQUE(provider, provider_event_id)` + `ON CONFLICT DO NOTHING`, RPC
+   вызывается по `providerEventId`. Paddle гарантирует at-least-once и сам
+   советует дедуплицировать по `event_id` — механизм готов, в него просто
+   никогда не доходит событие.
+
+3. Implement Paddle checkout URL creation in `PaddleBillingAdapter`
+   (сейчас возвращает `url: null`, `modules/billing/services/paddle-billing.adapter.ts:44`;
+   к API Paddle не обращается вовсе).
+4. Implement Customer Portal session (там же, `:53` — тоже `url: null`).
+5. Keep success redirect display-only.
+
+   Сейчас требование **пусто**: `returnUrl` вычисляется и передаётся в адаптер,
+   который его игнорирует; обработчика success не существует. Сохранять нечего —
+   пункт становится актуальным вместе с пунктом 3.
+
+6. Add reconciliation/reporting workflow for provider/local mismatch.
+   Не существует ничего; план прав.
+7. Run smoke in `BILLING_MODE=paid_beta` before exposing checkout.
+   Гейт реален: `create-checkout-session.action.ts:86` отсекает `private_beta`.
+8. **Rollback plan для каждой миграции этой фазы.** Миграции `100`/`101` уже
    один раз положили создание организации: `100` ввела paddle-only CHECK,
    который отверг `DEFAULT 'manual'`, и `create_organization` откатывался.
    Ни одна миграция биллинг-границы не выкатывается без проверенного отката.
+
+Источники по формату Paddle:
+[signature verification](https://developer.paddle.com/webhooks/signature-verification),
+[how webhooks work](https://developer.paddle.com/webhooks/about/how-webhooks-work/).
 
 ### Phase 6 - public launch gate
 
