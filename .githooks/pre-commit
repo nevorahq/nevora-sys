@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#
+# Blocks a commit that stages a secret.
+#
+# Enable once per clone:  npm run hooks:install
+# (sets core.hooksPath=.githooks — no npm dependency, nothing to keep in sync)
+#
+# A hook that silently does nothing when its tool is missing is worse than no
+# hook: it reports success it never checked. So a missing gitleaks fails the
+# commit and says how to fix it. If you genuinely need to bypass, do it loudly:
+#
+#     SKIP_GITLEAKS=1 git commit ...
+#
+set -euo pipefail
+
+if [ "${SKIP_GITLEAKS:-0}" = "1" ]; then
+  printf '\033[33m! gitleaks skipped (SKIP_GITLEAKS=1)\033[0m\n' >&2
+  exit 0
+fi
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  cat >&2 <<'MSG'
+
+  ✗ gitleaks is not installed, so staged changes were NOT scanned for secrets.
+
+    macOS:  brew install gitleaks
+    other:  https://github.com/gitleaks/gitleaks#installing
+
+    To commit without scanning (say so out loud):
+      SKIP_GITLEAKS=1 git commit ...
+
+MSG
+  exit 1
+fi
+
+# --staged: only what `git add` put in the index — the exact bytes about to
+# become an object. --redact: never print the secret into a terminal or CI log.
+if ! gitleaks git --staged --redact --no-banner; then
+  cat >&2 <<'MSG'
+
+  ✗ A secret was found in the staged changes. The commit was blocked.
+
+    Nothing has been written to the object store yet — unstage the file, remove
+    the secret, and commit again. If it is a false positive, add a narrowly
+    scoped allowlist entry to .gitleaks.toml (by fingerprint, not by path).
+
+MSG
+  exit 1
+fi
