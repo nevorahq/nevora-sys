@@ -20,8 +20,8 @@
 | Tasks · Money · Documents · Settings | MVP Ready |
 | Subscriptions · Members · Billing · Analytics · AI | Partial |
 | Relations · Action Center · Automation | In Progress |
-| Booking | Partial (скрыт из основной навигации) |
-| CRM / Clients | Paused |
+| Booking | Paused (жёстко закрыт: страницы, Server Actions, route handlers и `anon`-гранты в БД) |
+| CRM / Clients | Paused (жёстко закрыт; пути чтения загейтены) |
 
 Полная честная разбивка по модулям — [`docs/MODULE_STATUS.md`](docs/MODULE_STATUS.md).
 AI — это **ассистент** (саммари, инсайты, рекомендации), а не автономный агент.
@@ -53,10 +53,23 @@ AI — это **ассистент** (саммари, инсайты, реком
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | да | URL проекта Supabase (валидируется как URL). |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | да | Публичный anon-ключ Supabase. |
-| `SUPABASE_SERVICE_ROLE_KEY` | для rate-limit | Server-only ключ для серверного rate-лимитера. Без него лимит деградирует в no-op (fail-open). |
+| `NEXT_PUBLIC_APP_URL` | да | Базовый URL приложения (ссылки в письмах, redirect-и). |
+| `SUPABASE_SERVICE_ROLE_KEY` | для rate-limit и sweep | Server-only ключ. Без него rate-лимитер и durable extraction sweep деградируют в no-op (fail-open). |
+| `CRON_SECRET` | для cron | **Fail-closed**: без него все `/api/cron/*` отвечают 401. Vercel Cron шлёт его как `Authorization: Bearer`. `openssl rand -hex 32`. |
+| `METRICS_SECRET` | для метрик | **Fail-closed**: без него `/api/internal/activation-funnel` отказывается отвечать. Держать отличным от `CRON_SECRET`. |
+| `ANTHROPIC_API_KEY` | для AI | AI-модуль (summaries, insights, recommendations) и извлечение из документов. |
 | `RESEND_API_KEY` | для почты | Ключ Resend для транзакционных писем. |
 | `RESEND_FROM_EMAIL` | для почты | Подтверждённый отправитель/домен в Resend. |
-| `ANTHROPIC_API_KEY` | для AI | Ключ Anthropic для AI-модуля. |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | для push | Web-push уведомления. Без них push тихо отключён. |
+| `BILLING_MODE` | да | `private_beta` (по умолчанию) отключает self-serve checkout и Customer Portal. `paid_beta`/`production` требуют серверных секретов Paddle. |
+| `BILLING_PROVIDER` | да | Провайдер биллинга; сейчас `paddle`. |
+| `PADDLE_ENV`, `PADDLE_API_KEY`, `PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_SELLER_ID` | для платного режима | Не нужны в `private_beta`. |
+| `PADDLE_PRICE_*` | для платного режима | Six Price ID (starter/pro/business × monthly/yearly). |
+| `DOCUMENT_EXTRACTION_MOCK` | нет | `1`/`true` — заглушка AI-извлечения для локальной отладки без трат. |
+| `RUN_DB_TESTS` | нет | `1` — включает opt-in интеграционный тест против **локальной** БД. |
+
+Полный список с комментариями — в [`.env.example`](.env.example); он и есть
+источник истины.
 
 `lib/env.ts` валидирует обязательные публичные переменные при импорте по
 принципу fail-fast: без них приложение (и `next build`) не стартует.
@@ -75,7 +88,8 @@ npm run dev        # http://localhost:3000
 ## Миграции базы данных
 
 SQL-миграции лежат в `supabase/migrations/` и применяются по порядку номеров
-(`000_…` → `079_…`, нумерация продолжается). Они описывают схему, RLS-политики,
+(`000_…` → `101_…`; все 101 применены на remote, следующий свободный номер —
+`102`, номер `054` — известный пропуск). Они описывают схему, RLS-политики,
 SECURITY DEFINER RPC, индексы и модель грантов.
 
 ```bash

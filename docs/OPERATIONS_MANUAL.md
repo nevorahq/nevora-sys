@@ -75,18 +75,22 @@ not a gate. Re-enable per environment with `NEVORA_ENABLE_CRM` /
 
 ## Database
 
-- **Baseline in the tree:** migrations `000`–`099` (99 files; `054` is a known,
-  intentional numbering gap). **Next free number: `100`.**
-- **Applied on remote: `000`–`099`** (`096` confirmed via its seeded
+- **Baseline in the tree:** migrations `000`–`101` (101 files; `054` is a known,
+  intentional numbering gap). **Next free number: `102`.**
+- **Applied on remote: `000`–`101`** (`096` confirmed via its seeded
   `plan_entitlements` keys, `097` via its `document_processing_results` /
   `financial_suggestions` tables; `098` confirmed 2026-07-09 — `anon` is denied
   `booking_pages` and `check_client_booking_conflict_public` with the public anon
-  key; `099` confirmed — `todos.source_suggestion_id` exists).
+  key; `099` confirmed — `todos.source_suggestion_id` exists; `100`/`101` are the
+  Paddle billing boundary, applied 2026-07-09 — `101` widens `100`'s CHECK so
+  `billing_subscriptions`' `DEFAULT 'manual'` no longer rolls back
+  `create_organization`).
 - `099` carries the app-side `source_suggestion_id` column that `createStandardTask`
   writes. It was applied to remote **before** the app deploy, which is the required
   order — the migration must never trail the code that depends on its column.
 - Both `098` and `099` were also run against a from-scratch `supabase db reset`
-  (all of `000`–`099` apply cleanly in order) and each has a verification harness
+  (all of `000`–`101` apply cleanly in order; CI's `db` job reproves this on every
+  PR) and each has a verification harness
   under `supabase/tests/` that is negative-tested — reintroduce the bug and it fails.
 - Migrations are applied **manually** by the maintainer; the Supabase CLI is not
   logged in and there is no automated `down`.

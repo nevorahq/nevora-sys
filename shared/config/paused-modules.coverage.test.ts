@@ -135,3 +135,114 @@ describe("paused modules: public product surface", () => {
     expect(copy).not.toMatch(/\bauto-post/i);
   });
 });
+
+/**
+ * Read-path coverage.
+ *
+ * The blocks above scan Server Actions, route handlers and pages — every place
+ * a paused module is *written to* or *navigated to*. They do not look at what
+ * active code *reads*, which is why two leaks survived every one of them:
+ * the Action Center generator scanned `crm_deals` on the primary screen, and
+ * the AI summary action mapped `deal`/`client` straight onto CRM tables.
+ *
+ * The invariant below is deliberately about the class, not those two files: any
+ * active module that names a paused module's table must also name the gate that
+ * keeps it closed. It fails on a file nobody has written yet.
+ */
+describe("paused modules: read-path coverage", () => {
+  /** Real table names, from the migrations — not a hand-kept list. */
+  const pausedTables = (() => {
+    const names = new Set<string>();
+    for (const file of walk("supabase/migrations").filter((f) => f.endsWith(".sql"))) {
+      const re = /create table (?:if not exists )?(?:public\.)?((?:crm|booking)_[a-z_]+)/gi;
+      for (const m of read(file).matchAll(re)) names.add(m[1].toLowerCase());
+    }
+    return [...names];
+  })();
+
+  it("derives the paused tables from the migrations", () => {
+    // A broken derivation would make every assertion below vacuously pass.
+    expect(pausedTables).toContain("crm_deals");
+    expect(pausedTables).toContain("booking_pages");
+    expect(pausedTables.length).toBeGreaterThanOrEqual(12);
+  });
+
+  /** Surfaces that *are* the paused modules: they may name their own tables. */
+  const PAUSED_SURFACES = [
+    "modules/crm/",
+    "modules/booking/",
+    "features/crm/",
+    "app/(dashboard)/dashboard/crm/",
+    "app/(dashboard)/dashboard/booking/",
+    "app/booking/",
+    "app/api/public/booking/",
+    "app/api/internal/booking/",
+  ];
+
+  /**
+   * Pre-existing debt, recorded rather than hidden. Each entry reads a paused
+   * module's tables without a gate. None is a new regression, and none is in
+   * Phase 1 scope — see `docs/project-workflows-and-beta-plan-2026-07-10.md`.
+   *
+   * Do not add to this list. Gate the file instead.
+   */
+  const KNOWN_UNGATED_READS: Record<string, string> = {
+    "modules/analytics/queries/get-dashboard-metrics.ts":
+      "Analytics still shows CRM client/deal counts while CRM is paused.",
+    "modules/analytics/queries/get-module-stats.ts":
+      "Analytics still reports CRM deal stats while CRM is paused.",
+    "modules/analytics/constants/analytics.constants.ts":
+      "Analytics metric catalogue still enumerates CRM tables.",
+    "modules/billing/queries/get-usage.ts":
+      "Usage counters still count deals/clients toward plan limits.",
+    "lib/billing/check-limit.ts":
+      "Capability→table map still resolves the `deals`/`clients` capabilities.",
+    "modules/action-center/queries/get-action-item-related-entities.ts":
+      "Resolves titles for pre-existing `deal`/`client` action items.",
+  };
+
+  const activeFiles = walk("modules")
+    .concat(walk("features"), walk("lib"), walk("app"), walk("shared"))
+    .filter((f) => f.endsWith(".ts") || f.endsWith(".tsx"))
+    .filter((f) => !/\.test\.tsx?$/.test(f))
+    .filter((f) => !PAUSED_SURFACES.some((p) => f.replace(/\\/g, "/").startsWith(p)));
+
+  /** Files naming a paused table inside a string literal. */
+  const offenders = activeFiles.filter((f) => {
+    const src = read(f);
+    return pausedTables.some((t) => new RegExp(`["'\`]${t}["'\`]`).test(src));
+  });
+
+  it("finds active files at all (guards against a silent empty scan)", () => {
+    expect(activeFiles.length).toBeGreaterThanOrEqual(200);
+  });
+
+  it.each(offenders)("%s gates its read of a paused module's tables", (file) => {
+    if (file in KNOWN_UNGATED_READS) return; // recorded debt, asserted below
+    expect(
+      read(file),
+      `${file} reads a paused module's table without calling isPausedModuleEnabled(). ` +
+        `Gate the read, or un-pause the module and delete this test's block.`,
+    ).toContain("isPausedModuleEnabled(");
+  });
+
+  it("does not silently grow the recorded-debt list", () => {
+    const ungated = offenders.filter(
+      (f) => !read(f).includes("isPausedModuleEnabled(") && !(f in KNOWN_UNGATED_READS),
+    );
+    expect(ungated, "new ungated read of a paused module's tables").toEqual([]);
+  });
+
+  it("keeps the recorded-debt list honest (no stale entries)", () => {
+    // An entry that no longer reads a paused table, or has since been gated,
+    // must leave the list — otherwise it masks a future regression in that file.
+    for (const file of Object.keys(KNOWN_UNGATED_READS)) {
+      expect(existsSync(join(ROOT, file)), `${file}: listed but missing`).toBe(true);
+      expect(offenders, `${file}: listed but no longer reads a paused table`).toContain(file);
+      expect(
+        read(file).includes("isPausedModuleEnabled("),
+        `${file}: now gated — remove it from KNOWN_UNGATED_READS`,
+      ).toBe(false);
+    }
+  });
+});
