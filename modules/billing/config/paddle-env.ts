@@ -95,6 +95,35 @@ export function isPaddleCheckoutAvailable(config = getPaddleConfig()): boolean {
   return config.mode !== "private_beta" && getPaddleConfigMissing(config).length === 0;
 }
 
+/**
+ * Reverse of {@link paddlePriceIdForPlanFromConfig}.
+ *
+ * Paddle webhooks identify the plan only by the price id inside
+ * `data.items[].price.id`, so the subscription payload cannot be applied
+ * without this direction of the map. Returns `null` for a price id that is not
+ * one of ours — an unknown price must never resolve to a plan.
+ */
+export function planForPaddlePriceIdFromConfig(
+  config: PaddleConfig,
+  priceId: string | null | undefined,
+): { planCode: Exclude<PlanSlug, "trial">; billingCycle: BillingCycle } | null {
+  if (!priceId) return null;
+
+  const table: Array<[string | undefined, Exclude<PlanSlug, "trial">, BillingCycle]> = [
+    [config.prices.starterMonthly, "start", "monthly"],
+    [config.prices.starterYearly, "start", "yearly"],
+    [config.prices.proMonthly, "pro", "monthly"],
+    [config.prices.proYearly, "pro", "yearly"],
+    [config.prices.businessMonthly, "business", "monthly"],
+    [config.prices.businessYearly, "business", "yearly"],
+  ];
+
+  for (const [configured, planCode, billingCycle] of table) {
+    if (configured && configured === priceId) return { planCode, billingCycle };
+  }
+  return null;
+}
+
 export function paddlePriceIdForPlanFromConfig(
   config: PaddleConfig,
   planCode: PlanSlug,

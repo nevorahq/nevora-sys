@@ -4,76 +4,83 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { getServiceRoleClient } from "@/lib/supabase/service-role";
 import type { BillingCycle, PlanSlug } from "../constants/billing.constants";
-import { BILLING_CYCLES, PLAN_SLUGS } from "../constants/billing.constants";
+import {
+  getPaddleConfig,
+  planForPaddlePriceIdFromConfig,
+  type PaddleConfig,
+} from "../config/paddle-env";
 import type {
   BillingProvider,
   InternalBillingStatus,
   ProviderSubscriptionStatus,
 } from "./billing-provider";
 
-const providerEventSchema = z.object({
-  id: z.string().min(1),
-  type: z.string().min(1),
-  created: z.union([z.number(), z.string()]).optional(),
+/**
+ * Paddle's webhook envelope. Every event carries the same top level:
+ * `event_id`, `event_type`, `occurred_at`, `notification_id`, `data`.
+ *
+ * `data` here is typed for subscription events only — those are the events that
+ * move an organization's plan. Everything else is refused before parsing, so it
+ * never reaches this schema.
+ *
+ * @see https://developer.paddle.com/webhooks/about/how-webhooks-work
+ */
+const paddleSubscriptionEventSchema = z.object({
+  event_id: z.string().min(1),
+  event_type: z.string().min(1),
+  occurred_at: z.string().min(1).optional(),
+  notification_id: z.string().min(1).optional(),
   data: z.object({
-    customerId: z.string().min(1).optional(),
+    id: z.string().min(1).optional(),
     customer_id: z.string().min(1).optional(),
-    subscriptionId: z.string().min(1).optional(),
-    subscription_id: z.string().min(1).optional(),
-    organizationId: z.string().uuid().optional(),
-    organization_id: z.string().uuid().optional(),
-    planCode: z.enum(PLAN_SLUGS).optional(),
-    plan_slug: z.enum(PLAN_SLUGS).optional(),
-    billingCycle: z.enum(BILLING_CYCLES).optional(),
-    billing_cycle: z.enum(BILLING_CYCLES).optional(),
-    currentPeriodStart: z.union([z.number(), z.string()]).optional(),
-    current_period_start: z.union([z.number(), z.string()]).optional(),
-    currentPeriodEnd: z.union([z.number(), z.string()]).optional(),
-    current_period_end: z.union([z.number(), z.string()]).optional(),
-    trialStart: z.union([z.number(), z.string()]).nullable().optional(),
-    trial_start: z.union([z.number(), z.string()]).nullable().optional(),
-    trialEnd: z.union([z.number(), z.string()]).nullable().optional(),
-    trial_end: z.union([z.number(), z.string()]).nullable().optional(),
-    cancelAtPeriodEnd: z.boolean().optional(),
-    cancel_at_period_end: z.boolean().optional(),
-    status: z
-      .enum([
-        "trialing",
-        "active",
-        "past_due",
-        "unpaid",
-        "canceled",
-        "paused",
-        "incomplete",
-        "incomplete_expired",
-      ])
+    status: z.enum(["trialing", "active", "past_due", "canceled", "paused"]).optional(),
+    // The organization is ours, not Paddle's: it rides along in custom_data,
+    // set when the checkout is created.
+    custom_data: z
+      .object({
+        organization_id: z.string().uuid().optional(),
+        organizationId: z.string().uuid().optional(),
+      })
+      .nullable()
       .optional(),
-    internalStatus: z
-      .enum([
-        "trialing",
-        "trial_expired",
-        "active",
-        "past_due",
-        "grace",
-        "unpaid",
-        "canceled",
-        "suspended",
-      ])
+    current_billing_period: z
+      .object({
+        starts_at: z.string().nullable().optional(),
+        ends_at: z.string().nullable().optional(),
+      })
+      .nullable()
       .optional(),
-    internal_status: z
-      .enum([
-        "trialing",
-        "trial_expired",
-        "active",
-        "past_due",
-        "grace",
-        "unpaid",
-        "canceled",
-        "suspended",
-      ])
+    // The plan is identified only by the price id, hence the reverse map.
+    items: z
+      .array(
+        z.object({
+          price: z.object({ id: z.string().min(1) }).nullable().optional(),
+          trial_dates: z
+            .object({
+              starts_at: z.string().nullable().optional(),
+              ends_at: z.string().nullable().optional(),
+            })
+            .nullable()
+            .optional(),
+        }),
+      )
+      .optional(),
+    // `cancel at period end` is not a boolean in Paddle: it is a pending
+    // scheduled change whose action is `cancel`.
+    scheduled_change: z
+      .object({
+        action: z.enum(["cancel", "pause", "resume"]),
+        effective_at: z.string().nullable().optional(),
+      })
+      .nullable()
       .optional(),
   }),
 });
+
+/** Only subscription events change an organization's plan. */
+export function isSupportedPaddleEventType(eventType: string): boolean {
+  return eventType.startsWith("subscription.");
+}
 
 export interface NormalizedBillingWebhookEvent {
   provider: BillingProvider;
@@ -144,9 +151,18 @@ function providerStatusToInternal(
 }
 
 /**
- * HMAC-SHA256 verification (timestamped `t=…,v1=…` header, 5-minute replay
- * window, constant-time compare). Paddle-specific webhook verification is
- * completed in the provider implementation layer.
+ * HMAC-SHA256 verification of Paddle's `Paddle-Signature` header.
+ *
+ * The header is `ts=<unix>;h1=<hex>` — semicolon-separated — and the signed
+ * payload is the timestamp and the *raw* body joined with a **colon**:
+ * `<ts>:<rawBody>`. Both differ from Stripe's `t=,v1=` / `<ts>.<body>`, which
+ * this function used to implement; a Stripe-shaped verifier rejects every real
+ * Paddle webhook, silently, because paid activation is webhook-only.
+ *
+ * The body must be passed exactly as received: any re-serialization changes the
+ * bytes and invalidates the signature.
+ *
+ * @see https://developer.paddle.com/webhooks/signature-verification
  */
 export function verifyBillingWebhookSignature(
   rawBody: string,
@@ -157,14 +173,14 @@ export function verifyBillingWebhookSignature(
   if (!header || !secret) return false;
 
   const parts = Object.fromEntries(
-    header.split(",").map((part) => {
+    header.split(";").map((part) => {
       const [key, ...rest] = part.trim().split("=");
       return [key, rest.join("=")];
     }),
   );
-  const timestamp = parts.t;
-  const provided = parts.v1;
-  // Require an explicit `t=` timestamp and `v1=` signature — no timestamp-less
+  const timestamp = parts.ts;
+  const provided = parts.h1;
+  // Require an explicit `ts=` timestamp and `h1=` signature — no timestamp-less
   // fallback. Every accepted event is therefore bound to the replay window, and
   // a captured signature cannot be stripped of its timestamp to bypass it.
   if (!timestamp || !provided || !/^[a-f0-9]{64}$/i.test(provided)) return false;
@@ -174,7 +190,7 @@ export function verifyBillingWebhookSignature(
     return false;
   }
 
-  const signedPayload = `${timestamp}.${rawBody}`;
+  const signedPayload = `${timestamp}:${rawBody}`;
   const expected = crypto.createHmac("sha256", secret).update(signedPayload).digest("hex");
   const providedBuffer = Buffer.from(provided, "hex");
   const expectedBuffer = Buffer.from(expected, "hex");
@@ -187,46 +203,61 @@ export function verifyBillingWebhookSignature(
 export function parseBillingWebhookEvent(
   rawBody: string,
   provider: BillingProvider,
+  config: PaddleConfig = getPaddleConfig(),
 ): NormalizedBillingWebhookEvent {
   const json = JSON.parse(rawBody) as unknown;
-  const parsed = providerEventSchema.parse(json);
+  const parsed = paddleSubscriptionEventSchema.parse(json);
   const data = parsed.data;
-  const planSlug = data.planCode ?? data.plan_slug ?? null;
-  const internalStatus =
-    data.internalStatus ??
-    data.internal_status ??
-    providerStatusToInternal(data.status as ProviderSubscriptionStatus | undefined);
 
-  if (planSlug === "trial") {
-    throw new Error("Provider webhook cannot activate the trial plan.");
-  }
+  const internalStatus = providerStatusToInternal(
+    data.status as ProviderSubscriptionStatus | undefined,
+  );
+
+  // The plan rides on the price id, never on a slug. An unrecognized price
+  // resolves to nothing rather than to a guess. The map cannot yield `trial`,
+  // which is what keeps a provider webhook from activating the trial plan.
+  const plan =
+    data.items
+      ?.map((item) => planForPaddlePriceIdFromConfig(config, item.price?.id))
+      .find((resolved) => resolved != null) ?? null;
+
+  const currentPeriodStart = normalizeProviderTimestamp(data.current_billing_period?.starts_at);
+  const currentPeriodEnd = normalizeProviderTimestamp(data.current_billing_period?.ends_at);
+  const trialDates = data.items?.find((item) => item.trial_dates)?.trial_dates ?? null;
+  const trialStart = normalizeProviderTimestamp(trialDates?.starts_at);
+  const trialEnd = normalizeProviderTimestamp(trialDates?.ends_at);
+  const cancelAtPeriodEnd = data.scheduled_change
+    ? data.scheduled_change.action === "cancel"
+    : null;
 
   return {
     provider,
-    providerEventId: parsed.id,
-    eventType: parsed.type,
-    eventCreatedAt: normalizeCreatedAt(parsed.created),
-    providerCustomerId: data.customerId ?? data.customer_id ?? null,
-    providerSubscriptionId: data.subscriptionId ?? data.subscription_id ?? null,
-    organizationId: data.organizationId ?? data.organization_id ?? null,
-    planSlug: (planSlug as Exclude<PlanSlug, "trial"> | null) ?? null,
-    billingCycle: data.billingCycle ?? data.billing_cycle ?? null,
+    providerEventId: parsed.event_id,
+    eventType: parsed.event_type,
+    eventCreatedAt: normalizeCreatedAt(parsed.occurred_at),
+    providerCustomerId: data.customer_id ?? null,
+    providerSubscriptionId: data.id ?? null,
+    organizationId:
+      data.custom_data?.organization_id ?? data.custom_data?.organizationId ?? null,
+    planSlug: plan?.planCode ?? null,
+    billingCycle: plan?.billingCycle ?? null,
     internalStatus,
-    currentPeriodStart: normalizeProviderTimestamp(data.currentPeriodStart ?? data.current_period_start),
-    currentPeriodEnd: normalizeProviderTimestamp(data.currentPeriodEnd ?? data.current_period_end),
-    trialStart: normalizeProviderTimestamp(data.trialStart ?? data.trial_start),
-    trialEnd: normalizeProviderTimestamp(data.trialEnd ?? data.trial_end),
-    cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? data.cancel_at_period_end ?? null,
+    currentPeriodStart,
+    currentPeriodEnd,
+    trialStart,
+    trialEnd,
+    cancelAtPeriodEnd,
     payload: {
       source: "billing_provider_webhook",
-      event_type: parsed.type,
+      event_type: parsed.event_type,
+      notification_id: parsed.notification_id ?? null,
       provider_status: data.status ?? null,
       internal_status: internalStatus,
-      current_period_start: normalizeProviderTimestamp(data.currentPeriodStart ?? data.current_period_start),
-      current_period_end: normalizeProviderTimestamp(data.currentPeriodEnd ?? data.current_period_end),
-      trial_start: normalizeProviderTimestamp(data.trialStart ?? data.trial_start),
-      trial_end: normalizeProviderTimestamp(data.trialEnd ?? data.trial_end),
-      cancel_at_period_end: data.cancelAtPeriodEnd ?? data.cancel_at_period_end ?? null,
+      current_period_start: currentPeriodStart,
+      current_period_end: currentPeriodEnd,
+      trial_start: trialStart,
+      trial_end: trialEnd,
+      cancel_at_period_end: cancelAtPeriodEnd,
     },
   };
 }
