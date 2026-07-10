@@ -108,7 +108,32 @@ product metric, not an alert.
 
 ---
 
-## 5. Definition of Done — §7.5 status
+## 5. External error monitoring (Phase 2 — ACTIVE, Sentry via seam)
+
+Structured logs (§1) tell you *what* broke after the fact; an external monitor
+alerts on spikes and keeps stack traces. That second destination is live through a
+**vendor-neutral seam** with a minimal Sentry integration.
+
+- **`lib/observability/monitoring.ts`** — `getMonitoring()` returns the active
+  sink; `setMonitoringSink(adapter)` installs the provider; `isMonitoringConfigured()`
+  reports DSN presence only. The sink is **fail-safe** — a throwing provider can
+  never surface into the request path.
+- **Provider:** `@sentry/node` (server) + `@sentry/browser` (client) via
+  `lib/observability/sentry-adapter.ts`. **No `@sentry/nextjs` build plugin** — so
+  no source maps and no tracing (errors + alerts only). Full detail + limits +
+  upgrade path in **`docs/observability/sentry-setup.md`**.
+- **Two lanes funnel into it — no per-call-site work:**
+  - **Caught** errors → `reportError` (§2) calls `captureException`.
+  - **Uncaught** errors → `instrumentation.ts` `onRequestError` (server) and
+    `@sentry/browser`'s own global handlers (client).
+- **Env:** `SENTRY_DSN` (server, Node runtime only) + `NEXT_PUBLIC_SENTRY_DSN`
+  (client). Edge runtime is unmonitored by design.
+
+The alert list in §4 is the input to Sentry's alert rules.
+
+---
+
+## 6. Definition of Done — §7.5 status
 
 | DoD item | Status |
 |---|---|

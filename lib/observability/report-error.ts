@@ -1,6 +1,7 @@
 import "server-only";
 
 import { logger, type LogFields } from "./logger";
+import { getMonitoring } from "./monitoring";
 
 /**
  * Centralized server-side error reporting (Phase 7.5).
@@ -47,6 +48,16 @@ export function reportError(
     error: error instanceof Error ? error.message : String(error),
     ...(error instanceof Error && error.stack ? { stack: error.stack } : {}),
     ...opts?.fields,
+  });
+
+  // Second destination: the external error monitor (no-op until a DSN + adapter
+  // are installed — see docs/observability/sentry-setup.md). This is the "caught"
+  // lane; uncaught errors reach the same seam via `onRequestError` in
+  // instrumentation.ts. The seam never throws, so it is safe inside a catch.
+  getMonitoring().captureException(error, {
+    event,
+    diagnosticId,
+    fields: opts?.fields,
   });
 
   return {
