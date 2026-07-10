@@ -142,12 +142,13 @@
 > `transaction_id IS NULL`. Origin (domain_events): the cycle was paid via the
 > real RPC, then its transaction was **hard-deleted** by `deleteTransactionAction`
 > — the `ON DELETE SET NULL` FK nulled the link while the cycle stayed `paid`.
-> This is a known code gap (delete-transaction does not reconcile a linked
-> subscription cycle), tracked separately; it is **not** a fault of the mark-paid
-> flow. Before declaring P0: confirm the failing row was created **during this
-> smoke** (check `paid_at` / `created_at` against the run). If it is pre-existing,
-> record it as a **data cleanup** item (not a Phase 3 blocker) and re-run the
-> scenario on a freshly created row.
+> The underlying code gap (delete now refuses when the transaction backs a paid
+> cycle or financial task) was **fixed in #24**; it was **not** a fault of the
+> mark-paid flow. New phantom-paid rows can no longer be produced this way; a
+> pre-existing one may still surface. Before declaring P0: confirm the failing
+> row was created **during this smoke** (check `paid_at` / `created_at` against
+> the run). If it is pre-existing, record it as a **data cleanup** item (not a
+> Phase 3 blocker) and re-run the scenario on a freshly created row.
 
 ### Part A summary
 
