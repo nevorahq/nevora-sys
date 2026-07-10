@@ -338,19 +338,14 @@ Database: booking schema; public SECURITY DEFINER RPC resolving org/host/service
 Known Issues:
 - **An org that published a booking page before the pause no longer serves it.**
   Intentional — a paused module must not remain a live public product surface.
-- ⚠️ **The app-layer gate does not cover the data layer.** Migration `016` grants
-  `anon` SELECT on `booking_pages` (policy `booking_pages_select_anon`), so anyone
-  holding the *public* anon key can still enumerate published booking pages
-  straight from the Supabase REST endpoint — bypassing Next.js entirely. Verified
-  2026-07-08: 3 rows with `public_enabled = true` are readable. This predates
-  Phase A and is not a regression, but it means "Booking is fully gated publicly"
-  is true of the **application**, not of the **database**.
-  To close, pick one (needs a product decision):
-  1. set `public_enabled = false` on those rows (data change, reversible), or
-  2. drop/narrow the `anon` SELECT policy on booking + host/service tables
-     (migration `094`, must be reverted when Booking un-pauses).
-Risks: the residual anon read above. If un-paused, public endpoints are
-rate-limited; slot/conflict correctness needs re-verification.
+- **The former `anon` data-layer leak is closed.** Migration `016` had granted
+  `anon` SELECT on the booking tables and EXECUTE on the public booking RPCs, so
+  the module was gated in the application but not in the database. Migration
+  `098` (applied on remote, confirmed 2026-07-09) revoked both. See the Booking
+  note at the top of this file for the verification detail. Un-pausing Booking
+  must restore those grants deliberately.
+Risks: if un-paused, public endpoints are rate-limited; slot/conflict
+correctness needs re-verification, and the `098` revokes must be reversed.
 Next Step: **product decision** — keep paused. Un-pausing means: set
 `NEVORA_ENABLE_BOOKING`, restore nav + pricing + landing copy, and delete the
 Booking block in `paused-modules.coverage.test.ts` in the same PR.
