@@ -585,7 +585,7 @@ flowchart TD
   P3 --> Gate{"≥3 из 5 прошли\nбез подсказок?"}
   Gate -- "нет" --> Fix["Стоп разработке фич\nчиним onboarding / copy / workflow"]
   Fix --> P3
-  Gate -- "да" --> P4["Phase 4 · Автоматизация\nPlaywright + event-driven"]
+  Gate -- "да" --> P4["Phase 4 · Автоматизация\ne2e-стек + разделение генерации"]
   P4 --> P5["Phase 5 · Paddle\npaid beta"]
   P5 --> P6["Phase 6 · Public launch gate"]
 ```
@@ -663,42 +663,112 @@ Goal: зафиксировать тестами то, что уже прошло
 
 Начинается только после того, как Phase 3 дала положительный сигнал.
 
-1. Add five Playwright scenarios — те же, что прошли вручную в Phase 3:
+> **Сверено с кодом 2026-07-10.** Три из пяти пунктов были описаны неверно — в
+> том числе один, переписанный в этом же документе. Формулировки ниже проверены
+> чтением исходников, а не памятью. Ошибки плана систематичны: он неточен ровно
+> там, где описывает код, которого не читал.
+
+1. **Поднять e2e-стек** и покрыть им пять сценариев Phase 3.
+
+   Пункт был недооценён: Playwright **не установлен вообще** — нет пакета в
+   `package.json`, нет конфига, каталога `e2e/`, фикстуры авторизации, посева
+   тестовой организации, CI-джобы. Сами сценарии уже перечислены в Phase 3, так
+   что работа не в них, а в харнессе: авторизованная сессия, изолированная org,
+   выбор цели (локально или задеплоенное окружение), сброс данных между
+   прогонами.
+
+   Сценарии — те же пять, что прошли вручную:
    - registration/onboarding/dashboard;
    - document upload -> extraction -> confirm expense;
    - subscription mark-as-paid double-click;
    - cross-org safe not-found;
    - Capture Inbox suggestion accept.
-2. Заменить сканер `syncActionItems()` событийной записью — **не переносить его
-   в cron**.
 
-   Обоснование: cron'а, генерирующего `action_items`, не существует ни одного
-   (все 5 в `vercel.json` заняты другим), так что это была бы не миграция, а
-   новый route + секрет + алерт + бэкфилл. Хуже — перенос в cron ломает свежесть
-   главного экрана: созданная задача не появится в Action Center до следующего
-   запуска.
+2. **Разделить генерацию `action_items` по природе сигнала.**
 
-   При этом событийный путь **уже существует**: `action_items` пишутся напрямую
-   из `moneyflow`, `planner` и `subtracker` sweep. `syncActionItems()` — это
-   избыточный сканер поверх него. Поэтому:
-   - дописать событийную запись для tasks/subscriptions/documents;
-   - удалить сканер с пути рендера;
-   - оставить cron **только** как reconciler-починку, с алертом на падение;
+   Ни «перенести сканер в cron» (исходный план), ни «удалить сканер, всё
+   событийно» (первая правка этого документа) не верны. Обе формулировки теряют
+   часть сигналов.
+
+   Три из восьми сигналов возникают **от хода времени, а не от записи** — в
+   момент, когда они становятся истинными, никакой записи в БД не происходит,
+   и обработчику события не на что реагировать:
+
+   | Сигнал | Условие | Источник |
+   |---|---|---|
+   | `overdue` | `due_date < today` | часы |
+   | `due_soon` | `due_date <= today + 3` | часы |
+   | `renewal_required` | `next_billing_date` в пределах 7 дней | часы |
+
+   Остальные пять (`assignment_required`, `missing_relation`, неиспользуемая
+   подписка, транзакция без связи, документ в статусе `draft`) возникают от
+   записи и покрываются событийно.
+
+   Поэтому:
+   - **событийная запись** для сигналов состояния — это чинит свежесть главного
+     экрана: созданная задача появляется сразу, а не после следующего cron;
+   - **плановый скан** для временных сигналов — гранулярность в днях, ночного
+     прогона достаточно; нужен новый cron-route (ни один из пяти существующих
+     не генерирует `action_items`), секрет, алерт на падение;
+   - убрать сканер с пути рендера **после** того, как оба пути закрыты, не до;
    - сохранить ручной refresh action.
+
+   Образец cron-реконсилятора уже есть: `sweep-subscription-payment-workflow.ts`
+   пишет `action_items` (строка ~165). Копировать его, не изобретать.
 
    ⚠ Инвариант «на рендере не пишем» нельзя вводить буквально: на рендере
    Action Center пишет также `reconcileFirstAction()`
    (`modules/onboarding/queries/get-wizard-state.ts:42`), и на этом держится
    воронка активации. Ограничение касается сканера, а не всех записей.
 
-3. Converge usage/feature gates:
-   - replace remaining `checkPlanLimit("ai_calls")` on summary/insights/categorization;
-   - remove legacy todo create path or route it through the same atomic services.
-4. Add subscription/document runtime assertions:
-   - double-click paid path;
-   - retry extraction after failure;
-   - re-extraction after confirmed transaction does not duplicate expense.
-5. Make rate limiter fail-loud (**низкий приоритет**).
+   ⚠ Отдельно (не в объёме пункта, но обнаружено при сверке): ключ дедупликации
+   — `(org, type, source_type, source_id)`, а `due_soon` и `overdue` это разные
+   `type`. Когда задача пересекает срок, появляется второй item, и старый
+   `due_soon` никто не гасит. Вероятный источник шума в ленте.
+
+3. **Свести две параллельные системы квот AI.**
+
+   План утверждал, что `generateInsights`/`generateSummary` «всё ещё на легаси
+   `checkPlanLimit`». Это не так: оба уже вызывают
+   `requireAppAccess({ capability: "ai_calls" })`, который **сам внутри** зовёт
+   `checkPlanLimit` (`lib/security/require-app-access.ts:140`). Прямой вызов
+   ниже — безвредный дубль: `checkPlanLimit` — чистое чтение, квоту не
+   расходует.
+
+   Настоящее расхождение план не заметил. Расход AI считается **по-разному** в
+   зависимости от действия:
+
+   | Действие | Гейт доступа | Учёт расхода |
+   |---|---|---|
+   | `generateRecommendations` | `requireAppAccess` | `featureGateService` + `usageService.assertWithinLimit("ai_suggestions_monthly")` |
+   | `generateInsights` | `requireAppAccess` | только триггер БД на `ai_requests` |
+   | `generateSummary` | `requireAppAccess` | только триггер БД на `ai_requests` |
+   | `categorizeTransaction` | `requireOrg()` ⚠ | только `checkPlanLimit` |
+
+   Это вопрос корректности биллинга, а не косметика. Работа:
+   - привести `generateInsights`/`generateSummary` к паттерну
+     `generateRecommendations` (feature gate + учёт расхода), либо осознанно
+     оставить триггер БД единственным счётчиком — но одинаково для всех трёх;
+   - перевести `categorizeTransaction` с `requireOrg()` на `requireAppAccess()`;
+   - удалить дублирующий прямой `checkPlanLimit` там, где выше уже стоит
+     `requireAppAccess` с той же capability.
+
+4. **Довести до рантайма то, что уже покрыто unit-тестами.**
+
+   Пункт съёживается: оба «недостающих» утверждения уже существуют.
+
+   - двойной клик по оплате — `mark-subscription-payment-as-paid.test.ts:117`
+     («is idempotent: an already-paid cycle creates no new expense») и
+     `test/release-invariants.test.ts:102`;
+   - повторное извлечение после подтверждения —
+     `create-draft-transaction-from-document.test.ts:103`
+     («returns already_confirmed and inserts nothing»).
+
+   Не хватает не утверждений, а прогона в рантайме — он приходит вместе с
+   e2e-стеком из пункта 1. Остаётся дописать только retry extraction after
+   failure.
+
+5. **Сделать rate limiter fail-loud** (низкий приоритет).
 
    Реальная поверхность сегодня — один роут `/api/v1/me`: три остальных
    вызывающих (`api/public/booking/*`) отдают 404, пока Booking на паузе.
@@ -708,6 +778,15 @@ Goal: зафиксировать тестами то, что уже прошло
    меньшую часть дыры, чем кажется. «Fail startup» не выбирать: это
    самостоятельно устроенный отказ. Логировать и алертить, блокировать —
    только защищённые публичные эндпоинты.
+
+6. **Удалить легаси-путь создания задач** — или провести его через те же
+   атомарные сервисы.
+
+   Это не удаление мёртвого кода: `features/todos/actions/create-todo.action.ts`
+   вызывается из живой UI-формы `features/todos/components/todo-form.tsx`,
+   из route handler `app/api/tasks/[taskId]/document/route.ts` и из
+   `modules/documents/services/create-task-document-with-attachments.ts`.
+   Рефакторинг с UI-поверхностью, а не чистка.
 
 ### Phase 5 - paid beta readiness
 
