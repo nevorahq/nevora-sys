@@ -32,7 +32,27 @@ const select = vi.fn(() => ({ maybeSingle }));
 const organizationEq = vi.fn(() => ({ select }));
 const transactionEq = vi.fn(() => ({ eq: organizationEq }));
 const deleteQuery = vi.fn(() => ({ eq: transactionEq }));
-const from = vi.fn(() => ({ delete: deleteQuery }));
+
+// Paid-obligation guard: two read chains resolved before the delete.
+// .select(...).eq(...).eq(...).eq(...).limit(1).maybeSingle()
+const cycleMaybeSingle = vi.fn();
+const taskMaybeSingle = vi.fn();
+function makeSelectChain(maybeSingleFn: ReturnType<typeof vi.fn>) {
+  const chain: Record<string, unknown> = {};
+  chain.select = vi.fn(() => chain);
+  chain.eq = vi.fn(() => chain);
+  chain.limit = vi.fn(() => chain);
+  chain.maybeSingle = maybeSingleFn;
+  return chain;
+}
+const cycleChain = makeSelectChain(cycleMaybeSingle);
+const taskChain = makeSelectChain(taskMaybeSingle);
+
+const from = vi.fn((table: string) => {
+  if (table === "subscription_payment_cycles") return cycleChain;
+  if (table === "todos") return taskChain;
+  return { delete: deleteQuery };
+});
 const rpc = vi.fn(async () => ({ error: null }));
 
 beforeEach(() => {
@@ -42,11 +62,15 @@ beforeEach(() => {
       money: {
         errors: {
           deleteTransactionFailed: "Failed to delete transaction",
+          transactionLinkedToPaidObligation: "Linked to a paid obligation",
           serverError: "Server error",
         },
       },
     },
   });
+  // Default: the transaction backs no paid obligation, so the delete proceeds.
+  cycleMaybeSingle.mockResolvedValue({ data: null, error: null });
+  taskMaybeSingle.mockResolvedValue({ data: null, error: null });
   requireOrg.mockResolvedValue({
     user: { id: USER_ID },
     org: { id: ORGANIZATION_ID },
@@ -118,5 +142,27 @@ describe("deleteTransactionAction", () => {
     });
     expect(emitDomainEvent).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("refuses to delete a transaction that backs a paid subscription cycle", async () => {
+    cycleMaybeSingle.mockResolvedValue({ data: { id: "cycle-1" }, error: null });
+
+    await expect(deleteTransactionAction(TRANSACTION_ID)).resolves.toEqual({
+      error: "Linked to a paid obligation",
+    });
+    // The delete never runs, so nothing is un-backed and no event is emitted.
+    expect(deleteQuery).not.toHaveBeenCalled();
+    expect(emitDomainEvent).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("refuses to delete a transaction that backs a paid financial task", async () => {
+    taskMaybeSingle.mockResolvedValue({ data: { id: "task-1" }, error: null });
+
+    await expect(deleteTransactionAction(TRANSACTION_ID)).resolves.toEqual({
+      error: "Linked to a paid obligation",
+    });
+    expect(deleteQuery).not.toHaveBeenCalled();
+    expect(emitDomainEvent).not.toHaveBeenCalled();
   });
 });
