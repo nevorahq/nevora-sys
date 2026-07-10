@@ -33,6 +33,36 @@ export async function deleteTransactionAction(id: string): Promise<{ error?: str
   try {
     const supabase = await createClient();
 
+    // Guard: never let a delete silently un-back a confirmed payment. The FK on
+    // both subscription_payment_cycles.transaction_id and
+    // todos.financial_transaction_id is ON DELETE SET NULL, so a raw delete would
+    // null the link while the obligation stays `paid` — a phantom-paid row (this
+    // is the origin of the one legacy cycle found on remote 2026-07-08). Refuse
+    // and point the user at the obligation instead of corrupting its state.
+    const { data: linkedCycle } = await supabase
+      .from("subscription_payment_cycles")
+      .select("id")
+      .eq("transaction_id", id)
+      .eq("status", "paid")
+      .eq("organization_id", ctx.org.id)
+      .limit(1)
+      .maybeSingle();
+
+    const { data: linkedTask } = linkedCycle
+      ? { data: null }
+      : await supabase
+          .from("todos")
+          .select("id")
+          .eq("financial_transaction_id", id)
+          .eq("financial_status", "paid")
+          .eq("organization_id", ctx.org.id)
+          .limit(1)
+          .maybeSingle();
+
+    if (linkedCycle || linkedTask) {
+      return { error: dict.money.errors.transactionLinkedToPaidObligation };
+    }
+
     const { data: deletedTransaction, error } = await supabase
       .from("money_transactions")
       .delete()

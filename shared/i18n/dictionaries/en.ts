@@ -600,6 +600,8 @@ export const en = {
       createTransactionFailed: "Failed to create transaction",
       updateTransactionFailed: "Failed to update transaction",
       deleteTransactionFailed: "Failed to delete transaction",
+      transactionLinkedToPaidObligation:
+        "This payment backs a paid subscription cycle or financial task. Cancel the payment on that obligation before deleting the transaction.",
       currencyMismatch: "This transaction's currency differs from its account. Open it to pick a matching account before posting.",
       serverError: "Something went wrong. Please try again.",
     },
