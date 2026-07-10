@@ -568,7 +568,7 @@ Residual cleanup:
 | Relations/entity links | In progress | Medium | Active scope is correct; UX partial. |
 | Notifications/reminders | Working MVP | Medium | Needs reminder de-dup and push smoke. |
 | Billing private beta | Working | Medium | Honest private-beta state. |
-| Paddle paid billing | Partial | Low | Webhook rewritten for Paddle's real format (2026-07-10), unit-proven but **not yet run against a sandbox event**. Checkout/portal still return `url: null`. DB idempotency (`092`) is sound. |
+| Paddle paid billing | Partial | Low | Webhook + checkout + portal implemented against Paddle's real API (2026-07-10), all unit-proven but **not yet run against a live sandbox account**. Needs a default payment link in the dashboard and one end-to-end sandbox pass. DB idempotency (`092`) is sound. |
 | AI insights/recs/summaries | Partial | Medium | Mixed limit mechanisms. |
 | Analytics | Partial | Medium | Needs caching later. |
 | Cron repair jobs | Working structurally | Medium | No external alerting. |
@@ -861,15 +861,25 @@ checkout, то есть с видимой половины. Но checkout пов
    советует дедуплицировать по `event_id` — механизм готов, в него просто
    никогда не доходит событие.
 
-3. Implement Paddle checkout URL creation in `PaddleBillingAdapter`
-   (сейчас возвращает `url: null`, `modules/billing/services/paddle-billing.adapter.ts:44`;
-   к API Paddle не обращается вовсе).
-4. Implement Customer Portal session (там же, `:53` — тоже `url: null`).
+3. ~~Implement Paddle checkout URL creation.~~ **Сделано 2026-07-10.**
+   `PaddleBillingAdapter.createCheckoutSession` создаёт `POST /transactions` и
+   возвращает `checkout.url`. Новый HTTP-клиент `paddle-api.ts` (bearer-auth,
+   sandbox/live host, 10s timeout). `custom_data.organization_id` — единственная
+   нить назад к тенанту, её читает вебхук. Мы **не** передаём `checkout.url` в
+   запросе: это увело бы checkout на наш домен, что требует Paddle.js и (в live)
+   одобрения домена. Отсутствие default payment link отдаётся как `url: null`
+   (честный «not connected»), а не как 500.
+4. ~~Implement Customer Portal session.~~ **Сделано 2026-07-10.**
+   `POST /customers/{id}/portal-sessions`; сессия скоупится подпиской
+   организации (deep links cancel/update), нет `customer_id` на файле — `url:
+   null`. Сессии одноразовые, не кэшируются.
 5. Keep success redirect display-only.
 
-   Сейчас требование **пусто**: `returnUrl` вычисляется и передаётся в адаптер,
-   который его игнорирует; обработчика success не существует. Сохранять нечего —
-   пункт становится актуальным вместе с пунктом 3.
+   Требование остаётся **пустым по замыслу**: `returnUrl` вычисляется и
+   передаётся в адаптер, но Paddle-хостед-checkout возвращает пользователя через
+   настройку дашборда, а не через наш redirect. Активация приходит только
+   вебхуком. Отдельного success-обработчика намеренно нет — плодить его значит
+   создать второй, недоверенный путь активации.
 
 6. Add reconciliation/reporting workflow for provider/local mismatch.
    Не существует ничего; план прав.
