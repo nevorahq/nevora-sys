@@ -404,12 +404,12 @@ Status: **partial / private beta honest**.
 
 Gaps:
 
-- **Обработка вебхука реализует формат Stripe, а не Paddle** (заголовок
+- **Обработка вебхука реализовывала формат Stripe, а не Paddle** (заголовок
   `t=,v1=` вместо `ts=;h1=`, signed payload через `.` вместо `:`, конверт
   `id`/`type` вместо `event_id`/`event_type`). Ни одно реальное событие Paddle
-  не будет принято. Поскольку платная активация возможна только через webhook,
-  платный путь сломан целиком, а не наполовину. Подробности и порядок починки —
-  Phase 5.
+  не было бы принято, а поскольку платная активация возможна только через
+  webhook, платный путь был сломан целиком. **Исправлено 2026-07-10**; остаётся
+  доказать на sandbox-событии (Phase 5, пункт 2).
 - Paddle adapter currently returns `url: null`; checkout/portal are not complete.
 - Paid activation must remain webhook-only.
 - AI and task limits still have mixed legacy/new mechanisms:
@@ -568,7 +568,7 @@ Residual cleanup:
 | Relations/entity links | In progress | Medium | Active scope is correct; UX partial. |
 | Notifications/reminders | Working MVP | Medium | Needs reminder de-dup and push smoke. |
 | Billing private beta | Working | Medium | Honest private-beta state. |
-| Paddle paid billing | **Broken** | Low | Webhook verifies a Stripe-format signature; no real Paddle event is accepted. Checkout/portal return `url: null`. DB idempotency (`092`) is sound. |
+| Paddle paid billing | Partial | Low | Webhook rewritten for Paddle's real format (2026-07-10), unit-proven but **not yet run against a sandbox event**. Checkout/portal still return `url: null`. DB idempotency (`092`) is sound. |
 | AI insights/recs/summaries | Partial | Medium | Mixed limit mechanisms. |
 | Analytics | Partial | Medium | Needs caching later. |
 | Cron repair jobs | Working structurally | Medium | No external alerting. |
@@ -812,8 +812,15 @@ checkout, то есть с видимой половины. Но checkout пов
 активация по замыслу возможна **только** через webhook (пункт 4 ниже) — значит
 он и есть критический путь.
 
-1. **Переписать обработку вебхука Paddle.** Сейчас она не примет ни одного
-   реального события — ломается на четырёх независимых уровнях:
+1. ~~**Переписать обработку вебхука Paddle.**~~ **Сделано 2026-07-10.** Все
+   четыре уровня исправлены, добавлен обратный маппинг `price_id → plan`,
+   неподдерживаемые типы событий подтверждаются (200) вместо вечных ретраев.
+   Тест переписан на фикстуры Paddle и **замороженный вектор подписи**,
+   посчитанный независимо от кода; мутация верификатора обратно в формат Stripe
+   его роняет. Ниже — что именно было сломано, для истории.
+
+   Обработка не принимала ни одного реального события — ломалась на четырёх
+   независимых уровнях:
 
    | Уровень | Код ожидает | Paddle присылает |
    |---|---|---|
@@ -834,17 +841,19 @@ checkout, то есть с видимой половины. Но checkout пов
    вебхуки на `/login`, платные события терялись). Логирование есть
    (`billing.webhook.rejected`), но увидеть его будет некому до Phase 2.
 
-   ⚠ **Тест проходит вхолостую.** `billing-webhook.test.ts:23` сам строит
-   заголовок как `` `t=${timestamp},v1=${signature}` `` — то есть проверяет
-   верификатор против его же конвенции. Новый тест обязан подавать **фикстуру
-   настоящего заголовка Paddle**, а не конструировать её тем же кодом, что
-   проверяет. Иначе он снова ничего не докажет.
+   ⚠ **Тест проходил вхолостую.** Старый `billing-webhook.test.ts:23` сам строил
+   заголовок как `` `t=${timestamp},v1=${signature}` `` — то есть проверял
+   верификатор против его же конвенции. Заменён на замороженный вектор:
+   константы `ts`/`h1` посчитаны вне кода, поэтому возврат к формату Stripe
+   ломает тест. Проверено мутацией в обе стороны.
 
    Обманчиво и то, что адаптер читает заголовок под верным именем
-   (`headers.get("paddle-signature")`): снаружи Paddle-осведомлён, внутри Stripe.
+   (`headers.get("paddle-signature")`): снаружи Paddle-осведомлён, внутри был
+   Stripe.
 
 2. **Прогнать sandbox-события Paddle** и убедиться, что событие доходит до
-   `apply_billing_provider_event`.
+   `apply_billing_provider_event`. **Не сделано** — требует sandbox-аккаунта и
+   реальной доставки. Код готов, но до живого события он не доказан.
 
    Идемпотентность **уже реальна и работы не требует**: миграция `092` даёт
    `UNIQUE(provider, provider_event_id)` + `ON CONFLICT DO NOTHING`, RPC
