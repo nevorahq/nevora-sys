@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const { flushMonitoringAfterResponse } = vi.hoisted(() => ({ flushMonitoringAfterResponse: vi.fn() }));
+vi.mock("./flush-after-response", () => ({ flushMonitoringAfterResponse }));
+
 import { getMonitoring, setMonitoringSink } from "./monitoring";
 import { reportError } from "./report-error";
 
@@ -38,6 +41,16 @@ describe("reportError → monitoring seam", () => {
       diagnosticId,
       fields: { organizationId: "org_123" },
     });
+  });
+
+  it("schedules a post-response flush so serverless does not drop the event", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    flushMonitoringAfterResponse.mockClear();
+    setMonitoringSink({ captureException: vi.fn(), captureMessage: vi.fn() });
+
+    reportError("documents.upload.failed", new Error("kaboom"));
+
+    expect(flushMonitoringAfterResponse).toHaveBeenCalledTimes(1);
   });
 
   it("still returns a safe payload even if the monitoring provider throws", () => {

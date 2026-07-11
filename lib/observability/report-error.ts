@@ -2,6 +2,7 @@ import "server-only";
 
 import { logger, type LogFields } from "./logger";
 import { getMonitoring } from "./monitoring";
+import { flushMonitoringAfterResponse } from "./flush-after-response";
 
 /**
  * Centralized server-side error reporting (Phase 7.5).
@@ -59,6 +60,10 @@ export function reportError(
     diagnosticId,
     fields: opts?.fields,
   });
+
+  // Serverless drops fire-and-forget captures when the function freezes after the
+  // response — flush past the response boundary without making the caller wait.
+  flushMonitoringAfterResponse();
 
   return {
     diagnosticId,

@@ -20,6 +20,9 @@ import type { MonitoringContext, MonitoringSink } from "./monitoring";
 export interface SentryCaptureApi {
   captureException(error: unknown, captureContext?: Record<string, unknown>): string;
   captureMessage(message: string, captureContext?: Record<string, unknown>): string;
+  /** Both `@sentry/node` and `@sentry/browser` expose this. Resolves `true` when
+   *  the queue drained, `false` on timeout. */
+  flush(timeout?: number): Promise<boolean>;
 }
 
 /** Build the Sentry scope (tags + extra) from our context. `event` becomes a
@@ -41,6 +44,9 @@ export function createSentrySink(sentry: SentryCaptureApi): MonitoringSink {
     },
     captureMessage(message, level, context) {
       sentry.captureMessage(message, { level, ...toCaptureContext(context) });
+    },
+    flush(timeoutMs) {
+      return sentry.flush(timeoutMs);
     },
   };
 }

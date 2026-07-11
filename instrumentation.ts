@@ -44,7 +44,7 @@ export async function register(): Promise<void> {
   });
 }
 
-export const onRequestError: Instrumentation.onRequestError = (err, request, context) => {
+export const onRequestError: Instrumentation.onRequestError = async (err, request, context) => {
   const digest = (err as { digest?: unknown }).digest;
   getMonitoring().captureException(err, {
     event: "next.request.error",
@@ -57,4 +57,7 @@ export const onRequestError: Instrumentation.onRequestError = (err, request, con
       routePath: context.routePath,
     },
   });
+  // Next awaits this hook, so blocking here is safe — and required on serverless:
+  // without the flush the function can freeze before @sentry/node ships the event.
+  await getMonitoring().flush(2000);
 };
