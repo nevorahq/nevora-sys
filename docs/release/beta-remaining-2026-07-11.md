@@ -1,7 +1,13 @@
 # Beta — What's Left (2026-07-11)
 
 **Owner:** Release owner (nevorahq@gmail.com)
-**Verdict today:** **Private-Beta-Ready** — 0 P0 / 0 P1 open. Public launch stays **No-Go**.
+**Verdict today:** **Private-Beta-Ready** — 0 P0 / 0 P1 open. Sentry smoke and
+**I-09 both CLOSED (PASS) 2026-07-11** — the only remaining critical-path item before
+the closed beta is **5 live users**. Public launch stays **No-Go** (I-07 outstanding).
+
+**Update 2026-07-11 (later):** critical-path items 1 (Sentry) and 2 (I-09) are now
+**DONE**. See [`phase-3-proof-report-2026-07-11.md`](./phase-3-proof-report-2026-07-11.md)
+(I-09, PRs #31/#32) and [`phase-3-sentry-visibility-check.md`](./phase-3-sentry-visibility-check.md).
 **Related:** [`p0-p1-issue-register.md`](./p0-p1-issue-register.md) ·
 [`smoke-test-checklist.md`](./smoke-test-checklist.md) ·
 plan [`../project-workflows-and-beta-plan-2026-07-10.md`](../project-workflows-and-beta-plan-2026-07-10.md)
@@ -18,7 +24,11 @@ people can use it. Items are ordered by the plan's dependency chain.
 
 Everything here is human/operator work, not a code change.
 
-### 1. Live Sentry smoke — Phase 2 tail · `TODO`
+### 1. Live Sentry smoke — Phase 2 tail · `DONE` ✅ (2026-07-11)
+
+All lanes PASS (server caught + uncaught + client), recorded in
+[`phase-3-sentry-visibility-check.md`](./phase-3-sentry-visibility-check.md); probe
+removed (#27). Original checklist kept below for the record.
 
 Without this the `diagnosticId` evidence in I-09 has nothing to correlate against.
 
@@ -36,27 +46,27 @@ Without this the `diagnosticId` evidence in I-09 has nothing to correlate agains
 > If smoking a **deploy preview** rather than production, make sure the Sentry DSNs
 > are set for the Deploy-preview context in Netlify, not Production-only.
 
-### 2. I-09 — interactive smoke on a deployed authed environment · `TODO`
+### 2. I-09 — interactive smoke on a deployed authed environment · `DONE` ✅ (2026-07-11)
 
-The canonical scenarios are [`smoke-test-checklist.md`](./smoke-test-checklist.md);
-this run adds the evidence contract + the A1–A3 money invariants.
+**CLOSED — PASS.** Ran on deployed `bussines.nevorahq.com`; all 8 scenarios + 4 ops ⚑
+green, and **all three money invariants A1, A2, A3 proven live** with SQL. Proof:
+[`phase-3-proof-report-2026-07-11.md`](./phase-3-proof-report-2026-07-11.md) (PRs #31/#32).
 
-- [ ] Test data: **org A** with ≥1 subscription, ≥1 document, ≥1 overdue task; and a
-      **second org B** owned by a different user (isolation checks).
-- [ ] Run the full checklist, ⚑ items first, one evidence block per scenario
-      (recording/screenshot + `diagnosticId`↔Sentry + money SQL where relevant).
-- [ ] Money invariants hold: **A1** (financial task double-click → 1 tx), **A2**
-      (cycle double-click → 1 cycle + 1 tx), **A3** (plain task complete → 0 tx).
-      SQL pack: [`../../scripts/db/phase-3-money-invariants.sql`](../../scripts/db/phase-3-money-invariants.sql).
-- [ ] Fill [`phase-3-proof-report-TEMPLATE.md`](./phase-3-proof-report-TEMPLATE.md)
-      → `phase-3-proof-report-2026-XX-XX.md`.
-- [ ] Flip **I-09** `OPEN → closed with proof` in [`p0-p1-issue-register.md`](./p0-p1-issue-register.md).
+- [x] Test data: org **"new org"** (`5ff06592`, owner `enujnenco@enso.ro`) with subs/docs/overdue tasks; non-member orgs used for isolation.
+- [x] Full checklist run with per-scenario evidence + money SQL.
+- [x] Money invariants: **A1** (financial task `b8962191` → tx `2a6118e8`, ×2 → 1 tx), **A2** (cycle `6b6ca1ee`/2026-09 → 1 cycle + 1 tx), **A3** (plain task → Δtx 0). All PASS.
+- [x] Proof report filled → `phase-3-proof-report-2026-07-11.md`.
+- [x] **I-09 flipped `OPEN → CLOSED with proof`** in [`p0-p1-issue-register.md`](./p0-p1-issue-register.md).
 
-> Depends on item 1 (Sentry must be live to make the `diagnosticId` column real).
+> Notes: upload triplet (A-S2/A-S3/A-S4·A1) finished in **operator-clicks + SQL-verify**
+> mode (Claude-in-Chrome would not connect); the A1 financial task was materialised via
+> **Capture Inbox** (uploaded invoices were detected as already-incurred expenses). Only
+> **A-S1 register** stays BLOCKED = remote email-confirmation ON (env setting, not a defect).
 
-### 3. Five live users — Product Proof · `TODO`
+### 3. Five live users — Product Proof · `TODO` ← **the only remaining critical-path item**
 
-Real users on **their own** data, **no hand-holding**.
+Real users on **their own** data, **no hand-holding**. With items 1 and 2 closed,
+this is the last thing standing between here and the open closed-beta.
 
 - [ ] Each of 5 users runs the Product Proof table (upload receipt → confirm/reject;
       add subscription → sees next payment; mark payment paid → one expense, no double;
@@ -92,6 +102,7 @@ Real users on **their own** data, **no hand-holding**.
 
 ## Closed recently (context)
 
+- **Live Sentry smoke — PASS (#30); I-09 interactive smoke — CLOSED, PASS (#31/#32), 2026-07-11.** All money invariants A1/A2/A3 proven live.
 - Phantom-paid hole on transaction delete fixed (#24).
 - Phase 3 proof runbook + A1–A3 SQL pack + report template (#23).
 - Netlify host correction + edge-runtime no-op decision (#25).
@@ -101,6 +112,6 @@ Real users on **their own** data, **no hand-holding**.
 
 ---
 
-**One line:** three operator steps stand between here and the closed beta —
-Sentry smoke → I-09 → five users. Everything else is public-launch work that only
-starts if the five users return ≥3/5.
+**One line:** Sentry smoke ✅ and I-09 ✅ are closed (2026-07-11) — **one operator
+step stands between here and the closed beta: five live users.** Everything else is
+public-launch work (I-07/I-11/I-12) that only starts if the five users return ≥3/5.
