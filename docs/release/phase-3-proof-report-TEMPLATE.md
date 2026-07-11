@@ -29,7 +29,7 @@
 | **Database** | remote Supabase `<project-ref>` (service-role, SELECT for SQL pack) |
 | **Auth session** | authenticated as `<test user / org A>` |
 | **Second org** | `<org B, different owner>` (isolation checks) |
-| **Sentry** | ☐ DSNs set on Vercel · ☐ `monitoring.initialized/provider:sentry` seen · visibility check: [`phase-3-sentry-visibility-check.md`](./phase-3-sentry-visibility-check.md) `<PASS/FAIL>` |
+| **Sentry** | ☐ DSNs set on Netlify · ☐ `monitoring.initialized/provider:sentry` seen · visibility check: [`phase-3-sentry-visibility-check.md`](./phase-3-sentry-visibility-check.md) `<PASS/FAIL>` |
 | **SQL pack** | [`scripts/db/phase-3-money-invariants.sql`](../../scripts/db/phase-3-money-invariants.sql) |
 
 ---
