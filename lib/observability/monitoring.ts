@@ -40,15 +40,30 @@ export interface MonitoringContext {
 export interface MonitoringSink {
   captureException(error: unknown, context?: MonitoringContext): void;
   captureMessage(message: string, level: MonitoringLevel, context?: MonitoringContext): void;
+  /**
+   * Force queued events to be delivered, resolving when the transport drains (or
+   * `timeoutMs` elapses). Optional on an installed sink — the seam always exposes
+   * a concrete `flush` (a no-op resolves `true`). **Critical on serverless:** the
+   * platform can freeze the function the instant the response returns, dropping
+   * fire-and-forget captures before they leave the process. Callers at a request
+   * boundary flush before the function suspends. See `flush-after-response.ts`.
+   */
+  flush?(timeoutMs?: number): Promise<boolean>;
 }
 
-/** Default sink: does nothing. Active until a provider adapter is installed. */
-const noopSink: MonitoringSink = {
-  captureException() {},
-  captureMessage() {},
+/** The sink the seam hands out always has a concrete `flush`. */
+export type ActiveMonitoringSink = MonitoringSink & {
+  flush(timeoutMs?: number): Promise<boolean>;
 };
 
-let activeSink: MonitoringSink = noopSink;
+/** Default sink: does nothing. Active until a provider adapter is installed. */
+const noopSink: ActiveMonitoringSink = {
+  captureException() {},
+  captureMessage() {},
+  flush: () => Promise.resolve(true),
+};
+
+let activeSink: ActiveMonitoringSink = noopSink;
 
 /**
  * Returns the active monitoring sink. Today this is always the no-op sink.
@@ -57,7 +72,7 @@ let activeSink: MonitoringSink = noopSink;
  * That call is free until an adapter is installed, and starts forwarding to the
  * provider the moment one is — with no change at the call site.
  */
-export function getMonitoring(): MonitoringSink {
+export function getMonitoring(): ActiveMonitoringSink {
   return activeSink;
 }
 
@@ -81,7 +96,7 @@ export function isMonitoringConfigured(): boolean {
   return Boolean(process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN);
 }
 
-function guard(sink: MonitoringSink): MonitoringSink {
+function guard(sink: MonitoringSink): ActiveMonitoringSink {
   return {
     captureException(error, context) {
       try {
@@ -95,6 +110,15 @@ function guard(sink: MonitoringSink): MonitoringSink {
         sink.captureMessage(message, level, context);
       } catch {
         /* monitoring must never throw into the caller */
+      }
+    },
+    flush(timeoutMs) {
+      // A sink without its own flush (or a synchronous throw) must not break the
+      // caller: resolve truthily for the no-flush case, falsily on failure.
+      try {
+        return Promise.resolve(sink.flush?.(timeoutMs) ?? true).catch(() => false);
+      } catch {
+        return Promise.resolve(false);
       }
     },
   };

@@ -53,6 +53,43 @@ describe("monitoring seam", () => {
     expect(() => getMonitoring().captureMessage("x", "fatal")).not.toThrow();
   });
 
+  describe("flush", () => {
+    it("no-op sink resolves true", async () => {
+      await expect(getMonitoring().flush()).resolves.toBe(true);
+    });
+
+    it("delegates to an installed sink's flush", async () => {
+      const flush = vi.fn().mockResolvedValue(true);
+      setMonitoringSink({ captureException: vi.fn(), captureMessage: vi.fn(), flush });
+
+      await expect(getMonitoring().flush(1500)).resolves.toBe(true);
+      expect(flush).toHaveBeenCalledWith(1500);
+    });
+
+    it("resolves true when the installed sink has no flush of its own", async () => {
+      setMonitoringSink({ captureException: vi.fn(), captureMessage: vi.fn() });
+      await expect(getMonitoring().flush()).resolves.toBe(true);
+    });
+
+    it("resolves false instead of throwing when the provider flush rejects or throws", async () => {
+      setMonitoringSink({
+        captureException: vi.fn(),
+        captureMessage: vi.fn(),
+        flush: () => Promise.reject(new Error("transport down")),
+      });
+      await expect(getMonitoring().flush()).resolves.toBe(false);
+
+      setMonitoringSink({
+        captureException: vi.fn(),
+        captureMessage: vi.fn(),
+        flush: () => {
+          throw new Error("sync boom");
+        },
+      });
+      await expect(getMonitoring().flush()).resolves.toBe(false);
+    });
+  });
+
   it("setMonitoringSink(null) restores the no-op sink", () => {
     const captureException = vi.fn();
     setMonitoringSink({ captureException, captureMessage: vi.fn() });
