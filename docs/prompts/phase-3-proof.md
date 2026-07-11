@@ -29,7 +29,7 @@ Phase 4-5:** если продукт не проходят живые люди, 
    определён именно против «deployed authed environment» (см.
    `docs/release/p0-p1-issue-register.md` I-09).
 2. **Sentry живой на этом окружении.** `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN`
-   заданы в env проекта на Vercel (хвост Phase 2 — в `.env.local` их недостаточно).
+   заданы в env проекта на Netlify (хвост Phase 2 — в `.env.local` их недостаточно).
    Без этого `diagnosticId` из evidence не с чем коррелировать. Проверка: любой
    тестовый throw должен появиться в Sentry с тегом `event` и совпасть по
    `diagnosticId`/`digest` со структурной лог-строкой.

@@ -23,7 +23,7 @@ logger.error("documents.extraction.failed", { documentId, error: err.message });
 const log = logger.child({ scope: "extraction", documentId }); // bound fields
 ```
 
-- One JSON object per line → queryable in any drain (Vercel/Datadog/Logflare).
+- One JSON object per line → queryable in any drain (Netlify/Datadog/Logflare).
 - Event names are **stable, dotted, `noun.verb`** identifiers (see §3) so alerts
   can key off `event`, not off message text.
 - Levels: `debug` (dev only) · `info` (lifecycle) · `warn` (expected denial /

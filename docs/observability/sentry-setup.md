@@ -38,8 +38,10 @@ SENTRY_DSN=…              # server/edge; Node runtime only in this minimal set
 NEXT_PUBLIC_SENTRY_DSN=…  # exposed to the browser; client errors
 ```
 
-Both are set in `.env.local` (2026-07-10). Mirror them into Vercel project env for
-every environment that should report. Leave either blank to disable that side.
+Both are set in `.env.local` (2026-07-10) and in **Netlify** project env
+(Site configuration → Environment variables) for the deployed environment
+(2026-07-11). After adding them, trigger a redeploy so the new build picks them
+up. Leave either blank to disable that side.
 
 ---
 
@@ -57,11 +59,31 @@ Chosen to keep zero risk against this bleeding-edge Next 16 fork (`AGENTS.md`):
 - **`sendDefaultPii: false`** + the app's existing redaction (masked emails,
   redacted filenames). The seam does **not** redact — keep `context.fields` PII-safe.
 
+### Edge runtime coverage — decision (2026-07-11): stay unmonitored, by design
+
+`proxy.ts` (Next 16's renamed middleware) runs on the **Edge runtime**; on Netlify
+that is a **Deno** Edge Function, where `@sentry/node` cannot load. The proxy is
+thin — Supabase session refresh plus auth/route gating — and its failures surface
+as redirects or 5xx in Netlify's Edge Function logs. Proper edge capture would need
+Sentry's **Deno/edge** SDK, a separate effort that neither the current seam nor the
+Vercel-oriented `@sentry/nextjs` edge cleanly serves on Netlify. Everything with
+business/money logic (server actions, route handlers, RSC) runs on Node and **is**
+covered. **Decision: accept the edge no-op as a documented limitation; revisit only
+if edge errors become an observed blind spot** — do not re-architect the seam for it.
+
 ### If richer data is needed later → upgrade to `@sentry/nextjs`
 
 `@sentry/nextjs@^10` supports Next `^16`. To add source maps + tracing: install it,
 wrap `next.config.ts` with `withSentryConfig`, set `SENTRY_AUTH_TOKEN` + org/project,
 and replace the two `Sentry.init` calls. The seam/adapter stay as-is.
+
+> **Note (2026-07-11):** the `@sentry/nextjs` install wizard was run once and
+> **reverted** — it hardcoded the DSN in source, set `tracesSampleRate: 1`, added
+> throwaway example routes, and duplicated the seam's init while leaving its own
+> `sentry.*.config.ts` inert. The vendor-neutral seam is the deliberate choice;
+> adopt `@sentry/nextjs` only as an intentional migration, never via the wizard.
+> (On Netlify its edge support is Vercel-oriented and still would not cover the
+> Deno proxy — see the edge decision above.)
 
 ---
 

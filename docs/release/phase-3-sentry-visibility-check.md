@@ -14,8 +14,8 @@ correlate against, and Part A of Phase 3 is not evidence — it is an assertion.
 
 ## Precondition (Phase 2 tail — must be true on the deployed project, not `.env.local`)
 
-- [ ] `SENTRY_DSN` set in the Vercel project env (server).
-- [ ] `NEXT_PUBLIC_SENTRY_DSN` set in the Vercel project env (browser).
+- [ ] `SENTRY_DSN` set in the Netlify project env (server). *(set 2026-07-11)*
+- [ ] `NEXT_PUBLIC_SENTRY_DSN` set in the Netlify project env (browser). *(set 2026-07-11)*
 - [ ] Latest deploy picked up both (redeploy after setting env, if needed).
 
 Quick confirmation the seam initialised on the deployed server: the boot log line
@@ -24,7 +24,7 @@ Quick confirmation the seam initialised on the deployed server: the boot log lin
 {"event":"monitoring.initialized","provider":"sentry"}
 ```
 
-should appear in the deployment's runtime logs (Vercel → Logs). If it says
+should appear in the deployment's runtime logs (Netlify → Logs → Functions). If it says
 `"provider":"noop"` or is absent, the DSN is not wired — **stop**, fix env, and
 redeploy before running any smoke scenario.
 
