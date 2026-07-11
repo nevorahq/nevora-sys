@@ -163,6 +163,9 @@ export const MACHINE_ROUTES = [
   "/api/cron/trial-sweep",
   "/api/internal/activation-funnel",
   "/api/billing/webhook",
+  // TEMPORARY — Sentry deployed-smoke probe. Remove with app/api/internal/diag-sentry
+  // once docs/release/phase-3-sentry-visibility-check.md is signed off.
+  "/api/internal/diag-sentry",
 ] as const;
 
 export function isMachineRoute(pathname: string): boolean {
