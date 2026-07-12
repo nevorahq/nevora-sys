@@ -53,7 +53,10 @@ describe("isPublicRoute", () => {
   it("пропускает cron и внутренние метрики", () => {
     expect(isMachineRoute("/api/cron/reminders")).toBe(true);
     expect(isMachineRoute("/api/cron/suggestions-sweep")).toBe(true);
+    expect(isMachineRoute("/api/cron/purge-deleted-accounts")).toBe(true);
     expect(isMachineRoute("/api/internal/activation-funnel")).toBe(true);
+    // drift guard: the purge machine route must exist on disk
+    expect(existsSync("app/api/cron/purge-deleted-accounts/route.ts")).toBe(true);
   });
 
   it("пропускает webhook платёжного провайдера", () => {

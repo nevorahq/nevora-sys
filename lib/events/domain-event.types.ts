@@ -119,7 +119,8 @@ export type AggregateType =
   | "money_category_rule"
   | "planner_entry"
   | "planner_suggestion"
-  | "onboarding_progress";
+  | "onboarding_progress"
+  | "user_account";
 
 // ── Payload map — типизированный payload для каждого события ─────────────────
 // Добавляй новые события сюда по мере роста модулей.
@@ -701,6 +702,9 @@ export interface DomainEventPayloadMap {
     seconds_to_activation: number;
   };
   "onboarding.dismissed": { step: string };
+  "user.deletion_requested": { graceDays: number; soloOrganizations: number };
+  "user.deletion_cancelled": Record<string, never>;
+  "user.deletion_purged": Record<string, never>;
 }
 
 // ── Базовый тип записи domain_event из БД ────────────────────────────────────
