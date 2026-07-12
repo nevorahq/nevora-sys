@@ -19,10 +19,6 @@
     {
       "path": "/api/cron/trial-sweep",
       "schedule": "45 3 * * *"
-    },
-    {
-      "path": "/api/cron/purge-deleted-accounts",
-      "schedule": "0 4 * * *"
     }
   ]
 }

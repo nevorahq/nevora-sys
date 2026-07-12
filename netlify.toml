@@ -1,0 +1,11 @@
+# Netlify configuration.
+#
+# Build command, publish directory and the Next.js runtime stay configured in
+# the Netlify UI — this file intentionally does NOT redeclare them, so those UI
+# settings remain authoritative (Netlify merges this file per-key).
+#
+# Its only job is to declare where user-defined functions live, so the scheduled
+# account-purge function is picked up on deploy. The schedule itself is set in
+# the function via `export const config` (Netlify Functions v2), not here.
+[functions]
+  directory = "netlify/functions"
