@@ -8,7 +8,15 @@ the closed beta is **5 live users**. Public launch stays **No-Go** (I-07 outstan
 **Update 2026-07-11 (later):** critical-path items 1 (Sentry) and 2 (I-09) are now
 **DONE**. See [`phase-3-proof-report-2026-07-11.md`](./phase-3-proof-report-2026-07-11.md)
 (I-09, PRs #31/#32) and [`phase-3-sentry-visibility-check.md`](./phase-3-sentry-visibility-check.md).
+
+**Update 2026-07-12:** the paid-billing flip that follows the 5-user signal now has a
+code-grounded runbook — [`paid-beta-cutover-checklist.md`](./paid-beta-cutover-checklist.md)
+(PR #40). It gates the `private_beta → paid_beta` flip on ≥3/5 users, and folds in the
+public-launch blockers (I-07/I-11/I-12) plus the live Paddle sandbox pass. Nothing on the
+critical path changed — **5 live users is still the only remaining step**.
+
 **Related:** [`p0-p1-issue-register.md`](./p0-p1-issue-register.md) ·
+[`paid-beta-cutover-checklist.md`](./paid-beta-cutover-checklist.md) ·
 [`smoke-test-checklist.md`](./smoke-test-checklist.md) ·
 plan [`../project-workflows-and-beta-plan-2026-07-10.md`](../project-workflows-and-beta-plan-2026-07-10.md)
 
@@ -84,10 +92,10 @@ this is the last thing standing between here and the open closed-beta.
 
 | ID | Item | State |
 |---|---|---|
-| **I-07** | Rotate the leaked test key (`sk_test_`, never published) | **DEFERRED** to the Paddle-production cutover — still a public-launch blocker |
-| **I-11** | Run CI green on the **actual deploy commit** (not just in-PR) | CI job exists; deploy-commit run pending |
-| **I-12** | Replace placeholder landing contact channels with real ones | `TODO` |
-| — | Paddle paid billing: one end-to-end **sandbox** pass + a default payment link | only if the beta goes to paid (Phase 5); unit-proven, not run live |
+| **I-07** | Rotate the leaked test key (`sk_test_`, never published) | **DEFERRED** to the Paddle-production cutover — still a public-launch blocker ([cutover §5](./paid-beta-cutover-checklist.md)) |
+| **I-11** | Run CI green on the **actual deploy commit** (not just in-PR) | CI job exists; deploy-commit run pending ([cutover §5](./paid-beta-cutover-checklist.md)) |
+| **I-12** | Replace placeholder landing contact channels with real ones | `TODO` ([cutover §5](./paid-beta-cutover-checklist.md)) |
+| — | Paddle paid billing: one end-to-end **sandbox** pass + a default payment link | only if the beta goes to paid (Phase 5); unit-proven, not run live — full runbook in [`paid-beta-cutover-checklist.md`](./paid-beta-cutover-checklist.md) |
 
 ---
 
