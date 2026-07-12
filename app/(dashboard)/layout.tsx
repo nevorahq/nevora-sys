@@ -13,6 +13,8 @@ import { AccessStateProvider, ReadOnlyModeBanner } from "@/modules/billing/compo
 import { resolveAccountLimits } from "@/lib/billing";
 import { OrganizationSwitcher, getUserOrganizations } from "@/modules/members";
 import { getNotificationPreferences } from "@/modules/settings/notifications/queries/get-notification-preferences";
+import { getPendingAccountDeletion } from "@/modules/settings/queries/get-account-deletion-status";
+import { AccountDeletionBanner } from "@/modules/settings/components/AccountDeletionBanner";
 import { NotificationProvider } from "@/modules/notifications/components/notification-provider";
 import { getNotificationCounters } from "@/modules/notifications/queries/get-notification-counters";
 import { getUnreadNotifications } from "@/modules/notifications/queries/get-user-notifications";
@@ -47,7 +49,7 @@ export default async function DashboardLayout({
     requireOrg(),
     getDictionary(),
   ]);
-  const [trial, limits, accessState, userOrganizations, notificationPreferences, initialNotificationCounters, initialNotifications] = await Promise.all([
+  const [trial, limits, accessState, userOrganizations, notificationPreferences, initialNotificationCounters, initialNotifications, pendingDeletion] = await Promise.all([
     getTrialState(context.org.id),
     resolveAccountLimits(user.id, context.org.id),
     getOrganizationAccessState(context.org.id),
@@ -55,6 +57,7 @@ export default async function DashboardLayout({
     getNotificationPreferences(),
     getNotificationCounters(),
     getUnreadNotifications(),
+    getPendingAccountDeletion(),
   ]);
 
   return (
@@ -87,6 +90,7 @@ export default async function DashboardLayout({
             <main className="flex-1 p-6 md:p-8">
               {!limits.unlimitedAccess && <TrialBanner trial={trial} />}
               <ReadOnlyModeBanner />
+              {pendingDeletion && <AccountDeletionBanner purgeAfter={pendingDeletion.purgeAfter} />}
               {children}
             </main>
           </div>

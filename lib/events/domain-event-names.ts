@@ -27,6 +27,7 @@ export const DOMAIN_EVENT_NAMES = [
   "planner_suggestion.created", "planner_suggestion.accepted", "planner_suggestion.edited", "planner_suggestion.rejected", "planner_suggestion.failed", "planner_suggestion.expired",
   "onboarding.first_action_selected", "onboarding.first_action_completed", "onboarding.first_workflow_completed", "onboarding.dismissed",
   "org.created", "org.updated", "member.invited", "member.joined", "member.removed", "member.role_changed", "workspace.created",
+  "user.deletion_requested", "user.deletion_cancelled", "user.deletion_purged",
   "booking.requested", "booking.request.accepted", "booking.request.rejected", "booking.request.canceled", "booking.host_profile.created", "booking.host_profile.updated", "booking.service.created", "booking.availability.updated", "crm.lead.created_from_booking", "booking.request.linked_to_crm_lead",
   "relation.created", "relation.deleted", "relation.updated", "relation.auto_created", "relation.suggested", "relation.confirmed", "relation.rejected", "relation.unlinked",
   "action_item.created", "action_item.assigned", "action_item.snoozed", "action_item.resolved", "action_item.dismissed", "action_item.executed", "action_item.failed", "action_item.restored",

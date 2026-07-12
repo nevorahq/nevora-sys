@@ -92,4 +92,10 @@ export interface SettingsActionState {
   error?: string;
   fieldErrors?: Record<string, string[]>;
   portalUrl?: string;
+  /**
+   * Set when account deletion is refused because the user is the sole owner of
+   * one or more shared organizations. The UI lists them so the user knows what
+   * to resolve (transfer ownership / remove members) first.
+   */
+  blockingOrgs?: { name: string; otherActiveMembers: number }[];
 }
