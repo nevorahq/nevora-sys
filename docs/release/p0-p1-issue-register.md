@@ -53,3 +53,7 @@ closure, with owner and state. Public launch stays **No-Go** while any P0/P1 is 
   **I-07** (payment test-key rotation, **deferred** 2026-07-10 to the Paddle-
   production cutover). Until I-07 is closed, public launch is **No-Go**; **private
   beta** is viable (and now has full I-09 evidence behind it).
+- **Paid-billing cutover (2026-07-12):** the `private_beta → paid_beta` flip and its
+  ride-along public-launch blockers (I-07/I-11/I-12) are captured in the runbook
+  [`paid-beta-cutover-checklist.md`](./paid-beta-cutover-checklist.md) (PR #40). The
+  flip is gated on the 5-user signal (≥3/5); it does not start before then.
