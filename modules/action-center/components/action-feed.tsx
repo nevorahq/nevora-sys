@@ -30,8 +30,6 @@ interface ActionFeedProps {
   members: { id: string; name: string }[];
   currentUserId: string;
   firstRunDict: Dictionary["firstRun"];
-  /** False while the wizard is on screen — it already shows the first actions. */
-  showFirstActions: boolean;
   /** Shown when a filter hides everything, which is not an activation moment. */
   noMatchesLabel: string;
 }
@@ -59,7 +57,6 @@ export function ActionFeed({
   members,
   currentUserId,
   firstRunDict,
-  showFirstActions,
   noMatchesLabel,
 }: ActionFeedProps) {
   const router = useRouter();
@@ -261,12 +258,12 @@ export function ActionFeed({
         </div>
       )}
 
-      {/* Phase B / B6: an empty feed used to render nothing at all — the primary
-          operating screen looked broken. An activation prompt only when the user
-          has not filtered anything away. */}
+      {/* An empty feed is not an activation moment: the Action Center owns
+          attention, not creation. A neutral acknowledgement when nothing needs
+          review; the "no matches" line only when a filter hid everything. */}
       {totalActive === 0 &&
         (isUnfiltered(filters) ? (
-          <ActionEmptyState dict={firstRunDict} showFirstActions={showFirstActions} />
+          <ActionEmptyState dict={firstRunDict} />
         ) : (
           <p className="rounded-(--neu-radius) bg-surface-sunken px-4 py-10 text-center text-sm text-text-muted">
             {noMatchesLabel}

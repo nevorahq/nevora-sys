@@ -67,6 +67,51 @@ describe("getAvailableActions", () => {
     expect(memberTask.some((a) => a.executeKind === "delete_task")).toBe(false);
   });
 
+  it("planner-backed ai_suggestion opens the exact Inbox review, never a generic task draft", () => {
+    const actions = getAvailableActions(
+      {
+        type: "ai_suggestion",
+        status: "open",
+        source_type: "ai",
+        primary_entity_type: "planner_suggestion",
+        primary_entity_id: "sugg-1",
+        metadata: { source: "planner", planner_entry_id: "entry-1", suggestion_type: "create_task" },
+      },
+      adminPerms,
+    );
+    // The generic execute path must NOT be offered for a capture-origin signal.
+    expect(actions.some((a) => a.executeKind === "create_task_draft")).toBe(false);
+    // Instead: a link straight to the suggestion's Review card.
+    const link = actions.find((a) => a.kind === "link");
+    expect(link).toBeDefined();
+    expect(link?.href).toBe("/dashboard/inbox?tab=review&suggestion=sugg-1");
+  });
+
+  it("planner missing-information (failed capture) opens the Inbox, not a task draft", () => {
+    const actions = getAvailableActions(
+      {
+        type: "missing_information",
+        status: "open",
+        source_type: "ai",
+        primary_entity_type: "planner_entry",
+        primary_entity_id: "entry-9",
+        metadata: { source: "planner", planner_entry_id: "entry-9" },
+      },
+      adminPerms,
+    );
+    expect(actions.some((a) => a.executeKind === "create_task_draft")).toBe(false);
+    expect(actions.find((a) => a.kind === "link")?.href).toBe("/dashboard/inbox");
+  });
+
+  it("non-planner AI signal keeps its generic task-draft action", () => {
+    const actions = getAvailableActions(
+      { type: "ai_suggestion", status: "open", source_type: "ai", primary_entity_type: "subscription", primary_entity_id: "sub-1" },
+      adminPerms,
+    );
+    expect(actions.some((a) => a.executeKind === "create_task_draft")).toBe(true);
+    expect(actions.some((a) => a.kind === "link")).toBe(false);
+  });
+
   it("снуз доступен только из open", () => {
     const inProgress = getAvailableActions({ type: "due_soon", status: "in_progress", source_type: "task" }, memberPerms);
     expect(inProgress.some((a) => a.kind === "snooze")).toBe(false);

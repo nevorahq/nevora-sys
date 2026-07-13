@@ -1,43 +1,27 @@
-"use client";
-
 import { CheckCircle2Icon } from "lucide-react";
-import { EmptyState } from "@/shared/ui/empty-state";
-import { FirstActionCta } from "@/modules/onboarding/components/first-action-cta";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface ActionEmptyStateProps {
   dict: Dictionary["firstRun"];
-  /**
-   * Suppressed while the First Action Wizard is on screen — it already offers the
-   * four first actions right above, and showing them twice would read as a bug.
-   */
-  showFirstActions: boolean;
 }
 
 /**
- * The Action Center with nothing in it (Phase B / B6).
+ * The Action Center with nothing in it.
  *
- * Until now this component existed but had no caller: an empty feed rendered
- * literally nothing, which is the worst kind of dead end — the primary operating
- * screen looked broken. It now offers the two cheapest ways to start the loop.
- *
- * Phase B edge case #6: the first actions stay reachable from here once the wizard
- * is finished or skipped.
+ * Ownership contract (Universal Capture beta): the Action Center owns *attention*,
+ * not creation. An empty feed is not an activation moment, so this is a compact,
+ * neutral acknowledgement — no Upload / Capture / Create CTAs, no First Action
+ * Wizard. Creation lives in the Inbox and the owning modules; when work needs
+ * review it appears here on its own.
  */
-export function ActionEmptyState({ dict, showFirstActions }: ActionEmptyStateProps) {
+export function ActionEmptyState({ dict }: ActionEmptyStateProps) {
   return (
-    <EmptyState
-      icon={<CheckCircle2Icon size={24} className="text-accent-green" strokeWidth={1.5} />}
-      title={dict.empty.actionsTitle}
-      description={dict.empty.actionsBody}
-      actions={
-        showFirstActions ? (
-          <>
-            <FirstActionCta action="upload_document" label={dict.uploadDocument} />
-            <FirstActionCta action="capture_inbox_item" label={dict.captureInboxItem} variant="secondary" />
-          </>
-        ) : undefined
-      }
-    />
+    <div className="flex items-center gap-3 rounded-(--neu-radius) bg-surface-sunken px-4 py-8 text-center sm:justify-center">
+      <CheckCircle2Icon size={18} className="shrink-0 text-accent-green" strokeWidth={1.5} />
+      <div className="text-left">
+        <p className="text-sm font-medium text-text-primary">{dict.empty.actionsTitle}</p>
+        <p className="mt-0.5 text-xs text-text-muted">{dict.empty.actionsBody}</p>
+      </div>
+    </div>
   );
 }

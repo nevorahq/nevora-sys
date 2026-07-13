@@ -75,6 +75,50 @@ never roll back the user's decision.
 - On accept/reject → active items for those source ids are set to `resolved`.
 - Idempotency comes free from the existing `action_items` unique dedup index.
 
+**Ownership (Universal Capture beta):** the Action Center owns *attention*, not
+creation. A planner-backed signal (`primary_entity_type = planner_suggestion |
+planner_entry`, or `metadata.source = 'planner'`) offers **Open review** — a link
+to `/dashboard/inbox?tab=review&suggestion=<id>` — and **never** the generic
+`create_task_draft` execute path (that would fork the capture into an unrelated
+task). Generic non-planner AI signals keep `create_task_draft`. See
+`action-visibility-service.ts` (`isPlannerSignal` / `buildPlannerReviewHref`).
+The Action Center empty state is a neutral acknowledgement with no creation CTA;
+the First Action Wizard now lives on the Inbox page, not on `/dashboard`.
+
+## Universal Capture — photo & document (migration 105)
+
+Inbox now captures binary files, not just text. The composer
+(`inbox-capture-composer.tsx`) has **Text / Photo / Document** modes; Text is
+unchanged (Server Action). Photo/Document POST multipart to `/api/inbox/capture`.
+
+Flow (`captureInboxDocument`):
+
+1. Client generates a stable `captureId` (UUID) and submits files + optional note.
+2. The route checks planner + document permissions and billing/quota **before**
+   any storage write (permission/quota denial ⇒ no partial records).
+3. The **shared Documents upload service** (`createDocumentWithAttachments`) owns
+   storage, validation, rollback, events, audit and extraction enqueue. The
+   Documents dashboard route (`/api/documents/upload`) is now a thin adapter over
+   the same service — Planner never copies the upload loop.
+4. Exactly one sourced `planner_entry` is created/reused (`source = document`,
+   `source_document_id`, `entry_type = photo|document`).
+5. Readable files (PDF/PNG/JPG/JPEG/WEBP) run the existing extraction pipeline;
+   unreadable ones (DOCX/HEIC/HEIF) are stored and fail fast into an **honest**
+   manual-review state — never a faked "understood".
+6. The Inbox card shows a live capture state (processing / review ready / needs
+   manual review / failed) derived from the linked Document's extraction.
+
+**Idempotency (migration 105):** `documents.inbox_capture_id` is UNIQUE per
+`(org, creator)` and `planner_entries` is UNIQUE per `(org, owner,
+source_document_id)`. One retry therefore yields exactly one Document, one entry,
+one suggestion and one Action Center item. A Document that stored but whose
+planner link failed is **never deleted** — `reconcileInboxDocumentCaptures`
+(run on Inbox render, best-effort) finishes the link on the next visit.
+
+**Money safety:** the binary path has no route to `money_transactions` either.
+Extraction may raise a reviewable financial draft, but only an explicit user
+confirmation posts a transaction.
+
 ## AI safety rules
 
 1. AI output **never** creates a business entity — only schema-validated
@@ -111,6 +155,10 @@ defense-in-depth backstop against a spoofed payload. No service role is used.
 ## Future improvements
 
 - Today / Goals aggregation tabs (over existing tasks/action_items/projects).
-- File / photo capture via the documents module + obligation flow.
+- ~~File / photo capture via the documents module + obligation flow.~~ ✅ Done
+  (Universal Capture beta, migration 105 — see section above).
 - Background (cron/event) processing instead of synchronous on-capture detection.
+- Move the onboarding funnel and Inbox capture reconcile off render-time and onto
+  domain events (currently pull-based on the Inbox render, relocated off the
+  Action Center render).
 - Reuse document/project create paths for the currently-refused types.

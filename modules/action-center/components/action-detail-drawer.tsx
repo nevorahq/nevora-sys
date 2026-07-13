@@ -249,6 +249,21 @@ export function ActionDetailDrawer({ itemId, members, currentUserId, onClose, on
               {detail.availableActions
                 .filter((a) => a.kind !== "assign")
                 .map((a) => {
+                  // A `link` action just navigates (e.g. to the exact Inbox
+                  // review) — no gate, no mutation. Closing the drawer first
+                  // keeps focus from returning to a now-unmounted control.
+                  if (a.kind === "link" && a.href) {
+                    return (
+                      <Link
+                        key={`link-${a.href}`}
+                        href={a.href}
+                        onClick={onClose}
+                        className="inline-flex items-center justify-center gap-2 rounded-(--neu-radius-pill) bg-text-primary px-5 py-2.5 text-sm font-semibold leading-none tracking-wide text-text-inverse shadow-neu-control transition-all hover:shadow-neu-card active:scale-[0.98]"
+                      >
+                        {a.label}
+                      </Link>
+                    );
+                  }
                   const gate = a.kind === "execute" ? executeGate : writeGate;
                   return (
                     <RestrictedActionTooltip key={`${a.kind}-${a.executeKind ?? ""}`} message={gate.blocked ? gate.message : a.label}>

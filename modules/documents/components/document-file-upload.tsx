@@ -20,6 +20,12 @@ interface DocumentFileUploadProps {
   cameraLabel?: string;
   filesLabel?: string;
   removeLabel?: string;
+  /**
+   * Hide the camera button when the surrounding surface already offers a
+   * dedicated photo mode (the Inbox composer's Document tab). Defaults to true —
+   * the Documents screen keeps both entry points.
+   */
+  showCamera?: boolean;
 }
 
 export function DocumentFileUpload({
@@ -32,6 +38,7 @@ export function DocumentFileUpload({
   cameraLabel = "Take a photo",
   filesLabel = "Add files",
   removeLabel = "Remove",
+  showCamera = true,
 }: DocumentFileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -44,26 +51,30 @@ export function DocumentFileUpload({
         <p className="mt-1 text-xs text-text-muted">{description}</p>
       </div>
 
-      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <Button type="button" variant="secondary" className="min-h-11" onClick={() => cameraInputRef.current?.click()}>
-          <CameraIcon size={17} /> {cameraLabel}
-        </Button>
+      <div className={`mt-3 grid grid-cols-1 gap-2 ${showCamera ? "sm:grid-cols-2" : ""}`}>
+        {showCamera && (
+          <Button type="button" variant="secondary" className="min-h-11" onClick={() => cameraInputRef.current?.click()}>
+            <CameraIcon size={17} /> {cameraLabel}
+          </Button>
+        )}
         <Button type="button" variant="secondary" className="min-h-11" onClick={() => fileInputRef.current?.click()}>
           <PaperclipIcon size={17} /> {filesLabel}
         </Button>
       </div>
 
-      <input
-        ref={cameraInputRef}
-        className="sr-only"
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={(event) => {
-          onAddFiles(event.target.files);
-          event.currentTarget.value = "";
-        }}
-      />
+      {showCamera && (
+        <input
+          ref={cameraInputRef}
+          className="sr-only"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={(event) => {
+            onAddFiles(event.target.files);
+            event.currentTarget.value = "";
+          }}
+        />
+      )}
       <input
         ref={fileInputRef}
         className="sr-only"

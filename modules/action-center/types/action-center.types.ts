@@ -66,8 +66,11 @@ export interface ActionDetail {
   availableActions: AvailableAction[];
 }
 
-/** Виды quick action. */
-export type QuickActionKind = "resolve" | "dismiss" | "snooze" | "assign" | "execute";
+/**
+ * Виды quick action. `link` не мутирует — навигация на источник обзора
+ * (например, точная карточка suggestion в Inbox Review), а не execute.
+ */
+export type QuickActionKind = "resolve" | "dismiss" | "snooze" | "assign" | "execute" | "link";
 
 /** Дескриптор доступного действия для UI (permission-aware). */
 export interface AvailableAction {
@@ -78,4 +81,6 @@ export interface AvailableAction {
   requiresConfirmation: boolean;
   /** Permission, нужный для выполнения. */
   permission: string;
+  /** Only for kind='link': the in-app destination (e.g. the exact Inbox review). */
+  href?: string;
 }
