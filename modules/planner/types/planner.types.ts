@@ -165,8 +165,17 @@ export interface PlannerIntentDetectionResult {
 export const INBOX_TABS = ["inbox", "review"] as const;
 export type InboxTab = (typeof INBOX_TABS)[number];
 
+/**
+ * Live state of a document/photo capture, derived from its linked Document's
+ * extraction job. Text captures carry null. Honest by construction: an unreadable
+ * file surfaces as `needs_review`, never a fake "understood".
+ */
+export type DocumentCaptureState = "processing" | "review_ready" | "needs_review" | "failed";
+
 export interface PlannerEntryWithSuggestions extends PlannerEntry {
   suggestions: PlannerSuggestion[];
+  /** Set for document/photo captures once their extraction state is known. */
+  captureState?: DocumentCaptureState | null;
 }
 
 /** The subset of a capture the review UI needs to answer "why was this proposed?". */

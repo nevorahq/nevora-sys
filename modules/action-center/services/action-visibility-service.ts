@@ -14,7 +14,7 @@ import type { AvailableAction } from "../types/action-center.types";
 const TERMINAL: ActionItemStatus[] = ["resolved", "dismissed", "cancelled"];
 
 export function getAvailableActions(
-  item: Pick<ActionItem, "type" | "status" | "source_type"> & Partial<Pick<ActionItem, "metadata" | "primary_entity_type">>,
+  item: Pick<ActionItem, "type" | "status" | "source_type"> & Partial<Pick<ActionItem, "metadata" | "primary_entity_type" | "primary_entity_id">>,
   permissions: ReadonlySet<string>,
 ): AvailableAction[] {
   const actions: AvailableAction[] = [];
@@ -36,8 +36,22 @@ export function getAvailableActions(
       actions.push({ kind: "assign", label: "Assign", requiresConfirmation: false, permission: "action_center.assign" });
     }
 
-    // ── Safe execute: create task draft из сигнала ────────
-    if (
+    // ── Planner signals: open the exact Inbox review, never a generic draft ──
+    // A capture-origin item (Inbox → AI suggestion) owns its own review surface.
+    // Materializing a second, unrelated `create_task_draft` here would fork the
+    // workflow and break the "capture → review → confirm" loop, so we route back
+    // to the original suggestion instead (design: Action Center owns attention,
+    // not creation).
+    if (has("action_center.execute") && isPlannerSignal(item)) {
+      actions.push({
+        kind: "link",
+        label: "Open review",
+        href: buildPlannerReviewHref(item),
+        requiresConfirmation: false,
+        permission: "action_center.execute",
+      });
+    } else if (
+      // ── Safe execute: create task draft из сигнала (non-planner AI only) ──
       has("action_center.execute") &&
       (item.type === "ai_suggestion" || item.type === "missing_relation" || item.type === "follow_up_required")
     ) {
@@ -167,4 +181,22 @@ function isPlannerAction(
   if (item.primary_entity_type === "planner_entry" || item.primary_entity_type === "planner_suggestion") return true;
   const metadata = item.metadata;
   return metadata?.source === "planner" || typeof metadata?.planner_entry_id === "string";
+}
+
+/** A capture-origin signal whose real home is the Inbox review, not a task draft. */
+const isPlannerSignal = isPlannerAction;
+
+/**
+ * The exact Inbox destination for a planner signal. A materialized suggestion
+ * deep-links its Review card (`?tab=review&suggestion=<id>`); a low-confidence /
+ * failed capture (primary entity is the entry itself) opens the Inbox list where
+ * the capture is shown with its manual-review state.
+ */
+function buildPlannerReviewHref(
+  item: Partial<Pick<ActionItem, "primary_entity_type" | "primary_entity_id">>,
+): string {
+  if (item.primary_entity_type === "planner_suggestion" && item.primary_entity_id) {
+    return `/dashboard/inbox?tab=review&suggestion=${item.primary_entity_id}`;
+  }
+  return "/dashboard/inbox";
 }

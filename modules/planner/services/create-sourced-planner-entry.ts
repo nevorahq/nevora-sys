@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { emitDomainEvent } from "@/lib/events";
-import { PLANNER_ENTRY_COLUMNS, type PlannerEntry } from "../types/planner.types";
+import { PLANNER_ENTRY_COLUMNS, type PlannerEntry, type PlannerEntryType } from "../types/planner.types";
 
 /**
  * The four business entities that may seed a capture. Each maps to the matching
@@ -36,10 +36,21 @@ export interface CreateSourcedPlannerEntryInput {
   entity: PlannerEntrySourceEntity;
   /** Human-readable label of the source entity; becomes the capture's raw_text. */
   summary: string;
+  /**
+   * Shape of the capture. Defaults to 'document' for a document source and 'text'
+   * otherwise. Inbox photo capture passes 'photo'.
+   */
+  entryType?: PlannerEntryType;
+  /**
+   * Initial status. Defaults to 'suggested' (the caller attaches a deterministic
+   * suggestion straight away). Document/photo captures that hand off to the
+   * extraction pipeline pass 'processing'.
+   */
+  status?: PlannerEntry["status"];
 }
 
 export type CreateSourcedPlannerEntryResult =
-  | { ok: true; entry: PlannerEntry }
+  | { ok: true; entry: PlannerEntry; reused: boolean }
   | { ok: false; error: string };
 
 /**
@@ -59,6 +70,8 @@ export async function createSourcedPlannerEntry(
   input: CreateSourcedPlannerEntryInput,
 ): Promise<CreateSourcedPlannerEntryResult> {
   const { entity, summary } = input;
+  const entryType = input.entryType ?? (entity.kind === "document" ? "document" : "text");
+  const sourceColumn = SOURCE_COLUMN[entity.kind];
   const id = randomUUID();
 
   const { data, error } = await supabase
@@ -70,15 +83,28 @@ export async function createSourcedPlannerEntry(
       created_by: ctx.user.id,
       owner_user_id: ctx.user.id,
       raw_text: summary.trim() || null,
-      entry_type: entity.kind === "document" ? "document" : "text",
+      entry_type: entryType,
       source: ENTRY_SOURCE[entity.kind],
-      status: "suggested",
-      [SOURCE_COLUMN[entity.kind]]: entity.id,
+      status: input.status ?? "suggested",
+      [sourceColumn]: entity.id,
     })
     .select(PLANNER_ENTRY_COLUMNS)
     .single();
 
   if (error || !data) {
+    // A document source is unique per (org, owner, source_document_id) since
+    // migration 105. A retry or a crash-recovery reconcile collides here — reuse
+    // the entry that already exists instead of reporting a failure.
+    if (error?.code === "23505") {
+      const { data: existing } = await supabase
+        .from("planner_entries")
+        .select(PLANNER_ENTRY_COLUMNS)
+        .eq("organization_id", ctx.org.id)
+        .eq("owner_user_id", ctx.user.id)
+        .eq(sourceColumn, entity.id)
+        .maybeSingle();
+      if (existing) return { ok: true, entry: existing as PlannerEntry, reused: true };
+    }
     console.error("[createSourcedPlannerEntry] insert failed:", error?.message);
     return { ok: false, error: "Failed to capture entry" };
   }
@@ -92,5 +118,5 @@ export async function createSourcedPlannerEntry(
     payload: { entry_type: data.entry_type, source: data.source },
   });
 
-  return { ok: true, entry: data as PlannerEntry };
+  return { ok: true, entry: data as PlannerEntry, reused: false };
 }

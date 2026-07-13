@@ -81,7 +81,6 @@ const props = {
   members: [],
   currentUserId: "user-1",
   firstRunDict: en.firstRun,
-  showFirstActions: true,
   noMatchesLabel: en.common.noMatches,
 };
 
@@ -134,20 +133,13 @@ describe("ActionFeed — Phase B sections", () => {
     expect(screen.getByText("Restore")).toBeDefined();
   });
 
-  it("turns an empty feed into an activation prompt instead of a blank screen", () => {
+  it("shows a neutral acknowledgement on an empty feed — no creation CTA (Action Center owns attention, not creation)", () => {
     render(<ActionFeed initialFeed={feed()} {...props} />);
 
-    // Before Phase B an empty feed rendered literally nothing.
     expect(screen.getByText(en.firstRun.empty.actionsTitle)).toBeDefined();
-    expect(screen.getByText(en.firstRun.uploadDocument)).toBeDefined();
-    expect(screen.getByText(en.firstRun.captureInboxItem)).toBeDefined();
-  });
-
-  it("does not duplicate the first actions while the wizard is on screen", () => {
-    render(<ActionFeed initialFeed={feed()} {...props} showFirstActions={false} />);
-
-    expect(screen.getByText(en.firstRun.empty.actionsTitle)).toBeDefined();
+    // The Action Center must never offer a way to create data.
     expect(screen.queryByText(en.firstRun.uploadDocument)).toBeNull();
+    expect(screen.queryByText(en.firstRun.captureInboxItem)).toBeNull();
   });
 
   it("orders a draft above a higher-scoring capture inside Needs your review", () => {
