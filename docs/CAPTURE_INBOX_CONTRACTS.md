@@ -75,15 +75,33 @@ never roll back the user's decision.
 - On accept/reject → active items for those source ids are set to `resolved`.
 - Idempotency comes free from the existing `action_items` unique dedup index.
 
-**Ownership (Universal Capture beta):** the Action Center owns *attention*, not
-creation. A planner-backed signal (`primary_entity_type = planner_suggestion |
-planner_entry`, or `metadata.source = 'planner'`) offers **Open review** — a link
-to `/dashboard/inbox?tab=review&suggestion=<id>` — and **never** the generic
-`create_task_draft` execute path (that would fork the capture into an unrelated
-task). Generic non-planner AI signals keep `create_task_draft`. See
-`action-visibility-service.ts` (`isPlannerSignal` / `buildPlannerReviewHref`).
-The Action Center empty state is a neutral acknowledgement with no creation CTA;
-the First Action Wizard now lives on the Inbox page, not on `/dashboard`.
+**Ownership (Inbox / Action-Center split):** the Action Center is **read-only** —
+it owns *attention and routing*, never mutation. It no longer confirms, resolves,
+dismisses, snoozes, assigns, executes, or deletes anything from its UI; those
+controls (and the interactive feed + detail drawer) were removed. Each Attention
+row instead offers a single navigation to its owning module, resolved by the pure
+`getActionItemDestination(item)`:
+
+- planner suggestion / entry → `/dashboard/inbox?tab=review&suggestion=<id>`
+  (the exact Inbox Review);
+- task → `/dashboard/tasks/<id>`; transaction → `/dashboard/money/<id>`;
+  subscription → `/dashboard/subscriptions/<id>`; document → `/dashboard/documents/<id>`;
+- unknown / deleted source → plain text, never a broken link.
+
+The six summary cards are accessible **filter buttons** over the read-only
+Attention list: selecting one writes `?filter=<key>` to the URL, and the card
+count and the filtered list share one predicate contract
+(`services/attention-filter.ts`), so a card's number always matches its list.
+`action_items` remain the "what needs attention" projection; `domain_events` (the
+Activity Log) remain the separate "what happened" history — never mixed.
+
+Capture-derived review lives in the **Inbox**, not the Action Center: planner
+suggestions (text/photo/document) via `SuggestionReviewActions`, and a captured
+document's extracted expense draft (`financial_suggestions`, `waiting_confirmation`)
+via the reused `DocumentExtractionReview` + review Server Actions
+(`getInboxDocumentReviews`). The Action Center is never a second confirm surface.
+The Action Center backend actions/executors are retained but unused by its UI (see
+report); the First Action Wizard lives on the Inbox page, not on `/dashboard`.
 
 ## Universal Capture — photo & document (migration 105)
 

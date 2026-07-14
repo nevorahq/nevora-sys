@@ -3,7 +3,9 @@ import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { FirstActionWizard, getWizardState } from "@/modules/onboarding";
+import { DocumentExtractionReview } from "@/modules/documents/components/document-extraction-review";
 import { getInboxDashboardData } from "../queries/get-inbox-dashboard-data";
+import { getInboxDocumentReviews } from "../queries/get-inbox-document-reviews";
 import { reconcileInboxDocumentCaptures } from "../services/capture-inbox-document";
 import { InboxCaptureComposer } from "./inbox-capture-composer";
 import { InboxTabs } from "./inbox-tabs";
@@ -56,27 +58,41 @@ export async function InboxPage({ initialTab = "inbox", focusSuggestionId = null
   // attention only). Fails soft: a broken funnel row never takes the Inbox down.
   const wizard = await getWizardState(supabase, ctx);
 
-  const data = await getInboxDashboardData(ctx);
+  const [data, documentReviews] = await Promise.all([
+    getInboxDashboardData(ctx),
+    getInboxDocumentReviews(supabase, ctx),
+  ]);
   const canUpdateEntries = canDo(ctx, "planner.entry.update");
   const canDeleteEntries = canDo(ctx, "planner.entry.delete");
+  const canConfirmFinancial = canDo(ctx, "data.write");
+  const reviewCount = data.counts.pending + documentReviews.length;
 
-  const reviewSlot =
-    data.pendingDrafts.length > 0 ? (
-      <div className="flex flex-col gap-3">
-        {data.pendingDrafts.map(({ suggestion, entry }) => (
-          // The anchor id lets a deep-linked Action Center signal scroll to and
-          // highlight its exact Review card (see InboxTabs focus handling).
-          <div key={suggestion.id} id={`suggestion-${suggestion.id}`} className="soft-card scroll-mt-24 p-4">
-            {/* The Review tab is the confirm surface, so it carries the B3 panel. */}
-            <PlannerSuggestionCard suggestion={suggestion} entry={entry} showExplanation dict={dict} />
-          </div>
-        ))}
-      </div>
-    ) : (
-      <div className="soft-card p-8 text-center text-sm text-text-tertiary">
-        {dict.reviewEmpty}
-      </div>
-    );
+  const hasReviews = data.pendingDrafts.length > 0 || documentReviews.length > 0;
+  const reviewSlot = hasReviews ? (
+    <div className="flex flex-col gap-3">
+      {data.pendingDrafts.map(({ suggestion, entry }) => (
+        // The anchor id lets a deep-linked Action Center signal scroll to and
+        // highlight its exact Review card (see InboxTabs focus handling).
+        <div key={suggestion.id} id={`suggestion-${suggestion.id}`} className="soft-card scroll-mt-24 p-4">
+          {/* The Review tab is the confirm surface, so it carries the B3 panel. */}
+          <PlannerSuggestionCard suggestion={suggestion} entry={entry} showExplanation dict={dict} />
+        </div>
+      ))}
+
+      {/* Capture-derived financial reviews: a document captured in the Inbox whose
+          extraction produced an expense draft is confirmed here, reusing the
+          Documents review UI + review Server Actions (money-safe, no duplication). */}
+      {documentReviews.map(({ documentId, state }) => (
+        <div key={documentId} id={`document-${documentId}`} className="scroll-mt-24">
+          <DocumentExtractionReview documentId={documentId} state={state} canConfirm={canConfirmFinancial} />
+        </div>
+      ))}
+    </div>
+  ) : (
+    <div className="soft-card p-8 text-center text-sm text-text-tertiary">
+      {dict.reviewEmpty}
+    </div>
+  );
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -91,7 +107,7 @@ export async function InboxPage({ initialTab = "inbox", focusSuggestionId = null
 
       <InboxTabs
         dict={dict}
-        pendingCount={data.counts.pending}
+        pendingCount={reviewCount}
         initialTab={initialTab}
         focusSuggestionId={focusSuggestionId}
         inboxSlot={

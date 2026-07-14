@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { isPausedModuleEnabled } from "@/shared/config/paused-modules";
 import { computePriority } from "./priority-engine";
+import { reconcileStaleActionItems } from "./reconcile-stale-action-items";
 import { deliverNotification } from "@/modules/notifications/delivery/notification-delivery";
 import type { NotificationCategory, NotificationPriority } from "@/modules/notifications/types";
 import type {
@@ -51,6 +52,16 @@ export async function syncActionItems(
   ctx: CurrentContext,
 ): Promise<{ created: number }> {
   const orgId = ctx.org.id;
+
+  // Repair net (runs every sync / Refresh): close items whose source is now
+  // terminal but had no synchronous closer — most importantly a task marked done,
+  // or any source deleted under an open signal. Best-effort; it never throws. In a
+  // read-only Action Center this is what keeps stale items from piling up where the
+  // user can no longer clear them by hand — but owning services still close their
+  // own items synchronously, so this is a backstop, not the primary mechanism.
+  await reconcileStaleActionItems(supabase, ctx).catch((e) =>
+    console.error("[syncActionItems] reconcile failed:", e),
+  );
 
   // Существующие активные ключи (любой статус, пока deleted_at IS NULL).
   const { data: existing } = await supabase

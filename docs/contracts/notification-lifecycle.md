@@ -53,15 +53,24 @@ workspace. The unread badge goes to zero; the Action Center does not.
 | **Means** | "something happened" | "something needs you" |
 | **Ends when** | user reads it | user resolves the underlying business state |
 | **State lives in** | `notifications.read_at` | `todos`, `subscriptions`, `money_transactions`, `action_items` |
-| **Cleared by** | Mark as read | Confirm / pay / complete / dismiss the item |
-| **Surface** | bell / toast / push | Action Center (`/dashboard`) |
+| **Cleared by** | Mark as read | Confirm / pay / complete the item in its owning module |
+| **Surface** | bell / toast / push | Action Center (`/dashboard`), read-only |
 
-An action item is resolved only through the Action Center's own transitions
-(`resolve` / `dismiss` / `execute` / `snooze`), each of which writes
-`action_items.status` and emits a domain event. `resolve` and `dismiss` are
-distinct: dismiss means "not relevant", not "handled".
+An action item is resolved by acting on the underlying business state in the
+**owning module**, never in the Action Center — which is now read-only and owns
+*attention and routing*, not mutation. The closer runs in the owning service:
 
-Snoozing hides an item until `snoozed_until`. It does not resolve it.
+- planner suggestion accept / reject → `resolvePlannerActionItems`;
+- document / financial suggestion confirm / reject (in Inbox Review or Documents)
+  → `resolve/dismissSuggestionActionItems`;
+- transaction post / reject, subscription cancel → their own services;
+- task done / deleted, or any source deleted → `reconcileStaleActionItems`, the
+  best-effort repair net run by every `syncActionItems` / Refresh.
+
+Because the user can no longer dismiss an item by hand from the Action Center, the
+reconciler is what guarantees a stale item does not stay open forever. Opening the
+Action Center still only marks unseen **activity** as seen (`MarkActionsSeen`); it
+never resolves an obligation.
 
 ## Test coverage
 

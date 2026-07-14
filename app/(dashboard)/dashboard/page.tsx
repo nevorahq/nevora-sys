@@ -10,6 +10,11 @@ import { ActionCenterPage } from "@/modules/action-center";
  * Тонкий composition layer: вся оркестрация в modules/action-center
  * (org scoping via requireOrg + RLS, permission check, idempotent sync).
  */
-export default function DashboardPage() {
-  return <ActionCenterPage />;
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string | string[] }>;
+}) {
+  const { filter } = await searchParams;
+  return <ActionCenterPage filter={Array.isArray(filter) ? filter[0] : filter} />;
 }

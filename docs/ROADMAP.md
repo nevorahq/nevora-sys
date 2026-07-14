@@ -162,11 +162,20 @@ Done since the original roadmap:
 - Document extraction creates review/confirm actions.
 - Reminder processing can surface tasks/subscriptions/payments/documents as
   action items and notification counters.
+- **Inbox / Action-Center split:** the Action Center is now **read-only** — it owns
+  attention and routing, with six summary **filter** cards over one predicate
+  contract and a compact read-only Attention list that links each item to its
+  owning module (`getActionItemDestination`). All mutations (resolve / dismiss /
+  snooze / assign / execute / confirm / delete) and the interactive feed + detail
+  drawer were removed from its UI. Capture-derived review (planner suggestions and
+  a captured document's expense draft) moved fully into the Inbox, reusing existing
+  review Server Actions. Stale items auto-close via `reconcileStaleActionItems`.
 
 Open follow-ups:
-- Show top pending actions on `/dashboard`.
 - Expand subscription/payment cycle signals into richer action types.
 - Add DB/integration tests for action/reminder idempotency.
+- Retire the now-unused Action Center backend actions/executors once no saved link
+  or notification depends on them.
 
 ## Phase 7 — Documents Automation — *partially started*
 
