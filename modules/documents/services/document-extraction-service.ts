@@ -10,7 +10,7 @@ import { featureGateService, usageService } from "@/modules/billing";
 import { markDocumentPlannerEntry } from "@/modules/planner/services/mark-document-planner-entry";
 import { routeExtraction } from "./document-extraction-router";
 import { evaluateExtraction } from "./confidence-rules";
-import { detectFinancialObligation } from "./detect-financial-obligation";
+import { detectFinancialObligation, type ObligationDecision } from "./detect-financial-obligation";
 import type { ExtractedFinancialDocument } from "../schemas/extracted-financial-document.schema";
 import type { ExtractionErrorCode } from "../types/document-extraction.types";
 
@@ -275,9 +275,45 @@ export async function runDocumentExtraction(
     });
   }
 
+  // ── Money route selection: an invoice must produce AT MOST ONE ───────────────
+  //
+  // A document has exactly one honest money story:
+  //
+  //   unpaid invoice / renewal  → an OBLIGATION. Nothing was spent yet. It becomes
+  //                               a planned financial task, and the expense is
+  //                               posted only when the user marks it paid.
+  //   receipt / payment confirm  → an EXPENSE that already happened. It becomes a
+  //                               draft expense the user confirms.
+  //
+  // Both used to run for the same invoice, giving it two independent routes to a
+  // posted transaction (Confirm the draft expense AND Mark the task as paid) —
+  // so one invoice could be booked twice. The obligation now runs first and, when
+  // it owns the money, the draft expense is not created at all.
+  let obligation: ObligationDecision | null = null;
+  try {
+    obligation = await detectFinancialObligation(supabase, ctx, { documentId, extracted });
+    if (obligation.detected) {
+      logger.info("extraction.run.obligation", { documentId, extractionId, band: obligation.band, autoCreated: obligation.autoCreated, taskId: obligation.taskId });
+    }
+  } catch (e) {
+    logger.error("extraction.run.obligation_failed", { documentId, extractionId, error: e instanceof Error ? e.message : String(e) });
+  }
+
+  // Only an obligation that actually produced the task owns the money. A merely
+  // *detected* obligation (medium band, no due date) created nothing, so the draft
+  // expense still has to carry the document — otherwise it would have no route.
+  const obligationOwnsTheMoney = obligation?.autoCreated === true;
+
   let suggestionId: string | null = null;
 
-  if (decision.createTransaction) {
+  if (obligationOwnsTheMoney) {
+    logger.info("extraction.run.expense_draft_skipped", {
+      documentId,
+      extractionId,
+      reason: "obligation_task_owns_money",
+      taskId: obligation?.taskId ?? null,
+    });
+  } else if (decision.createTransaction) {
     const suggestion = await createDocumentSuggestionWithClassification(supabase, ctx, {
       documentId,
       extractionId,
@@ -306,19 +342,6 @@ export async function runDocumentExtraction(
     }
   } else {
     await openDocumentReview(supabase, ctx, { documentId, title: document.title as string, reason: decision.reason, confidence: extracted.confidence.overall });
-  }
-
-  // Financial-obligation detection (spec §9–§11). Independent of the draft-expense
-  // path: an unpaid invoice / renewal notice becomes a planned Financial Context
-  // Task (high confidence auto-creates; medium is surfaced for confirmation on the
-  // document detail). Money-safe — never posts a transaction. Best-effort.
-  try {
-    const obligation = await detectFinancialObligation(supabase, ctx, { documentId, extracted });
-    if (obligation.detected) {
-      logger.info("extraction.run.obligation", { documentId, extractionId, band: obligation.band, autoCreated: obligation.autoCreated, taskId: obligation.taskId });
-    }
-  } catch (e) {
-    logger.error("extraction.run.obligation_failed", { documentId, extractionId, error: e instanceof Error ? e.message : String(e) });
   }
 
   // If this document came from an Inbox capture, its capture is no longer
