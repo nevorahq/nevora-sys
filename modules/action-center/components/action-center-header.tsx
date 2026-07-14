@@ -21,7 +21,7 @@ export function ActionCenterHeader() {
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="text-2xl font-semibold text-text-primary">Action Center</h1>
-        <p className="mt-1 text-sm text-text-muted">Everything that needs your attention today.</p>
+        <p className="mt-1 text-sm text-text-muted">A read-only view of what needs attention — open each item in its module to act.</p>
       </div>
       <button
         type="button"

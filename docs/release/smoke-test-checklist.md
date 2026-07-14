@@ -25,21 +25,33 @@ org owned by a different user (for isolation checks).
       client-supplied `organization_id` in a request body. **Expect:** ignored or
       rejected — never honoured.
 
-## 2. Action Center-first dashboard
+## 2. Action Center — read-only attention & routing
 
-- [ ] ⚑ `/dashboard` renders the **Action Center** (heading "Action Center",
-      summary strip, grouped feed). It is not a metrics roll-up.
-- [ ] The dashboard visibly answers "what needs my attention today?": Needs
-      Attention / Due Today / Upcoming / Overdue / Snoozed / Recently Resolved.
+- [ ] ⚑ `/dashboard` renders the **read-only Action Center** (heading "Action
+      Center", read-only subtitle, Refresh, summary cards, Attention list,
+      Activity Log). It is not a metrics roll-up.
+- [ ] ⚑ The Action Center has **no** business mutations: no checkboxes, no bulk
+      toolbar / Make inactive, no Resolve / Dismiss / Snooze / Assign / Restore /
+      Execute / Confirm / Reject / Cancel / Delete, and no mutating detail drawer.
+- [ ] The six summary cards are **filter buttons**: click Overdue → URL gains
+      `?filter=overdue`, the card shows an active state (`aria-pressed`), and the
+      Attention list below shows exactly the card's count (same condition).
+- [ ] ⚑ Open the URL directly (`/dashboard?filter=overdue`) → same filtered view;
+      refresh keeps it; back/forward navigates filters.
+- [ ] Each Attention row opens its **owning module**: planner → Inbox Review
+      (exact suggestion), task → Tasks, transaction → Money, subscription →
+      Subscriptions, document → Documents. A deleted source shows as text, no link.
 - [ ] `/dashboard/overview` shows the secondary metrics roll-up.
 - [ ] `/dashboard/actions` (old bookmark) redirects to `/dashboard`.
 - [ ] Sidebar shows the Action Center first; **no CRM, no Booking** entry.
-- [ ] Empty state: a brand-new org shows an action-driven empty state, not a blank page.
-- [ ] Loading + error states render (throttle the network; break the query).
 - [ ] ⚑ Action Center items are org-scoped: org A's items never appear in org B.
-- [ ] Resolve an action item → it leaves the active feed and appears under
-      Recently Resolved.
-- [ ] Snooze an item → hidden until `snoozed_until`; **not** resolved.
+- [ ] ⚑ Resolve happens in the owning module (accept a suggestion in Inbox, confirm
+      an expense, complete a task) → the related Attention row leaves the active
+      cards and appears under Recently Resolved (auto-closed, not hand-dismissed).
+- [ ] Refresh runs the idempotent sync + reconciliation, updates summary /
+      Attention / Activity, shows a pending spinner, and changes no business data.
+- [ ] Opening `/dashboard` clears the unseen **activity** badge only; it does not
+      resolve any obligation.
 
 ## 3. Tasks / Projects
 

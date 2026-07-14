@@ -44,9 +44,15 @@ Nevora is an **AI-assisted operating desk for small businesses** — not a broad
 mini-ERP. It turns documents, subscriptions, payments, tasks and AI suggestions
 into a clear daily action list, and the user confirms before business data changes.
 
-- **The Action Center is the product's primary screen.** As of Phase A,
-  `/dashboard` *is* the Action Center. The generic metrics roll-up moved to
-  `/dashboard/overview` and is secondary. `/dashboard/actions` 307s to `/dashboard`.
+- **The Action Center is the product's primary screen, and read-only.** As of
+  Phase A, `/dashboard` *is* the Action Center; the metrics roll-up moved to
+  `/dashboard/overview`. Under the Inbox/Action-Center split it owns *attention and
+  routing only*: read-only Attention list, six summary **filter** cards (URL
+  `?filter=<key>`, one predicate shared by count and list), and a separate Activity
+  Log. It performs **no** business mutations — resolve/confirm/complete happen in
+  the owning module (or Inbox Review for capture-derived suggestions), and stale
+  items are auto-closed by `reconcileStaleActionItems`. `/dashboard/actions` 307s to
+  `/dashboard`.
 - **CRM / Clients is Paused and hard-gated.** Not merely hidden: its pages,
   Server Actions **and** route handlers return 404 / reject server-side.
 - **Booking is Paused and closed at BOTH surfaces.** `/booking/*` and

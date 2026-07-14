@@ -14,7 +14,10 @@ action list. The user reviews and confirms important actions before the system
 updates business data.
 
 `/dashboard` is the **Action Center** — the primary operating screen. It answers
-one question: *what needs my attention today?*
+one question: *what needs my attention today?* It is **read-only**: it shows what
+is outstanding and routes each item to its owning module (or Inbox Review for
+capture-derived suggestions), but never mutates business data itself. Capture and
+capture-derived review (edit / accept / reject) live in the **Inbox**.
 
 ## Non-negotiable invariants
 

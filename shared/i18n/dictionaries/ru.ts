@@ -81,6 +81,13 @@ export const ru: Dictionary = {
     rejected: "Отклонено",
     failed: "Не удалось обработать — проверьте вручную.",
     createdEntity: "Создано",
+    financialFields: {
+      needsDateHint: "Укажите дату платежа, чтобы принять эту финансовую задачу.",
+      paymentDate: "Дата платежа",
+      amount: "Сумма",
+      currency: "Валюта",
+      provider: "Получатель (необязательно)",
+    },
     draft: {
       prepared: "Nevora подготовила это действие",
       whyLabel: "Почему",

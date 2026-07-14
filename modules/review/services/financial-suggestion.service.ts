@@ -10,6 +10,7 @@ import { classifyExpense, normalizeMerchantName, upsertPrivateMerchantRule } fro
 import { findDuplicateTransaction } from "@/modules/documents/services/duplicate-detection";
 import { createBillingPeriodKey } from "@/modules/subtracker/services/billing-period-key";
 import { createSubscriptionPaymentCycle } from "@/modules/subtracker/services/create-subscription-payment-cycle";
+import { markDocumentPlannerEntry } from "@/modules/planner/services/mark-document-planner-entry";
 import { createSubscriptionPaymentTaskForCycle } from "@/modules/subtracker/services/create-subscription-payment-task";
 import type { SubscriptionForPayment } from "@/modules/subtracker/types/payment-cycle.types";
 import { assertReviewStateTransition, type ReviewState } from "../constants/review.constants";
@@ -393,6 +394,10 @@ export async function confirmFinancialSuggestionRecord(
   });
 
   await resolveSuggestionActionItems(supabase, ctx, confirmed.data);
+  // The Inbox capture this document came from is now fully decided — retire it so
+  // it stops showing as "Processing" in the Inbox. No-op for documents uploaded
+  // outside the Inbox (no sourced entry points at them).
+  await markDocumentPlannerEntry(supabase, ctx, suggestion.source_id, "accepted");
 
   await Promise.all([
     emitDomainEvent({
@@ -460,6 +465,9 @@ export async function rejectFinancialSuggestionRecord(
   if (!rejected.ok) return rejected;
 
   await dismissSuggestionActionItems(supabase, ctx, rejected.data);
+  if (suggestion.source_type === "document") {
+    await markDocumentPlannerEntry(supabase, ctx, suggestion.source_id, "rejected");
+  }
 
   await Promise.all([
     emitDomainEvent({
