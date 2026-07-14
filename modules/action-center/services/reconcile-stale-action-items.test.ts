@@ -91,6 +91,48 @@ describe("reconcileStaleActionItems", () => {
     expect(captured.closedIds).toEqual(["i-doc"]);
   });
 
+  // Regression (live smoke, 2026-07-14): confirming a captured invoice's expense in
+  // the Inbox left a "Document needs review" item open forever — the document stays
+  // `draft`, and a read-only Action Center has no Dismiss.
+  it("closes a document_review whose review belongs to the Inbox (captured document)", async () => {
+    const { supabase, captured } = makeSupabase({
+      action_items: [{ id: "i-doc", type: "document_review", source_type: "document", source_id: "doc-captured" }],
+      documents: [{ id: "doc-captured", status: "draft", inbox_capture_id: "cap-1" }],
+      financial_suggestions: [],
+    });
+
+    const result = await reconcileStaleActionItems(supabase as never, ctx);
+
+    expect(result.closed).toBe(1);
+    expect(captured.closedIds).toEqual(["i-doc"]);
+  });
+
+  it("closes a document_review whose financial review is already decided", async () => {
+    const { supabase, captured } = makeSupabase({
+      action_items: [{ id: "i-doc", type: "document_review", source_type: "document", source_id: "doc-1" }],
+      documents: [{ id: "doc-1", status: "draft", inbox_capture_id: null }],
+      financial_suggestions: [{ source_id: "doc-1" }], // confirmed/rejected
+    });
+
+    const result = await reconcileStaleActionItems(supabase as never, ctx);
+
+    expect(result.closed).toBe(1);
+    expect(captured.closedIds).toEqual(["i-doc"]);
+  });
+
+  it("keeps a document_review open for an undecided draft uploaded outside the Inbox", async () => {
+    const { supabase, captured } = makeSupabase({
+      action_items: [{ id: "i-doc", type: "document_review", source_type: "document", source_id: "doc-1" }],
+      documents: [{ id: "doc-1", status: "draft", inbox_capture_id: null }],
+      financial_suggestions: [],
+    });
+
+    const result = await reconcileStaleActionItems(supabase as never, ctx);
+
+    expect(result.closed).toBe(0);
+    expect(captured.closedIds).toBeNull();
+  });
+
   it("no-ops when there are no active items", async () => {
     const { supabase, captured } = makeSupabase({ action_items: [] });
     const result = await reconcileStaleActionItems(supabase as never, ctx);

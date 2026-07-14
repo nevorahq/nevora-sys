@@ -7,6 +7,7 @@ import { createActionItemForDocument } from "@/modules/action-center/services/cr
 import { createDocumentSuggestionWithClassification } from "@/modules/review/services/financial-suggestion.service";
 import { normalizeFinancialDocument } from "@/modules/ai/services/normalize-financial-document";
 import { featureGateService, usageService } from "@/modules/billing";
+import { markDocumentPlannerEntry } from "@/modules/planner/services/mark-document-planner-entry";
 import { routeExtraction } from "./document-extraction-router";
 import { evaluateExtraction } from "./confidence-rules";
 import { detectFinancialObligation } from "./detect-financial-obligation";
@@ -320,6 +321,11 @@ export async function runDocumentExtraction(
     logger.error("extraction.run.obligation_failed", { documentId, extractionId, error: e instanceof Error ? e.message : String(e) });
   }
 
+  // If this document came from an Inbox capture, its capture is no longer
+  // "processing": a review is now waiting. Best-effort; no-op for uploads that
+  // did not originate in the Inbox.
+  await markDocumentPlannerEntry(supabase, ctx, documentId, "suggested");
+
   await emitDomainEvent({
     organizationId: ctx.org.id,
     workspaceId: ctx.workspace.id,
@@ -535,6 +541,11 @@ async function fail(
       .eq("id", params.extractionId)
       .eq("organization_id", ctx.org.id);
   }
+
+  // A capture whose extraction failed must not sit in the Inbox as "Processing" —
+  // it needs manual review. `usage_limit_exceeded` lands in needs_review upstream,
+  // but from the capture's point of view both mean "a human has to look at it".
+  await markDocumentPlannerEntry(supabase, ctx, params.documentId, "failed");
 
   await emitDomainEvent({
     organizationId: ctx.org.id,

@@ -376,6 +376,20 @@ async function detectTransactions(supabase: SupabaseClient, orgId: string, out: 
   }
 }
 
+/**
+ * Draft documents that still need a human look.
+ *
+ * Two kinds of document are deliberately NOT surfaced here, because doing so
+ * duplicates a review that lives somewhere else — and, now that the Action Center
+ * is read-only, the user would have no way to clear the duplicate:
+ *
+ *   1. Inbox captures (`inbox_capture_id IS NOT NULL`). The Inbox owns their
+ *      review (planner entry + its Review tab). A second "needs review" row here
+ *      is noise the user cannot dismiss.
+ *   2. Documents whose financial review is already decided (confirmed/rejected).
+ *      The work is done; the document merely stays `draft` because publishing is
+ *      a separate, optional editorial step.
+ */
 async function detectDocuments(supabase: SupabaseClient, orgId: string, out: Candidate[]): Promise<void> {
   const { data: docs } = await supabase
     .from("documents")
@@ -383,11 +397,23 @@ async function detectDocuments(supabase: SupabaseClient, orgId: string, out: Can
     .eq("organization_id", orgId)
     .is("deleted_at", null)
     .eq("status", "draft")
+    .is("inbox_capture_id", null)
     .limit(SCAN_LIMIT);
   if (!docs?.length) return;
 
+  const ids = docs.map((d) => d.id as string);
+  const { data: decided } = await supabase
+    .from("financial_suggestions")
+    .select("source_id")
+    .eq("organization_id", orgId)
+    .eq("source_type", "document")
+    .in("review_state", ["confirmed", "rejected"])
+    .in("source_id", ids);
+  const decidedDocs = new Set((decided ?? []).map((s) => s.source_id as string));
+
   for (const d of docs) {
     const id = d.id as string;
+    if (decidedDocs.has(id)) continue;
     out.push({ title: `Document needs review: ${(d.title as string) || "Document"}`, type: "document_review", sourceType: "document", sourceId: id, primaryEntityType: "document", primaryEntityId: id });
   }
 }

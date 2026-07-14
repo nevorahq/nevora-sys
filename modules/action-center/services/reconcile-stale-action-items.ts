@@ -143,7 +143,19 @@ async function reconcileTransactions(
   }
 }
 
-/** A document_review is live only while the document is still a draft. */
+/**
+ * A document_review is live only while the document still genuinely awaits a look.
+ * It is stale — and must be closed, since a read-only Action Center offers no
+ * Dismiss — when the document is gone, is no longer a draft, or when its review
+ * belongs to (or was already answered in) another surface:
+ *
+ *   - `inbox_capture_id` set  → the Inbox owns this document's review.
+ *   - a confirmed/rejected financial suggestion → the review is already decided;
+ *     the document only stays `draft` because publishing is a separate step.
+ *
+ * This mirrors detectDocuments, which no longer generates these items in the first
+ * place; the sweep here retires the ones generated before that rule existed.
+ */
 async function reconcileDocuments(
   supabase: SupabaseClient,
   orgId: string,
@@ -152,17 +164,35 @@ async function reconcileDocuments(
   out: string[],
 ): Promise<void> {
   if (ids.length === 0) return;
-  const { data } = await supabase
-    .from("documents")
-    .select("id, status")
-    .eq("organization_id", orgId)
-    .is("deleted_at", null)
-    .in("id", ids);
-  const statusById = new Map((data ?? []).map((r) => [r.id as string, r.status as string]));
+  const [{ data }, { data: decided }] = await Promise.all([
+    supabase
+      .from("documents")
+      .select("id, status, inbox_capture_id")
+      .eq("organization_id", orgId)
+      .is("deleted_at", null)
+      .in("id", ids),
+    supabase
+      .from("financial_suggestions")
+      .select("source_id")
+      .eq("organization_id", orgId)
+      .eq("source_type", "document")
+      .in("review_state", ["confirmed", "rejected"])
+      .in("source_id", ids),
+  ]);
+
+  const byId = new Map(
+    (data ?? []).map((r) => [r.id as string, { status: r.status as string, captured: r.inbox_capture_id !== null }]),
+  );
+  const decidedDocs = new Set((decided ?? []).map((s) => s.source_id as string));
+
   for (const row of rows) {
-    const status = statusById.get(row.source_id);
-    if (status === undefined) out.push(row.id);
-    else if (row.type === "document_review" && status !== "draft") out.push(row.id);
+    const doc = byId.get(row.source_id);
+    if (doc === undefined) {
+      out.push(row.id); // deleted / gone
+      continue;
+    }
+    if (row.type !== "document_review") continue;
+    if (doc.status !== "draft" || doc.captured || decidedDocs.has(row.source_id)) out.push(row.id);
   }
 }
 
