@@ -94,6 +94,18 @@ export const en = {
     failed: "Couldn't process — review manually.",
     createdEntity: "Created",
     /**
+     * Extra fields shown in the edit form for a financial suggestion. A financial
+     * task requires a payment date before it can be accepted, so the review UI must
+     * let the user supply what the AI could not infer from the raw capture.
+     */
+    financialFields: {
+      needsDateHint: "Add a payment date before accepting this financial task.",
+      paymentDate: "Payment date",
+      amount: "Amount",
+      currency: "Currency",
+      provider: "Provider (optional)",
+    },
+    /**
      * Draft review panel (Phase B / B3). Every draft must answer four questions
      * before the user confirms: what is proposed, why, what data changes, what
      * links get created. Copy per the B0 contract — never imply Nevora acted.
