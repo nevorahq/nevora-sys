@@ -86,6 +86,8 @@ export const en = {
     edit: "Edit",
     delete: "Delete",
     deleteConfirm: "Delete this inbox entry?",
+    deleteTitle: "Delete entry",
+    deleteCancel: "Cancel",
     reject: "Reject",
     cancel: "Cancel",
     save: "Save",

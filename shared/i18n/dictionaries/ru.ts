@@ -74,6 +74,8 @@ export const ru: Dictionary = {
     edit: "Изменить",
     delete: "Удалить",
     deleteConfirm: "Удалить эту запись из входящих?",
+    deleteTitle: "Удалить запись",
+    deleteCancel: "Сбросить",
     reject: "Отклонить",
     cancel: "Отмена",
     save: "Сохранить",

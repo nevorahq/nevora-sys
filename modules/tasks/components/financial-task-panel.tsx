@@ -2,14 +2,17 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { CheckCircleIcon, SkipForwardIcon, XCircleIcon, WalletIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CheckCircleIcon, PencilIcon, SkipForwardIcon, XCircleIcon, WalletIcon } from "lucide-react";
 import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
 import { Select } from "@/shared/ui/select";
 import { formatMoney } from "@/shared/utils/format-money";
 import { formatDate } from "@/shared/utils/format-date";
 import { ROUTES } from "@/shared/config/routes";
 import { TASK_CONTEXT_TYPE_LABELS, type TaskContextType, type FinancialTaskStatus } from "../constants/task.constants";
 import { markFinancialTaskPaidAction } from "../actions/mark-financial-task-paid.action";
+import { setFinancialTaskAmountAction } from "../actions/set-financial-task-amount.action";
 import { skipFinancialTaskAction, dismissFinancialTaskAction } from "../actions/resolve-financial-task.action";
 
 interface AccountOption {
@@ -52,6 +55,7 @@ const STATUS_BADGE: Record<FinancialTaskStatus, { label: string; className: stri
  * Skip / Dismiss for obligations settled elsewhere or false positives.
  */
 export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
+  const router = useRouter();
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -60,11 +64,41 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
   const badge = STATUS_BADGE[task.financial_status];
   const canPay = Boolean(task.amount && task.amount > 0 && task.currency);
 
+  // Amount editor: a capture without a number ("оплатить аренду 20 числа") creates
+  // an amountless task that Mark-as-paid refuses. When the amount is missing the
+  // editor is shown by default (the prompt); when it exists, behind an Edit toggle.
+  const [editingAmount, setEditingAmount] = useState(false);
+  const [amountInput, setAmountInput] = useState(task.amount != null ? String(task.amount) : "");
+  const [currencyInput, setCurrencyInput] = useState(task.currency ?? accounts[0]?.currency ?? "");
+  const amountEditorOpen = isOpen && canWrite && (!canPay || editingAmount);
+
   function run(fn: () => Promise<{ error?: string }>) {
     setError(null);
     startTransition(async () => {
       const res = await fn();
       if (res.error) setError(res.error);
+    });
+  }
+
+  function saveAmount() {
+    const amount = Number(amountInput.replace(",", "."));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError("Enter an amount greater than zero");
+      return;
+    }
+    if (currencyInput.trim().length !== 3) {
+      setError("Use a 3-letter currency code");
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const res = await setFinancialTaskAmountAction({ taskId: task.id, amount, currency: currencyInput.trim() });
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
+      setEditingAmount(false);
+      router.refresh();
     });
   }
 
@@ -89,8 +123,18 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
         </div>
         <div>
           <dt className="text-xs uppercase tracking-wide text-text-muted">Amount</dt>
-          <dd className="mt-1 text-text-primary">
+          <dd className="mt-1 flex items-center gap-2 text-text-primary">
             {task.amount != null ? `${formatMoney(Number(task.amount))} ${task.currency ?? ""}` : "—"}
+            {canWrite && isOpen && canPay && !editingAmount && (
+              <button
+                type="button"
+                onClick={() => setEditingAmount(true)}
+                className="text-text-muted hover:text-text-primary"
+                aria-label="Edit amount"
+              >
+                <PencilIcon size={13} />
+              </button>
+            )}
           </dd>
         </div>
         <div>
@@ -125,7 +169,51 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
 
       {canWrite && isOpen && (
         <div className="mt-5 space-y-3 border-t border-border pt-4">
-          {canPay && (
+          {/* Amount editor. Missing amount → shown by default so the obligation can
+              be priced before paying; present amount → opened via the Edit pencil. */}
+          {amountEditorOpen && (
+            <div className="space-y-2 rounded-(--neu-radius) bg-surface-sunken p-3">
+              {!canPay && (
+                <p className="text-xs text-text-secondary">
+                  This obligation was captured without an amount. Add it to record the payment.
+                </p>
+              )}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2">
+                  <Input
+                    id="fin-task-amount"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    label="Amount"
+                    value={amountInput}
+                    onChange={(e) => setAmountInput(e.target.value)}
+                  />
+                </div>
+                <Input
+                  id="fin-task-currency"
+                  label="Currency"
+                  value={currencyInput}
+                  maxLength={3}
+                  className="uppercase"
+                  onChange={(e) => setCurrencyInput(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" isLoading={isPending} onClick={saveAmount}>
+                  Save amount
+                </Button>
+                {canPay && (
+                  <Button type="button" variant="ghost" disabled={isPending} onClick={() => setEditingAmount(false)}>
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {canPay && !editingAmount && (
             accounts.length > 0 ? (
               <Select
                 id="fin-task-pay-account"
@@ -139,7 +227,7 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
             )
           )}
           <div className="flex flex-wrap gap-2">
-            {canPay && (
+            {canPay && !editingAmount && (
               <Button
                 type="button"
                 isLoading={isPending}

@@ -27,6 +27,37 @@ describe("planner suggestion schemas", () => {
     expect(result.success).toBe(true);
   });
 
+  // Regression (2026-07-15): the model emitted `dueDate: "tomorrow"` for a text
+  // capture, and strict `ISO_DATE.nullish()` made create_task accept fail with
+  // "Invalid task payload" — a dead end (the task review form has no date field),
+  // so only Reject worked. A non-ISO OPTIONAL date must now drop, not block.
+  it("drops a non-ISO dueDate instead of failing create_task accept", () => {
+    const result = createTaskPayloadSchema.safeParse({
+      title: "Запись в паспортный стол",
+      dueDate: "tomorrow",
+      priority: "high",
+      description: "Необходимо записаться",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.dueDate).toBeNull();
+      expect(result.data.priority).toBe("high");
+      expect(result.data.title).toBe("Запись в паспортный стол");
+    }
+  });
+
+  it("keeps a valid ISO dueDate on create_task", () => {
+    const result = createTaskPayloadSchema.safeParse({ title: "x", dueDate: "2026-08-01" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.dueDate).toBe("2026-08-01");
+  });
+
+  it("defaults an off-list priority rather than failing accept", () => {
+    const result = createTaskPayloadSchema.safeParse({ title: "x", priority: "whenever" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.priority).toBe("medium");
+  });
+
   it("financial payload requires a payment date (money-safe gate)", () => {
     const result = financialTaskPayloadSchema.safeParse({
       title: "Pay invoice",
