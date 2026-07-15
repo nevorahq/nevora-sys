@@ -56,6 +56,25 @@ export type RejectPlannerSuggestionInput = z.infer<typeof rejectPlannerSuggestio
 // ── Per-type accept payloads (re-validated at accept time, never mass-assigned) ─
 
 const ISO_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * An OPTIONAL due date that tolerates a non-ISO value instead of failing the whole
+ * accept. The prompt asks the model for YYYY-MM-DD, but it sometimes emits a
+ * relative date ("tomorrow") or a localized one. Under strict `ISO_DATE.nullish()`
+ * that present-but-invalid string made `create_task` accept reject with the opaque
+ * "Invalid task payload" — a dead end, since the task review form has no date field
+ * to correct it (Reject was the only way out of one's own capture).
+ *
+ * An unparseable date is dropped to null: the task is still created, and the user
+ * sets a real due date in Tasks (the owning module). Money-safe — this only relaxes
+ * an OPTIONAL field on the non-financial task path; financialDueDate stays strict
+ * (its value is supplied through the financial review form).
+ */
+const OPTIONAL_TOLERANT_ISO_DATE = z.preprocess(
+  (value) => (typeof value === "string" && ISO_DATE_RE.test(value.trim()) ? value.trim() : null),
+  ISO_DATE.nullable(),
+);
 
 /**
  * Optional relation to draw once the suggestion's entity exists (Phase B / B3:
@@ -76,8 +95,10 @@ export type SuggestionLinkTarget = z.infer<typeof suggestionLinkTargetSchema>;
 export const createTaskPayloadSchema = z.object({
   title: z.string().trim().min(1).max(PLANNER_TITLE_MAX_LENGTH),
   description: z.string().trim().max(PLANNER_DESCRIPTION_MAX_LENGTH).optional().default(""),
-  dueDate: ISO_DATE.nullish(),
-  priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
+  dueDate: OPTIONAL_TOLERANT_ISO_DATE,
+  // Tolerate an off-list priority the same way — default it rather than fail the
+  // whole accept over a value the user never chose.
+  priority: z.enum(["low", "medium", "high", "urgent"]).catch("medium").default("medium"),
   linkTo: suggestionLinkTargetSchema.optional(),
 });
 export type CreateTaskPayload = z.infer<typeof createTaskPayloadSchema>;

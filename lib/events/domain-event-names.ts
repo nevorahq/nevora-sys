@@ -14,7 +14,7 @@ export const DOMAIN_EVENT_NAMES = [
   "document.extraction.started", "document.extraction.completed", "document.extraction.failed",
   "document.financial_data_extracted", "document.detected_financial_data",
   "financial_obligation.detected", "financial_obligation.confirmed", "financial_obligation.dismissed", "financial_obligation.task_created", "financial_obligation.paid", "financial_obligation.skipped",
-  "financial_task.created", "financial_task.completed", "financial_task.skipped", "financial_task.dismissed", "financial_task.due_date_changed",
+  "financial_task.created", "financial_task.completed", "financial_task.skipped", "financial_task.dismissed", "financial_task.due_date_changed", "financial_task.amount_set",
   "money.transaction.draft_created", "money.transaction.confirmed", "money.transaction.rejected", "transaction.created_from_suggestion",
   "money.transfer.created",
   "money.transaction.categorization_requested", "money.transaction.categorized", "money.transaction.category_changed",

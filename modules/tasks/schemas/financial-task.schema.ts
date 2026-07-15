@@ -79,3 +79,17 @@ export const changeFinancialDueDateSchema = z.object({
   reminderOffsetDays: reminderOffset.optional(),
 });
 export type ChangeFinancialDueDateInput = z.infer<typeof changeFinancialDueDateSchema>;
+
+/**
+ * Set the amount/currency on an open financial task whose obligation was captured
+ * without a number (e.g. "оплатить аренду 20 числа" — a real due date, no amount).
+ * Records the planned obligation amount; it NEVER posts money — the expense is
+ * still created only by Mark-as-paid. This closes the dead end where an amountless
+ * task could never be paid.
+ */
+export const setFinancialTaskAmountSchema = z.object({
+  taskId: z.string().uuid("Invalid task ID"),
+  amount: z.number().positive("Enter an amount greater than zero").max(1_000_000_000),
+  currency: z.string().trim().length(3, "Use a 3-letter currency code").toUpperCase(),
+});
+export type SetFinancialTaskAmountInput = z.infer<typeof setFinancialTaskAmountSchema>;

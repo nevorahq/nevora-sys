@@ -505,6 +505,12 @@ export interface DomainEventPayloadMap {
     transaction_id?: string | null;
     paid_at: string;
   };
+  "financial_task.amount_set": {
+    amount: number;
+    currency: string;
+    previous_amount?: number | null;
+    previous_currency?: string | null;
+  };
   "financial_task.skipped": {
     reason?: string | null;
     resolved_at: string;

@@ -6,6 +6,8 @@ import type { ComponentProps, ReactNode } from "react";
 import type { ActionResult } from "@/lib/validators/common";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import { cn } from "@/shared/utils/cn";
+import { Button } from "@/shared/ui/button";
+import { Modal } from "@/shared/ui/modal";
 import { updatePlannerEntryAction } from "../actions/update-planner-entry.action";
 import { deletePlannerEntryAction } from "../actions/delete-planner-entry.action";
 
@@ -27,6 +29,7 @@ export function PlannerEntryEditor({
   children,
 }: PlannerEntryEditorProps) {
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [updateState, updateAction, updatePending] = useActionState<ActionResult, FormData>(
     async (prev, formData) => {
       const result = await updatePlannerEntryAction(prev, formData);
@@ -36,14 +39,17 @@ export function PlannerEntryEditor({
     {},
   );
   const [deleteState, deleteAction, deletePending] = useActionState<ActionResult, FormData>(
-    deletePlannerEntryAction,
+    async (prev, formData) => {
+      const result = await deletePlannerEntryAction(prev, formData);
+      // Close only on success — a failed delete keeps the dialog open with its error.
+      if (!result.error) setConfirmingDelete(false);
+      return result;
+    },
     {},
   );
 
-  const error =
-    updateState.error ||
-    deleteState.error ||
-    updateState.fieldErrors?.rawText?.[0];
+  // Delete errors surface inside the confirmation dialog; only edit errors show inline.
+  const error = updateState.error || updateState.fieldErrors?.rawText?.[0];
 
   return (
     <div className="flex items-start justify-between gap-3">
@@ -94,26 +100,44 @@ export function PlannerEntryEditor({
               </IconButton>
             )}
             {canDelete && (
-              <form
-                action={deleteAction}
-                onSubmit={(event) => {
-                  if (!window.confirm(dict.deleteConfirm)) event.preventDefault();
-                }}
+              <IconButton
+                type="button"
+                label={dict.delete}
+                disabled={deletePending}
+                onClick={() => setConfirmingDelete(true)}
+                className="hover:text-danger focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--danger)_25%,transparent),var(--neu-shadow-control)]"
               >
-                <input type="hidden" name="entryId" value={entryId} />
-                <IconButton
-                  type="submit"
-                  label={dict.delete}
-                  disabled={deletePending}
-                  className="hover:text-danger focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--danger)_25%,transparent),var(--neu-shadow-control)]"
-                >
-                  <Trash2Icon size={15} aria-hidden="true" />
-                </IconButton>
-              </form>
+                <Trash2Icon size={15} aria-hidden="true" />
+              </IconButton>
             )}
           </div>
         )}
       </div>
+
+      {canDelete && (
+        <Modal
+          isOpen={confirmingDelete}
+          onClose={() => setConfirmingDelete(false)}
+          title={dict.deleteTitle}
+          closeLabel={dict.deleteCancel}
+        >
+          <p className="text-sm text-text-secondary">{dict.deleteConfirm}</p>
+          {deleteState.error && (
+            <p className="mt-2 text-xs text-danger" role="alert">
+              {deleteState.error}
+            </p>
+          )}
+          <form action={deleteAction} className="mt-5 flex justify-end gap-2">
+            <input type="hidden" name="entryId" value={entryId} />
+            <Button type="button" variant="ghost" disabled={deletePending} onClick={() => setConfirmingDelete(false)}>
+              {dict.deleteCancel}
+            </Button>
+            <Button type="submit" variant="danger" isLoading={deletePending}>
+              {dict.delete}
+            </Button>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }
