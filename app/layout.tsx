@@ -8,6 +8,7 @@ import "@fontsource/geist-mono/400.css";
 import "./globals.css";
 import { ThemeProvider } from "@/shared/ui/theme-provider";
 import { StoreProvider } from "@/store/provider";
+import { getPublicLocale } from "@/shared/i18n/get-dictionary";
 
 export const metadata: Metadata = {
   title: {
@@ -38,14 +39,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // `<html lang>` следует выбранной публичной локали (en/ru/ro) из cookie —
+  // раньше был жёстко "en". Языковое меню лендинга и переключатель приложения
+  // держат cookie в актуальном состоянии, так что переходы сохраняют язык.
+  const locale = await getPublicLocale();
+
   return (
     <html
-      lang="en"
+      lang={locale}
       className="h-full antialiased"
       suppressHydrationWarning
     >

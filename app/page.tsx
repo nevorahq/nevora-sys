@@ -1,15 +1,19 @@
-import { getLocale } from "@/shared/i18n/get-dictionary";
-import { LandingPage } from "@/modules/landing";
+import type { Metadata } from "next";
+import { getPublicLocale } from "@/shared/i18n/get-dictionary";
+import { LandingPage, landingMetadata } from "@/modules/landing";
 
 /**
- * Публичный лендинг Nevora Business OS.
+ * Публичный лендинг Nevora Business OS (корень `/`).
  *
- * Server Component без бизнес-логики: читает app locale из cookie и передаёт
- * LandingPage публичную локаль. RO доступен отдельной страницей /ro, чтобы
- * не расширять dashboard-словари раньше времени.
+ * Server Component без бизнес-логики: читает публичную локаль из cookie (en/ru/ro)
+ * и передаёт её LandingPage. Локали `/en` `/ru` `/ro` — отдельные canonical-входы
+ * с собственной локализованной metadata.
  */
-export default async function HomePage() {
-  const locale = await getLocale();
+export async function generateMetadata(): Promise<Metadata> {
+  return landingMetadata(await getPublicLocale());
+}
 
+export default async function HomePage() {
+  const locale = await getPublicLocale();
   return <LandingPage locale={locale} />;
 }
