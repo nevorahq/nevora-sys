@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { en } from "./dictionaries/en";
 import { ru } from "./dictionaries/ru";
+import { ro } from "./dictionaries/ro";
 import {
   DEFAULT_PUBLIC_LOCALE,
   LOCALE_COOKIE,
@@ -14,7 +15,7 @@ import {
 export type { Dictionary } from "./dictionaries/en";
 export type { Locale, PublicLocale };
 
-const dictionaries = { en, ru } as const;
+const dictionaries = { en, ru, ro } as const;
 
 /**
  * Публичная локаль из cookie (en/ru/ro). Единая ось языка для лендинга,
@@ -27,9 +28,9 @@ export async function getPublicLocale(): Promise<PublicLocale> {
 }
 
 /**
- * Локаль интерфейса приложения (en/ru). Сводит публичную локаль к словарю app:
- * `ro` → `en`. Сигнатура намеренно неизменна — все существующие вызовы
- * `getLocale()` в dashboard/auth продолжают получать только en/ru.
+ * Локаль интерфейса приложения (en/ru/ro). Совпадает с публичной локалью —
+ * у `ro` теперь есть полный словарь приложения (`toAppLocale` = тождество).
+ * Сигнатура сохранена, чтобы не трогать существующие вызовы в dashboard/auth.
  */
 export async function getLocale(): Promise<Locale> {
   return toAppLocale(await getPublicLocale());

@@ -38,7 +38,11 @@ export default async function MoneyPage({
   const { month, filter } = await searchParams;
   // Dict + locale first: the month label is locale-formatted (e.g. "июнь 2026").
   const { dict, locale } = await getDictionary();
-  const range = resolveMonthRange(month, new Date(), locale === "ru" ? "ru-RU" : "en-US");
+  const range = resolveMonthRange(
+    month,
+    new Date(),
+    locale === "ru" ? "ru-RU" : locale === "ro" ? "ro-RO" : "en-US",
+  );
   const monthWindow = { monthStart: range.monthStart, nextMonthStart: range.nextMonthStart };
   const showUncategorized = filter === "uncategorized";
 

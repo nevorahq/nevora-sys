@@ -13,10 +13,10 @@ interface LanguageSwitcherProps {
 }
 
 /**
- * Переключатель языка приложения (en/ru). Показывает АКТИВНЫЙ язык полным
+ * Переключатель языка приложения (en/ru/ro). Показывает АКТИВНЫЙ язык полным
  * названием (раньше показывал язык назначения), в меню текущий отмечен галочкой.
- * Румынский недоступен в интерфейсе приложения — он живёт как публичная локаль
- * лендинга/legal, а auth/dashboard для ro падают в английский (см. toAppLocale).
+ * Список берётся из `LOCALES`, поэтому румынский появляется автоматически после
+ * добавления словаря `dictionaries/ro.ts`.
  */
 export function LanguageSwitcher({ locale, className }: LanguageSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
