@@ -7,16 +7,19 @@ import { SettingsAccessDenied } from "@/modules/settings/components/SettingsAcce
 import { MembersTable } from "@/modules/settings/components/MembersTable";
 import { InviteMemberDialog } from "@/modules/settings/components/InviteMemberDialog";
 import { PendingInvitesCard, getPendingInvites } from "@/modules/members";
+import { getDictionary } from "@/shared/i18n/get-dictionary";
 
 export default async function MembersPage() {
   const context = await requireOrg();
   if (!hasSettingsPermission(context, "members.read")) return <SettingsAccessDenied />;
 
-  const [members, limits, pendingInvites] = await Promise.all([
+  const [members, limits, pendingInvites, { dict }] = await Promise.all([
     getMembers(),
     resolveAccountLimits(context.user.id, context.org.id),
     getPendingInvites(),
+    getDictionary(),
   ]);
+  const t = dict.settings;
 
   const maxMembers = limits.maxMembers;
   const unlimited = maxMembers === null;
@@ -24,20 +27,23 @@ export default async function MembersPage() {
   const seatCount = members.filter((member) => member.status !== "disabled").length;
   const limitReached = maxMembers !== null && seatCount >= maxMembers;
   const canManage = hasSettingsPermission(context, "members.update_role");
+  const seatLabel = unlimited
+    ? t.members.seatsUsedUnlimited
+    : t.members.seatsUsed.replace("{max}", String(maxMembers));
 
   return (
     <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <SettingsHeader title="Members" description="Invite teammates, manage access, and review pending invitations." />
-        {canManage && <InviteMemberDialog limitReached={limitReached} limitReason="Достигнут лимит участников для текущего плана." />}
+        <SettingsHeader title={t.header.membersTitle} description={t.header.membersDescription} />
+        {canManage && <InviteMemberDialog limitReached={limitReached} limitReason={t.members.limitReached} t={t} />}
       </div>
       {pendingInvites.length > 0 && (
         <div className="mb-4">
           <PendingInvitesCard invites={pendingInvites} />
         </div>
       )}
-      <div className="mb-4 text-sm text-text-secondary">{seatCount} {unlimited ? "members" : `of ${maxMembers} seats used`}</div>
-      <MembersTable members={members} currentUserId={context.user.id} canManage={canManage} />
+      <div className="mb-4 text-sm text-text-secondary">{seatCount} {seatLabel}</div>
+      <MembersTable members={members} currentUserId={context.user.id} canManage={canManage} t={t.members} />
     </>
   );
 }

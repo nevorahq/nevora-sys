@@ -42,7 +42,7 @@ export async function getAccountsWithBalances(organizationId: string): Promise<A
 
     supabase
       .from("money_transactions")
-      .select("type, amount, account_id, from_account_id, to_account_id")
+      .select("type, amount, destination_amount, account_id, from_account_id, to_account_id")
       .eq("organization_id", organizationId)
       .eq("status", "posted")
       .is("deleted_at", null),
@@ -69,7 +69,7 @@ export async function getAccountsWithBalances(organizationId: string): Promise<A
       const amount = Number(tx.amount);
       if (tx.type === "transfer") {
         bump(tx.from_account_id, -amount);
-        bump(tx.to_account_id, amount);
+        bump(tx.to_account_id, Number(tx.destination_amount ?? tx.amount));
       } else if (tx.type === "income") {
         bump(tx.account_id, amount);
       } else {

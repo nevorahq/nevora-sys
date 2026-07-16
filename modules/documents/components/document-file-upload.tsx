@@ -20,6 +20,7 @@ interface DocumentFileUploadProps {
   cameraLabel?: string;
   filesLabel?: string;
   removeLabel?: string;
+  attachedFilesLabel?: string;
   /**
    * Hide the camera button when the surrounding surface already offers a
    * dedicated photo mode (the Inbox composer's Document tab). Defaults to true —
@@ -38,6 +39,7 @@ export function DocumentFileUpload({
   cameraLabel = "Take a photo",
   filesLabel = "Add files",
   removeLabel = "Remove",
+  attachedFilesLabel = "Attached files",
   showCamera = true,
 }: DocumentFileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -91,7 +93,7 @@ export function DocumentFileUpload({
 
       {files.length > 0 && (
         <div className="mt-4" aria-live="polite">
-          <p className="mb-2 text-xs font-medium text-text-secondary">Attached files</p>
+          <p className="mb-2 text-xs font-medium text-text-secondary">{attachedFilesLabel}</p>
           <div className="space-y-2">
             {files.map((file, index) => (
               <DocumentFilePreview

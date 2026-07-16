@@ -145,6 +145,7 @@ function BinaryCapture({
           description={dict.composer.documentDescription}
           filesLabel={dict.composer.filesLabel}
           removeLabel={dict.composer.removeLabel}
+          attachedFilesLabel={dict.composer.attachedFiles}
           // Camera capture lives in the Photo mode; duplicating it here would
           // blur the segmented control's meaning.
           showCamera={false}

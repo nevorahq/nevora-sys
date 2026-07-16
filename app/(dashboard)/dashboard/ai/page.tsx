@@ -5,8 +5,9 @@ import {
   XIcon,
 } from "lucide-react";
 import { requireOrg } from "@/lib/auth/require-org";
+import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { getOrganizationAccessState } from "@/modules/billing/queries/get-organization-access-state";
-import { AI_BLOCKED_MESSAGE, isAccessIntentAllowed } from "@/modules/billing/services/access-state-ui";
+import { isAccessIntentAllowed } from "@/modules/billing/services/access-state-ui";
 import { BillingRequiredAlert, RestrictedActionTooltip } from "@/modules/billing/components/access-state";
 import {
   getInsights,
@@ -24,11 +25,14 @@ import {
 export default async function AiPage() {
   const { org } = await requireOrg();
 
-  const [insights, recommendations, accessState] = await Promise.all([
+  const [{ dict }, insights, recommendations, accessState] = await Promise.all([
+    getDictionary(),
     getInsights(org.id, { limit: 10 }),
     getRecommendations(org.id, { status: "pending", limit: 8 }),
     getOrganizationAccessState(org.id),
   ]);
+  const t = dict.ai;
+  const blockedMessage = dict.access.blockedExecute;
   const canExecuteAi = isAccessIntentAllowed(accessState, "execute");
 
   return (
@@ -38,24 +42,24 @@ export default async function AiPage() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold text-text-primary">
             <SparklesIcon size={22} className="text-purple-500" />
-            AI Assistant
+            {t.title}
           </h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Insights and recommendations powered by Claude
-          </p>
+          <p className="mt-1 text-sm text-text-muted">{t.subtitle}</p>
         </div>
 
         {/* Generate buttons */}
         <div className="flex gap-2">
           <GenerateButton
             action={triggerGenerateRecommendations}
-            label="Recommendations"
+            label={t.recommendations}
+            blockedMessage={blockedMessage}
             icon={<ZapIcon size={14} />}
             disabled={!canExecuteAi}
           />
           <GenerateButton
             action={triggerGenerateInsights}
-            label="Insights"
+            label={t.insights}
+            blockedMessage={blockedMessage}
             icon={<LightbulbIcon size={14} />}
             disabled={!canExecuteAi}
           />
@@ -63,13 +67,13 @@ export default async function AiPage() {
       </div>
 
       {!canExecuteAi && (
-        <BillingRequiredAlert title="AI ограничен" message={AI_BLOCKED_MESSAGE} className="mt-5" />
+        <BillingRequiredAlert title={t.blockedTitle} message={blockedMessage} className="mt-5" />
       )}
 
       {/* Recommendations */}
       <section className="mt-8">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-text-secondary">
-          Recommendations
+          {t.recommendations}
           {recommendations.length > 0 && (
             <span className="ml-2 rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700 dark:bg-purple-900 dark:text-purple-300">
               {recommendations.length}
@@ -80,14 +84,20 @@ export default async function AiPage() {
         {recommendations.length > 0 ? (
           <div className="flex flex-col gap-3">
             {recommendations.map((rec) => (
-              <RecommendationCard key={rec.id} rec={rec} canExecute={canExecuteAi} />
+              <RecommendationCard
+                key={rec.id}
+                rec={rec}
+                canExecute={canExecuteAi}
+                dismissLabel={t.dismiss}
+                blockedMessage={blockedMessage}
+              />
             ))}
           </div>
         ) : (
           <EmptyState
             icon={<ZapIcon size={28} />}
-            title="No recommendations yet"
-            sub='Click "Recommendations" to generate AI-powered action items.'
+            title={t.emptyRecommendationsTitle}
+            sub={t.emptyRecommendationsSub}
           />
         )}
       </section>
@@ -95,7 +105,7 @@ export default async function AiPage() {
       {/* Insights */}
       <section className="mt-10">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-text-secondary">
-          Business Insights
+          {t.businessInsights}
         </h2>
 
         {insights.length > 0 ? (
@@ -107,8 +117,8 @@ export default async function AiPage() {
         ) : (
           <EmptyState
             icon={<LightbulbIcon size={28} />}
-            title="No insights yet"
-            sub='Click "Insights" to analyze your business metrics with Claude.'
+            title={t.emptyInsightsTitle}
+            sub={t.emptyInsightsSub}
           />
         )}
       </section>
@@ -123,21 +133,23 @@ export default async function AiPage() {
 function GenerateButton({
   action,
   label,
+  blockedMessage,
   icon,
   disabled,
 }: {
   action: (fd: FormData) => Promise<void>;
   label: string;
+  blockedMessage: string;
   icon: React.ReactNode;
   disabled: boolean;
 }) {
   return (
     <form action={action}>
-      <RestrictedActionTooltip message={disabled ? AI_BLOCKED_MESSAGE : label}>
+      <RestrictedActionTooltip message={disabled ? blockedMessage : label}>
         <button
           type="submit"
           disabled={disabled}
-          aria-label={disabled ? `${label}. ${AI_BLOCKED_MESSAGE}` : label}
+          aria-label={disabled ? `${label}. ${blockedMessage}` : label}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:bg-surface-secondary hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
         >
           {icon}
@@ -167,7 +179,17 @@ function InsightCard({ insight }: { insight: AiInsight }) {
   );
 }
 
-function RecommendationCard({ rec, canExecute }: { rec: AiRecommendation; canExecute: boolean }) {
+function RecommendationCard({
+  rec,
+  canExecute,
+  dismissLabel,
+  blockedMessage,
+}: {
+  rec: AiRecommendation;
+  canExecute: boolean;
+  dismissLabel: string;
+  blockedMessage: string;
+}) {
   const priorityCls = PRIORITY_STYLES[rec.priority] ?? PRIORITY_STYLES.medium;
   return (
     <div className="soft-card-sm flex items-start gap-4 p-4">
@@ -182,10 +204,10 @@ function RecommendationCard({ rec, canExecute }: { rec: AiRecommendation; canExe
       </div>
       <form action={triggerDismissRecommendation}>
         <input type="hidden" name="recommendationId" value={rec.id} />
-        <RestrictedActionTooltip message={canExecute ? "Dismiss" : AI_BLOCKED_MESSAGE}>
+        <RestrictedActionTooltip message={canExecute ? dismissLabel : blockedMessage}>
           <button
             type="submit"
-            title={canExecute ? "Dismiss" : AI_BLOCKED_MESSAGE}
+            title={canExecute ? dismissLabel : blockedMessage}
             disabled={!canExecute}
             className="shrink-0 rounded-md p-1.5 text-text-muted transition hover:bg-surface-secondary hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
           >

@@ -199,6 +199,7 @@ export function CreateSubscriptionForm({
           cameraLabel={t.documents.takePhoto}
           filesLabel={t.documents.addFiles}
           removeLabel={t.documents.remove}
+          attachedFilesLabel={t.documents.attachedFiles}
         />
       </div>
 

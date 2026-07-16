@@ -56,6 +56,12 @@ export type MoneyTransaction = {
   type: AnyTransactionType;
   amount: number;
   currency: string;
+  destination_amount: number | null;
+  destination_currency: string | null;
+  reference_exchange_rate: number | null;
+  effective_exchange_rate: number | null;
+  exchange_rate_source: "manual" | "bank_api" | "global" | "custom" | null;
+  exchange_rate_id: string | null;
   transaction_date: string; // ISO date: "2024-12-31"
   title: string;
   note: string | null;
@@ -116,9 +122,8 @@ export type MoneyTransactionWithRelations = MoneyTransaction & {
 /**
  * Финансовое summary по ОДНОЙ валюте.
  *
- * Суммы НЕ конвертируются: USD-транзакции и MDL-транзакции считаются
- * раздельно. Кросс-валютная нормализация в base_currency — отдельный
- * FX-слой (exchange_rates + fn_get_exchange_rate), пока не внедрён.
+ * USD-транзакции и MDL-транзакции считаются раздельно; `BaseSummary`
+ * дополнительно нормализует их через organizational/global FX resolver.
  */
 export type CurrencySummary = {
   currency: string;
@@ -128,7 +133,7 @@ export type CurrencySummary = {
 };
 
 /**
- * Итог, приведённый к базовой валюте организации через fn_get_exchange_rate.
+ * Итог, приведённый к базовой валюте организации через единый FX resolver.
  */
 export type BaseSummary = {
   currency: string;

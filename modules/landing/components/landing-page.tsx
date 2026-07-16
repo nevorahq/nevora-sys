@@ -1,16 +1,17 @@
-import { getLandingContent, type LandingLocale } from "../constants/landing-content";
-import { AboutSection } from "./about-section";
-import { ContactSection } from "./contact-section";
+import type { PublicLocale } from "@/shared/i18n/constants";
+import { getLandingContent } from "../constants/landing-content";
+import { AreasSection } from "./areas-section";
+import { ControlSection } from "./control-section";
 import { HeroSection } from "./hero-section";
+import { HowItWorksSection } from "./how-it-works-section";
+import { HtmlLangSync } from "./html-lang-sync";
 import { LandingFooter } from "./landing-footer";
 import { LandingHeader } from "./landing-header";
-import { PhilosophySection } from "./philosophy-section";
 import { PlansSection } from "./plans-section";
-import { TrialDetailsSection } from "./trial-details-section";
-import { ValueSection } from "./value-section";
+import { StorySection } from "./story-section";
 
 interface LandingPageProps {
-  locale: LandingLocale;
+  locale: PublicLocale;
 }
 
 export function LandingPage({ locale }: LandingPageProps) {
@@ -18,17 +19,17 @@ export function LandingPage({ locale }: LandingPageProps) {
 
   return (
     <div lang={locale} className="flex flex-1 flex-col">
+      <HtmlLangSync locale={locale} />
       <LandingHeader nav={content.nav} header={content.header} locale={locale} />
       <main className="flex-1">
         <HeroSection content={content.hero} />
-        <ValueSection content={content.value} />
-        <AboutSection content={content.about} />
-        <PhilosophySection content={content.philosophy} />
-        <PlansSection content={content.plans} />
-        <TrialDetailsSection content={content.trialDetails} />
-        <ContactSection content={content.contact} />
+        <HowItWorksSection content={content.how} />
+        <AreasSection content={content.areas} />
+        <ControlSection content={content.control} />
+        <PlansSection content={content.plans} locale={locale} />
+        <StorySection story={content.story} contact={content.contact} />
       </main>
-      <LandingFooter nav={content.nav} footer={content.footer} />
+      <LandingFooter nav={content.nav} footer={content.footer} locale={locale} />
     </div>
   );
 }

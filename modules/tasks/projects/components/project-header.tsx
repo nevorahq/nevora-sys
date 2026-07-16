@@ -14,6 +14,7 @@ import { ProjectProgressBar } from "./project-progress-bar";
 import { ProjectForm } from "./project-form";
 import { archiveProjectAction } from "../actions/archive-project.action";
 import type { ProjectWithStats } from "../types/project.types";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface ProjectHeaderProps {
   project: ProjectWithStats;
@@ -22,9 +23,10 @@ interface ProjectHeaderProps {
   canManage: boolean;
   /** May archive the project (data.delete — manager+). */
   canArchive: boolean;
+  t: Dictionary["projects"];
 }
 
-export function ProjectHeader({ project, ownerName, canManage, canArchive }: ProjectHeaderProps) {
+export function ProjectHeader({ project, ownerName, canManage, canArchive, t }: ProjectHeaderProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
@@ -52,22 +54,22 @@ export function ProjectHeader({ project, ownerName, canManage, canArchive }: Pro
           href={ROUTES.projects}
           className="inline-flex items-center gap-1.5 text-xs font-medium text-text-secondary hover:text-text-primary"
         >
-          <ArrowLeftIcon size={14} /> Projects
+          <ArrowLeftIcon size={14} /> {t.back}
         </Link>
 
         {!isArchived && (canManage || canArchive) && (
           <div className="flex items-center gap-2">
             {canManage && (
-              <RestrictedActionTooltip message={blocked ? message : "Edit"}>
+              <RestrictedActionTooltip message={blocked ? message : t.edit}>
                 <Button variant="secondary" disabled={!allowManage} className="h-9 gap-1.5 px-3 text-xs" onClick={() => setEditing(true)}>
-                  <PencilIcon size={14} /> Edit
+                  <PencilIcon size={14} /> {t.edit}
                 </Button>
               </RestrictedActionTooltip>
             )}
             {canArchive && (
-              <RestrictedActionTooltip message={blocked ? message : "Archive"}>
+              <RestrictedActionTooltip message={blocked ? message : t.archive}>
                 <Button variant="ghost" disabled={!allowArchive} className="h-9 gap-1.5 px-3 text-xs" onClick={() => setConfirmArchive(true)}>
-                  <ArchiveIcon size={14} /> Archive
+                  <ArchiveIcon size={14} /> {t.archive}
                 </Button>
               </RestrictedActionTooltip>
             )}
@@ -84,7 +86,7 @@ export function ProjectHeader({ project, ownerName, canManage, canArchive }: Pro
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold text-text-primary">{project.name}</h1>
-            <ProjectStatusBadge status={project.status} />
+            <ProjectStatusBadge status={project.status} labels={t.statuses} />
           </div>
           {project.description && (
             <p className="mt-1 text-sm text-text-secondary">{project.description}</p>
@@ -94,37 +96,35 @@ export function ProjectHeader({ project, ownerName, canManage, canArchive }: Pro
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-text-muted">
         <span>
-          Owner: <span className="font-medium text-text-secondary">{ownerName ?? "Unassigned"}</span>
+          {t.owner}: <span className="font-medium text-text-secondary">{ownerName ?? t.unassigned}</span>
         </span>
         {project.due_date && (
           <span className="inline-flex items-center gap-1">
-            <CalendarIcon size={13} /> Due {formatDate(project.due_date)}
+            <CalendarIcon size={13} /> {t.due} {formatDate(project.due_date)}
           </span>
         )}
         <span>
-          {project.doneCount}/{project.taskCount} tasks done
+          {t.tasksDone.replace("{done}", String(project.doneCount)).replace("{total}", String(project.taskCount))}
         </span>
       </div>
 
       <ProjectProgressBar progress={project.progress} />
 
-      <Modal isOpen={editing} onClose={() => setEditing(false)} title="Edit project">
-        <ProjectForm project={project} onSuccess={() => setEditing(false)} />
+      <Modal isOpen={editing} onClose={() => setEditing(false)} title={t.editProject}>
+        <ProjectForm project={project} onSuccess={() => setEditing(false)} t={t} />
       </Modal>
 
-      <Modal isOpen={confirmArchive} onClose={() => setConfirmArchive(false)} title="Archive project?">
+      <Modal isOpen={confirmArchive} onClose={() => setConfirmArchive(false)} title={t.archiveProjectQ}>
         <div className="space-y-4">
           <p className="text-sm text-text-secondary">
-            Archiving hides <span className="font-medium text-text-primary">{project.name}</span> from
-            active lists. Its tasks are kept and simply detached from the project view. You can still find
-            it in archived projects.
+            {t.archiveBodyPrefix} <span className="font-medium text-text-primary">{project.name}</span> {t.archiveBodySuffix}
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" className="h-9 px-4 text-sm" onClick={() => setConfirmArchive(false)}>
-              Cancel
+              {t.cancel}
             </Button>
             <Button variant="danger" className="h-9 px-4 text-sm" isLoading={isArchiving} onClick={handleArchive}>
-              Archive
+              {t.archive}
             </Button>
           </div>
         </div>

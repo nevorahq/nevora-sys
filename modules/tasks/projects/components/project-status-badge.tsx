@@ -10,14 +10,17 @@ const STATUS_STYLES: Record<ProjectStatus, string> = {
 
 export function ProjectStatusBadge({
   status,
+  labels,
   className,
 }: {
   status: ProjectStatus;
+  /** Localized status labels; falls back to the English constant. */
+  labels?: Record<ProjectStatus, string>;
   className?: string;
 }) {
   return (
     <span className={cn("soft-badge", STATUS_STYLES[status], className)}>
-      {PROJECT_STATUS_LABELS[status]}
+      {(labels ?? PROJECT_STATUS_LABELS)[status]}
     </span>
   );
 }

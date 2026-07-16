@@ -60,8 +60,19 @@ export default async function DashboardLayout({
     getPendingAccountDeletion(),
   ]);
 
+  const accessCopy = {
+    states: dict.access.states,
+    restricted: dict.access.restricted,
+    blockedDefault: dict.access.blockedDefault,
+    blockedInvite: dict.access.blockedInvite,
+    blockedExecute: dict.access.blockedExecute,
+    blockedUpload: dict.access.blockedUpload,
+    alertTitle: dict.access.alertTitle,
+    ctaLabel: dict.access.ctaLabel,
+  };
+
   return (
-    <AccessStateProvider accessState={accessState}>
+    <AccessStateProvider accessState={accessState} copy={accessCopy}>
       <NotificationProvider key={`${context.org.id}:${user.id}`} organizationId={context.org.id} userId={user.id} initialPreferences={notificationPreferences} initialCounters={initialNotificationCounters} initialNotifications={initialNotifications}>
         <div className="flex min-h-dvh">
           {/* Sidebar — навигация платформы (sticky, 100dvh, неподвижный) */}
@@ -90,7 +101,7 @@ export default async function DashboardLayout({
             <main className="flex-1 p-6 md:p-8">
               {!limits.unlimitedAccess && <TrialBanner trial={trial} />}
               <ReadOnlyModeBanner />
-              {pendingDeletion && <AccountDeletionBanner purgeAfter={pendingDeletion.purgeAfter} />}
+              {pendingDeletion && <AccountDeletionBanner purgeAfter={pendingDeletion.purgeAfter} t={dict.settings.accountBanner} />}
               {children}
             </main>
           </div>

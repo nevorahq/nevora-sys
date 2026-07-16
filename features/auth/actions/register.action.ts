@@ -64,7 +64,7 @@ export async function registerAction(
   }
 
   if (shouldRedirect) {
-    redirect(ROUTES.dashboard);
+    redirect(ROUTES.appHome);
   }
 
   return {};

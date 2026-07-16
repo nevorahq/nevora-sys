@@ -14,7 +14,7 @@ export const workspaceSchema = z.object({
   workspaceName: z.string().trim().min(1, "Workspace name is required").max(100),
   businessType: z.enum(BUSINESS_TYPES),
   defaultCurrency: z.enum(SUPPORTED_CURRENCIES),
-  defaultLanguage: z.enum(["en", "ru"]),
+  defaultLanguage: z.enum(["en", "ru", "ro"]),
   timezone: z.string().trim().min(1).max(100),
 });
 

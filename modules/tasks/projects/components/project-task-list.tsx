@@ -39,6 +39,7 @@ export function ProjectTaskList({
   sort,
 }: ProjectTaskListProps) {
   const router = useRouter();
+  const p = dict.projects;
   const [creating, setCreating] = useState(false);
   const [adding, setAdding] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState("");
@@ -68,22 +69,22 @@ export function ProjectTaskList({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-semibold text-text-primary">
-            Tasks <span className="text-text-muted">({tasks.length})</span>
+            {p.tasks} <span className="text-text-muted">({tasks.length})</span>
           </h2>
           <TaskSortSelect current={sort} />
         </div>
         {canManage && (
           <div className="flex items-center gap-2">
             {unassignedTasks.length > 0 && (
-              <RestrictedActionTooltip message={blocked ? message : "Add existing"}>
+              <RestrictedActionTooltip message={blocked ? message : p.addExisting}>
                 <Button variant="secondary" disabled={!allowManage} className="h-9 gap-1.5 px-3 text-xs" onClick={() => setAdding(true)}>
-                  <LinkIcon size={14} /> Add existing
+                  <LinkIcon size={14} /> {p.addExisting}
                 </Button>
               </RestrictedActionTooltip>
             )}
-            <RestrictedActionTooltip message={blocked ? message : "New task"}>
+            <RestrictedActionTooltip message={blocked ? message : p.newTask}>
               <Button className="h-9 gap-1.5 px-3 text-xs" disabled={!allowManage} onClick={() => setCreating(true)}>
-                <PlusIcon size={14} /> New task
+                <PlusIcon size={14} /> {p.newTask}
               </Button>
             </RestrictedActionTooltip>
           </div>
@@ -92,7 +93,7 @@ export function ProjectTaskList({
 
       {tasks.length === 0 ? (
         <div className="rounded-(--neu-radius-md) border border-dashed border-border-soft px-6 py-10 text-center">
-          <p className="text-sm text-text-muted">No tasks in this project yet.</p>
+          <p className="text-sm text-text-muted">{p.noTasksInProject}</p>
         </div>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -116,8 +117,8 @@ export function ProjectTaskList({
                   type="button"
                   onClick={() => handleRemove(task.id)}
                   disabled={blocked}
-                  aria-label="Remove from project"
-                  title={blocked ? message : "Remove from project"}
+                  aria-label={p.removeFromProject}
+                  title={blocked ? message : p.removeFromProject}
                   className="soft-icon-button h-7 w-7 text-text-muted hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <XIcon size={14} />
@@ -129,29 +130,29 @@ export function ProjectTaskList({
       )}
 
       {/* Create a task already attached to this project */}
-      <Modal isOpen={creating} onClose={() => setCreating(false)} title="New task in project">
+      <Modal isOpen={creating} onClose={() => setCreating(false)} title={p.newTaskInProject}>
         <TodoForm dict={dict} fixedProjectId={projectId} onSuccess={() => { setCreating(false); router.refresh(); }} />
       </Modal>
 
       {/* Attach an existing unassigned task */}
-      <Modal isOpen={adding} onClose={() => setAdding(false)} title="Add existing task">
+      <Modal isOpen={adding} onClose={() => setAdding(false)} title={p.addExistingTask}>
         <div className="space-y-4">
           <Select
             id="existing-task"
-            label="Unassigned task"
+            label={p.unassignedTask}
             value={selectedTaskId}
             onChange={(e) => setSelectedTaskId(e.target.value)}
             options={[
-              { value: "", label: "Select a task…" },
-              ...unassignedTasks.map((t) => ({ value: t.id, label: t.title })),
+              { value: "", label: p.selectTask },
+              ...unassignedTasks.map((task) => ({ value: task.id, label: task.title })),
             ]}
           />
           <div className="flex justify-end gap-2">
             <Button variant="secondary" className="h-9 px-4 text-sm" onClick={() => setAdding(false)}>
-              Cancel
+              {p.cancel}
             </Button>
             <Button className="h-9 px-4 text-sm" isLoading={isPending} disabled={!selectedTaskId} onClick={handleAddExisting}>
-              Add to project
+              {p.addToProject}
             </Button>
           </div>
         </div>

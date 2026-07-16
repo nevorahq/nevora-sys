@@ -42,10 +42,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Авторизован + на странице логина/регистрации → на дашборд
+  // Авторизован + на странице логина/регистрации → на домашний экран (Inbox)
   if (user && (pathname === ROUTES.login || pathname === ROUTES.register)) {
     const url = request.nextUrl.clone();
-    url.pathname = ROUTES.dashboard;
+    url.pathname = ROUTES.appHome;
     return NextResponse.redirect(url);
   }
 

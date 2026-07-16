@@ -8,6 +8,7 @@ import { retryDocumentExtractionAction } from "../actions/retry-document-extract
 import { CreateAccountInlineCTA } from "./create-account-inline-cta";
 import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import type { MoneyAccountOption } from "@/modules/moneyflow/services/money-account-service";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import { Toast } from "@/shared/ui/toast";
 
 /**
@@ -30,10 +31,11 @@ export function ExtractionReviewActions({
   contexts = [],
   initialCategoryId = null,
   initialContextId = null,
-  initialMerchantName = "Unknown merchant",
+  initialMerchantName = null,
   initialAmount = null,
   initialTransactionDate = null,
   initialCurrency = null,
+  t,
 }: {
   documentId: string;
   suggestionId: string | null;
@@ -49,6 +51,7 @@ export function ExtractionReviewActions({
   initialAmount?: number | null;
   initialTransactionDate?: string | null;
   initialCurrency?: string | null;
+  t: Dictionary["documents"]["review"];
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +61,7 @@ export function ExtractionReviewActions({
   const [selectedCategory, setSelectedCategory] = useState(initialCategoryId ?? categories[0]?.id ?? "");
   const [selectedContext, setSelectedContext] = useState(initialContextId ?? contexts[0]?.id ?? "");
   const [rememberChoice, setRememberChoice] = useState(false);
-  const [merchantName, setMerchantName] = useState(initialMerchantName?.trim() || "Unknown merchant");
+  const [merchantName, setMerchantName] = useState(initialMerchantName?.trim() || "");
   const [amount, setAmount] = useState(initialAmount?.toString() ?? "");
   const [transactionDate, setTransactionDate] = useState(initialTransactionDate ?? new Date().toISOString().slice(0, 10));
   const [pending, start] = useTransition();
@@ -79,11 +82,9 @@ export function ExtractionReviewActions({
     );
     setSelectedAccount(account.id);
     setToastMessage(
-      created
-        ? `${account.currency} account created successfully.`
-        : `${account.currency} account is ready.`,
+      (created ? t.accountCreated : t.accountReady).replace("{currency}", account.currency),
     );
-  }, []);
+  }, [t.accountCreated, t.accountReady]);
 
   const dismissToast = useCallback(() => setToastMessage(null), []);
 
@@ -136,12 +137,13 @@ export function ExtractionReviewActions({
                 transactionId={suggestionId}
                 currency={requiredCurrency}
                 onAccountReady={handleAccountReady}
+                t={t}
               />
             ) : null
           ) : (
             <>
               <label htmlFor="confirm-account" className="text-xs font-medium uppercase tracking-wide text-text-muted">
-                Post to {requiredCurrency} account
+                {t.postToAccount.replace("{currency}", requiredCurrency ?? "")}
               </label>
               <select
                 id="confirm-account"
@@ -165,7 +167,7 @@ export function ExtractionReviewActions({
         <div className="grid gap-3 rounded-(--neu-radius-md) border border-border bg-surface-sunken p-3 sm:grid-cols-2">
           <div>
             <label htmlFor="confirm-merchant" className="text-xs font-medium uppercase tracking-wide text-text-muted">
-              Merchant
+              {t.merchant}
             </label>
             <input
               id="confirm-merchant"
@@ -180,7 +182,7 @@ export function ExtractionReviewActions({
           <div className="grid grid-cols-[1fr_5rem] gap-2">
             <div>
               <label htmlFor="confirm-amount" className="text-xs font-medium uppercase tracking-wide text-text-muted">
-                Amount
+                {t.amount}
               </label>
               <input
                 id="confirm-amount"
@@ -196,7 +198,7 @@ export function ExtractionReviewActions({
             </div>
             <div>
               <label htmlFor="confirm-currency" className="text-xs font-medium uppercase tracking-wide text-text-muted">
-                Currency
+                {t.currency}
               </label>
               <input
                 id="confirm-currency"
@@ -208,7 +210,7 @@ export function ExtractionReviewActions({
           </div>
           <div>
             <label htmlFor="confirm-date" className="text-xs font-medium uppercase tracking-wide text-text-muted">
-              Date
+              {t.date}
             </label>
             <input
               id="confirm-date"
@@ -223,7 +225,7 @@ export function ExtractionReviewActions({
           <div />
           <div>
             <label htmlFor="confirm-category" className="text-xs font-medium uppercase tracking-wide text-text-muted">
-              Category
+              {t.category}
             </label>
             <select
               id="confirm-category"
@@ -237,7 +239,7 @@ export function ExtractionReviewActions({
           </div>
           <div>
             <label htmlFor="confirm-context" className="text-xs font-medium uppercase tracking-wide text-text-muted">
-              Expense context
+              {t.expenseContext}
             </label>
             <select
               id="confirm-context"
@@ -248,7 +250,7 @@ export function ExtractionReviewActions({
             >
               {contexts.map((context) => (
                 <option key={context.id} value={context.id}>
-                  {context.name}{context.visibility === "private" ? " · private" : ""}
+                  {context.name}{context.visibility === "private" ? ` · ${t.privateSuffix}` : ""}
                 </option>
               ))}
             </select>
@@ -261,48 +263,48 @@ export function ExtractionReviewActions({
               disabled={pending}
               className="h-4 w-4 rounded border-border"
             />
-            Remember this choice for similar expenses from this merchant
+            {t.remember}
           </label>
         </div>
       )}
 
       <div className="flex flex-wrap gap-2">
         {suggestionId && canConfirm && (
-          <RestrictedActionTooltip message={blocked ? message : "Confirm expense"}>
+          <RestrictedActionTooltip message={blocked ? message : t.confirmExpense}>
             <button
               type="button"
               disabled={confirmDisabled || noCompatibleAccount || (canReviewClassification && (!merchantName.trim() || Number(amount) <= 0 || !transactionDate))}
               onClick={() => run(confirmSuggestion)}
               className="inline-flex items-center gap-2 rounded-lg bg-accent-green px-4 py-2 text-sm font-semibold text-text-inverse shadow-neu-control hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <CheckIcon size={16} /> Confirm expense
+              <CheckIcon size={16} /> {t.confirmExpense}
             </button>
           </RestrictedActionTooltip>
         )}
         {suggestionId && canConfirm && (
-          <RestrictedActionTooltip message={blocked ? message : "Reject"}>
+          <RestrictedActionTooltip message={blocked ? message : t.reject}>
             <button
               type="button"
               disabled={pending || blocked}
               onClick={() => run(() => rejectFinancialSuggestion({ suggestionId }))}
               className="inline-flex items-center gap-2 rounded-lg border border-danger/30 px-4 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <XIcon size={16} /> Reject
+              <XIcon size={16} /> {t.reject}
             </button>
           </RestrictedActionTooltip>
         )}
-        <RestrictedActionTooltip message={blocked ? message : "Retry extraction"}>
+        <RestrictedActionTooltip message={blocked ? message : t.retryExtraction}>
           <button
             type="button"
             disabled={pending || blocked}
             onClick={() => run(() => retryDocumentExtractionAction(documentId))}
             className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-primary hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <RefreshCwIcon size={16} /> Retry extraction
+            <RefreshCwIcon size={16} /> {t.retryExtraction}
           </button>
         </RestrictedActionTooltip>
       </div>
-      {pending && <p className="text-xs text-text-muted">Working…</p>}
+      {pending && <p className="text-xs text-text-muted">{t.working}</p>}
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}
       <Toast message={toastMessage} onDismiss={dismissToast} />
     </div>

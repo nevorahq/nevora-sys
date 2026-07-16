@@ -59,7 +59,7 @@ function PendingInviteRow({
   // pending → не-pending без ошибки как признак завершённого запроса.
   useEffect(() => {
     if (wasAccepting.current && !acceptPending && !acceptState.error) {
-      if (redirectOnAccept) router.push(ROUTES.dashboard);
+      if (redirectOnAccept) router.push(ROUTES.appHome);
       else router.refresh();
     }
     wasAccepting.current = acceptPending;

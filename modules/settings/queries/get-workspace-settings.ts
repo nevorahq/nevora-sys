@@ -34,7 +34,9 @@ export async function getWorkspaceSettings(): Promise<WorkspaceSettings> {
     logoUrl: (organization.logo_url as string | null) ?? null,
     businessType: ((organization.business_type as BusinessType | null) ?? "other"),
     defaultCurrency: (organization.base_currency as string | null) ?? "EUR",
-    defaultLanguage: organization.default_language === "ru" ? "ru" : "en",
+    defaultLanguage: ["en", "ru", "ro"].includes(organization.default_language as string)
+      ? (organization.default_language as "en" | "ru" | "ro")
+      : "en",
     timezone: (organization.timezone as string | null) ?? "UTC",
   };
 }

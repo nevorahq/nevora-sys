@@ -6,10 +6,9 @@ import { AlertTriangleIcon, ArrowRightIcon, LockIcon } from "lucide-react";
 import { ROUTES } from "@/shared/config/routes";
 import { cn } from "@/shared/utils/cn";
 import {
-  DEFAULT_BLOCKED_ACTION_MESSAGE,
-  blockedActionMessage,
   getAccessStateView,
   isAccessIntentAllowed,
+  type AccessCopy,
   type AccessGateIntent,
   type AccessStateView,
 } from "../services/access-state-ui";
@@ -19,13 +18,16 @@ const AccessStateContext = createContext<AccessStateView>(getAccessStateView("de
 
 export function AccessStateProvider({
   accessState,
+  copy,
   children,
 }: {
   accessState: OrgAccessState;
+  /** Localized copy from `dict.access` (dashboard layout). Falls back to defaults. */
+  copy?: AccessCopy;
   children: React.ReactNode;
 }) {
   return (
-    <AccessStateContext.Provider value={getAccessStateView(accessState)}>
+    <AccessStateContext.Provider value={getAccessStateView(accessState, copy)}>
       {children}
     </AccessStateContext.Provider>
   );
@@ -35,6 +37,13 @@ export function useAccessState() {
   return useContext(AccessStateContext);
 }
 
+/** Resolve the localized blocked-action message for an intent from the view. */
+function blockedMessageFor(access: AccessStateView, intent: AccessGateIntent): string {
+  if (intent === "invite") return access.blocked.invite;
+  if (intent === "execute") return access.blocked.execute;
+  return access.banner ?? access.blocked.default;
+}
+
 export function useAccessGate(intent: AccessGateIntent = "write") {
   const access = useAccessState();
   const allowed = isAccessIntentAllowed(access.state, intent);
@@ -42,12 +51,12 @@ export function useAccessGate(intent: AccessGateIntent = "write") {
     access,
     allowed,
     blocked: !allowed,
-    message: allowed ? "" : blockedActionMessage(intent, access.state),
+    message: allowed ? "" : blockedMessageFor(access, intent),
   };
 }
 
 export function RestrictedActionTooltip({
-  message = DEFAULT_BLOCKED_ACTION_MESSAGE,
+  message,
   children,
   className,
 }: {
@@ -55,12 +64,14 @@ export function RestrictedActionTooltip({
   children: React.ReactNode;
   className?: string;
 }) {
+  const access = useAccessState();
+  const text = message ?? access.blocked.default;
   const id = useId();
   return (
-    <span className={cn("inline-flex", className)} title={message} aria-describedby={id}>
+    <span className={cn("inline-flex", className)} title={text} aria-describedby={id}>
       {children}
       <span id={id} className="sr-only">
-        {message}
+        {text}
       </span>
     </span>
   );
@@ -99,7 +110,7 @@ export function PlanRequiredCTA({ label = "Billing" }: { label?: string }) {
 }
 
 export function BillingRequiredAlert({
-  title = "Доступ ограничен",
+  title,
   message,
   className,
 }: {
@@ -108,7 +119,7 @@ export function BillingRequiredAlert({
   className?: string;
 }) {
   const access = useAccessState();
-  const text = message ?? access.banner ?? "Для продолжения работы выберите платный план.";
+  const text = message ?? access.banner ?? access.blocked.default;
   return (
     <div
       role="alert"
@@ -120,11 +131,11 @@ export function BillingRequiredAlert({
       <div className="flex min-w-0 items-start gap-3">
         <AlertTriangleIcon size={18} className="mt-0.5 shrink-0 text-accent-yellow" aria-hidden="true" />
         <div>
-          <p className="font-semibold">{title}</p>
+          <p className="font-semibold">{title ?? access.alertTitle}</p>
           <p className="mt-1 text-text-secondary">{text}</p>
         </div>
       </div>
-      <PlanRequiredCTA label="Перейти к оплате" />
+      <PlanRequiredCTA label={access.ctaLabel} />
     </div>
   );
 }

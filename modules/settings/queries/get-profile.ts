@@ -30,7 +30,7 @@ export async function getProfile(): Promise<ProfileSettings> {
     email: user.email ?? "",
     avatarUrl,
     phone: (data.phone as string | null) ?? "",
-    language: data.language === "ru" ? "ru" : "en",
+    language: ["en", "ru", "ro"].includes(data.language as string) ? (data.language as "en" | "ru" | "ro") : "en",
     timezone: (data.timezone as string | null) ?? "UTC",
   };
 }

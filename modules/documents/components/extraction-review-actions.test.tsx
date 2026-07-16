@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ExtractionReviewActions } from "./extraction-review-actions";
+import { en } from "@/shared/i18n/dictionaries/en";
 
 const mocks = vi.hoisted(() => ({
   createAccount: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock("../actions/retry-document-extraction.action", () => ({
 }));
 
 const baseProps = {
+  t: en.documents.review,
   documentId: "a4c1216e-e85e-4d6c-8893-af0363ff8d1f",
   suggestionId: "7b113e6e-c727-4308-baf9-c8f813ece4d5",
   canConfirm: true,

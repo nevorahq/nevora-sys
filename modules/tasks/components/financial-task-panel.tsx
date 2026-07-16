@@ -10,10 +10,11 @@ import { Select } from "@/shared/ui/select";
 import { formatMoney } from "@/shared/utils/format-money";
 import { formatDate } from "@/shared/utils/format-date";
 import { ROUTES } from "@/shared/config/routes";
-import { TASK_CONTEXT_TYPE_LABELS, type TaskContextType, type FinancialTaskStatus } from "../constants/task.constants";
+import type { TaskContextType, FinancialTaskStatus } from "../constants/task.constants";
 import { markFinancialTaskPaidAction } from "../actions/mark-financial-task-paid.action";
 import { setFinancialTaskAmountAction } from "../actions/set-financial-task-amount.action";
 import { skipFinancialTaskAction, dismissFinancialTaskAction } from "../actions/resolve-financial-task.action";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface AccountOption {
   id: string;
@@ -39,13 +40,14 @@ interface Props {
   task: FinancialTaskPanelData;
   accounts: AccountOption[];
   canWrite: boolean;
+  t: Dictionary["financialTask"];
 }
 
-const STATUS_BADGE: Record<FinancialTaskStatus, { label: string; className: string }> = {
-  open:      { label: "Open",      className: "bg-accent-lilac-soft text-accent-lilac" },
-  paid:      { label: "Paid",      className: "bg-success-soft text-success" },
-  skipped:   { label: "Skipped",   className: "bg-surface-sunken text-text-secondary" },
-  dismissed: { label: "Dismissed", className: "bg-surface-sunken text-text-muted" },
+const STATUS_CLASS: Record<FinancialTaskStatus, string> = {
+  open:      "bg-accent-lilac-soft text-accent-lilac",
+  paid:      "bg-success-soft text-success",
+  skipped:   "bg-surface-sunken text-text-secondary",
+  dismissed: "bg-surface-sunken text-text-muted",
 };
 
 /**
@@ -54,14 +56,19 @@ const STATUS_BADGE: Record<FinancialTaskStatus, { label: string; className: stri
  * cycle). Routes Mark-as-paid through the idempotent one-off flow, and offers
  * Skip / Dismiss for obligations settled elsewhere or false positives.
  */
-export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
+export function FinancialTaskPanel({ task, accounts, canWrite, t }: Props) {
   const router = useRouter();
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const isOpen = task.financial_status === "open";
-  const badge = STATUS_BADGE[task.financial_status];
+  const statusLabel: Record<FinancialTaskStatus, string> = {
+    open: t.statusOpen,
+    paid: t.statusPaid,
+    skipped: t.statusSkipped,
+    dismissed: t.statusDismissed,
+  };
   const canPay = Boolean(task.amount && task.amount > 0 && task.currency);
 
   // Amount editor: a capture without a number ("оплатить аренду 20 числа") creates
@@ -83,11 +90,11 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
   function saveAmount() {
     const amount = Number(amountInput.replace(",", "."));
     if (!Number.isFinite(amount) || amount <= 0) {
-      setError("Enter an amount greater than zero");
+      setError(t.amountGtZero);
       return;
     }
     if (currencyInput.trim().length !== 3) {
-      setError("Use a 3-letter currency code");
+      setError(t.currencyCode);
       return;
     }
     setError(null);
@@ -107,22 +114,22 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <WalletIcon size={18} className="text-accent-lilac" />
-          <h2 className="text-base font-semibold text-text-primary">Financial context</h2>
+          <h2 className="text-base font-semibold text-text-primary">{t.title}</h2>
         </div>
-        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badge.className}`}>{badge.label}</span>
+        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[task.financial_status]}`}>{statusLabel[task.financial_status]}</span>
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
         <div>
-          <dt className="text-xs uppercase tracking-wide text-text-muted">Type</dt>
-          <dd className="mt-1 text-text-primary">{TASK_CONTEXT_TYPE_LABELS[task.task_context_type]}</dd>
+          <dt className="text-xs uppercase tracking-wide text-text-muted">{t.type}</dt>
+          <dd className="mt-1 text-text-primary">{t.types[task.task_context_type]}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-text-muted">Provider</dt>
+          <dt className="text-xs uppercase tracking-wide text-text-muted">{t.provider}</dt>
           <dd className="mt-1 text-text-primary">{task.provider_name?.trim() || "—"}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-text-muted">Amount</dt>
+          <dt className="text-xs uppercase tracking-wide text-text-muted">{t.amount}</dt>
           <dd className="mt-1 flex items-center gap-2 text-text-primary">
             {task.amount != null ? `${formatMoney(Number(task.amount))} ${task.currency ?? ""}` : "—"}
             {canWrite && isOpen && canPay && !editingAmount && (
@@ -130,7 +137,7 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
                 type="button"
                 onClick={() => setEditingAmount(true)}
                 className="text-text-muted hover:text-text-primary"
-                aria-label="Edit amount"
+                aria-label={t.editAmount}
               >
                 <PencilIcon size={13} />
               </button>
@@ -138,23 +145,23 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
           </dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-text-muted">Payment date</dt>
+          <dt className="text-xs uppercase tracking-wide text-text-muted">{t.paymentDate}</dt>
           <dd className="mt-1 text-text-primary">{task.financial_due_date ? formatDate(task.financial_due_date) : "—"}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-text-muted">Action due</dt>
+          <dt className="text-xs uppercase tracking-wide text-text-muted">{t.actionDue}</dt>
           <dd className="mt-1 text-text-primary">{task.due_date ? formatDate(task.due_date) : "—"}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-text-muted">Reminder offset</dt>
-          <dd className="mt-1 text-text-primary">{task.reminder_offset_days} days before</dd>
+          <dt className="text-xs uppercase tracking-wide text-text-muted">{t.reminderOffset}</dt>
+          <dd className="mt-1 text-text-primary">{t.daysBefore.replace("{days}", String(task.reminder_offset_days))}</dd>
         </div>
       </dl>
 
       {task.source_document_id && (
         <p className="mt-4 text-xs text-text-muted">
           <Link href={`${ROUTES.documents}/${task.source_document_id}`} className="underline hover:text-text-primary">
-            View source document
+            {t.viewSourceDocument}
           </Link>
         </p>
       )}
@@ -162,7 +169,7 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
       {task.financial_status === "paid" && task.financial_transaction_id && (
         <p className="mt-4 text-xs text-text-muted">
           <Link href={`${ROUTES.money}/${task.financial_transaction_id}`} className="underline hover:text-text-primary">
-            View posted transaction
+            {t.viewPostedTransaction}
           </Link>
         </p>
       )}
@@ -174,9 +181,7 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
           {amountEditorOpen && (
             <div className="space-y-2 rounded-(--neu-radius) bg-surface-sunken p-3">
               {!canPay && (
-                <p className="text-xs text-text-secondary">
-                  This obligation was captured without an amount. Add it to record the payment.
-                </p>
+                <p className="text-xs text-text-secondary">{t.capturedWithoutAmount}</p>
               )}
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2">
@@ -186,14 +191,14 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
                     inputMode="decimal"
                     min="0"
                     step="0.01"
-                    label="Amount"
+                    label={t.amount}
                     value={amountInput}
                     onChange={(e) => setAmountInput(e.target.value)}
                   />
                 </div>
                 <Input
                   id="fin-task-currency"
-                  label="Currency"
+                  label={t.currency}
                   value={currencyInput}
                   maxLength={3}
                   className="uppercase"
@@ -202,11 +207,11 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
               </div>
               <div className="flex gap-2">
                 <Button type="button" isLoading={isPending} onClick={saveAmount}>
-                  Save amount
+                  {t.saveAmount}
                 </Button>
                 {canPay && (
                   <Button type="button" variant="ghost" disabled={isPending} onClick={() => setEditingAmount(false)}>
-                    Cancel
+                    {t.cancel}
                   </Button>
                 )}
               </div>
@@ -217,13 +222,13 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
             accounts.length > 0 ? (
               <Select
                 id="fin-task-pay-account"
-                label="Pay from account"
+                label={t.payFromAccount}
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
                 options={accounts.map((a) => ({ value: a.id, label: `${a.name} · ${a.currency}` }))}
               />
             ) : (
-              <p className="text-xs text-text-muted">Add a money account to record this payment.</p>
+              <p className="text-xs text-text-muted">{t.addMoneyAccount}</p>
             )
           )}
           <div className="flex flex-wrap gap-2">
@@ -234,7 +239,7 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
                 disabled={!accountId || accounts.length === 0}
                 onClick={() => run(() => markFinancialTaskPaidAction({ taskId: task.id, accountId }))}
               >
-                <CheckCircleIcon size={15} className="mr-1.5" /> Mark as paid
+                <CheckCircleIcon size={15} className="mr-1.5" /> {t.markAsPaid}
               </Button>
             )}
             <Button
@@ -243,7 +248,7 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
               disabled={isPending}
               onClick={() => run(() => skipFinancialTaskAction({ taskId: task.id }))}
             >
-              <SkipForwardIcon size={15} className="mr-1.5" /> Skip
+              <SkipForwardIcon size={15} className="mr-1.5" /> {t.skip}
             </Button>
             <Button
               type="button"
@@ -251,12 +256,10 @@ export function FinancialTaskPanel({ task, accounts, canWrite }: Props) {
               disabled={isPending}
               onClick={() => run(() => dismissFinancialTaskAction({ taskId: task.id }))}
             >
-              <XCircleIcon size={15} className="mr-1.5" /> Dismiss
+              <XCircleIcon size={15} className="mr-1.5" /> {t.dismiss}
             </Button>
           </div>
-          <p className="text-xs text-text-muted">
-            Marking as paid posts a single expense to Money. Until then this is a planned obligation and does not affect your balance.
-          </p>
+          <p className="text-xs text-text-muted">{t.markingNote}</p>
         </div>
       )}
 

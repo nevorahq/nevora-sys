@@ -1,10 +1,10 @@
-export { LandingHeader } from "./components/landing-header";
 export { LandingPage } from "./components/landing-page";
+export { LandingHeader } from "./components/landing-header";
 export { HeroSection } from "./components/hero-section";
-export { ValueSection } from "./components/value-section";
-export { AboutSection } from "./components/about-section";
-export { PhilosophySection } from "./components/philosophy-section";
+export { HowItWorksSection } from "./components/how-it-works-section";
+export { AreasSection } from "./components/areas-section";
+export { ControlSection } from "./components/control-section";
 export { PlansSection } from "./components/plans-section";
-export { TrialDetailsSection } from "./components/trial-details-section";
-export { ContactSection } from "./components/contact-section";
+export { StorySection } from "./components/story-section";
 export { LandingFooter } from "./components/landing-footer";
+export { landingMetadata } from "./metadata";

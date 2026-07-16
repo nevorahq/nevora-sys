@@ -55,6 +55,7 @@ export default async function ProjectDetailPage({
         ownerName={ownerName}
         canManage={canManage}
         canArchive={canArchive}
+        t={dict.projects}
       />
 
       <ProjectTaskList

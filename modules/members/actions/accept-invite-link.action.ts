@@ -53,6 +53,6 @@ export async function acceptInviteLinkAction(
   }
 
   // redirect() бросает исключение — вне try/catch
-  if (ok) redirect(ROUTES.dashboard);
+  if (ok) redirect(ROUTES.appHome);
   return {};
 }

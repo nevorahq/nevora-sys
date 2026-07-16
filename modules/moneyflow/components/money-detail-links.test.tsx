@@ -30,6 +30,9 @@ vi.mock("@/modules/notifications/components/notification-provider", () => ({
 vi.mock("../actions/create-transfer.action", () => ({
   createTransferAction: vi.fn(),
 }));
+vi.mock("../actions/resolve-transfer-rate.action", () => ({
+  resolveTransferRateAction: vi.fn(),
+}));
 
 const dict = {
   common: { close: "Close", loading: "Loading" },
@@ -68,6 +71,17 @@ const dict = {
       notePlaceholder: "Optional note",
       submit: "Transfer",
       noDestination: "No other account with the same currency.",
+      debitLabel: "Debit",
+      organizationRate: "Organization rate",
+      estimatedCredit: "Estimated credit",
+      actualCredit: "Actual credit",
+      useActualCredit: "Enter actual credit",
+      actualCreditHint: "Only when bank amount differs.",
+      effectiveRate: "Effective rate",
+      rateBasis: "Base rates",
+      calculation: "Calculation",
+      rateMissing: "Missing rate",
+      staleRate: "Stale rate",
     },
   },
 } as never;
@@ -111,6 +125,12 @@ describe("Money detail navigation", () => {
           type: "expense",
           amount: 4.5,
           currency: "USD",
+          destination_amount: null,
+          destination_currency: null,
+          reference_exchange_rate: null,
+          effective_exchange_rate: null,
+          exchange_rate_source: null,
+          exchange_rate_id: null,
           transaction_date: "2026-06-27",
           note: null,
           from_account_id: null,

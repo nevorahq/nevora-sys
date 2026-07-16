@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { getRelationsForEntity } from "../services/relation.service";
 import { toRelationCounts } from "../utils/group-relations-by-type";
-import { ENTITY_KIND_LABELS } from "../constants/relation.constants";
+import { getDictionary } from "@/shared/i18n/get-dictionary";
 import type { EntityKind, RelationCounts } from "../types/relation.types";
 import { RelationSearchDialog } from "./relation-search-dialog";
 
@@ -42,7 +42,11 @@ export async function LinkedEntitiesWidget({
   allowCreate = false,
   revalidate,
 }: LinkedEntitiesWidgetProps) {
-  const res = await getRelationsForEntity({ entityType, entityId });
+  const [res, { dict }] = await Promise.all([
+    getRelationsForEntity({ entityType, entityId }),
+    getDictionary(),
+  ]);
+  const r = dict.relations;
   const counts = res.ok
     ? toRelationCounts(res.data)
     : { tasks: 0, documents: 0, transactions: 0, subscriptions: 0, total: 0 };
@@ -50,7 +54,7 @@ export async function LinkedEntitiesWidget({
   return (
     <div className="soft-card-sm space-y-3 p-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-text-primary">Linked entities</p>
+        <p className="text-sm font-semibold text-text-primary">{r.title}</p>
         <span className="text-xs text-text-muted">{counts.total}</span>
       </div>
 
@@ -62,7 +66,7 @@ export async function LinkedEntitiesWidget({
           >
             <Icon size={14} className="shrink-0 text-text-muted" />
             <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">
-              {ENTITY_KIND_LABELS[kind]}
+              {r.kindsPlural[kind]}
             </span>
             <span className="text-sm font-semibold text-text-primary">{counts[key]}</span>
           </li>
@@ -75,7 +79,7 @@ export async function LinkedEntitiesWidget({
             href={viewAllHref}
             className="text-sm font-medium text-text-secondary underline hover:text-text-primary"
           >
-            View all
+            {r.viewAll}
           </Link>
         ) : (
           <span />
@@ -86,6 +90,7 @@ export async function LinkedEntitiesWidget({
             sourceEntityId={entityId}
             revalidate={revalidate}
             triggerVariant="ghost"
+            t={r}
           />
         )}
       </div>

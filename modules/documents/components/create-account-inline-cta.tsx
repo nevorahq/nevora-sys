@@ -12,15 +12,20 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Modal } from "@/shared/ui/modal";
 import { Select } from "@/shared/ui/select";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
+
+type ReviewDict = Dictionary["documents"]["review"];
 
 export function CreateAccountInlineCTA({
   transactionId,
   currency,
   onAccountReady,
+  t,
 }: {
   transactionId: string;
   currency: string;
   onAccountReady: (account: MoneyAccountOption, created: boolean) => void;
+  t: ReviewDict;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,18 +44,18 @@ export function CreateAccountInlineCTA({
     <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-accent-yellow">
-          This is a {currency} expense, but you have no active {currency} account.
+          {t.noAccountText.replaceAll("{currency}", currency)}
         </p>
         <Button type="button" variant="secondary" onClick={openDialog} className="shrink-0">
-          <WalletIcon size={15} /> Create {currency} account
+          <WalletIcon size={15} /> {t.createAccountCta.replace("{currency}", currency)}
         </Button>
       </div>
 
       <Modal
         isOpen={isOpen}
         onClose={closeDialog}
-        title={`Create ${currency} account`}
-        closeLabel="Close"
+        title={t.createAccountCta.replace("{currency}", currency)}
+        closeLabel={t.close}
       >
         <CreateInlineAccountForm
           key={requestId}
@@ -63,6 +68,7 @@ export function CreateAccountInlineCTA({
             setIsOpen(false);
             onAccountReady(account, created);
           }}
+          t={t}
         />
       </Modal>
     </>
@@ -76,6 +82,7 @@ function CreateInlineAccountForm({
   onPendingChange,
   onCancel,
   onSuccess,
+  t,
 }: {
   transactionId: string;
   requestId: string;
@@ -83,6 +90,7 @@ function CreateInlineAccountForm({
   onPendingChange: (pending: boolean) => void;
   onCancel: () => void;
   onSuccess: (account: MoneyAccountOption, created: boolean) => void;
+  t: ReviewDict;
 }) {
   const [state, formAction, isPending] = useActionState<InlineAccountCreationResult, FormData>(
     async (previousState, formData) => {
@@ -117,19 +125,19 @@ function CreateInlineAccountForm({
       <Input
         id="inline-account-name"
         name="name"
-        label="Account name"
+        label={t.accountName}
         defaultValue={`${currency} Account`}
         required
         maxLength={100}
         error={state.fieldErrors?.name?.[0]}
       />
 
-      <Input id="inline-account-currency" label="Currency" value={currency} disabled readOnly />
+      <Input id="inline-account-currency" label={t.currency} value={currency} disabled readOnly />
 
       <Select
         id="inline-account-type"
         name="type"
-        label="Account type"
+        label={t.accountType}
         options={typeOptions}
         defaultValue="card"
         disabled={isPending}
@@ -138,10 +146,10 @@ function CreateInlineAccountForm({
 
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="ghost" onClick={onCancel} disabled={isPending}>
-          Cancel
+          {t.cancel}
         </Button>
         <Button type="submit" isLoading={isPending}>
-          Create account
+          {t.createAccount}
         </Button>
       </div>
     </form>

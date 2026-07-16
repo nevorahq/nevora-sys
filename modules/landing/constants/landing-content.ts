@@ -1,200 +1,165 @@
 /**
- * Контент лендинга Nevora Business OS — локализованный (en / ro / ru).
+ * Контент лендинга Nevora Business OS — локализованный (en / ru / ro).
  *
  * Почему не в общих словарях shared/i18n: их тип `DeepString<typeof en>`
  * сводит листья к `string` и не поддерживает массивы — а лендинг состоит
- * из списков (features, limits, questions, items). Здесь мы держим
- * собственный строго типизированный контент: `LandingContent = typeof en`.
+ * из списков (steps, areas, points). Здесь мы держим собственный строго
+ * типизированный контент: `LandingContent = typeof en`.
  *
- * Публичный лендинг поддерживает RO отдельно от shared app locale, потому что
- * dashboard-словари пока есть только для en / ru.
+ * Публичный лендинг поддерживает RO наравне с en/ru: shared app-словари пока
+ * только en/ru, поэтому румынский живёт как публичная локаль (лендинг + legal +
+ * metadata), а интерфейс приложения для ro падает в en — см. `toAppLocale`.
  *
- * Тон: честный founder-led копирайт. Без хайпа, фейковых цифр,
- * фейковых отзывов, фейковых скидок и логотипов.
+ * Тон: честный founder-led копирайт. Единый глоссарий терминов, без хайпа,
+ * без смешения языков, без фейковых цифр и отзывов. Финансовые действия — только
+ * после подтверждения пользователя; ИИ ничего не выполняет автоматически.
  */
 
+import type { PublicLocale } from "@/shared/i18n/constants";
+
 export const BRAND = "Nevora Business OS";
-export const LANDING_LOCALES = ["en", "ro", "ru"] as const;
 
-export type LandingLocale = (typeof LANDING_LOCALES)[number];
+/** Публичные локали лендинга совпадают с общей осью языка приложения. */
+export const LANDING_LOCALES = ["en", "ru", "ro"] as const;
 
-export const LANDING_LOCALE_LABELS: Record<LandingLocale, string> = {
-  en: "EN",
-  ro: "RO",
-  ru: "RU",
-};
+export type LandingLocale = PublicLocale;
 
 const en = {
+  meta: {
+    title: "Nevora Business OS — Run your business from one connected workspace",
+    description:
+      "Tasks, projects, finances, documents and subscriptions in one system. Nevora suggests the next step; every important change stays under your control.",
+  },
   nav: [
     { label: "Home", href: "#home" },
-    { label: "About", href: "#about" },
-    { label: "Plan", href: "#plan" },
+    { label: "How it works", href: "#how" },
+    { label: "Areas", href: "#areas" },
+    { label: "Pricing", href: "#pricing" },
     { label: "Contact", href: "#contact" },
   ],
   header: {
     login: "Log in",
-    startFree: "Request access",
+    cta: "Start a 14-day trial",
+    menu: "Open menu",
+    close: "Close menu",
   },
   hero: {
-    title: "Connected Business Operations.",
+    title: "Run your business from one connected workspace.",
     subtitle:
-      "Nevora Business OS connects tasks, projects, money, documents, subscriptions, Action Center and AI-assisted workflows in one clear operating layer.",
-    supporting: [
-      "AI-assisted, not AI-controlled.",
-      "Financial control without automatic mistakes.",
-    ],
-    goal: "Capture first. Decide after. Important obligations stay visible until resolved.",
-    primaryCta: "Request early access",
-    secondaryCta: "See plans",
-    microcopy: "Private beta. 14-day trial, 500 MB storage, review-first workflows.",
+      "Tasks, projects, finances, documents and subscriptions stay connected in one system. Nevora suggests the next step, while every important change remains under your control.",
+    trust: "AI suggests. You review. Financial actions never run automatically.",
+    primaryCta: "Start a 14-day trial",
+    secondaryCta: "See pricing",
+    microcopy: "Private beta · 14-day trial · 500 MB storage · no card required.",
+    audience: "Built for small and growing teams that want order without heavy software.",
   },
-  value: {
-    title: "What Nevora Business OS helps you do",
-    text: "The system brings the active parts of your operations into one place, so you understand faster what is happening and what needs attention.",
-    items: [
-      "Tasks",
-      "Projects",
-      "Action Center",
-      "Relations",
-      "Documents",
-      "Subscriptions",
-      "Money tracking",
-      "Capture Inbox",
-      "Business analytics",
-      "AI suggestions",
-      "Developer Access",
-    ],
-    supporting:
-      "Open your workspace, see obligations, review suggestions, confirm financial actions and move forward with a recorded workflow.",
-  },
-  about: {
-    title: "About the project",
-    paragraphs: [
-      "Nevora Business OS is being built because many business tools become too heavy too early.",
-      "First you need a connected place for tasks, projects, money, documents, subscriptions and recurring obligations. Then software often turns into complex menus, extra dashboards, limits and features nobody uses.",
-      "I want to build the product in a different direction.",
-    ],
-    principles: [
-      {
-        title: "Simple by default",
-        text: "You should understand your workspace without training.",
-      },
-      {
-        title: "Useful before complex",
-        text: "Every module must solve a real work problem, not exist just for show.",
-      },
-      {
-        title: "Honest value",
-        text: "The product should earn trust through usefulness, transparency and convenience.",
-      },
-    ],
-    closing:
-      "This is not a tool made to sell complexity back to the user. It is a working system for people who need order in their business.",
-  },
-  philosophy: {
-    title: "Less noise. More control.",
-    paragraphs: [
-      "Business does not need another ten tabs. It needs a clear place where work, documents, subscriptions, money and decisions connect.",
-      "Nevora Business OS is being built as a practical operating system for small and growing businesses.",
-    ],
-    questionsIntro: "A useful system should help you answer simple questions:",
-    questions: [
-      "What needs to be done?",
-      "Who is responsible?",
-      "Which obligation needs attention now?",
-      "Which financial action is ready to confirm?",
-      "What needs attention today?",
-    ],
-    closing: "Important obligations do not disappear just because a notification was read.",
-  },
-  plans: {
-    title: "Plans",
+  how: {
+    title: "Add, review, execute",
     subtitle:
-      "Start simple. Move up only when the product truly gives you value.",
-    explanation:
-      "Every plan is predictable: included members, active-module limits and transparent pricing context.",
-    trialNote: {
-      lead: "You can try Nevora Business OS for 14 days with up to 500 MB of storage.",
-      body: "The trial exists so you can test the product in real work while the product remains in private beta.",
-      points: [
-        "Review-first AI.",
-        "Confirm-first finance.",
-        "Use it, test it, decide if it helps.",
-      ],
-    },
-  },
-  trialDetails: {
-    title: "What's included in the trial?",
-    intro: [
-      "The trial gives you 14 days of private beta access to Nevora Business OS. You can add up to 2 members, use 500 MB of storage and test tasks, projects, money tracking, documents, subscriptions, Action Center, basic analytics and AI suggestions.",
-      "This is not a demo for the sake of a demo. The trial exists so you can check the system on a real workflow: capture work, connect documents, review subscription obligations and confirm financial actions only when they are ready.",
-      "After 14 days you can calmly decide whether Start, Pro or Business fits you. No pressure, no forced upgrade and no marketing traps.",
+      "One simple loop keeps work moving. You stay in control at every step — nothing important happens without you.",
+    steps: [
+      {
+        badge: "1",
+        title: "Add",
+        text: "Drop a task, a document, a note or a subscription into one place. No forms to learn, no lost context.",
+      },
+      {
+        badge: "2",
+        title: "Review",
+        text: "Nevora reads what you added and suggests the next step. You check the suggestion before anything is applied.",
+      },
+      {
+        badge: "3",
+        title: "Execute",
+        text: "You confirm, and the action is recorded and connected. Payments and money changes happen only when you approve them.",
+      },
     ],
+  },
+  areas: {
+    title: "One system for the work you already do",
+    subtitle:
+      "Nevora connects the active parts of your business, so you spend less time switching between tools.",
     items: [
-      {
-        title: "2 members",
-        text: "Check how the system works on your own or together with one teammate.",
-      },
-      {
-        title: "500 MB storage",
-        text: "Enough to test documents, files and working materials.",
-      },
       {
         title: "Tasks and projects",
-        text: "Create work, assign owners and keep execution connected to context.",
+        text: "Create work, assign owners and keep execution connected to its context.",
       },
       {
-        title: "Money tracking",
-        text: "Track income, expenses and cashflow without treating suggestions as accounting facts.",
+        title: "Money and cash flow",
+        text: "Track income and expenses and see your cash flow — suggestions never post themselves as facts.",
       },
       {
-        title: "Documents and relations",
-        text: "Store working materials and connect them to tasks, money and subscriptions.",
+        title: "Documents",
+        text: "Store invoices and receipts and link them to tasks, money and subscriptions.",
       },
       {
         title: "Subscriptions",
-        text: "Track recurring obligations and use Mark as paid when a payment has really happened.",
+        text: "Follow recurring payments and mark them as paid only when a payment has really happened.",
       },
       {
-        title: "Action Center",
-        text: "Keep obligations visible until they are resolved, not merely read.",
+        title: "Inbox",
+        text: "Add anything quickly, then review it and decide what should become an action.",
       },
       {
-        title: "Capture Inbox",
-        text: "Capture first, review intent and decide what should become an action.",
-      },
-      {
-        title: "AI suggestions",
-        text: "Try summaries and recommendations that require review before anything executes.",
-      },
-      {
-        title: "Basic analytics",
-        text: "Get a simple overview of tasks, expenses, subscriptions and upcoming actions.",
-      },
-      {
-        title: "No pressure to upgrade",
-        text: "Use the 14 days, check the value and move to a paid plan only if the product really helps.",
+        title: "Analytics",
+        text: "Get a simple overview of tasks, expenses, subscriptions and what needs attention next.",
       },
     ],
   },
+  control: {
+    title: "Control, security and the role of AI",
+    subtitle:
+      "Nevora is assistive by design. It helps you decide faster, but the decision is always yours.",
+    points: [
+      {
+        title: "AI suggests, you decide",
+        text: "Every AI output is a suggestion you review. Nothing is applied until you confirm it.",
+      },
+      {
+        title: "Confirm-first finance",
+        text: "Money changes are never automatic. A payment or expense is recorded only after you approve it.",
+      },
+      {
+        title: "Your data stays yours",
+        text: "During private beta your workspace is isolated and private. No hidden sharing, no surprises.",
+      },
+    ],
+    closing:
+      "Important obligations stay visible until they are resolved — not just until a notification is read.",
+  },
+  plans: {
+    title: "Pricing",
+    subtitle: "Start with a free 14-day trial. Move up only when the product truly earns it.",
+    note: {
+      lead: "Try Nevora Business OS for 14 days with up to 500 MB of storage.",
+      points: [
+        "AI you review",
+        "Finance you confirm",
+        "Decide freely after the trial",
+      ],
+    },
+  },
+  story: {
+    title: "Why Nevora exists",
+    paragraphs: [
+      "Many business tools become heavy too early — extra menus, unused features and limits that get in the way.",
+      "Nevora is being built in the other direction: a connected place for tasks, money, documents and subscriptions that you can understand without training, where the important decisions stay with you.",
+    ],
+  },
   contact: {
-    title: "Contact",
-    text: "Have a question, idea or use case?",
-    text2:
-      "I'm open to feedback from people who actually manage tasks, documents, money, subscriptions and daily business processes.",
-    cta: "Get in touch",
-    ctaHref: "mailto:hello@nevora.com",
+    title: "Get in touch",
+    text: "Have a question, an idea or a use case? I read every message.",
     channels: [
       { label: "Email", value: "nevorahq@gmail.com", href: "mailto:nevorahq@gmail.com" },
       { label: "Telegram", value: "@NEVORAHQ", href: "https://t.me/NEVORAHQ" },
       { label: "Instagram", value: "@nevorahq", href: "https://www.instagram.com/nevorahq/" },
-      // Facebook временно скрыт — вернуть, когда появится страница проекта.
-      // { label: "Facebook", value: "Nevora", href: "https://facebook.com/nevora" },
     ],
   },
   footer: {
-    text: "A simple operating system for focused business work.",
+    tagline: "A simple operating system for focused business work.",
     note: "Built for clarity, productivity and real daily use.",
+    productHeading: "Product",
+    legalHeading: "Legal",
     terms: "Terms",
     privacy: "Privacy",
     refunds: "Refunds",
@@ -204,361 +169,293 @@ const en = {
 /** Форма контента лендинга. Источник истины — английский объект `en`. */
 export type LandingContent = typeof en;
 
-const ro: LandingContent = {
-  nav: [
-    { label: "Acasă", href: "#home" },
-    { label: "Despre", href: "#about" },
-    { label: "Planuri", href: "#plan" },
-    { label: "Contact", href: "#contact" },
-  ],
-  header: {
-    login: "Autentificare",
-    startFree: "Solicită acces",
-  },
-  hero: {
-    title: "Operațiuni de business conectate.",
-    subtitle:
-      "Nevora Business OS conectează taskuri, proiecte, bani, documente, abonamente, Action Center și workflow-uri asistate de AI într-un singur strat operațional clar.",
-    supporting: [
-      "AI asistă, nu controlează.",
-      "Control financiar fără erori automate.",
-    ],
-    goal: "Capturezi mai întâi. Decizi după. Obligațiile importante rămân vizibile până sunt rezolvate.",
-    primaryCta: "Solicită acces timpuriu",
-    secondaryCta: "Vezi planurile",
-    microcopy: "Private beta. Trial de 14 zile, 500 MB stocare, workflow-uri cu verificare.",
-  },
-  value: {
-    title: "Ce te ajută să faci Nevora Business OS",
-    text: "Sistemul aduce părțile active ale operațiunilor într-un singur loc, ca să înțelegi mai repede ce se întâmplă și ce are nevoie de atenție.",
-    items: [
-      "Taskuri",
-      "Proiecte",
-      "Action Center",
-      "Relații",
-      "Documente",
-      "Abonamente",
-      "Evidența banilor",
-      "Capture Inbox",
-      "Analitică de business",
-      "Sugestii AI",
-      "Developer Access",
-    ],
-    supporting:
-      "Deschizi workspace-ul, vezi obligațiile, revizuiești sugestiile, confirmi acțiunile financiare și mergi mai departe cu un workflow înregistrat.",
-  },
-  about: {
-    title: "Despre proiect",
-    paragraphs: [
-      "Nevora Business OS este construit pentru că multe instrumente de business devin prea grele prea devreme.",
-      "Mai întâi ai nevoie de un loc conectat pentru taskuri, proiecte, bani, documente, abonamente și obligații recurente. Apoi software-ul se transformă des în meniuri complicate, dashboard-uri în plus, limite și funcții pe care nimeni nu le folosește.",
-      "Vreau să construiesc produsul într-o direcție diferită.",
-    ],
-    principles: [
-      {
-        title: "Simplu implicit",
-        text: "Ar trebui să înțelegi workspace-ul fără training.",
-      },
-      {
-        title: "Util înainte de complex",
-        text: "Fiecare modul trebuie să rezolve o problemă reală de lucru, nu să existe doar pentru impresie.",
-      },
-      {
-        title: "Valoare onestă",
-        text: "Produsul trebuie să câștige încredere prin utilitate, transparență și confort.",
-      },
-    ],
-    closing:
-      "Nu este un instrument făcut ca să vândă complexitate înapoi utilizatorului. Este un sistem de lucru pentru oameni care au nevoie de ordine în business.",
-  },
-  philosophy: {
-    title: "Mai puțin zgomot. Mai mult control.",
-    paragraphs: [
-      "Businessul nu are nevoie de încă zece taburi. Are nevoie de un loc clar unde munca, documentele, abonamentele, banii și deciziile sunt conectate.",
-      "Nevora Business OS este construit ca un sistem operațional practic pentru afaceri mici și în creștere.",
-    ],
-    questionsIntro: "Un sistem util ar trebui să te ajute să răspunzi la întrebări simple:",
-    questions: [
-      "Ce trebuie făcut?",
-      "Cine este responsabil?",
-      "Ce obligație are nevoie de atenție acum?",
-      "Ce acțiune financiară este gata de confirmare?",
-      "Ce are nevoie de atenție astăzi?",
-    ],
-    closing: "Obligațiile importante nu dispar doar pentru că o notificare a fost citită.",
-  },
-  plans: {
-    title: "Planuri",
-    subtitle:
-      "Începe simplu. Treci mai sus doar atunci când produsul îți oferă valoare reală.",
-    explanation:
-      "Fiecare plan este previzibil: membri incluși, limite pentru module active și context de preț transparent.",
-    trialNote: {
-      lead: "Poți încerca Nevora Business OS timp de 14 zile cu până la 500 MB de stocare.",
-      body: "Trialul există ca să testezi produsul în muncă reală, cât timp produsul rămâne în private beta.",
-      points: [
-        "AI cu revizuire.",
-        "Finanțe doar după confirmare.",
-        "Folosește, testează și decide dacă te ajută.",
-      ],
-    },
-  },
-  trialDetails: {
-    title: "Ce este inclus în trial?",
-    intro: [
-      "Trialul oferă 14 zile de acces private beta la Nevora Business OS. Poți adăuga până la 2 membri, folosi 500 MB de stocare și testa taskuri, proiecte, evidența banilor, documente, abonamente, Action Center, analitică de bază și sugestii AI.",
-      "Nu este un demo de dragul unui demo. Trialul există ca să verifici sistemul pe un workflow real: capturezi munca, conectezi documente, revizuiești obligațiile de abonament și confirmi acțiunile financiare doar când sunt pregătite.",
-      "După 14 zile poți decide calm dacă Start, Pro sau Business ți se potrivește. Fără presiune, fără upgrade forțat și fără capcane de marketing.",
-    ],
-    items: [
-      {
-        title: "2 membri",
-        text: "Verifică sistemul singur sau împreună cu un coleg.",
-      },
-      {
-        title: "500 MB stocare",
-        text: "Suficient pentru a testa documente, fișiere și materiale de lucru.",
-      },
-      {
-        title: "Taskuri și proiecte",
-        text: "Creează lucru, atribuie responsabili și păstrează execuția conectată la context.",
-      },
-      {
-        title: "Evidența banilor",
-        text: "Urmărește venituri, cheltuieli și cashflow fără să tratezi sugestiile ca fapte contabile.",
-      },
-      {
-        title: "Documente și relații",
-        text: "Stochează materiale de lucru și conectează-le cu taskuri, bani și abonamente.",
-      },
-      {
-        title: "Abonamente",
-        text: "Urmărește obligațiile recurente și folosește Mark as paid doar când plata chiar s-a întâmplat.",
-      },
-      {
-        title: "Action Center",
-        text: "Păstrează obligațiile vizibile până sunt rezolvate, nu doar până este citită notificarea.",
-      },
-      {
-        title: "Capture Inbox",
-        text: "Capturezi mai întâi, revizuiești intenția și decizi ce trebuie să devină acțiune.",
-      },
-      {
-        title: "Sugestii AI",
-        text: "Testează rezumate și recomandări care cer revizuire înainte de execuție.",
-      },
-      {
-        title: "Analitică de bază",
-        text: "Primești o vedere simplă asupra taskurilor, cheltuielilor, abonamentelor și acțiunilor apropiate.",
-      },
-      {
-        title: "Fără presiune pentru upgrade",
-        text: "Folosește cele 14 zile, verifică valoarea și treci la un plan plătit doar dacă produsul chiar ajută.",
-      },
-    ],
-  },
-  contact: {
-    title: "Contact",
-    text: "Ai o întrebare, idee sau un scenariu de lucru?",
-    text2:
-      "Sunt deschis la feedback de la oameni care gestionează efectiv taskuri, documente, bani, abonamente și procese zilnice de business.",
-    cta: "Ia legătura",
-    ctaHref: "mailto:hello@nevora.com",
-    channels: [
-      { label: "Email", value: "nevorahq@gmail.com", href: "mailto:nevorahq@gmail.com" },
-      { label: "Telegram", value: "@NEVORAHQ", href: "https://t.me/NEVORAHQ" },
-      { label: "Instagram", value: "@nevorahq", href: "https://www.instagram.com/nevorahq/" },
-      // Facebook временно скрыт — вернуть, когда появится страница проекта.
-      // { label: "Facebook", value: "Nevora", href: "https://facebook.com/nevora" },
-    ],
-  },
-  footer: {
-    text: "Un sistem operațional simplu pentru lucru de business concentrat.",
-    note: "Construit pentru claritate, productivitate și utilizare zilnică reală.",
-    terms: "Termeni",
-    privacy: "Confidențialitate",
-    refunds: "Rambursări",
-  },
-};
-
 const ru: LandingContent = {
+  meta: {
+    title: "Nevora Business OS — управляйте бизнесом в едином рабочем пространстве",
+    description:
+      "Задачи, проекты, финансы, документы и подписки в одной системе. Nevora подсказывает следующий шаг, а важные изменения выполняются только после вашего подтверждения.",
+  },
   nav: [
     { label: "Главная", href: "#home" },
-    { label: "О проекте", href: "#about" },
-    { label: "Тарифы", href: "#plan" },
+    { label: "Как это работает", href: "#how" },
+    { label: "Области", href: "#areas" },
+    { label: "Тарифы", href: "#pricing" },
     { label: "Контакты", href: "#contact" },
   ],
   header: {
     login: "Войти",
-    startFree: "Запросить доступ",
+    cta: "Начать 14-дневный пробный период",
+    menu: "Открыть меню",
+    close: "Закрыть меню",
   },
   hero: {
-    title: "Связанные бизнес-операции.",
+    title: "Управляйте бизнесом в едином рабочем пространстве.",
     subtitle:
-      "Nevora Business OS связывает задачи, проекты, деньги, документы, подписки, Action Center и AI-assisted workflows в одном понятном операционном слое.",
-    supporting: [
-      "AI-assisted, not AI-controlled.",
-      "Финансовый контроль без автоматических ошибок.",
-    ],
-    goal: "Сначала capture. Потом решение. Важные обязательства остаются видимыми до завершения.",
-    primaryCta: "Запросить ранний доступ",
-    secondaryCta: "Посмотреть тарифы",
-    microcopy: "Private beta. 14-дневный trial, 500 МБ хранилища, workflows с проверкой.",
+      "Задачи, проекты, финансы, документы и подписки связаны в одной системе. Nevora подсказывает следующий шаг, а важные изменения выполняются только после вашего подтверждения.",
+    trust: "ИИ предлагает. Вы проверяете. Финансовые действия не выполняются автоматически.",
+    primaryCta: "Начать 14-дневный пробный период",
+    secondaryCta: "Смотреть тарифы",
+    microcopy: "Закрытая бета · пробный период 14 дней · 500 МБ хранилища · без карты.",
+    audience: "Для малых и растущих команд, которым нужен порядок без тяжёлых программ.",
   },
-  value: {
-    title: "Что помогает делать Nevora Business OS",
-    text: "Система собирает активные части операций в одном месте, чтобы вы быстрее понимали, что происходит и что требует внимания.",
-    items: [
-      "Задачи",
-      "Проекты",
-      "Action Center",
-      "Связи",
-      "Документы",
-      "Подписки",
-      "Учёт денег",
-      "Capture Inbox",
-      "Бизнес-аналитика",
-      "AI-рекомендации",
-      "Developer Access",
-    ],
-    supporting:
-      "Откройте workspace, увидьте обязательства, проверьте рекомендации, подтвердите финансовые действия и двигайтесь дальше с записанным workflow.",
-  },
-  about: {
-    title: "О проекте",
-    paragraphs: [
-      "Nevora Business OS создаётся потому, что многие бизнес-инструменты становятся слишком тяжёлыми слишком рано.",
-      "Сначала нужно связанное место для задач, проектов, денег, документов, подписок и регулярных обязательств. Потом software часто превращается в сложные меню, лишние dashboards, ограничения и функции, которыми никто не пользуется.",
-      "Я хочу построить продукт в другом направлении.",
-    ],
-    principles: [
-      {
-        title: "Простота по умолчанию",
-        text: "Пользователь должен понимать workspace без обучения.",
-      },
-      {
-        title: "Польза до сложности",
-        text: "Каждый модуль должен решать реальную рабочую проблему, а не существовать ради галочки.",
-      },
-      {
-        title: "Честная ценность",
-        text: "Продукт должен зарабатывать доверие пользой, прозрачностью и удобством.",
-      },
-    ],
-    closing:
-      "Это не инструмент, созданный для того, чтобы продавать пользователю сложность. Это рабочая система для людей, которым нужен порядок в бизнесе.",
-  },
-  philosophy: {
-    title: "Меньше шума. Больше контроля.",
-    paragraphs: [
-      "Бизнесу не нужны ещё десять вкладок. Ему нужно понятное место, где работа, документы, подписки, деньги и решения связаны между собой.",
-      "Nevora Business OS создаётся как практичная операционная система для малого и растущего бизнеса.",
-    ],
-    questionsIntro: "Полезная система должна помогать отвечать на простые вопросы:",
-    questions: [
-      "Что нужно сделать?",
-      "Кто отвечает?",
-      "Какое обязательство требует внимания?",
-      "Какое финансовое действие готово к подтверждению?",
-      "Что требует внимания сегодня?",
-    ],
-    closing: "Важные обязательства не исчезают только потому, что уведомление было прочитано.",
-  },
-  plans: {
-    title: "Тарифы",
+  how: {
+    title: "Добавьте, проверьте, выполните",
     subtitle:
-      "Начните просто. Переходите выше только тогда, когда продукт действительно даёт вам пользу.",
-    explanation:
-      "Каждый тариф сделан предсказуемым: включённые участники, лимиты активных модулей и прозрачный ценовой контекст.",
-    trialNote: {
-      lead: "Вы можете попробовать Nevora Business OS 14 дней с хранилищем до 500 МБ.",
-      body: "Пробный период нужен, чтобы протестировать продукт в реальной работе, пока продукт остаётся в private beta.",
-      points: [
-        "AI с проверкой.",
-        "Финансы только после подтверждения.",
-        "Используйте, тестируйте, решайте, помогает ли это.",
-      ],
-    },
-  },
-  trialDetails: {
-    title: "Что входит в пробный период?",
-    intro: [
-      "Пробный период даёт 14 дней private beta доступа к Nevora Business OS. Вы можете добавить до 2 участников, использовать 500 МБ хранилища и протестировать задачи, проекты, учёт денег, документы, подписки, Action Center, базовую аналитику и AI-рекомендации.",
-      "Это не демо ради демо. Пробный период создан, чтобы проверить систему на реальном workflow: фиксировать работу, связывать документы, проверять обязательства по подпискам и подтверждать финансовые действия только когда они готовы.",
-      "Через 14 дней вы сможете спокойно решить, подходит ли вам Start, Pro или Business. Без давления, без принудительного апгрейда и без маркетинговых ловушек.",
+      "Один простой цикл держит работу в движении. Вы контролируете каждый шаг — ничего важного не происходит без вас.",
+    steps: [
+      {
+        badge: "1",
+        title: "Добавьте",
+        text: "Внесите задачу, документ, заметку или подписку в одно место. Не нужно осваивать формы и терять контекст.",
+      },
+      {
+        badge: "2",
+        title: "Проверьте",
+        text: "Nevora читает добавленное и предлагает следующий шаг. Вы проверяете предложение до того, как что-либо применится.",
+      },
+      {
+        badge: "3",
+        title: "Выполните",
+        text: "Вы подтверждаете — и действие записывается и связывается. Платежи и изменения денег происходят только после вашего одобрения.",
+      },
     ],
+  },
+  areas: {
+    title: "Одна система для работы, которую вы и так ведёте",
+    subtitle:
+      "Nevora связывает активные части бизнеса, чтобы вы тратили меньше времени на переключение между инструментами.",
     items: [
-      {
-        title: "2 участника",
-        text: "Проверьте работу системы самостоятельно или вместе с одним членом команды.",
-      },
-      {
-        title: "500 МБ хранилища",
-        text: "Достаточно, чтобы протестировать документы, файлы и рабочие материалы.",
-      },
       {
         title: "Задачи и проекты",
         text: "Создавайте работу, назначайте ответственных и держите исполнение связанным с контекстом.",
       },
       {
-        title: "Учёт денег",
-        text: "Отслеживайте доходы, расходы и cashflow, не превращая рекомендации в бухгалтерские факты.",
+        title: "Деньги и денежный поток",
+        text: "Отслеживайте доходы и расходы и видьте денежный поток — рекомендации не записываются как факты сами.",
       },
       {
-        title: "Документы и связи",
-        text: "Храните рабочие материалы и связывайте их с задачами, деньгами и подписками.",
+        title: "Документы",
+        text: "Храните счета и чеки и связывайте их с задачами, деньгами и подписками.",
       },
       {
         title: "Подписки",
-        text: "Отслеживайте регулярные обязательства и используйте Mark as paid только когда платёж действительно прошёл.",
+        text: "Следите за регулярными платежами и отмечайте их как оплаченные только когда платёж действительно прошёл.",
       },
       {
-        title: "Action Center",
-        text: "Держите обязательства видимыми до завершения, а не только до прочтения уведомления.",
+        title: "Входящие",
+        text: "Быстро добавляйте что угодно, затем проверяйте и решайте, что должно стать действием.",
       },
       {
-        title: "Capture Inbox",
-        text: "Сначала зафиксируйте входящий сигнал, затем проверьте intent и решите, что должно стать действием.",
-      },
-      {
-        title: "AI-рекомендации",
-        text: "Пробуйте сводки и рекомендации, которые требуют проверки перед выполнением.",
-      },
-      {
-        title: "Базовая аналитика",
-        text: "Получите простой обзор задач, расходов, подписок и ближайших действий.",
-      },
-      {
-        title: "Без давления на апгрейд",
-        text: "Используйте 14 дней, проверьте пользу и переходите на платный тариф только если продукт действительно помогает.",
+        title: "Аналитика",
+        text: "Простой обзор задач, расходов, подписок и того, что требует внимания дальше.",
       },
     ],
   },
+  control: {
+    title: "Контроль, безопасность и роль ИИ",
+    subtitle:
+      "Nevora по умолчанию помогает, а не решает за вас. Она ускоряет решения, но решение всегда за вами.",
+    points: [
+      {
+        title: "ИИ предлагает — вы решаете",
+        text: "Любой результат ИИ — это предложение, которое вы проверяете. Ничего не применяется, пока вы не подтвердите.",
+      },
+      {
+        title: "Финансы только после подтверждения",
+        text: "Изменения денег никогда не автоматические. Платёж или расход записывается только после вашего одобрения.",
+      },
+      {
+        title: "Ваши данные остаются вашими",
+        text: "Во время закрытой беты рабочее пространство изолировано и приватно. Без скрытого доступа и сюрпризов.",
+      },
+    ],
+    closing:
+      "Важные обязательства остаются видимыми до завершения — а не только до прочтения уведомления.",
+  },
+  plans: {
+    title: "Тарифы",
+    subtitle:
+      "Начните с бесплатного пробного периода на 14 дней. Переходите выше только когда продукт этого действительно стоит.",
+    note: {
+      lead: "Попробуйте Nevora Business OS 14 дней с хранилищем до 500 МБ.",
+      points: [
+        "ИИ, который вы проверяете",
+        "Финансы, которые вы подтверждаете",
+        "Свободный выбор после пробного периода",
+      ],
+    },
+  },
+  story: {
+    title: "Почему существует Nevora",
+    paragraphs: [
+      "Многие бизнес-инструменты становятся тяжёлыми слишком рано — лишние меню, неиспользуемые функции и ограничения, которые мешают.",
+      "Nevora строится в другом направлении: связанное место для задач, денег, документов и подписок, которое понятно без обучения и где важные решения остаются за вами.",
+    ],
+  },
   contact: {
-    title: "Контакт",
-    text: "Есть вопрос, идея или рабочий сценарий?",
-    text2:
-      "Я открыт к обратной связи от людей, которые реально управляют задачами, документами, деньгами, подписками и ежедневными бизнес-процессами.",
-    cta: "Связаться",
-    ctaHref: "mailto:hello@nevora.com",
+    title: "Связаться",
+    text: "Есть вопрос, идея или сценарий использования? Я читаю каждое сообщение.",
     channels: [
       { label: "Email", value: "nevorahq@gmail.com", href: "mailto:nevorahq@gmail.com" },
       { label: "Telegram", value: "@NEVORAHQ", href: "https://t.me/NEVORAHQ" },
       { label: "Instagram", value: "@nevorahq", href: "https://www.instagram.com/nevorahq/" },
-      // Facebook временно скрыт — вернуть, когда появится страница проекта.
-      // { label: "Facebook", value: "Nevora", href: "https://facebook.com/nevora" },
     ],
   },
   footer: {
-    text: "Простая операционная система для сфокусированной бизнес-работы.",
+    tagline: "Простая операционная система для сфокусированной бизнес-работы.",
     note: "Создано для ясности, продуктивности и реального ежедневного использования.",
+    productHeading: "Продукт",
+    legalHeading: "Правовое",
     terms: "Условия",
     privacy: "Конфиденциальность",
     refunds: "Возвраты",
   },
 };
 
-const CONTENT: Record<LandingLocale, LandingContent> = { en, ro, ru };
+const ro: LandingContent = {
+  meta: {
+    title: "Nevora Business OS — condu-ți afacerea dintr-un singur spațiu de lucru",
+    description:
+      "Sarcini, proiecte, finanțe, documente și abonamente într-un singur sistem. Nevora sugerează pasul următor, iar modificările importante rămân sub controlul tău.",
+  },
+  nav: [
+    { label: "Acasă", href: "#home" },
+    { label: "Cum funcționează", href: "#how" },
+    { label: "Domenii", href: "#areas" },
+    { label: "Prețuri", href: "#pricing" },
+    { label: "Contact", href: "#contact" },
+  ],
+  header: {
+    login: "Autentificare",
+    cta: "Începe perioada de probă de 14 zile",
+    menu: "Deschide meniul",
+    close: "Închide meniul",
+  },
+  hero: {
+    title: "Condu-ți afacerea dintr-un singur spațiu de lucru conectat.",
+    subtitle:
+      "Sarcinile, proiectele, finanțele, documentele și abonamentele sunt reunite într-un singur sistem. Nevora sugerează pasul următor, iar modificările importante rămân sub controlul tău.",
+    trust: "IA propune. Tu verifici. Acțiunile financiare nu se execută automat.",
+    primaryCta: "Începe perioada de probă de 14 zile",
+    secondaryCta: "Vezi prețurile",
+    microcopy: "Versiune beta privată · probă de 14 zile · 500 MB stocare · fără card.",
+    audience: "Pentru echipe mici și în creștere care vor ordine fără programe grele.",
+  },
+  how: {
+    title: "Adaugă, verifică, execută",
+    subtitle:
+      "Un singur ciclu simplu ține munca în mișcare. Tu controlezi fiecare pas — nimic important nu se întâmplă fără tine.",
+    steps: [
+      {
+        badge: "1",
+        title: "Adaugă",
+        text: "Pune o sarcină, un document, o notă sau un abonament într-un singur loc. Fără formulare de învățat, fără context pierdut.",
+      },
+      {
+        badge: "2",
+        title: "Verifică",
+        text: "Nevora citește ce ai adăugat și sugerează pasul următor. Verifici sugestia înainte ca ceva să fie aplicat.",
+      },
+      {
+        badge: "3",
+        title: "Execută",
+        text: "Confirmi, iar acțiunea este înregistrată și conectată. Plățile și modificările de bani au loc doar când le aprobi.",
+      },
+    ],
+  },
+  areas: {
+    title: "Un singur sistem pentru munca pe care deja o faci",
+    subtitle:
+      "Nevora conectează părțile active ale afacerii, ca să pierzi mai puțin timp comutând între instrumente.",
+    items: [
+      {
+        title: "Sarcini și proiecte",
+        text: "Creează lucru, atribuie responsabili și păstrează execuția conectată la context.",
+      },
+      {
+        title: "Bani și flux de numerar",
+        text: "Urmărește venituri și cheltuieli și vezi fluxul de numerar — sugestiile nu se înregistrează singure ca fapte.",
+      },
+      {
+        title: "Documente",
+        text: "Stochează facturi și bonuri și conectează-le cu sarcini, bani și abonamente.",
+      },
+      {
+        title: "Abonamente",
+        text: "Urmărește plățile recurente și marchează-le ca plătite doar când plata chiar a avut loc.",
+      },
+      {
+        title: "Mesaje primite",
+        text: "Adaugă rapid orice, apoi verifică și decide ce trebuie să devină acțiune.",
+      },
+      {
+        title: "Analitică",
+        text: "O privire simplă asupra sarcinilor, cheltuielilor, abonamentelor și a ce urmează.",
+      },
+    ],
+  },
+  control: {
+    title: "Control, securitate și rolul IA",
+    subtitle:
+      "Nevora este, prin proiectare, un asistent. Te ajută să decizi mai repede, dar decizia rămâne mereu a ta.",
+    points: [
+      {
+        title: "IA propune — tu decizi",
+        text: "Fiecare rezultat al IA este o sugestie pe care o verifici. Nimic nu se aplică până nu confirmi.",
+      },
+      {
+        title: "Finanțe doar după confirmare",
+        text: "Modificările de bani nu sunt niciodată automate. O plată sau o cheltuială se înregistrează doar după ce o aprobi.",
+      },
+      {
+        title: "Datele tale rămân ale tale",
+        text: "În versiunea beta privată spațiul de lucru este izolat și privat. Fără partajare ascunsă, fără surprize.",
+      },
+    ],
+    closing:
+      "Obligațiile importante rămân vizibile până sunt rezolvate — nu doar până este citită o notificare.",
+  },
+  plans: {
+    title: "Prețuri",
+    subtitle:
+      "Începe cu o perioadă de probă gratuită de 14 zile. Treci mai sus doar când produsul chiar merită.",
+    note: {
+      lead: "Încearcă Nevora Business OS timp de 14 zile cu până la 500 MB de stocare.",
+      points: [
+        "IA pe care o verifici",
+        "Finanțe pe care le confirmi",
+        "Alegere liberă după probă",
+      ],
+    },
+  },
+  story: {
+    title: "De ce există Nevora",
+    paragraphs: [
+      "Multe instrumente de business devin grele prea devreme — meniuri în plus, funcții nefolosite și limite care încurcă.",
+      "Nevora se construiește în direcția opusă: un loc conectat pentru sarcini, bani, documente și abonamente, pe care îl înțelegi fără training, unde deciziile importante rămân la tine.",
+    ],
+  },
+  contact: {
+    title: "Ia legătura",
+    text: "Ai o întrebare, o idee sau un scenariu de lucru? Citesc fiecare mesaj.",
+    channels: [
+      { label: "Email", value: "nevorahq@gmail.com", href: "mailto:nevorahq@gmail.com" },
+      { label: "Telegram", value: "@NEVORAHQ", href: "https://t.me/NEVORAHQ" },
+      { label: "Instagram", value: "@nevorahq", href: "https://www.instagram.com/nevorahq/" },
+    ],
+  },
+  footer: {
+    tagline: "Un sistem operațional simplu pentru lucru de business concentrat.",
+    note: "Construit pentru claritate, productivitate și utilizare zilnică reală.",
+    productHeading: "Produs",
+    legalHeading: "Legal",
+    terms: "Termeni",
+    privacy: "Confidențialitate",
+    refunds: "Rambursări",
+  },
+};
+
+const CONTENT: Record<LandingLocale, LandingContent> = { en, ru, ro };
 
 /** Возвращает контент лендинга для текущей публичной локали. */
 export function getLandingContent(locale: LandingLocale): LandingContent {

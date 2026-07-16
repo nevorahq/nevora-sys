@@ -46,7 +46,7 @@ export default async function MoneyAccountDetailPage({
       .limit(100),
     supabase
       .from("money_transactions")
-      .select("amount, type, to_account_id")
+      .select("amount, destination_amount, type, to_account_id")
       .or(`account_id.eq.${accountId},to_account_id.eq.${accountId}`)
       .eq("organization_id", org.id)
       .eq("status", "posted")
@@ -66,7 +66,9 @@ export default async function MoneyAccountDetailPage({
         const amount = Number(transaction.amount);
         if (transaction.type === "transfer") {
           // Destination side adds, source side subtracts.
-          return transaction.to_account_id === accountId ? balance + amount : balance - amount;
+          return transaction.to_account_id === accountId
+            ? balance + Number(transaction.destination_amount ?? transaction.amount)
+            : balance - amount;
         }
         return transaction.type === "income" ? balance + amount : balance - amount;
       }, Number(account.initial_balance));

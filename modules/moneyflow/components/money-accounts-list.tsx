@@ -10,7 +10,6 @@ import { TransferForm } from "./transfer-form";
 import { Modal } from "@/shared/ui/modal";
 import { cn } from "@/shared/utils/cn";
 import { ROUTES } from "@/shared/config/routes";
-import type { MoneyAccount } from "../types/moneyflow.types";
 import type { AccountWithBalance } from "../queries/get-accounts-with-balances";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
@@ -72,7 +71,7 @@ function AccountItem({
   dict,
 }: {
   account: AccountWithBalance;
-  accounts: MoneyAccount[];
+  accounts: AccountWithBalance[];
   dict: Dictionary;
 }) {
   const [isEditing, setIsEditing] = useState(false);

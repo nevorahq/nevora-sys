@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DEFAULT_NOTIFICATION_PREFERENCES } from "@/modules/notifications/preferences";
+import { en } from "@/shared/i18n/dictionaries/en";
 
 const mocks = vi.hoisted(() => ({
   update: vi.fn(),
@@ -48,7 +49,7 @@ describe("NotificationSettingsForm", () => {
 
   it("unlocks audio before persisting the enabled preference", async () => {
     const user = userEvent.setup();
-    render(<NotificationSettingsForm initialPreferences={DEFAULT_NOTIFICATION_PREFERENCES} vapidPublicKey="AQIDBA" />);
+    render(<NotificationSettingsForm initialPreferences={DEFAULT_NOTIFICATION_PREFERENCES} vapidPublicKey="AQIDBA" t={en.settings} />);
     await user.click(screen.getByRole("button", { name: "Enable sound" }));
     await waitFor(() => expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ inAppSoundEnabled: true })));
     expect(mocks.unlock.mock.invocationCallOrder[0]).toBeLessThan(mocks.update.mock.invocationCallOrder[0]);
@@ -57,7 +58,7 @@ describe("NotificationSettingsForm", () => {
   it("leaves sound disabled when browser playback fails", async () => {
     mocks.unlock.mockRejectedValueOnce(new Error("blocked"));
     const user = userEvent.setup();
-    render(<NotificationSettingsForm initialPreferences={DEFAULT_NOTIFICATION_PREFERENCES} vapidPublicKey="AQIDBA" />);
+    render(<NotificationSettingsForm initialPreferences={DEFAULT_NOTIFICATION_PREFERENCES} vapidPublicKey="AQIDBA" t={en.settings} />);
     await user.click(screen.getByRole("button", { name: "Enable sound" }));
     expect(await screen.findByText(/could not play the sound/i)).toBeTruthy();
     expect(mocks.update).not.toHaveBeenCalled();
@@ -66,7 +67,7 @@ describe("NotificationSettingsForm", () => {
 
   it("requests notification permission only after the explicit button click", async () => {
     const user = userEvent.setup();
-    render(<NotificationSettingsForm initialPreferences={DEFAULT_NOTIFICATION_PREFERENCES} vapidPublicKey="AQIDBA" />);
+    render(<NotificationSettingsForm initialPreferences={DEFAULT_NOTIFICATION_PREFERENCES} vapidPublicKey="AQIDBA" t={en.settings} />);
     expect(Notification.requestPermission).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Enable browser notifications" }));
     await waitFor(() => expect(Notification.requestPermission).toHaveBeenCalledTimes(1));
@@ -75,7 +76,7 @@ describe("NotificationSettingsForm", () => {
   it("renders denied guidance without requesting permission again", async () => {
     mocks.getState.mockReturnValue("denied");
     const user = userEvent.setup();
-    render(<NotificationSettingsForm initialPreferences={DEFAULT_NOTIFICATION_PREFERENCES} vapidPublicKey="AQIDBA" />);
+    render(<NotificationSettingsForm initialPreferences={DEFAULT_NOTIFICATION_PREFERENCES} vapidPublicKey="AQIDBA" t={en.settings} />);
     expect(await screen.findByText(/change Notifications from Block to Allow/i)).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Enable browser notifications" }));
     expect(Notification.requestPermission).not.toHaveBeenCalled();

@@ -6,22 +6,33 @@ import { BellRingIcon, Code2Icon, CreditCardIcon, Layers3Icon, UserRoundIcon, Us
 import { ROUTES } from "@/shared/config/routes";
 import { cn } from "@/shared/utils/cn";
 
+interface SidebarLabels {
+  ariaLabel: string;
+  profile: string;
+  notifications: string;
+  workspace: string;
+  members: string;
+  billing: string;
+  plans: string;
+  developer: string;
+}
+
 const ITEMS = [
-  { href: ROUTES.settingsProfile, label: "Profile", icon: UserRoundIcon, admin: false },
-  { href: ROUTES.settingsNotifications, label: "Notifications", icon: BellRingIcon, admin: false },
-  { href: ROUTES.settingsWorkspace, label: "Workspace", icon: Building2Icon, admin: true },
-  { href: ROUTES.settingsMembers, label: "Members", icon: UsersRoundIcon, admin: true },
-  { href: ROUTES.settingsBilling, label: "Billing", icon: CreditCardIcon, admin: true },
-  { href: ROUTES.settingsPlans, label: "Plans", icon: Layers3Icon, admin: false },
-  { href: ROUTES.settingsDeveloper, label: "Developer", icon: Code2Icon, admin: true },
+  { href: ROUTES.settingsProfile, key: "profile", icon: UserRoundIcon, admin: false },
+  { href: ROUTES.settingsNotifications, key: "notifications", icon: BellRingIcon, admin: false },
+  { href: ROUTES.settingsWorkspace, key: "workspace", icon: Building2Icon, admin: true },
+  { href: ROUTES.settingsMembers, key: "members", icon: UsersRoundIcon, admin: true },
+  { href: ROUTES.settingsBilling, key: "billing", icon: CreditCardIcon, admin: true },
+  { href: ROUTES.settingsPlans, key: "plans", icon: Layers3Icon, admin: false },
+  { href: ROUTES.settingsDeveloper, key: "developer", icon: Code2Icon, admin: true },
 ] as const;
 
-export function SettingsSidebar({ canAdminister }: { canAdminister: boolean }) {
+export function SettingsSidebar({ canAdminister, labels }: { canAdminister: boolean; labels: SidebarLabels }) {
   const pathname = usePathname();
   const items = ITEMS.filter((item) => canAdminister || !item.admin);
 
   return (
-    <nav aria-label="Settings navigation" className="md:w-52 md:shrink-0">
+    <nav aria-label={labels.ariaLabel} className="md:w-52 md:shrink-0">
       <ul className="flex gap-2 overflow-x-auto pb-2 md:flex-col md:overflow-visible md:pb-0">
         {items.map((item) => {
           const active = pathname === item.href;
@@ -39,7 +50,7 @@ export function SettingsSidebar({ canAdminister }: { canAdminister: boolean }) {
                 )}
               >
                 <Icon size={17} aria-hidden="true" />
-                {item.label}
+                {labels[item.key]}
               </Link>
             </li>
           );

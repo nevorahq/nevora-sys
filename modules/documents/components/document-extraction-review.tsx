@@ -3,6 +3,9 @@ import type { DocumentExtractionState } from "../queries/get-document-extraction
 import { ExtractionReviewActions } from "./extraction-review-actions";
 import { ExtractionStatusPoller } from "./extraction-status-poller";
 import { REVIEW_STATE_LABELS } from "@/modules/review/constants/review.constants";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
+
+type DocsDict = Dictionary["documents"];
 
 /**
  * Review surface for Document-to-Transaction. Server component: it renders the
@@ -13,11 +16,14 @@ export function DocumentExtractionReview({
   documentId,
   state,
   canConfirm,
+  t,
 }: {
   documentId: string;
   state: DocumentExtractionState;
   canConfirm: boolean;
+  t: DocsDict;
 }) {
+  const x = t.extraction;
   const { extraction, financialData, items, financialSuggestion, accounts, categories, contexts, classification } = state;
 
   // Currency picker inputs: a planned draft must post onto a same-currency
@@ -32,12 +38,10 @@ export function DocumentExtractionReview({
   if (!extraction) {
     return (
       <section className="soft-card p-5 sm:p-6">
-        <Header />
-        <p className="mt-3 text-sm text-text-muted">
-          This document hasn’t been processed yet.
-        </p>
+        <Header title={x.header} />
+        <p className="mt-3 text-sm text-text-muted">{x.notProcessed}</p>
         <div className="mt-4">
-          <ExtractionReviewActions documentId={documentId} suggestionId={null} canConfirm={canConfirm} />
+          <ExtractionReviewActions documentId={documentId} suggestionId={null} canConfirm={canConfirm} t={t.review} />
         </div>
       </section>
     );
@@ -50,10 +54,10 @@ export function DocumentExtractionReview({
     <section className="soft-card p-5 sm:p-6">
       <ExtractionStatusPoller status={status} />
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <Header />
+        <Header title={x.header} />
         {confidencePct != null && (
           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${confidenceTone(confidencePct)}`}>
-            {confidencePct}% confidence
+            {x.confidence.replace("{pct}", String(confidencePct))}
           </span>
         )}
       </div>
@@ -61,45 +65,45 @@ export function DocumentExtractionReview({
       {/* Status / error banner */}
       {(status === "processing" || status === "pending") && (
         <Banner tone="info" icon={<Loader2Icon size={16} className="animate-spin" />}>
-          Reading the document and preparing a transaction draft…
+          {x.reading}
         </Banner>
       )}
       {status === "failed" && (
         <Banner tone="danger" icon={<AlertTriangleIcon size={16} />}>
-          {friendlyError(extraction.error_code, extraction.error_message)}
+          {friendlyError(extraction.error_code, extraction.error_message, x)}
         </Banner>
       )}
       {status === "needs_review" && (
         <Banner tone="warning" icon={<AlertTriangleIcon size={16} />}>
           {extraction.error_message ?? extraction.error_code
-            ? friendlyError(extraction.error_code, extraction.error_message)
-            : "This extraction needs your review before it can become a transaction."}
+            ? friendlyError(extraction.error_code, extraction.error_message, x)
+            : x.needsReviewDefault}
         </Banner>
       )}
 
       {/* Extracted fields */}
       {financialData && (
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field label="Merchant" value={financialData.merchant_name ?? "Unknown merchant"} />
-          <Field label="Date" value={financialData.transaction_date ?? "—"} />
-          <Field label="Total" value={formatMoney(financialData.total_amount, financialData.currency)} emphasis />
-          <Field label="Tax" value={formatMoney(financialData.tax_amount, financialData.currency)} />
-          <Field label="Subtotal" value={formatMoney(financialData.subtotal_amount, financialData.currency)} />
-          <Field label="Payment method" value={financialData.payment_method ?? "—"} />
+          <Field label={x.merchant} value={financialData.merchant_name ?? x.unknownMerchant} />
+          <Field label={x.date} value={financialData.transaction_date ?? "—"} />
+          <Field label={x.total} value={formatMoney(financialData.total_amount, financialData.currency)} emphasis />
+          <Field label={x.tax} value={formatMoney(financialData.tax_amount, financialData.currency)} />
+          <Field label={x.subtotal} value={formatMoney(financialData.subtotal_amount, financialData.currency)} />
+          <Field label={x.paymentMethod} value={financialData.payment_method ?? "—"} />
         </div>
       )}
 
       {/* Line items */}
       {items.length > 0 && (
         <div className="mt-5">
-          <h3 className="text-sm font-semibold text-text-secondary">Line items</h3>
+          <h3 className="text-sm font-semibold text-text-secondary">{x.lineItems}</h3>
           <div className="mt-2 overflow-hidden rounded-(--neu-radius-md) border border-border">
             <table className="w-full text-sm">
               <thead className="bg-surface-sunken text-left text-xs text-text-muted">
                 <tr>
-                  <th className="px-3 py-2 font-medium">Item</th>
-                  <th className="px-3 py-2 text-right font-medium">Qty</th>
-                  <th className="px-3 py-2 text-right font-medium">Total</th>
+                  <th className="px-3 py-2 font-medium">{x.item}</th>
+                  <th className="px-3 py-2 text-right font-medium">{x.qty}</th>
+                  <th className="px-3 py-2 text-right font-medium">{x.total}</th>
                 </tr>
               </thead>
               <tbody>
@@ -123,9 +127,7 @@ export function DocumentExtractionReview({
         <div className="mt-5 rounded-(--neu-radius-md) bg-surface-sunken p-4">
           <div className="flex items-center gap-2 text-text-secondary">
             <ReceiptTextIcon size={16} />
-            <span className="text-sm font-semibold">
-              Draft expense suggestion
-            </span>
+            <span className="text-sm font-semibold">{x.draftSuggestion}</span>
             <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-text-muted">
               {REVIEW_STATE_LABELS[financialSuggestion.review_state]}
             </span>
@@ -133,17 +135,17 @@ export function DocumentExtractionReview({
           <p className="mt-2 text-lg font-semibold text-text-primary">
             {formatMoney(financialSuggestion.amount, financialSuggestion.currency)}
             <span className="ml-2 text-sm font-normal text-text-muted">
-              · {financialSuggestion.vendor_name ?? "Unknown merchant"}
+              · {financialSuggestion.vendor_name ?? x.unknownMerchant}
             </span>
           </p>
-          {typeof financialSuggestion.metadata.duplicate_of === "string" && <p className="mt-1 text-xs text-accent-yellow">Possible duplicate of an existing transaction.</p>}
+          {typeof financialSuggestion.metadata.duplicate_of === "string" && <p className="mt-1 text-xs text-accent-yellow">{x.possibleDuplicate}</p>}
           {financialSuggestion.rejected_reason && <p className="mt-1 text-xs text-danger">{financialSuggestion.rejected_reason}</p>}
           {classification && (
             <div className="mt-3 border-t border-border pt-3 text-xs text-text-muted">
               <p>
-                Suggested by <span className="font-medium text-text-secondary">{classification.method.replaceAll("_", " ")}</span>
+                {x.suggestedBy} <span className="font-medium text-text-secondary">{classification.method.replaceAll("_", " ")}</span>
                 {classification.category_confidence != null
-                  ? ` · ${Math.round(classification.category_confidence * 100)}% category confidence`
+                  ? ` · ${x.categoryConfidence.replace("{pct}", String(Math.round(classification.category_confidence * 100)))}`
                   : ""}
               </p>
               <p className="mt-1">{classification.reason}</p>
@@ -157,6 +159,7 @@ export function DocumentExtractionReview({
           documentId={documentId}
           suggestionId={financialSuggestion?.review_state === "waiting_confirmation" ? financialSuggestion.id : null}
           canConfirm={canConfirm}
+          t={t.review}
           needsAccount={needsAccount}
           requiredCurrency={draftCurrency}
           compatibleAccounts={compatibleAccounts}
@@ -174,11 +177,11 @@ export function DocumentExtractionReview({
   );
 }
 
-function Header() {
+function Header({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-2 text-text-secondary">
       <SparklesIcon size={18} />
-      <h2 className="font-semibold">Extracted transaction</h2>
+      <h2 className="font-semibold">{title}</h2>
     </div>
   );
 }
@@ -221,19 +224,19 @@ function formatMoney(amount: number | null, currency: string | null): string {
   }
 }
 
-function friendlyError(code: string | null, message: string | null): string {
+function friendlyError(code: string | null, message: string | null, x: DocsDict["extraction"]): string {
   switch (code) {
     case "unsupported_file_type":
-      return "This file type can’t be read automatically. Supported: PDF, PNG, JPG, JPEG, WEBP.";
+      return x.errUnsupported;
     case "usage_limit_exceeded":
-      return message ?? "You’ve reached your extraction limit. Upgrade your plan or wait for the next reset.";
+      return message ?? x.errLimit;
     case "ocr_failed":
     case "pdf_parse_failed":
-      return "We couldn’t read this document. Try a clearer scan or a different file.";
+      return x.errRead;
     case "ai_normalization_failed":
     case "schema_validation_failed":
-      return "We couldn’t confidently understand this document. You can retry or add the transaction manually.";
+      return x.errUnderstand;
     default:
-      return message ?? "We couldn’t process this document.";
+      return message ?? x.errDefault;
   }
 }

@@ -8,10 +8,11 @@ import { deleteEntityRelation } from "../actions/delete-relation.action";
 interface RelationDeleteButtonProps {
   relationId: string;
   revalidate?: string;
+  ariaLabel?: string;
 }
 
 /** Иконочная кнопка soft-delete связи. */
-export function RelationDeleteButton({ relationId, revalidate }: RelationDeleteButtonProps) {
+export function RelationDeleteButton({ relationId, revalidate, ariaLabel = "Remove link" }: RelationDeleteButtonProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -27,7 +28,7 @@ export function RelationDeleteButton({ relationId, revalidate }: RelationDeleteB
       type="button"
       onClick={remove}
       disabled={isPending}
-      aria-label="Remove link"
+      aria-label={ariaLabel}
       className="shrink-0 rounded-full p-1.5 text-text-muted transition-colors hover:bg-accent-pink-soft hover:text-accent-pink disabled:opacity-50"
     >
       <Trash2Icon size={14} />

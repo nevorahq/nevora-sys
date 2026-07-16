@@ -18,7 +18,11 @@ const { getMoneySummary } = await import("./get-money-summary");
  * table. The two money_transactions reads (all-time vs monthly) are told
  * apart by whether `.gte` (the month lower-bound) was called.
  */
-function makeSupabase() {
+function makeSupabase(fixtures: {
+  accounts?: Array<Record<string, unknown>>;
+  all?: Array<Record<string, unknown>>;
+  month?: Array<Record<string, unknown>>;
+} = {}) {
   const isCalls: Array<[string, string]> = [];
   const eqCalls: Array<[string, string, unknown]> = [];
   const from = vi.fn((table: string) => {
@@ -41,15 +45,21 @@ function makeSupabase() {
     });
     const result = () => {
       if (table === "money_accounts") {
-        return Promise.resolve({ data: [{ initial_balance: "0", currency: "MDL" }], error: null });
+        return Promise.resolve({
+          data: fixtures.accounts ?? [{ initial_balance: "0", currency: "MDL" }],
+          error: null,
+        });
       }
       // money_transactions: both all-time and monthly return the SAME posted,
       // non-deleted rows (income 22500, expense 100) → net 22400.
-      return Promise.resolve({
-        data: [
+      const defaultTransactions = [
           { type: "income", amount: "22500", currency: "MDL" },
           { type: "expense", amount: "100", currency: "MDL" },
-        ],
+        ];
+      return Promise.resolve({
+        data: state.gte
+          ? (fixtures.month ?? defaultTransactions)
+          : (fixtures.all ?? defaultTransactions),
         error: null,
       });
     };
@@ -100,5 +110,37 @@ describe("getMoneySummary", () => {
     // Both money_transactions reads (all-time + monthly) must be scoped.
     expect(orgFilters.filter(([table]) => table === "money_transactions")).toHaveLength(2);
     expect(orgFilters.every(([, , value]) => value === "org-1")).toBe(true);
+  });
+
+  it("moves cross-currency transfers between currency balance buckets without income/expense", async () => {
+    requireOrg.mockResolvedValue({ org: { id: "org-1", baseCurrency: "EUR" } });
+    getRatesToBase.mockResolvedValue({
+      rates: new Map([["EUR", 1], ["USD", 0.92]]),
+      complete: true,
+    });
+    const supabase = makeSupabase({
+      accounts: [
+        { initial_balance: "500", currency: "EUR" },
+        { initial_balance: "100", currency: "USD" },
+      ],
+      all: [{
+        type: "transfer",
+        amount: "100",
+        currency: "EUR",
+        destination_amount: "108.45",
+        destination_currency: "USD",
+      }],
+      month: [],
+    });
+    createClient.mockResolvedValue(supabase.client);
+
+    const result = await getMoneySummary();
+
+    expect(result.byCurrency).toEqual([
+      { currency: "EUR", balance: 400, monthlyIncome: 0, monthlyExpenses: 0 },
+      { currency: "USD", balance: 208.45, monthlyIncome: 0, monthlyExpenses: 0 },
+    ]);
+    expect(result.base.monthlyIncome).toBe(0);
+    expect(result.base.monthlyExpenses).toBe(0);
   });
 });

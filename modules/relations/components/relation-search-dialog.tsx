@@ -8,11 +8,9 @@ import { Modal } from "@/shared/ui/modal";
 import { Select } from "@/shared/ui/select";
 import { Input } from "@/shared/ui/input";
 import type { EntityLinkType } from "@/lib/entity-links";
-import {
-  RELATION_ENTITY_KINDS,
-  ENTITY_KIND_SINGULAR,
-} from "../constants/relation.constants";
+import { RELATION_ENTITY_KINDS } from "../constants/relation.constants";
 import type { EntityKind, RelationCandidate } from "../types/relation.types";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import { searchRelationCandidates } from "../actions/search-relation-candidates.action";
 import { createEntityRelation } from "../actions/create-relation.action";
 import { getRelationTypeOptionsForPair } from "../utils/relation-type-options";
@@ -26,6 +24,7 @@ interface RelationSearchDialogProps {
   /** Стиль кнопки-триггера. */
   triggerVariant?: "primary" | "secondary" | "ghost";
   triggerLabel?: string;
+  t: Dictionary["relations"];
 }
 
 /**
@@ -41,7 +40,8 @@ export function RelationSearchDialog({
   sourceEntityId,
   revalidate,
   triggerVariant = "secondary",
-  triggerLabel = "Add link",
+  triggerLabel,
+  t,
 }: RelationSearchDialogProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -138,18 +138,18 @@ export function RelationSearchDialog({
         className="inline-flex items-center gap-1.5 text-sm"
       >
         <PlusIcon size={15} />
-        {triggerLabel}
+        {triggerLabel ?? t.addLink}
       </Button>
 
-      <Modal isOpen={isOpen} onClose={close} title="Link an entity">
+      <Modal isOpen={isOpen} onClose={close} title={t.linkEntity}>
         <div className="space-y-4">
           <Select
-            label="Entity type"
+            label={t.entityType}
             value={targetType}
             onChange={(e) => selectTargetType(e.target.value as EntityKind)}
             options={RELATION_ENTITY_KINDS.map((kind) => ({
               value: kind,
-              label: ENTITY_KIND_SINGULAR[kind],
+              label: t.kinds[kind],
             }))}
           />
 
@@ -160,9 +160,9 @@ export function RelationSearchDialog({
                 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
               />
               <Input
-                label="Search"
+                label={t.search}
                 value={query}
-                placeholder={`Search ${ENTITY_KIND_SINGULAR[targetType].toLowerCase()}…`}
+                placeholder={t.searchPlaceholder.replace("{type}", t.kinds[targetType].toLowerCase())}
                 onChange={(e) => setQuery(e.target.value)}
                 className="pl-9"
               />
@@ -170,10 +170,10 @@ export function RelationSearchDialog({
 
             <div className="mt-2 max-h-52 space-y-1 overflow-y-auto">
               {searching && (
-                <p className="px-1 py-2 text-sm text-text-muted">Searching…</p>
+                <p className="px-1 py-2 text-sm text-text-muted">{t.searching}</p>
               )}
               {!searching && results.length === 0 && (
-                <p className="px-1 py-2 text-sm text-text-muted">No matches found.</p>
+                <p className="px-1 py-2 text-sm text-text-muted">{t.noMatches}</p>
               )}
               {results.map((candidate) => {
                 const isSelected =
@@ -208,6 +208,7 @@ export function RelationSearchDialog({
 
           {selected && (
             <RelationTypeSelect
+              label={t.relationType}
               value={relationType}
               onChange={setRelationType}
               options={relationTypeOptions}
@@ -218,7 +219,7 @@ export function RelationSearchDialog({
 
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="ghost" onClick={close}>
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               type="button"
@@ -226,7 +227,7 @@ export function RelationSearchDialog({
               disabled={!selected || isPending || relationTypeOptions.length === 0}
               isLoading={isPending}
             >
-              Create link
+              {t.createLink}
             </Button>
           </div>
         </div>

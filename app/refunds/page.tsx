@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LegalPageShell } from "@/modules/legal/components/legal-page-shell";
 import { getLegalDocument, resolveLegalLocale } from "@/modules/legal/content/legal-content";
+import { getPublicLocale } from "@/shared/i18n/get-dictionary";
 
 export const metadata: Metadata = {
   title: "Refund Policy | Nevora Business OS",
@@ -16,7 +17,7 @@ interface RefundsPageProps {
 
 export default async function RefundsPage({ searchParams }: RefundsPageProps) {
   const { lang } = await searchParams;
-  const locale = resolveLegalLocale(lang);
+  const locale = lang !== undefined ? resolveLegalLocale(lang) : await getPublicLocale();
 
   return (
     <LegalPageShell

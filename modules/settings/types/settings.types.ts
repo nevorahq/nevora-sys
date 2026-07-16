@@ -28,7 +28,7 @@ export interface ProfileSettings {
   email: string;
   avatarUrl: string | null;
   phone: string;
-  language: "en" | "ru";
+  language: "en" | "ru" | "ro";
   timezone: string;
 }
 
@@ -40,7 +40,7 @@ export interface WorkspaceSettings {
   logoUrl: string | null;
   businessType: BusinessType;
   defaultCurrency: string;
-  defaultLanguage: "en" | "ru";
+  defaultLanguage: "en" | "ru" | "ro";
   timezone: string;
 }
 
