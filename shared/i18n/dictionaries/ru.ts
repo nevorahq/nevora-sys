@@ -988,6 +988,9 @@ export const ru: Dictionary = {
     },
     upload: {
       attachedFiles: "Прикреплённые файлы",
+      takePhoto: "Сделать фото",
+      addFiles: "Добавить файлы",
+      remove: "Удалить",
     },
     extraction: {
       header: "Извлечённая операция",

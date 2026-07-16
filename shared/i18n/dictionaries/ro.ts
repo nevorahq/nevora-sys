@@ -997,6 +997,9 @@ export const ro: Dictionary = {
     },
     upload: {
       attachedFiles: "Fișiere atașate",
+      takePhoto: "Fă o poză",
+      addFiles: "Adaugă fișiere",
+      remove: "Elimină",
     },
     extraction: {
       header: "Tranzacție extrasă",

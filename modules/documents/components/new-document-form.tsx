@@ -70,6 +70,9 @@ export function NewDocumentForm({ t }: { t: Dictionary["documents"] }) {
           onRemoveFile={removeFile}
           title={t.form.attachments}
           description={t.form.attachmentsHint.replace("{max}", String(DOCUMENT_MAX_FILES))}
+          cameraLabel={t.upload.takePhoto}
+          filesLabel={t.upload.addFiles}
+          removeLabel={t.upload.remove}
           attachedFilesLabel={t.upload.attachedFiles}
         />
       </div>

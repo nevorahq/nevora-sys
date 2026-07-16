@@ -1015,6 +1015,9 @@ export const en = {
     },
     upload: {
       attachedFiles: "Attached files",
+      takePhoto: "Take a photo",
+      addFiles: "Add files",
+      remove: "Remove",
     },
     extraction: {
       header: "Extracted transaction",
