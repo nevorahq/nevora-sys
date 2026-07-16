@@ -33,6 +33,7 @@ vi.mock("@/shared/i18n/get-dictionary", () => ({
           sameAccount: "Choose a different destination account.",
           transferCurrencyMismatch:
             "Transfer is available only between accounts with the same currency.",
+          transferRateMissing: "No rate. Enter destination amount.",
           createTransferFailed: "Failed to create transfer",
           serverError: "Server error",
         },
@@ -57,52 +58,52 @@ function makeForm(overrides: Record<string, string> = {}) {
   form.set("from_account_id", overrides.from_account_id ?? FROM);
   form.set("to_account_id", overrides.to_account_id ?? TO);
   form.set("amount", overrides.amount ?? "300");
+  if (overrides.destination_amount) form.set("destination_amount", overrides.destination_amount);
+  if (overrides.use_custom_destination) form.set("use_custom_destination", overrides.use_custom_destination);
   if (overrides.transaction_date) form.set("transaction_date", overrides.transaction_date);
   if (overrides.note) form.set("note", overrides.note);
   return form;
 }
 
 /**
- * Supabase mock: the accounts lookup (.in) resolves `accountsData`, and the
- * insert(...).select().single() resolves `insertResult`. `insertArg` captures
- * the inserted row so we can assert the transfer shape.
+ * Supabase mock: the authoritative transfer RPC returns the financial snapshot.
  */
-let accountsData: unknown;
-let insertResult: unknown;
-let insertArg: Record<string, unknown> | null;
+let rpcResult: unknown;
+let rpcArgs: Record<string, unknown> | null;
 
 function makeSupabase() {
-  const insertBuilder = {
-    select: vi.fn(() => insertBuilder),
-    single: vi.fn(async () => insertResult),
+  const rpcBuilder = {
+    single: vi.fn(async () => rpcResult),
   };
-  const builder: Record<string, unknown> = {};
-  builder.select = vi.fn(() => builder);
-  builder.eq = vi.fn(() => builder);
-  builder.is = vi.fn(() => builder);
-  builder.in = vi.fn(async () => accountsData);
-  builder.insert = vi.fn((row: Record<string, unknown>) => {
-    insertArg = row;
-    return insertBuilder;
-  });
-  return { from: vi.fn(() => builder) };
+  return {
+    rpc: vi.fn((_name: string, args: Record<string, unknown>) => {
+      rpcArgs = args;
+      return rpcBuilder;
+    }),
+  };
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  insertArg = null;
+  rpcArgs = null;
   requireOrg.mockResolvedValue(ctx);
   reserveOrganizationUsage.mockResolvedValue(1);
   releaseOrganizationUsage.mockResolvedValue(0);
   emitDomainEvent.mockResolvedValue(undefined);
-  accountsData = {
-    data: [
-      { id: FROM, name: "Cash", currency: "EUR", is_active: true },
-      { id: TO, name: "Bank", currency: "EUR", is_active: true },
-    ],
+  rpcResult = {
+    data: {
+      id: NEW_TX,
+      source_amount: "300.00",
+      source_currency: "EUR",
+      destination_amount: "300.00",
+      destination_currency: "EUR",
+      reference_exchange_rate: "1",
+      effective_exchange_rate: "1",
+      exchange_rate_source: null,
+      exchange_rate_id: null,
+    },
     error: null,
   };
-  insertResult = { data: { id: NEW_TX }, error: null };
   createClient.mockResolvedValue(makeSupabase());
 });
 
@@ -111,19 +112,24 @@ describe("createTransferAction", () => {
     const result = await createTransferAction({}, makeForm());
 
     expect(result).toEqual({});
-    expect(insertArg).toMatchObject({
-      type: "transfer",
-      account_id: FROM,
-      from_account_id: FROM,
-      to_account_id: TO,
-      category_id: null,
-      amount: 300,
-      currency: "EUR",
-      status: "posted",
-      title: "Cash → Bank",
+    expect(rpcArgs).toMatchObject({
+      p_organization_id: ORG_ID,
+      p_from_account_id: FROM,
+      p_to_account_id: TO,
+      p_source_amount: "300",
+      p_destination_amount: null,
     });
     expect(emitDomainEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ eventName: "money.transfer.created" }),
+      expect.objectContaining({
+        eventName: "money.transfer.created",
+        payload: expect.objectContaining({
+          source_amount: 300,
+          source_currency: "EUR",
+          destination_amount: 300,
+          destination_currency: "EUR",
+          effective_exchange_rate: 1,
+        }),
+      }),
     );
     expect(revalidatePath).toHaveBeenCalled();
   });
@@ -132,31 +138,87 @@ describe("createTransferAction", () => {
     const result = await createTransferAction({}, makeForm({ to_account_id: FROM }));
 
     expect(result.fieldErrors?.to_account_id?.[0]).toBe("Choose a different destination account.");
-    expect(insertArg).toBeNull();
+    expect(rpcArgs).toBeNull();
   });
 
   it("rejects a non-positive amount", async () => {
     const result = await createTransferAction({}, makeForm({ amount: "0" }));
 
     expect(result.fieldErrors?.amount?.[0]).toBe("Amount must be greater than 0");
-    expect(insertArg).toBeNull();
+    expect(rpcArgs).toBeNull();
   });
 
-  it("rejects a transfer between different currencies", async () => {
-    accountsData = {
-      data: [
-        { id: FROM, name: "Cash", currency: "EUR", is_active: true },
-        { id: TO, name: "USD Bank", currency: "USD", is_active: true },
-      ],
+  it("lets the DB calculate 100 EUR → USD instead of trusting the preview", async () => {
+    rpcResult = {
+      data: {
+        id: NEW_TX,
+        source_amount: "100.00",
+        source_currency: "EUR",
+        destination_amount: "108.45",
+        destination_currency: "USD",
+        reference_exchange_rate: "1.0845",
+        effective_exchange_rate: "1.0845",
+        exchange_rate_source: "manual",
+        exchange_rate_id: "77777777-7777-4777-8777-777777777777",
+      },
       error: null,
     };
     createClient.mockResolvedValue(makeSupabase());
 
-    const result = await createTransferAction({}, makeForm());
+    const result = await createTransferAction({}, makeForm({
+      amount: "100",
+      destination_amount: "108.45",
+    }));
 
-    expect(result.fieldErrors?.to_account_id?.[0]).toBe(
-      "Transfer is available only between accounts with the same currency.",
-    );
-    expect(insertArg).toBeNull();
+    expect(result).toEqual({});
+    expect(rpcArgs).toMatchObject({
+      p_source_amount: "100",
+      p_destination_amount: null,
+    });
+    expect(emitDomainEvent).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({
+        source_amount: 100,
+        destination_amount: 108.45,
+        reference_exchange_rate: 1.0845,
+        exchange_rate_source: "manual",
+      }),
+    }));
+  });
+
+  it("passes an actual credited amount only after an explicit custom override", async () => {
+    rpcResult = {
+      data: {
+        id: NEW_TX,
+        source_amount: "100.00",
+        source_currency: "EUR",
+        destination_amount: "107.00",
+        destination_currency: "USD",
+        reference_exchange_rate: "1.0845",
+        effective_exchange_rate: "1.07",
+        exchange_rate_source: "manual",
+        exchange_rate_id: "77777777-7777-4777-8777-777777777777",
+      },
+      error: null,
+    };
+    createClient.mockResolvedValue(makeSupabase());
+
+    const result = await createTransferAction({}, makeForm({
+      amount: "100",
+      destination_amount: "107.00",
+      use_custom_destination: "yes",
+    }));
+
+    expect(result).toEqual({});
+    expect(rpcArgs).toMatchObject({ p_destination_amount: "107.00" });
+  });
+
+  it("surfaces a missing reference rate without falling back to 1:1", async () => {
+    rpcResult = { data: null, error: { message: "missing_exchange_rate" } };
+    createClient.mockResolvedValue(makeSupabase());
+
+    const result = await createTransferAction({}, makeForm({ amount: "100" }));
+
+    expect(result.fieldErrors?.destination_amount?.[0]).toBe("No rate. Enter destination amount.");
+    expect(releaseOrganizationUsage).toHaveBeenCalled();
   });
 });

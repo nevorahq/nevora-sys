@@ -5,26 +5,27 @@ import { BotIcon, CreditCardIcon, DatabaseIcon, ExternalLinkIcon, FileTextIcon, 
 import { createBillingPortalSession } from "../actions/create-billing-portal-session";
 import { createCheckoutSessionAction } from "@/modules/billing/actions/create-checkout-session.action";
 import type { BillingSettingsOverview } from "../types/settings.types";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import { PLAN_LABELS } from "@/modules/billing/constants/billing.constants";
-import { getAccessStateView } from "@/modules/billing/services/access-state-ui";
 import { isTrialAlreadyUsed } from "@/modules/billing/services/entitlement";
-import { AccessStateBadge, BillingRequiredAlert } from "@/modules/billing/components/access-state";
+import { AccessStateBadge, BillingRequiredAlert, useAccessState } from "@/modules/billing/components/access-state";
 import { UpgradePrompt } from "@/modules/billing/components/upgrade-prompt";
 import { getUpgradePromptsForUsage } from "@/modules/billing/services/upgrade-prompt.service";
 import { Button } from "@/shared/ui/button";
 import { UsageLimitsCard } from "./UsageLimitsCard";
 
-export function BillingOverview({ overview }: { overview: BillingSettingsOverview }) {
+export function BillingOverview({ overview, t }: { overview: BillingSettingsOverview; t: Dictionary["settings"] }) {
+  const b = t.billing;
   const [pending, startTransition] = useTransition();
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [dismissedPrompts, setDismissedPrompts] = useState<string[]>([]);
   const subscription = overview.subscription;
   const privateBeta = overview.billingMode === "private_beta";
-  const accessView = getAccessStateView(overview.accessState);
-  const trialEndsAt = subscription?.trial_ends_at
-    ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(subscription.trial_ends_at))
-    : null;
+  // Localized access view from context (dashboard layout provides dict copy).
+  const accessView = useAccessState();
+  const dateFmt = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
+  const trialEndsAt = subscription?.trial_ends_at ? dateFmt.format(new Date(subscription.trial_ends_at)) : null;
   const usedTrial = isTrialAlreadyUsed(overview.trialEligibility);
   const visiblePlans = usedTrial
     ? overview.plans.filter((plan) => plan.slug !== "trial")
@@ -39,7 +40,7 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
 
   function manageBilling() {
     if (privateBeta) {
-      setMessage("Nevora billing is in private beta. Contact us to change billing or request paid access.");
+      setMessage(b.billingPrivateBetaMsg);
       return;
     }
 
@@ -56,7 +57,7 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
 
   function startCheckout(planId: string, planSlug: string, source?: "plan_card" | "upgrade_prompt", metricKey?: string) {
     if (privateBeta) {
-      setMessage("Paid checkout is not available in private beta. Contact us to request access.");
+      setMessage(b.checkoutPrivateBetaMsg);
       return;
     }
 
@@ -81,50 +82,58 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
   function startPromptCheckout(planSlug: string, metricKey: string) {
     const plan = overview.plans.find((item) => item.slug === planSlug);
     if (!plan) {
-      setMessage("That plan is not available right now.");
+      setMessage(b.planNotAvailable);
       return;
     }
     startCheckout(plan.id, plan.slug, "upgrade_prompt", metricKey);
   }
 
+  const currentPlanStatus = privateBeta
+    ? b.privateBetaStatus
+    : subscription?.status === "trialing" && subscription.trial_ends_at
+      ? b.trialEnds.replace("{date}", dateFmt.format(new Date(subscription.trial_ends_at)))
+      : subscription
+        ? b.status.replace("{status}", subscription.status)
+        : b.initBilling;
+
   return (
     <div className="space-y-5">
-      {overview.unlimitedAccess && <div className="flex gap-3 rounded-(--neu-radius-md) border border-accent-lilac bg-accent-lilac-soft/40 p-4"><ShieldCheckIcon size={18} /><div><p className="text-sm font-semibold text-text-primary">Developer Access</p><p className="text-xs text-text-secondary">Product limits are unlimited; security protections remain active.</p></div></div>}
+      {overview.unlimitedAccess && <div className="flex gap-3 rounded-(--neu-radius-md) border border-accent-lilac bg-accent-lilac-soft/40 p-4"><ShieldCheckIcon size={18} /><div><p className="text-sm font-semibold text-text-primary">{b.developerAccess}</p><p className="text-xs text-text-secondary">{b.developerAccessHint}</p></div></div>}
       {!overview.unlimitedAccess && accessView.shouldWarn && (
         <BillingRequiredAlert title={accessView.label} message={accessView.banner} />
       )}
 
       <section className="soft-card flex flex-col justify-between gap-5 p-5 sm:flex-row sm:items-center">
         <div>
-          <p className="text-xs uppercase tracking-wide text-text-muted">Current plan</p>
-          <h2 className="mt-1 text-2xl font-semibold text-text-primary">{subscription ? PLAN_LABELS[subscription.plan.slug] : "No active plan"}</h2>
-          <p className="mt-1 text-sm text-text-muted">{privateBeta ? "Private beta: paid checkout and customer portal are not enabled yet." : subscription?.status === "trialing" && subscription.trial_ends_at ? `Trial ends ${new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(subscription.trial_ends_at))}` : subscription ? `Status: ${subscription.status}` : "Contact support to initialize billing."}</p>
+          <p className="text-xs uppercase tracking-wide text-text-muted">{b.currentPlan}</p>
+          <h2 className="mt-1 text-2xl font-semibold text-text-primary">{subscription ? PLAN_LABELS[subscription.plan.slug] : b.noActivePlan}</h2>
+          <p className="mt-1 text-sm text-text-muted">{currentPlanStatus}</p>
         </div>
         {privateBeta ? (
           <a
             href="mailto:nevorahq@gmail.com?subject=Nevora%20billing%20access"
             className="inline-flex items-center justify-center gap-2 rounded-(--neu-radius-pill) border border-border-soft bg-surface px-5 py-2.5 text-sm font-semibold text-text-primary shadow-neu-control"
           >
-            Contact us
+            {b.contactUs}
             <ExternalLinkIcon size={14} />
           </a>
         ) : (
-          <Button type="button" onClick={manageBilling} isLoading={pending}>{pending ? "Opening…" : "Manage billing"}<ExternalLinkIcon size={14} /></Button>
+          <Button type="button" onClick={manageBilling} isLoading={pending}>{pending ? b.opening : b.manageBilling}<ExternalLinkIcon size={14} /></Button>
         )}
       </section>
       {message && <p className="text-sm text-text-secondary" role="status">{message}</p>}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <OverviewCard title="Current access state" value={<AccessStateBadge state={overview.accessState} />} description={accessView.reason || "All plan actions are available."} icon={<ShieldCheckIcon size={16} />} />
-        <OverviewCard title="Trial status" value={subscription?.plan.slug === "trial" ? (subscription.status === "trialing" ? "Trialing" : "Trial used") : "Not on trial"} description={trialEndsAt ? `Trial end: ${trialEndsAt}` : usedTrial ? "Free trial already used." : "Paid plans are available."} icon={<CreditCardIcon size={16} />} />
-        <OverviewCard title="Plan and limits" value={subscription ? PLAN_LABELS[subscription.plan.slug] : "No plan"} description={overview.unlimitedAccess ? "Developer unlimited is active." : `${overview.usage.length} tracked limits`} icon={<DatabaseIcon size={16} />} />
-        <OverviewCard title="Security/audit overview" value={`${overview.recentAuditEvents}`} description="Audit log entries visible to this organization." icon={<ShieldCheckIcon size={16} />} />
-        <OverviewCard title="Members usage" value={formatUsage(usageByKey.members)} description="Active and invited seats." icon={<UsersRoundIcon size={16} />} />
-        <OverviewCard title="Storage usage" value={formatUsage(usageByKey.storage)} description="Document attachment storage." icon={<DatabaseIcon size={16} />} />
-        <OverviewCard title="AI usage" value={formatUsage(usageByKey.ai_suggestions)} description="Monthly AI suggestion usage." icon={<BotIcon size={16} />} />
+        <OverviewCard title={b.cardAccessState} value={<AccessStateBadge />} description={accessView.reason || b.accessAllAvailable} icon={<ShieldCheckIcon size={16} />} />
+        <OverviewCard title={b.cardTrialStatus} value={subscription?.plan.slug === "trial" ? (subscription.status === "trialing" ? b.trialing : b.trialUsed) : b.notOnTrial} description={trialEndsAt ? b.trialEnd.replace("{date}", trialEndsAt) : usedTrial ? b.trialAlreadyUsed : b.paidPlansAvailable} icon={<CreditCardIcon size={16} />} />
+        <OverviewCard title={b.cardPlanLimits} value={subscription ? PLAN_LABELS[subscription.plan.slug] : b.noPlan} description={overview.unlimitedAccess ? b.devUnlimitedActive : b.trackedLimits.replace("{count}", String(overview.usage.length))} icon={<DatabaseIcon size={16} />} />
+        <OverviewCard title={b.cardSecurityAudit} value={`${overview.recentAuditEvents}`} description={b.auditVisible} icon={<ShieldCheckIcon size={16} />} />
+        <OverviewCard title={b.cardMembersUsage} value={formatUsage(usageByKey.members, b.notTracked)} description={b.membersSeats} icon={<UsersRoundIcon size={16} />} />
+        <OverviewCard title={b.cardStorageUsage} value={formatUsage(usageByKey.storage, b.notTracked)} description={b.storageDesc} icon={<DatabaseIcon size={16} />} />
+        <OverviewCard title={b.cardAiUsage} value={formatUsage(usageByKey.ai_suggestions, b.notTracked)} description={b.aiDesc} icon={<BotIcon size={16} />} />
       </div>
 
-      <UsageLimitsCard usage={overview.usage} />
+      <UsageLimitsCard usage={overview.usage} t={{ title: b.usageTitle, limitReached: b.usageLimitReached }} />
 
       {upgradePrompts.length > 0 && (
         <section className="space-y-3">
@@ -134,7 +143,7 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
               prompt={prompt}
               isLoading={pending && overview.plans.some((plan) => plan.slug === prompt.targetPlanSlug && plan.id === pendingPlanId)}
               onUpgrade={() => startPromptCheckout(prompt.targetPlanSlug, prompt.metricKey)}
-              upgradeLabel={privateBeta ? "Request access" : "Upgrade"}
+              upgradeLabel={privateBeta ? b.requestAccess : b.upgrade}
               onViewPricing={() => {
                 window.location.href = "/pricing";
               }}
@@ -146,44 +155,45 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
 
       <div className="grid gap-5 md:grid-cols-2">
         <section className="soft-card-sm p-5">
-          <div className="flex items-center gap-2"><CreditCardIcon size={17} className="text-text-muted" /><h2 className="text-sm font-semibold text-text-primary">Payment method</h2></div>
-          <p className="mt-4 text-sm text-text-muted">{privateBeta ? "Private beta: paid checkout and customer portal are intentionally disabled." : overview.providerConnected ? "Managed securely by Paddle." : "Paddle billing is not connected yet."}</p>
+          <div className="flex items-center gap-2"><CreditCardIcon size={17} className="text-text-muted" /><h2 className="text-sm font-semibold text-text-primary">{b.paymentMethod}</h2></div>
+          <p className="mt-4 text-sm text-text-muted">{privateBeta ? b.paymentPrivateBeta : overview.providerConnected ? b.paymentPaddle : b.paymentNotConnected}</p>
           {!privateBeta && overview.billingConfigMissing.length > 0 && (
-            <p className="mt-2 text-xs text-text-muted">Billing config missing: {overview.billingConfigMissing.join(", ")}</p>
+            <p className="mt-2 text-xs text-text-muted">{b.configMissing.replace("{items}", overview.billingConfigMissing.join(", "))}</p>
           )}
         </section>
         <section className="soft-card-sm p-5">
-          <div className="flex items-center gap-2"><FileTextIcon size={17} className="text-text-muted" /><h2 className="text-sm font-semibold text-text-primary">Invoice history</h2></div>
-          {overview.invoices.length === 0 ? <p className="mt-4 text-sm text-text-muted">No invoices yet.</p> : <ul className="mt-4 divide-y divide-border-soft">{overview.invoices.map((invoice) => <li key={invoice.id} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="text-text-secondary">{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(invoice.created_at))}</span><span className="font-medium text-text-primary">{new Intl.NumberFormat("en", { style: "currency", currency: invoice.currency }).format(invoice.amount)}</span>{invoice.pdf_url && <a href={invoice.pdf_url} target="_blank" rel="noreferrer" className="text-xs underline">PDF</a>}</li>)}</ul>}
+          <div className="flex items-center gap-2"><FileTextIcon size={17} className="text-text-muted" /><h2 className="text-sm font-semibold text-text-primary">{b.invoiceHistory}</h2></div>
+          {overview.invoices.length === 0 ? <p className="mt-4 text-sm text-text-muted">{b.noInvoices}</p> : <ul className="mt-4 divide-y divide-border-soft">{overview.invoices.map((invoice) => <li key={invoice.id} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="text-text-secondary">{dateFmt.format(new Date(invoice.created_at))}</span><span className="font-medium text-text-primary">{new Intl.NumberFormat("en", { style: "currency", currency: invoice.currency }).format(invoice.amount)}</span>{invoice.pdf_url && <a href={invoice.pdf_url} target="_blank" rel="noreferrer" className="text-xs underline">PDF</a>}</li>)}</ul>}
         </section>
       </div>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-text-primary">Plans</h2>
+        <h2 className="mb-3 text-sm font-semibold text-text-primary">{b.plans}</h2>
         {usedTrial && subscription?.plan.slug === "trial" && subscription.status !== "trialing" && (
           <div className="mb-3 rounded-(--neu-radius-md) border border-border-soft bg-surface-muted p-4">
-            <p className="text-sm font-semibold text-text-primary">The free trial was already used for your account.</p>
-            <p className="mt-1 text-sm text-text-muted">To continue working, choose the Start, Pro or Business plan, or <a className="underline" href="mailto:nevorahq@gmail.com?subject=Nevora%20plan%20activation">contact support</a>.</p>
+            <p className="text-sm font-semibold text-text-primary">{b.trialUsedTitle}</p>
+            <p className="mt-1 text-sm text-text-muted">{b.trialUsedBodyPrefix} <a className="underline" href="mailto:nevorahq@gmail.com?subject=Nevora%20plan%20activation">{b.contactSupport}</a>.</p>
           </div>
         )}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{visiblePlans.map((plan) => {
           const isCurrent = subscription?.plan_id === plan.id;
           const isTrial = plan.slug === "trial";
           const isPending = pending && pendingPlanId === plan.id;
+          const planName = PLAN_LABELS[plan.slug];
           return (
             <div key={plan.id} className="soft-card-sm p-4">
-              <p className="font-semibold text-text-primary">{PLAN_LABELS[plan.slug]}</p>
-              <p className="mt-1 text-sm text-text-muted">{Number(plan.price_monthly) === 0 ? "Free" : `${new Intl.NumberFormat("en", { style: "currency", currency: plan.currency, maximumFractionDigits: 0 }).format(Number(plan.price_monthly))} / month`}</p>
+              <p className="font-semibold text-text-primary">{planName}</p>
+              <p className="mt-1 text-sm text-text-muted">{Number(plan.price_monthly) === 0 ? b.free : `${new Intl.NumberFormat("en", { style: "currency", currency: plan.currency, maximumFractionDigits: 0 }).format(Number(plan.price_monthly))} ${b.perMonth}`}</p>
               <Button
                 type="button"
                 variant="secondary"
                 disabled={isCurrent || isTrial || pending || privateBeta}
                 isLoading={isPending}
-                aria-label={isCurrent ? `${PLAN_LABELS[plan.slug]} is your current plan` : `Choose ${PLAN_LABELS[plan.slug]} plan`}
+                aria-label={isCurrent ? b.ariaCurrentPlan.replace("{plan}", planName) : b.ariaChoosePlan.replace("{plan}", planName)}
                 onClick={() => startCheckout(plan.id, plan.slug)}
                 className="mt-4 w-full"
               >
-                {isCurrent ? "Current plan" : isTrial ? "Trial at signup" : privateBeta ? "Private beta" : isPending ? "Opening..." : "Choose plan"}
+                {isCurrent ? b.currentPlanBadge : isTrial ? b.trialAtSignup : privateBeta ? b.privateBetaBadge : isPending ? b.openingShort : b.choosePlan}
               </Button>
             </div>
           );
@@ -193,8 +203,8 @@ export function BillingOverview({ overview }: { overview: BillingSettingsOvervie
   );
 }
 
-function formatUsage(item: BillingSettingsOverview["usage"][number] | undefined) {
-  if (!item) return "Not tracked";
+function formatUsage(item: BillingSettingsOverview["usage"][number] | undefined, notTracked: string) {
+  if (!item) return notTracked;
   const used = `${item.used}${item.unit ? ` ${item.unit}` : ""}`;
   const limit = item.limit === null ? "∞" : `${item.limit}${item.unit ? ` ${item.unit}` : ""}`;
   return `${used} / ${limit}`;

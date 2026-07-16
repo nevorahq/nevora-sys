@@ -7,9 +7,13 @@ import { confirmRelation, rejectRelation } from "../actions/review-relation.acti
 export function RelationReviewButtons({
   relationId,
   revalidate,
+  confirmTitle = "Confirm relation",
+  rejectTitle = "Reject relation",
 }: {
   relationId: string;
   revalidate?: string;
+  confirmTitle?: string;
+  rejectTitle?: string;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -29,7 +33,7 @@ export function RelationReviewButtons({
     <div className="flex items-center gap-1">
       <button
         type="button"
-        title="Confirm relation"
+        title={confirmTitle}
         disabled={pending}
         onClick={() => run("confirm")}
         className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-success-soft text-success hover:opacity-80 disabled:opacity-50"
@@ -38,7 +42,7 @@ export function RelationReviewButtons({
       </button>
       <button
         type="button"
-        title="Reject relation"
+        title={rejectTitle}
         disabled={pending}
         onClick={() => run("reject")}
         className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-danger-soft text-danger hover:opacity-80 disabled:opacity-50"

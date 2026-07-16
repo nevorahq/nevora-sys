@@ -1,20 +1,25 @@
 import { z } from "zod";
 import {
   TRANSACTION_NOTE_MAX,
-  DEFAULT_CURRENCY,
 } from "../constants/moneyflow.constants";
+
+const moneyAmountSchema = (required: string, positive: string) =>
+  z.string().trim().min(1, required).regex(/^\d+(?:\.\d{1,2})?$/, required).refine(
+    (value) => Number(value) > 0,
+    positive,
+  );
 
 /**
  * Zod-схема для перевода средств между счетами (Internal Transfer).
  *
  * Перевод — это НЕ income/expense и НЕ категория, а отдельная операция
- * (type='transfer'). Схема валидирует только входные данные формы; равенство
- * валют и существование счетов проверяет action, т.к. это требует запроса в БД.
+ * (type='transfer'). Схема валидирует только входные данные формы; валюты,
+ * счета, reference rate и округление повторно проверяет DB RPC/trigger.
  *
  * Ключевые правила (MVP):
  * - from_account_id / to_account_id обязательны и должны различаться
  * - amount > 0
- * - currency проверяется по факту в action (одинаковая у обоих счетов)
+ * - destination_amount опционален: resolver рассчитает его, если курс найден
  */
 export function getTransferSchema(errors: {
   fromAccountRequired: string;
@@ -28,10 +33,12 @@ export function getTransferSchema(errors: {
     .object({
       from_account_id: z.string().uuid(errors.fromAccountRequired),
       to_account_id: z.string().uuid(errors.toAccountRequired),
-      amount: z
-        .coerce
-        .number({ error: errors.amountRequired })
-        .positive(errors.amountPositive),
+      amount: moneyAmountSchema(errors.amountRequired, errors.amountPositive),
+      destination_amount: z.union([
+        moneyAmountSchema(errors.amountRequired, errors.amountPositive),
+        z.literal(""),
+      ]).optional().transform((value) => value || null),
+      use_custom_destination: z.enum(["yes", "no"]).default("no"),
       transaction_date: z
         .string()
         .min(1, errors.invalidDate)
@@ -41,12 +48,22 @@ export function getTransferSchema(errors: {
         .max(TRANSACTION_NOTE_MAX)
         .nullable()
         .default(null),
-      // Не выбирается пользователем — проставляется из валюты счёта в action.
-      currency: z.string().default(DEFAULT_CURRENCY),
     })
-    .refine((data) => data.from_account_id !== data.to_account_id, {
-      path: ["to_account_id"],
-      message: errors.sameAccount,
+    .superRefine((data, ctx) => {
+      if (data.from_account_id === data.to_account_id) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["to_account_id"],
+          message: errors.sameAccount,
+        });
+      }
+      if (data.use_custom_destination === "yes" && !data.destination_amount) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["destination_amount"],
+          message: errors.amountRequired,
+        });
+      }
     });
 }
 

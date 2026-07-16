@@ -43,6 +43,14 @@ export const ROUTES = {
   /** Secondary: cross-module metrics roll-up (tasks / money / subscriptions). */
   overview: "/dashboard/overview",
   inbox: "/dashboard/inbox",
+  /**
+   * Post-auth landing screen ("home"). Single source of truth for where a
+   * signed-in user lands (login / register / invite-accept / already-authed on
+   * /login). Currently the Inbox: the Action Center is hidden from the primary
+   * nav, so the Inbox is the day-to-day entry point. Change here, not at each
+   * redirect site. (`home` is the PUBLIC root `/`; this is the signed-in landing.)
+   */
+  appHome: "/dashboard/inbox",
   tasks: "/dashboard/tasks",
   tasksFinancial: "/dashboard/tasks/financial",
   projects: "/dashboard/tasks/projects",

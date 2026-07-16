@@ -8,13 +8,16 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { getRelationsForEntity } from "../services/relation.service";
-import { ENTITY_KIND_LABELS } from "../constants/relation.constants";
 import { getRelationTypeLabel } from "../utils/relation-perspective-label";
+import { getDictionary } from "@/shared/i18n/get-dictionary";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import type {
   EntityKind,
   GroupedRelations,
   RelatedEntity,
 } from "../types/relation.types";
+
+type RelationsDict = Dictionary["relations"];
 import { RelationEmptyState } from "./relation-empty-state";
 import { RelationSearchDialog } from "./relation-search-dialog";
 import { RelationDeleteButton } from "./relation-delete-button";
@@ -59,27 +62,32 @@ export async function UniversalRelationViewer({
   allowCreate = false,
   allowDelete = false,
   revalidate,
-  title = "Linked Entities",
+  title,
 }: UniversalRelationViewerProps) {
-  const res = await getRelationsForEntity({ entityType, entityId });
+  const [res, { dict }] = await Promise.all([
+    getRelationsForEntity({ entityType, entityId }),
+    getDictionary(),
+  ]);
+  const r = dict.relations;
   const grouped = res.ok ? res.data : null;
 
   return (
     <section className="soft-card p-5 sm:p-6">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold text-text-primary">{title}</h2>
+        <h2 className="text-base font-semibold text-text-primary">{title ?? r.title}</h2>
         {allowCreate && (
           <RelationSearchDialog
             sourceEntityType={entityType}
             sourceEntityId={entityId}
             revalidate={revalidate}
+            t={r}
           />
         )}
       </div>
 
       <div className={mode === "compact" ? "mt-3 space-y-4" : "mt-4 space-y-5"}>
         {!grouped || grouped.total === 0 ? (
-          <RelationEmptyState />
+          <RelationEmptyState title={r.emptyTitle} body={r.emptyBody} compactText={r.emptyCompact} />
         ) : (
           GROUP_ORDER.map(({ key, kind }) => {
             const items = grouped[key];
@@ -91,6 +99,7 @@ export async function UniversalRelationViewer({
                 items={items}
                 allowDelete={allowDelete}
                 revalidate={revalidate}
+                r={r}
               />
             );
           })
@@ -105,23 +114,25 @@ function RelationGroup({
   items,
   allowDelete,
   revalidate,
+  r,
 }: {
   kind: EntityKind;
   items: RelatedEntity[];
   allowDelete: boolean;
   revalidate?: string;
+  r: RelationsDict;
 }) {
   const Icon = GROUP_ICON[kind];
   return (
     <div>
       <p className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-text-muted">
-        <Icon size={13} /> {ENTITY_KIND_LABELS[kind]}
+        <Icon size={13} /> {r.kindsPlural[kind]}
         <span className="text-text-muted/70">({items.length})</span>
       </p>
       <ul className="space-y-2">
         {items.map((item) => (
           <li key={item.relationId}>
-            <RelationCard item={item} allowDelete={allowDelete} revalidate={revalidate} />
+            <RelationCard item={item} allowDelete={allowDelete} revalidate={revalidate} r={r} />
           </li>
         ))}
       </ul>
@@ -133,10 +144,12 @@ function RelationCard({
   item,
   allowDelete,
   revalidate,
+  r,
 }: {
   item: RelatedEntity;
   allowDelete: boolean;
   revalidate?: string;
+  r: RelationsDict;
 }) {
   const { entity } = item;
   const amount =
@@ -173,10 +186,10 @@ function RelationCard({
         />
       </Link>
       {allowDelete && (item.relationStatus === "suggested" || item.relationStatus === "waiting_confirmation") && (
-        <RelationReviewButtons relationId={item.relationId} revalidate={revalidate} />
+        <RelationReviewButtons relationId={item.relationId} revalidate={revalidate} confirmTitle={r.confirm} rejectTitle={r.reject} />
       )}
       {allowDelete && (
-        <RelationDeleteButton relationId={item.relationId} revalidate={revalidate} />
+        <RelationDeleteButton relationId={item.relationId} revalidate={revalidate} ariaLabel={r.remove} />
       )}
     </div>
   );

@@ -7,8 +7,7 @@ const releaseOrganizationUsage = vi.fn();
 const emitDomainEvent = vi.fn();
 const getDictionary = vi.fn();
 const revalidatePath = vi.fn();
-const createSubscriptionPaymentCycle = vi.fn();
-const createSubscriptionTaskSuggestionRecord = vi.fn();
+const provisionSubscriptionPaymentCycle = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/lib/supabase/server", () => ({ createClient }));
@@ -27,14 +26,10 @@ vi.mock("@/modules/billing", () => ({
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
 vi.mock("@/shared/i18n/get-dictionary", () => ({ getDictionary }));
 
-// Payment-cycle/suggestion provisioning is exercised by its own tests; here we
-// only assert subscription creation stays money-free and asks for reviewable
-// workflow bootstrap exactly once as a best-effort step.
-vi.mock("../services/create-subscription-payment-cycle", () => ({
-  createSubscriptionPaymentCycle,
-}));
-vi.mock("@/modules/review/services/financial-suggestion.service", () => ({
-  createSubscriptionTaskSuggestionRecord,
+// Payment-cycle/task provisioning is exercised by its own services; here we
+// assert subscription creation starts that idempotent workflow exactly once.
+vi.mock("../services/provision-subscription-payment-cycle", () => ({
+  provisionSubscriptionPaymentCycle,
 }));
 
 const { createSubscriptionAction } = await import("./create-subscription.action");
@@ -92,7 +87,7 @@ beforeEach(() => {
   createClient.mockResolvedValue({ from });
   single.mockResolvedValue({ data: { id: SUBSCRIPTION_ID }, error: null });
   emitDomainEvent.mockResolvedValue(undefined);
-  createSubscriptionPaymentCycle.mockResolvedValue({
+  provisionSubscriptionPaymentCycle.mockResolvedValue({
     ok: true,
     cycle: {
       id: "cycle",
@@ -101,15 +96,12 @@ beforeEach(() => {
       expected_amount: 19.99,
       currency: "USD",
     },
-  });
-  createSubscriptionTaskSuggestionRecord.mockResolvedValue({
-    ok: true,
-    data: { suggestion: { id: "suggestion-1" }, created: true },
+    taskId: "task-1",
   });
 });
 
 describe("createSubscriptionAction", () => {
-  it("creates only the subscription and never creates or emits a money transaction", async () => {
+  it("creates the subscription and its payment task without creating a money transaction", async () => {
     await expect(createSubscriptionAction({}, makeForm())).resolves.toEqual({ subscriptionId: SUBSCRIPTION_ID });
 
     expect(from).toHaveBeenCalledTimes(1);
@@ -140,22 +132,21 @@ describe("createSubscriptionAction", () => {
 
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/subscriptions");
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/tasks");
     expect(revalidatePath).not.toHaveBeenCalledWith("/dashboard/money");
 
-    // First payment cycle + task suggestion are provisioned (best-effort), still money-free.
-    expect(createSubscriptionPaymentCycle).toHaveBeenCalledTimes(1);
-    expect(createSubscriptionPaymentCycle).toHaveBeenCalledWith(
-      expect.objectContaining({ dueDate: "2026-07-15" }),
-    );
-    expect(createSubscriptionTaskSuggestionRecord).toHaveBeenCalledTimes(1);
-    expect(createSubscriptionTaskSuggestionRecord).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
+    // The first cycle and its task are provisioned automatically. The task due
+    // date is exactly the subscription's next renewal date.
+    expect(provisionSubscriptionPaymentCycle).toHaveBeenCalledTimes(1);
+    expect(provisionSubscriptionPaymentCycle).toHaveBeenCalledWith(
       expect.objectContaining({
-        subscriptionId: SUBSCRIPTION_ID,
-        taskType: "pay_subscription",
-        billingPeriodKey: "2026-07",
-        metadata: { cycle_id: "cycle" },
+        dueDate: "2026-07-15",
+        subscription: expect.objectContaining({
+          id: SUBSCRIPTION_ID,
+          name: "Nevora Cloud",
+          next_billing_date: "2026-07-15",
+          auto_task_enabled: true,
+        }),
       }),
     );
   });

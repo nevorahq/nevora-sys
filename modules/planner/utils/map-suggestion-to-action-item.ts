@@ -26,7 +26,7 @@ export function mapSuggestionToReviewActionItem(
       : `Suggested action: ${suggestion.title}`,
     description:
       suggestion.description ??
-      "Open the Inbox to accept, edit or reject this AI suggestion.",
+      "Open Capture to accept, edit or reject this AI suggestion.",
     // Reuse the existing 'ai' source so the generator/dedup index treat this as
     // an AI signal; source_id is the suggestion so accept/reject can resolve it.
     sourceType: "ai",

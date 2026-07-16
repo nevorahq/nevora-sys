@@ -4,13 +4,14 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { cancelAccountDeletion } from "../actions/delete-account";
 import { ROUTES } from "@/shared/config/routes";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 /**
  * Dashboard-wide reminder shown while a deletion is pending during the grace
  * window. Lets the user reactivate from anywhere with one click. Rendered by the
  * dashboard layout only when a pending request exists.
  */
-export function AccountDeletionBanner({ purgeAfter }: { purgeAfter: string }) {
+export function AccountDeletionBanner({ purgeAfter, t }: { purgeAfter: string; t: Dictionary["settings"]["accountBanner"] }) {
   const [dismissedByCancel, setDismissedByCancel] = useState(false);
   const [cancelling, startCancel] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export function AccountDeletionBanner({ purgeAfter }: { purgeAfter: string }) {
       className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-danger/30 bg-danger/5 px-4 py-3 text-sm"
     >
       <p className="text-text-muted">
-        Your account is scheduled for deletion on <strong>{date}</strong>.
+        {t.scheduledPrefix} <strong>{date}</strong>.
         {error && <span className="ml-2 text-danger">{error}</span>}
       </p>
       <div className="flex items-center gap-3">
@@ -46,13 +47,13 @@ export function AccountDeletionBanner({ purgeAfter }: { purgeAfter: string }) {
             })
           }
         >
-          {cancelling ? "Cancelling…" : "Cancel deletion"}
+          {cancelling ? t.cancelling : t.cancelDeletion}
         </button>
         <Link
           href={ROUTES.settingsProfile}
           className="text-text-muted underline-offset-2 hover:underline"
         >
-          Manage
+          {t.manage}
         </Link>
       </div>
     </div>

@@ -13,11 +13,8 @@ import type { CurrencySummary, MoneySummary } from "../types/moneyflow.types";
  * - monthlyIncome: доходы за текущий месяц
  * - monthlyExpenses: расходы за текущий месяц
  *
- * ВАЖНО (мультивалютность): суммы НЕ конвертируются. USD и MDL считаются
- * как отдельные строки `byCurrency`. Складывать amount разных валют в одно
- * число — финансово некорректно (1 USD ≠ 1 MDL). Конвертация в base_currency
- * организации — отдельный FX-слой (exchange_rates + fn_get_exchange_rate),
- * который пока не внедрён; до тех пор честнее показывать разбивку по валютам.
+ * USD и MDL остаются отдельными строками `byCurrency`; `base` дополнительно
+ * приводится через organizational resolver с fallback на global FX.
  *
  * Почему не SQL View / RPC:
  * Для MVP — проще и понятнее считать в коде.
@@ -67,13 +64,11 @@ export async function getMoneySummary(
 
     supabase
       .from("money_transactions")
-      .select("type, amount, currency")
+      .select("type, amount, currency, destination_amount, destination_currency")
       .eq("organization_id", organizationId)
       .eq("status", "posted")
       .is("deleted_at", null)
-      // Transfers (type='transfer') net to zero per currency and are NOT
-      // income/expense — exclude them so they never touch totals or analytics.
-      .in("type", ["income", "expense"]),
+      .in("type", ["income", "expense", "transfer"]),
 
     supabase
       .from("money_transactions")
@@ -104,9 +99,16 @@ export async function getMoneySummary(
 
   // Полный баланс: все posted-транзакции, в валюте транзакции.
   for (const tx of allTxResult.data ?? []) {
-    const entry = bucket(tx.currency);
     const amount = Number(tx.amount);
-    entry.balance += tx.type === "income" ? amount : -amount;
+    if (tx.type === "transfer") {
+      bucket(tx.currency).balance -= amount;
+      bucket(tx.destination_currency ?? tx.currency).balance += Number(
+        tx.destination_amount ?? tx.amount,
+      );
+    } else {
+      const entry = bucket(tx.currency);
+      entry.balance += tx.type === "income" ? amount : -amount;
+    }
   }
 
   // Доходы/расходы текущего месяца, в валюте транзакции.
@@ -124,11 +126,12 @@ export async function getMoneySummary(
     a.currency.localeCompare(b.currency),
   );
 
-  // Приведение к базовой валюте организации через fn_get_exchange_rate.
+  // Приведение к базовой валюте через organizational/manual → global resolver.
   const { rates, complete } = await getRatesToBase(
     supabase,
     rows.map((r) => r.currency),
     baseCurrency,
+    organizationId,
   );
 
   const base = {

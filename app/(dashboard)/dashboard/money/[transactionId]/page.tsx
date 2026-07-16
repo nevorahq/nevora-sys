@@ -8,16 +8,18 @@ import { UniversalRelationViewer } from "@/modules/relations";
 import { AiSuggestionPanel } from "@/modules/moneyflow/components/ai-suggestion-panel";
 import { getPaymentCycleByTransactionId } from "@/modules/subtracker/queries/get-payment-cycles";
 import { ROUTES } from "@/shared/config/routes";
+import { getDictionary } from "@/shared/i18n/get-dictionary";
+import { formatMoney } from "@/shared/utils/format-money";
 
 export default async function TransactionDetailPage({ params }: PageProps<"/dashboard/money/[transactionId]">) {
   const { transactionId } = await params;
-  const ctx = await requireOrg();
+  const [ctx, { dict }] = await Promise.all([requireOrg(), getDictionary()]);
   const { org } = ctx;
 
   const supabase = await createClient();
   const { data: tx } = await supabase
     .from("money_transactions")
-    .select("id, title, amount, currency, transaction_date, type, note, status, category_id, categorization_status, account:money_accounts!account_id(name), category:money_categories(name), from_account:money_accounts!from_account_id(name), to_account:money_accounts!to_account_id(name)")
+    .select("id, title, amount, currency, destination_amount, destination_currency, reference_exchange_rate, effective_exchange_rate, exchange_rate_source, transaction_date, type, note, status, category_id, categorization_status, account:money_accounts!account_id(name), category:money_categories(name), from_account:money_accounts!from_account_id(name), to_account:money_accounts!to_account_id(name)")
     .eq("id", transactionId)
     .eq("organization_id", org.id)
     .is("deleted_at", null)
@@ -52,6 +54,7 @@ export default async function TransactionDetailPage({ params }: PageProps<"/dash
   const toAccount = Array.isArray(tx.to_account) ? tx.to_account[0] : tx.to_account;
   const isTransfer = tx.type === "transfer";
   const isIncome = tx.type === "income";
+  const isCrossCurrency = isTransfer && tx.destination_currency !== tx.currency;
 
   // Money Intelligence: pending suggestion + selectable categories for the
   // AI Categorization block. Transfers carry no category (067) and drafts are
@@ -103,7 +106,10 @@ export default async function TransactionDetailPage({ params }: PageProps<"/dash
           </div>
           {isTransfer ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-sunken px-3 py-1 text-sm font-semibold text-text-secondary">
-              <ArrowRightLeftIcon size={13} /> {tx.currency} {tx.amount}
+              <ArrowRightLeftIcon size={13} />
+              {isCrossCurrency
+                ? `−${formatMoney(Number(tx.amount))} ${tx.currency} → +${formatMoney(Number(tx.destination_amount ?? tx.amount))} ${tx.destination_currency}`
+                : `${formatMoney(Number(tx.amount))} ${tx.currency}`}
             </span>
           ) : (
             <span className={`rounded-full px-3 py-1 text-sm font-semibold ${isIncome ? "bg-accent-green-soft text-accent-green" : "bg-accent-pink-soft text-accent-pink"}`}>
@@ -166,8 +172,13 @@ export default async function TransactionDetailPage({ params }: PageProps<"/dash
             </div>
             {isTransfer ? (
               (fromAccount || toAccount) && <div>
-                <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-text-muted"><ArrowRightLeftIcon size={13} /> Transfer</p>
-                <p className="mt-2 text-sm text-text-primary">{fromAccount?.name ?? "—"} → {toAccount?.name ?? "—"}</p>
+                <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-text-muted"><ArrowRightLeftIcon size={13} /> {dict.money.transfer.label}</p>
+                <p className="mt-2 text-sm text-text-primary">{tx.currency} {fromAccount?.name ?? "—"} → {tx.destination_currency ?? tx.currency} {toAccount?.name ?? "—"}</p>
+                {isCrossCurrency && tx.effective_exchange_rate && (
+                  <p className="mt-2 text-xs text-text-muted">
+                    {dict.money.transfer.effectiveRate}: 1 {tx.currency} = {Number(tx.effective_exchange_rate).toLocaleString("en-US", { maximumFractionDigits: 10, useGrouping: false })} {tx.destination_currency}
+                  </p>
+                )}
               </div>
             ) : (
               account && <div>

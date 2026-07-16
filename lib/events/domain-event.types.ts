@@ -117,6 +117,7 @@ export type AggregateType =
   | "project"
   | "money_ai_suggestion"
   | "money_category_rule"
+  | "exchange_rate"
   | "planner_entry"
   | "planner_suggestion"
   | "onboarding_progress"
@@ -214,9 +215,32 @@ export interface DomainEventPayloadMap {
   "money.transfer.created": {
     amount: number;
     currency: string;
+    source_amount: number;
+    source_currency: string;
+    destination_amount: number;
+    destination_currency: string;
+    reference_exchange_rate: number | null;
+    effective_exchange_rate: number;
+    exchange_rate_source: string | null;
+    exchange_rate_id: string | null;
     from_account_id: string;
     to_account_id: string;
     transaction_date?: string | null;
+  };
+  "money.exchange_rate.created": {
+    base_currency: string;
+    quote_currency: string;
+    rate: number;
+    effective_date: string;
+    source: "manual" | "bank_api";
+  };
+  "money.exchange_rate.updated": {
+    base_currency: string;
+    quote_currency: string;
+    old_rate: number;
+    new_rate: number;
+    effective_date: string;
+    source: "manual" | "bank_api";
   };
   "transaction.deleted": { amount?: number; type?: string };
 

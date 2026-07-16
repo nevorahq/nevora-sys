@@ -8,12 +8,14 @@ import {
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import type { SettingsActionState } from "../types/settings.types";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface DeleteAccountSectionProps {
   email: string;
   graceDays: number;
   hasPassword: boolean;
   pending: { purgeAfter: string } | null;
+  t: Dictionary["settings"];
 }
 
 function formatDate(iso: string): string {
@@ -29,7 +31,9 @@ export function DeleteAccountSection({
   graceDays,
   hasPassword,
   pending,
+  t: settings,
 }: DeleteAccountSectionProps) {
+  const t = settings.deleteAccount;
   const [state, action, submitting] = useActionState<SettingsActionState, FormData>(
     requestAccountDeletion,
     {},
@@ -43,13 +47,10 @@ export function DeleteAccountSection({
     return (
       <section className="soft-card space-y-4 border border-danger/30 p-5 sm:p-6">
         <div>
-          <h2 className="text-base font-semibold text-danger">
-            Account scheduled for deletion
-          </h2>
+          <h2 className="text-base font-semibold text-danger">{t.scheduledTitle}</h2>
           <p className="mt-1 text-sm text-text-muted">
-            Your account and its personal data will be permanently deleted on{" "}
-            <strong>{formatDate(pending.purgeAfter)}</strong>. You can cancel any
-            time before then to keep your account.
+            {t.scheduledBodyPrefix} <strong>{formatDate(pending.purgeAfter)}</strong>
+            {t.scheduledBodySuffix}
           </p>
         </div>
         {cancelError && <p className="text-sm text-danger">{cancelError}</p>}
@@ -65,7 +66,7 @@ export function DeleteAccountSection({
             })
           }
         >
-          {cancelling ? "Cancelling…" : "Cancel deletion"}
+          {cancelling ? t.cancelling : t.cancelDeletion}
         </Button>
       </section>
     );
@@ -74,43 +75,35 @@ export function DeleteAccountSection({
   return (
     <section className="soft-card space-y-4 border border-danger/30 p-5 sm:p-6">
       <div>
-        <h2 className="text-base font-semibold text-danger">Delete account</h2>
-        <p className="mt-1 text-sm text-text-muted">
-          Permanently delete your account and personal data. Deletion is
-          scheduled with a {graceDays}-day grace period — you can cancel within
-          that window before anything is erased.
-        </p>
+        <h2 className="text-base font-semibold text-danger">{t.title}</h2>
+        <p className="mt-1 text-sm text-text-muted">{t.body.replace("{days}", String(graceDays))}</p>
       </div>
 
       {!open ? (
         <Button type="button" variant="danger" onClick={() => setOpen(true)}>
-          Delete account…
+          {t.openButton}
         </Button>
       ) : (
         <form action={action} className="space-y-4 border-t border-border-soft pt-4">
           {state.blockingOrgs && state.blockingOrgs.length > 0 && (
             <div className="rounded-md border border-danger/30 bg-danger/5 p-3 text-sm">
-              <p className="font-medium text-danger">
-                You are the only owner of these organizations:
-              </p>
+              <p className="font-medium text-danger">{t.soleOwnerTitle}</p>
               <ul className="mt-1 list-disc pl-5 text-text-muted">
                 {state.blockingOrgs.map((o) => (
                   <li key={o.name}>
-                    {o.name} — {o.otherActiveMembers} other member
-                    {o.otherActiveMembers === 1 ? "" : "s"}
+                    {o.name} — {o.otherActiveMembers}{" "}
+                    {o.otherActiveMembers === 1 ? t.soleOwnerMember : t.soleOwnerMembers}
                   </li>
                 ))}
               </ul>
-              <p className="mt-1 text-text-muted">
-                Transfer ownership or remove the members first.
-              </p>
+              <p className="mt-1 text-text-muted">{t.soleOwnerHint}</p>
             </div>
           )}
 
           <Input
             id="confirmation"
             name="confirmation"
-            label={`Type your email (${email}) to confirm`}
+            label={t.confirmLabel.replace("{email}", email)}
             autoComplete="off"
             error={state.fieldErrors?.confirmation?.[0]}
             required
@@ -121,7 +114,7 @@ export function DeleteAccountSection({
               id="password"
               name="password"
               type="password"
-              label="Your password"
+              label={t.passwordLabel}
               autoComplete="current-password"
               error={state.fieldErrors?.password?.[0]}
               required
@@ -131,7 +124,7 @@ export function DeleteAccountSection({
           <Input
             id="reason"
             name="reason"
-            label="Reason (optional)"
+            label={t.reasonLabel}
             error={state.fieldErrors?.reason?.[0]}
           />
 
@@ -139,7 +132,7 @@ export function DeleteAccountSection({
 
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" variant="danger" isLoading={submitting}>
-              {submitting ? "Scheduling…" : `Schedule deletion`}
+              {submitting ? t.scheduling : t.scheduleButton}
             </Button>
             <Button
               type="button"
@@ -147,7 +140,7 @@ export function DeleteAccountSection({
               onClick={() => setOpen(false)}
               disabled={submitting}
             >
-              Cancel
+              {settings.common.cancel}
             </Button>
           </div>
         </form>

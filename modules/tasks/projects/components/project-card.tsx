@@ -5,8 +5,9 @@ import { formatDate } from "@/shared/utils/format-date";
 import { ProjectStatusBadge } from "./project-status-badge";
 import { ProjectProgressBar } from "./project-progress-bar";
 import type { ProjectWithStats } from "../types/project.types";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
-export function ProjectCard({ project }: { project: ProjectWithStats }) {
+export function ProjectCard({ project, t }: { project: ProjectWithStats; t: Dictionary["projects"] }) {
   return (
     <Link
       href={projectDetailUrl(project.id)}
@@ -26,7 +27,7 @@ export function ProjectCard({ project }: { project: ProjectWithStats }) {
             )}
           </div>
         </div>
-        <ProjectStatusBadge status={project.status} />
+        <ProjectStatusBadge status={project.status} labels={t.statuses} />
       </div>
 
       <ProjectProgressBar progress={project.progress} />
@@ -34,7 +35,7 @@ export function ProjectCard({ project }: { project: ProjectWithStats }) {
       <div className="flex items-center gap-4 text-xs text-text-muted">
         <span className="inline-flex items-center gap-1">
           <CheckSquareIcon size={13} strokeWidth={1.75} />
-          {project.doneCount}/{project.taskCount} tasks
+          {project.doneCount}/{project.taskCount} {t.tasks.toLowerCase()}
         </span>
         {project.due_date && (
           <span className="inline-flex items-center gap-1">

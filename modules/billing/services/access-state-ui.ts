@@ -3,6 +3,23 @@ import type { OrgAccessState } from "../types/entitlement.types";
 
 export type AccessGateIntent = Extract<AccessIntent, "write" | "invite" | "execute" | "billing" | "admin">;
 
+/**
+ * Localizable copy for the access/plan-gate surface. The UI builds this from
+ * `dict.access` and threads it through `AccessStateProvider`; server/no-arg
+ * callers fall back to `defaultAccessCopy` (byte-identical to the pre-i18n
+ * strings, so `access-state-ui.test.ts` and gating logic stay unchanged).
+ */
+export interface AccessCopy {
+  states: Record<OrgAccessState, string>;
+  restricted: Partial<Record<OrgAccessState, string>>;
+  blockedDefault: string;
+  blockedInvite: string;
+  blockedExecute: string;
+  blockedUpload: string;
+  alertTitle: string;
+  ctaLabel: string;
+}
+
 export interface AccessStateView {
   state: OrgAccessState;
   label: string;
@@ -13,6 +30,10 @@ export interface AccessStateView {
   shouldWarn: boolean;
   banner: string | null;
   reason: string;
+  /** Localized intent messages carried on the view so client components render in-locale. */
+  blocked: { default: string; invite: string; execute: string; upload: string };
+  alertTitle: string;
+  ctaLabel: string;
 }
 
 const ACCESS_STATE_LABELS: Record<OrgAccessState, string> = {
@@ -47,22 +68,48 @@ export const INVITE_BLOCKED_MESSAGE = "Приглашения недоступн
 export const AI_BLOCKED_MESSAGE = "AI-действия недоступны для текущего плана.";
 export const UPLOAD_BLOCKED_MESSAGE = "Загрузка документов доступна после активации плана.";
 
-export function getAccessStateView(state: OrgAccessState): AccessStateView {
+/**
+ * Legacy default copy — byte-identical to the pre-i18n strings so no-arg callers
+ * (tests, server gating) are unchanged. The UI passes localized copy from `dict.access`.
+ */
+export const defaultAccessCopy: AccessCopy = {
+  states: ACCESS_STATE_LABELS,
+  restricted: RESTRICTED_COPY,
+  blockedDefault: DEFAULT_BLOCKED_ACTION_MESSAGE,
+  blockedInvite: INVITE_BLOCKED_MESSAGE,
+  blockedExecute: AI_BLOCKED_MESSAGE,
+  blockedUpload: UPLOAD_BLOCKED_MESSAGE,
+  alertTitle: "Доступ ограничен",
+  ctaLabel: "Перейти к оплате",
+};
+
+export function getAccessStateView(
+  state: OrgAccessState,
+  copy: AccessCopy = defaultAccessCopy,
+): AccessStateView {
   const canWrite = evaluateEntitlement(state, "write").allowed;
   const canInvite = evaluateEntitlement(state, "invite").allowed;
   const canExecute = evaluateEntitlement(state, "execute").allowed;
-  const banner = RESTRICTED_COPY[state] ?? null;
+  const banner = copy.restricted[state] ?? null;
 
   return {
     state,
-    label: ACCESS_STATE_LABELS[state],
+    label: copy.states[state],
     canWrite,
     canInvite,
     canExecute,
     isReadOnly: !canWrite,
     shouldWarn: state !== "developer_unlimited" && Boolean(banner),
     banner,
-    reason: banner ?? DEFAULT_BLOCKED_ACTION_MESSAGE,
+    reason: banner ?? copy.blockedDefault,
+    blocked: {
+      default: copy.blockedDefault,
+      invite: copy.blockedInvite,
+      execute: copy.blockedExecute,
+      upload: copy.blockedUpload,
+    },
+    alertTitle: copy.alertTitle,
+    ctaLabel: copy.ctaLabel,
   };
 }
 
@@ -70,10 +117,13 @@ export function isAccessIntentAllowed(state: OrgAccessState, intent: AccessGateI
   return evaluateEntitlement(state, intent).allowed;
 }
 
-export function blockedActionMessage(intent: AccessGateIntent, state: OrgAccessState): string {
-  if (intent === "invite") return INVITE_BLOCKED_MESSAGE;
-  if (intent === "execute") return AI_BLOCKED_MESSAGE;
-  const view = getAccessStateView(state);
-  if (state === "requires_paid_plan") return "Для продолжения работы выберите платный план.";
-  return view.banner ?? DEFAULT_BLOCKED_ACTION_MESSAGE;
+export function blockedActionMessage(
+  intent: AccessGateIntent,
+  state: OrgAccessState,
+  copy: AccessCopy = defaultAccessCopy,
+): string {
+  if (intent === "invite") return copy.blockedInvite;
+  if (intent === "execute") return copy.blockedExecute;
+  const view = getAccessStateView(state, copy);
+  return view.banner ?? copy.blockedDefault;
 }

@@ -51,7 +51,7 @@ export async function loginAction(
   }
 
   if (shouldRedirect) {
-    redirect(ROUTES.dashboard);
+    redirect(ROUTES.appHome);
   }
 
   return {};

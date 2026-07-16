@@ -6,10 +6,21 @@ import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
 import { getTransferSchema } from "../schemas/transfer.schema";
-import { TRANSFER_TYPE } from "../constants/moneyflow.constants";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
+
+type CreatedTransferSnapshot = {
+  id: string;
+  source_amount: string | number;
+  source_currency: string;
+  destination_amount: string | number;
+  destination_currency: string;
+  reference_exchange_rate: string | number | null;
+  effective_exchange_rate: string | number;
+  exchange_rate_source: string | null;
+  exchange_rate_id: string | null;
+};
 
 /**
  * Server Action: перевод средств между двумя счетами (Internal Transfer).
@@ -19,14 +30,11 @@ import type { ActionResult } from "@/lib/validators/common";
  * это один INSERT и он атомарен по своей природе: частичного состояния
  * (списали, но не зачислили) возникнуть не может.
  *
- * Перевод нейтрален для аналитики: get-money-summary и get-expense-breakdown
- * фильтруют type IN ('income','expense'), так что transfer не попадает ни в
- * доходы, ни в расходы, ни в разбивку по категориям. На уровне валюты перевод
- * нетто-ноль (минус у источника, плюс у получателя), общий баланс не меняется.
+ * Перевод нейтрален для income/expense-аналитики. В валютных bucket-остатках
+ * source amount вычитается, а immutable destination amount прибавляется.
  *
  * Безопасность: RLS WITH CHECK can_write_data(organization_id) защищает запись.
- * Дополнительно проверяем, что ОБА счёта принадлежат организации, активны и
- * имеют одинаковую валюту (RLS не валидирует to_account_id).
+ * RPC и DB-trigger повторно проверяют оба счёта, валюты и snapshot-поля.
  */
 export async function createTransferAction(
   _prevState: ActionResult,
@@ -51,12 +59,14 @@ export async function createTransferAction(
     if (denied) return denied;
     throw err;
   }
-  const { user, org, workspace } = ctx;
+  const { org, workspace } = ctx;
 
   const parsed = transferSchema.safeParse({
     from_account_id: formData.get("from_account_id") as string,
     to_account_id: formData.get("to_account_id") as string,
     amount: formData.get("amount") as string,
+    destination_amount: (formData.get("destination_amount") as string) || "",
+    use_custom_destination: formData.get("use_custom_destination") === "yes" ? "yes" : "no",
     transaction_date: (formData.get("transaction_date") as string) || undefined,
     note: (formData.get("note") as string) || null,
   });
@@ -76,35 +86,6 @@ export async function createTransferAction(
   try {
     const supabase = await createClient();
 
-    // Подтверждаем, что оба счёта существуют, активны и принадлежат организации.
-    // Берём имена для заголовка ленты и валюту источника как валюту перевода.
-    const { data: accounts, error: accountsError } = await supabase
-      .from("money_accounts")
-      .select("id, name, currency, is_active")
-      .eq("organization_id", org.id)
-      .is("deleted_at", null)
-      .in("id", [parsed.data.from_account_id, parsed.data.to_account_id]);
-
-    if (accountsError) {
-      console.error("createTransfer accounts lookup error:", accountsError);
-      return { error: dict.money.errors.serverError };
-    }
-
-    const from = accounts?.find((a) => a.id === parsed.data.from_account_id);
-    const to = accounts?.find((a) => a.id === parsed.data.to_account_id);
-
-    if (!from || !from.is_active) {
-      return { fieldErrors: { from_account_id: [dict.money.errors.accountRequired] } };
-    }
-    if (!to || !to.is_active) {
-      return { fieldErrors: { to_account_id: [dict.money.errors.accountRequired] } };
-    }
-
-    // MVP: переводы только между счетами с одинаковой валютой (без конвертации).
-    if (from.currency !== to.currency) {
-      return { fieldErrors: { to_account_id: [dict.money.errors.transferCurrencyMismatch] } };
-    }
-
     try {
       await reserveOrganizationUsage(org.id, "money_transactions.count", 1);
       reserved = true;
@@ -112,48 +93,64 @@ export async function createTransferAction(
       return { error: error instanceof Error ? error.message : "Money transaction limit reached. Upgrade your plan." };
     }
 
+    // PostgreSQL re-fetches both accounts, resolves the reference FX rate and
+    // rounds NUMERIC values. Client-provided currencies/rates are never trusted.
     const { data: newTx, error } = await supabase
-      .from("money_transactions")
-      .insert({
-        organization_id: org.id,
-        workspace_id: workspace.id,
-        created_by: user.id,
-        updated_by: user.id,
-        // account_id зеркалит источник: сохраняет совместимость с запросами,
-        // которые джойнят account:money_accounts(name) и фильтруют по account_id.
-        account_id: from.id,
-        from_account_id: from.id,
-        to_account_id: to.id,
-        category_id: null,
-        type: TRANSFER_TYPE,
-        amount: parsed.data.amount,
-        currency: from.currency,
-        transaction_date: parsed.data.transaction_date,
-        title: `${from.name} → ${to.name}`,
-        note: parsed.data.note,
-        status: "posted",
+      .rpc("create_money_transfer", {
+        p_organization_id: org.id,
+        p_workspace_id: workspace.id,
+        p_from_account_id: parsed.data.from_account_id,
+        p_to_account_id: parsed.data.to_account_id,
+        p_source_amount: parsed.data.amount,
+        p_destination_amount: parsed.data.use_custom_destination === "yes"
+          ? parsed.data.destination_amount
+          : null,
+        p_transaction_date: parsed.data.transaction_date,
+        p_note: parsed.data.note,
       })
-      .select("id")
       .single();
 
     if (error || !newTx) {
-      console.error("createTransfer error:", error);
+      console.error("createTransfer error:", JSON.stringify({
+        code: error?.code ?? null,
+        message: error?.message ?? null,
+        details: error?.details ?? null,
+        hint: error?.hint ?? null,
+      }));
       await releaseOrganizationUsage(org.id, "money_transactions.count", 1);
+      if (error?.message?.includes("missing_exchange_rate")) {
+        return { fieldErrors: { destination_amount: [dict.money.errors.transferRateMissing] } };
+      }
+      if (error?.message?.includes("transfer_account")) {
+        return { error: dict.money.errors.accountRequired };
+      }
       return { error: dict.money.errors.createTransferFailed };
     }
     reserved = false;
+    const snapshot = newTx as CreatedTransferSnapshot;
 
     await emitDomainEvent({
       organizationId: org.id,
       workspaceId: workspace.id,
       eventName: "money.transfer.created",
       aggregateType: "transaction",
-      aggregateId: newTx.id,
+      aggregateId: snapshot.id,
       payload: {
-        amount: parsed.data.amount,
-        currency: from.currency,
-        from_account_id: from.id,
-        to_account_id: to.id,
+        // Legacy fields retained for existing consumers.
+        amount: Number(snapshot.source_amount),
+        currency: snapshot.source_currency,
+        source_amount: Number(snapshot.source_amount),
+        source_currency: snapshot.source_currency,
+        destination_amount: Number(snapshot.destination_amount),
+        destination_currency: snapshot.destination_currency,
+        reference_exchange_rate: snapshot.reference_exchange_rate == null
+          ? null
+          : Number(snapshot.reference_exchange_rate),
+        effective_exchange_rate: Number(snapshot.effective_exchange_rate),
+        exchange_rate_source: snapshot.exchange_rate_source,
+        exchange_rate_id: snapshot.exchange_rate_id,
+        from_account_id: parsed.data.from_account_id,
+        to_account_id: parsed.data.to_account_id,
         transaction_date: parsed.data.transaction_date,
       },
     });

@@ -5,6 +5,7 @@ import { getMoneySummary } from "@/modules/moneyflow/queries/get-money-summary";
 import { getAccountsWithBalances } from "@/modules/moneyflow/queries/get-accounts-with-balances";
 import { getCategories } from "@/modules/moneyflow/queries/get-categories";
 import { getTransactions } from "@/modules/moneyflow/queries/get-transactions";
+import { getExchangeRateOverview } from "@/modules/moneyflow/queries/get-exchange-rates";
 import { getPlannedTransactions } from "@/modules/moneyflow/queries/get-planned-transactions";
 import { getExpenseBreakdown } from "@/modules/moneyflow/queries/get-expense-breakdown";
 import { getCategoryIntelligence } from "@/modules/moneyflow/queries/get-category-intelligence";
@@ -26,6 +27,7 @@ import { CategorizationDiagnosticsCard } from "@/modules/moneyflow/components/ca
 import { UncategorizedTransactions } from "@/modules/moneyflow/components/uncategorized-transactions";
 import { ExpenseQuestion } from "@/modules/moneyflow/components/expense-question";
 import { MonthNavigator } from "@/modules/moneyflow/components/month-navigator";
+import { ExchangeRatesWidget } from "@/modules/moneyflow/components/exchange-rates-widget";
 import { resolveMonthRange } from "@/modules/moneyflow/lib/month-range";
 import Link from "next/link";
 import { ROUTES } from "@/shared/config/routes";
@@ -48,7 +50,7 @@ export default async function MoneyPage({
 
   const ctx = await requireOrg();
   const admin = isAdmin(ctx);
-  const [summary, accounts, categories, transactions, planned, subscriptions, breakdown, intelligence, uncategorizedCount, uncategorized, diagnostics] =
+  const [summary, accounts, categories, transactions, planned, subscriptions, breakdown, intelligence, uncategorizedCount, uncategorized, diagnostics, exchangeRates] =
     await Promise.all([
       getMoneySummary(monthWindow),
       getAccountsWithBalances(ctx.org.id),
@@ -63,6 +65,7 @@ export default async function MoneyPage({
         ? getUncategorizedTransactions(ctx.org.id, monthWindow)
         : Promise.resolve([]),
       admin ? getCategorizationDiagnostics(ctx.org.id) : Promise.resolve(null),
+      getExchangeRateOverview(ctx.org.id, ctx.org.baseCurrency),
     ]);
 
   const allHref = month ? `${ROUTES.money}?month=${encodeURIComponent(month)}` : ROUTES.money;
@@ -106,6 +109,8 @@ export default async function MoneyPage({
           <MoneyAccountsList accounts={accounts} dict={dict} />
         </section>
       )}
+
+      <ExchangeRatesWidget overview={exchangeRates} canManage={admin} dict={dict} />
 
       {/* Planned (drafts awaiting confirmation — incl. document extractions) */}
       {planned.length > 0 && (

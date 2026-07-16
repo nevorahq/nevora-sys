@@ -19,7 +19,7 @@ import { getRatesToBase, sumInBase } from "./fx-conversion";
  *
  * Валюты НЕ суммируются в одно число (как и getMoneySummary): предстоящие
  * расходы разбиты по валюте транзакции. Кросс-валютная нормализация в
- * base_currency — отдельный FX-слой, пока не внедрён.
+ * base_currency выполняется единым organizational/global FX resolver.
  *
  * RLS (is_org_member) допускает любую org пользователя — при active
  * membership в нескольких сразу (multi-org) явный фильтр по organization_id
@@ -76,6 +76,7 @@ export async function getUpcomingExpenses(): Promise<UpcomingExpenses> {
     supabase,
     [...totals.keys()],
     baseCurrency,
+    org.id,
   );
 
   return {

@@ -63,9 +63,14 @@ function TransactionReadOnly({
 }) {
   const isTransfer = tx.type === "transfer";
   const isIncome = tx.type === "income";
+  const isCrossCurrency = isTransfer && tx.destination_currency !== tx.currency;
 
   const subtitle = isTransfer
-    ? `${tx.from_account?.name ?? "—"} → ${tx.to_account?.name ?? "—"}`
+    ? `${tx.currency} ${tx.from_account?.name ?? "—"} → ${tx.destination_currency ?? tx.currency} ${tx.to_account?.name ?? "—"}${
+        isCrossCurrency && tx.effective_exchange_rate
+          ? ` · ${dict.money.transfer.effectiveRate}: 1 ${tx.currency} = ${Number(tx.effective_exchange_rate).toLocaleString("en-US", { maximumFractionDigits: 10, useGrouping: false })} ${tx.destination_currency}`
+          : ""
+      }`
     : `${tx.category?.name ?? "—"}${tx.account?.name ? ` · ${tx.account.name}` : ""}`;
 
   return (
@@ -103,8 +108,9 @@ function TransactionReadOnly({
             isTransfer ? "text-text-secondary" : isIncome ? "text-accent-green" : "text-text-primary",
           )}
         >
-          {isTransfer ? "" : isIncome ? "+" : "−"}
-          {formatMoney(Number(tx.amount))}
+          {isCrossCurrency
+            ? `−${formatMoney(Number(tx.amount))} ${tx.currency} → +${formatMoney(Number(tx.destination_amount ?? tx.amount))} ${tx.destination_currency}`
+            : `${isTransfer ? "" : isIncome ? "+" : "−"}${formatMoney(Number(tx.amount))}`}
         </p>
         <p className="text-xs text-text-muted" suppressHydrationWarning>
           {formatDate(tx.transaction_date)}, {formatTime(tx.created_at)}

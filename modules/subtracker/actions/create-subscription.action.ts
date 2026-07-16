@@ -6,8 +6,7 @@ import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
 import { getSubscriptionSchemas } from "../schemas/subscription.schema";
-import { createSubscriptionPaymentCycle } from "../services/create-subscription-payment-cycle";
-import { createSubscriptionTaskSuggestionRecord } from "@/modules/review/services/financial-suggestion.service";
+import { provisionSubscriptionPaymentCycle } from "../services/provision-subscription-payment-cycle";
 import type { SubscriptionForPayment } from "../types/payment-cycle.types";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
@@ -112,9 +111,8 @@ export async function createSubscriptionAction(
       },
     });
 
-    // Workflow bootstrap: first payment cycle + reviewable task suggestion.
-    // Phase C: task creation is explicit; no task or transaction is created
-    // until the user confirms the suggestion.
+    // Workflow bootstrap: create the first payment cycle and its task. The
+    // cycle service is idempotent, so retries cannot create duplicate tasks.
     const subscriptionForPayment: SubscriptionForPayment = {
       id: newSubId,
       name: parsed.data.name,
@@ -130,30 +128,17 @@ export async function createSubscriptionAction(
       workspace_id: workspace.id,
     };
     try {
-      const cycle = await createSubscriptionPaymentCycle({
+      const provisioned = await provisionSubscriptionPaymentCycle({
         supabase,
         ctx,
         subscription: subscriptionForPayment,
         dueDate: parsed.data.next_billing_date,
       });
-      if (cycle.ok) {
-        await createSubscriptionTaskSuggestionRecord(supabase, ctx, {
-          subscriptionId: newSubId,
-          taskType: "pay_subscription",
-          billingPeriodKey: cycle.cycle.billing_period_key,
-          dueDate: cycle.cycle.due_date,
-          amount: cycle.cycle.expected_amount,
-          currency: cycle.cycle.currency,
-          reason: "Upcoming billing date detected for a new subscription.",
-          confidenceScore: 1,
-          metadata: { cycle_id: cycle.cycle.id },
-        });
-      } else {
-        console.error("createSubscription: payment cycle creation failed:", cycle.error);
+      if (!provisioned.ok) {
+        console.error("createSubscription: payment workflow provisioning failed:", provisioned.error);
       }
     } catch (provisionErr) {
-      // Never fail a committed subscription on a best-effort workflow step;
-      // the safety cron repairs a missing cycle/suggestion.
+      // Never fail a committed subscription on a best-effort workflow step.
       console.error("createSubscription: payment cycle provisioning threw:", provisionErr);
     }
   } catch (err) {
@@ -164,5 +149,6 @@ export async function createSubscriptionAction(
 
   revalidatePath(ROUTES.subscriptions);
   revalidatePath(ROUTES.dashboard);
+  revalidatePath(ROUTES.tasks);
   return { subscriptionId: newSubId };
 }
