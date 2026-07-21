@@ -13,8 +13,9 @@ export const ru: Dictionary = {
     dashboard: "Обзор",
     overview: "Сводка",
     inbox: "Входящие",
+    add: "Добавить",
     actions: "Действия",
-    tasks: "Задачи",
+    tasks: "Работа",
     crm: "CRM",
     money: "Финансы",
     subscriptions: "Подписки",
@@ -382,6 +383,7 @@ export const ru: Dictionary = {
   money: {
     title: "Финансы",
     description: "Учёт доходов и расходов",
+    subscriptionsLink: "Подписки",
     summary: {
       balance: "Текущий баланс",
       income: "Доходы за месяц",
@@ -1136,6 +1138,7 @@ export const ru: Dictionary = {
       billing: "Оплата",
       plans: "Тарифы",
       developer: "Разработчику",
+      advanced: "Расширенные",
     },
     accessDenied: {
       title: "Нужен доступ администратора",

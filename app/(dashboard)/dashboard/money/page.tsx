@@ -142,8 +142,14 @@ export default async function MoneyPage({
           {dict.money.intelligence.uncategorizedFilter} · {uncategorizedCount}
         </Link>
         <Link
-          href={`${ROUTES.money}/rules`}
+          href={ROUTES.subscriptions}
           className="ml-auto min-h-9 rounded-full bg-surface-sunken px-4 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary"
+        >
+          {dict.money.subscriptionsLink}
+        </Link>
+        <Link
+          href={`${ROUTES.money}/rules`}
+          className="min-h-9 rounded-full bg-surface-sunken px-4 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary"
         >
           {dict.money.intelligence.rulesLink}
         </Link>

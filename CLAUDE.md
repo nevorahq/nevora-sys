@@ -48,6 +48,7 @@ remediation history: `docs/audits/I18N_COMPLIANCE_AUDIT_2026-07-15.md`.
 |---|---|---|
 | Action Center | Центр действий | Centrul de acțiuni |
 | Workflow | Рабочий процесс | Flux de lucru |
+| Work (nav section = Tasks + Projects) | Работа | Lucru |
 | Workspace | Рабочее пространство | Spațiu de lucru |
 | Dashboard | Сводка / Tablou de bord | Tablou de bord |
 | Cash flow | Денежный поток | Flux de numerar |
