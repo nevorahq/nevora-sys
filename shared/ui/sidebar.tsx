@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboardIcon, CheckSquareIcon, WalletIcon, RepeatIcon,
+  LayoutDashboardIcon, CheckSquareIcon, WalletIcon,
   FileTextIcon, SettingsIcon,
   InboxIcon,
 } from "lucide-react";
@@ -34,6 +34,13 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ElementType;
+  /**
+   * Extra path prefixes that should light this item up as active, for surfaces
+   * that were folded INTO this section but keep their own route. Subscriptions
+   * folded into Money (Sprint 2 surface reduction): `/dashboard/subscriptions`
+   * still resolves as a deep link, but in the nav it belongs to Money.
+   */
+  activeMatch?: string[];
 }
 
 interface SidebarProps {
@@ -43,6 +50,10 @@ interface SidebarProps {
 export function Sidebar({ dict }: SidebarProps) {
   const pathname = usePathname();
 
+  // Sprint 2 surface reduction: the primary nav holds at most six sections.
+  // Subscriptions folded INTO Money (its route still resolves and is reached from
+  // the Money page), so it is no longer a standalone nav item.
+  //
   // Inbox is the primary operating screen (post-auth landing). The Action Center
   // (`/dashboard`), Analytics and AI are temporarily hidden from the nav — their
   // pages still resolve by URL; this is a cosmetic hide, not a route gate. The
@@ -52,17 +63,17 @@ export function Sidebar({ dict }: SidebarProps) {
   // hiding is cosmetic only — `shared/config/paused-modules` gates their pages,
   // Server Actions and route handlers server-side.
   const navItems: NavItem[] = [
-    { href: ROUTES.inbox,         label: dict.nav.inbox,         icon: InboxIcon },
-    { href: ROUTES.tasks,         label: dict.nav.tasks,         icon: CheckSquareIcon },
-    { href: ROUTES.money,         label: dict.nav.money,         icon: WalletIcon },
-    { href: ROUTES.documents,     label: dict.nav.documents,     icon: FileTextIcon },
-    { href: ROUTES.subscriptions, label: dict.nav.subscriptions, icon: RepeatIcon },
-    { href: ROUTES.overview,      label: dict.nav.overview,      icon: LayoutDashboardIcon },
-    { href: ROUTES.settings,      label: dict.nav.settings,      icon: SettingsIcon },
+    { href: ROUTES.inbox,     label: dict.nav.inbox,     icon: InboxIcon },
+    { href: ROUTES.tasks,     label: dict.nav.tasks,     icon: CheckSquareIcon },
+    { href: ROUTES.money,     label: dict.nav.money,     icon: WalletIcon, activeMatch: [ROUTES.subscriptions] },
+    { href: ROUTES.documents, label: dict.nav.documents, icon: FileTextIcon },
+    { href: ROUTES.overview,  label: dict.nav.overview,  icon: LayoutDashboardIcon },
+    { href: ROUTES.settings,  label: dict.nav.settings,  icon: SettingsIcon },
   ];
 
-  function isActive(href: string): boolean {
-    return pathname.startsWith(href);
+  function isActive(item: NavItem): boolean {
+    if (pathname.startsWith(item.href)) return true;
+    return (item.activeMatch ?? []).some((p) => pathname.startsWith(p));
   }
 
   return (
@@ -101,7 +112,7 @@ export function Sidebar({ dict }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto px-2 py-4 md:px-3">
         <ul className="flex flex-col gap-1">
           {navItems.map((item) => {
-            const active = isActive(item.href);
+            const active = isActive(item);
             const Icon = item.icon;
 
             return (

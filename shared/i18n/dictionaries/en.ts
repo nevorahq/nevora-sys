@@ -13,9 +13,11 @@ export const en = {
     overview: "Overview",
     /** Nav label for /dashboard/inbox — the universal capture + triage surface. */
     inbox: "Capture",
+    /** Global capture entry point (top-bar "+ Add" button → Inbox). */
+    add: "Add",
     /** Labels /dashboard — the Action Center is the primary operating screen. */
     actions: "Actions",
-    tasks: "Tasks",
+    tasks: "Work",
     crm: "CRM",
     money: "Finances",
     subscriptions: "Subs",
@@ -409,6 +411,7 @@ export const en = {
   money: {
     title: "Finances",
     description: "Track your income and expenses",
+    subscriptionsLink: "Subscriptions",
     summary: {
       balance: "Current Balance",
       income: "Monthly Income",
@@ -1163,6 +1166,7 @@ export const en = {
       billing: "Billing",
       plans: "Plans",
       developer: "Developer",
+      advanced: "Advanced",
     },
     accessDenied: {
       title: "Admin access required",

@@ -1,5 +1,6 @@
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { Sidebar } from "@/shared/ui/sidebar";
+import { GlobalCaptureButton } from "@/shared/ui/global-capture-button";
 import { LanguageSwitcher } from "@/shared/ui/language-switcher";
 import { ThemeToggle } from "@/shared/ui/theme-toggle";
 import { Notifications } from "@/shared/ui/notifications";
@@ -90,6 +91,7 @@ export default async function DashboardLayout({
                 {limits.unlimitedAccess && <DeveloperAccessBadge />}
               </div>
               <div className="flex items-center gap-2">
+                <GlobalCaptureButton label={dict.nav.add} />
                 <Notifications dict={dict} />
                 <LanguageSwitcher locale={locale} />
                 <ThemeToggle />

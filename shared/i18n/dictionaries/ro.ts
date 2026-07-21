@@ -22,8 +22,9 @@ export const ro: Dictionary = {
     dashboard: "Tablou de bord",
     overview: "Prezentare generală",
     inbox: "Mesaje primite",
+    add: "Adaugă",
     actions: "Acțiuni",
-    tasks: "Sarcini",
+    tasks: "Lucru",
     crm: "CRM",
     money: "Finanțe",
     subscriptions: "Abon.",
@@ -391,6 +392,7 @@ export const ro: Dictionary = {
   money: {
     title: "Finanțe",
     description: "Urmărește veniturile și cheltuielile",
+    subscriptionsLink: "Abonamente",
     summary: {
       balance: "Sold curent",
       income: "Venit lunar",
@@ -1145,6 +1147,7 @@ export const ro: Dictionary = {
       billing: "Facturare",
       plans: "Planuri",
       developer: "Dezvoltator",
+      advanced: "Avansat",
     },
     accessDenied: {
       title: "Necesită acces de administrator",
