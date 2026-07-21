@@ -1,6 +1,6 @@
 # Release Checklist — Nevora Business OS
 
-**Status:** Canonical · **Last updated:** 2026-07-09 (Paddle billing replacement)
+**Status:** Canonical · **Last updated:** 2026-07-21 (migration baseline realigned `101` → `109`)
 **Supersedes:** [`phase-7-release-checklist.md`](./phase-7-release-checklist.md)
 (kept for history; its migration section stops at 077 and is stale)
 
@@ -28,20 +28,25 @@ rotation + I-09 interactive smoke still open).
 
 | | |
 |---|---|
-| **Current baseline (tree)** | `000` – `101` (101 files, no duplicate prefixes; `054` is a known, intentional gap) |
-| **Next free number** | **`102`** |
-| **Remote state** | `000`–`101` applied on `uimpykbnatzhykzpastd` (`098`/`099` confirmed 2026-07-09; `100`/`101` = Paddle billing boundary, applied — `101` widens the `billing_subscriptions` provider CHECK to unblock org creation). |
+| **Current baseline (tree)** | `000` – `109` (109 files, no duplicate prefixes; `054` is a known, intentional gap) |
+| **Next free number** | **`110`** |
+| **Remote state** | `000`–`109` applied on `uimpykbnatzhykzpastd` (**maintainer-confirmed complete 2026-07-21**). `000`–`105` confirmed 2026-07-13 (`105` = inbox universal-capture idempotency); `106`–`109` (multilingual + FX) applied 2026-07-16 (PR #46); `107`'s `organization_exchange_rates` re-verified present on remote 2026-07-21. |
 | **`098` status** | Applied. Anon can no longer read booking tables or EXECUTE the public booking RPCs (verified with the public anon key). |
 | **`099` status** | Applied. `todos.source_suggestion_id` + the four exactly-once indexes are live; the migration went in before the app deploy that writes the column. |
 | **`100`/`101` status** | Applied. `100` enforces the Paddle-only billing provider boundary; `101` fixes it to still allow the internal `'manual'` default so `create_organization` does not roll back. |
+| **`102`–`105` status** | Applied (per migration-baseline verification 2026-07-13). `102`/`103` = auth-user-delete FK safety; `104` = `account_deletion_requests` (self-service deletion); `105` = inbox universal-capture idempotency. |
+| **`106`–`109` status** | Applied (user-confirmed 2026-07-16, PR #46). `106` widens the `language` CHECK to allow `'ro'`; `107` adds `organization_exchange_rates` + cross-currency transfer RPC (re-verified present on remote 2026-07-21); `108`/`109` fix `create_money_transfer` runtime errors (42702/42703). |
 | **Phase A schema change** | **None.** Phase A is code + docs only. |
 | **Phase B–D schema change** | `094` (planner confirmation), `095` (onboarding progress), `096` (Phase D commercial readiness), `097` (documents↔money↔subscriptions). |
 | **Paddle billing schema change** | `100` (Paddle-only billing boundary), `101` (fix boundary to allow internal `'manual'` provider). |
+| **Account deletion schema change** | `102`/`103` (auth-user-delete FK safety), `104` (`account_deletion_requests`). |
+| **Multilingual + FX schema change** | `106` (Romanian `language` CHECK), `107` (`organization_exchange_rates` + cross-currency transfers), `108`/`109` (`create_money_transfer` fixes). |
 
-> ⚠️ This table has gone stale twice: first at "000–086, next 087", then at
-> "000–093, next 094" (which also wrongly claimed "93 files, no gaps" — there are
-> 97 files and `054` is absent). **Do not reintroduce either.** Verify against the
-> tree, not against a doc:
+> ⚠️ This table has gone stale **three times**: first at "000–086, next 087",
+> then at "000–093, next 094" (which also wrongly claimed "93 files, no gaps" —
+> there are 97 files and `054` is absent), then at "000–101, next 102" (the tree
+> had already reached `109`). **Do not reintroduce any of them.** Verify against
+> the tree, not against a doc:
 >
 > ```sh
 > ls supabase/migrations | tail -1                          # highest file
@@ -65,6 +70,10 @@ arity" and is **not** proof of absence.
 | `093` Analytics Writability | table `analytics_reports`; RPC `can_write_data` | ✅ |
 | `100` Paddle-only billing boundary | `billing_subscriptions` provider CHECK constraint | ✅ (2026-07-09) |
 | `101` Fix Paddle boundary (allow `manual`) | `create_organization` succeeds with default `'manual'` provider | ✅ (2026-07-09) |
+| `104` Account deletion requests | table `account_deletion_requests` | ✅ (2026-07-13) |
+| `105` Inbox universal-capture idempotency | idempotency index on `planner_entries` | ✅ (2026-07-13) |
+| `107` Org FX rates + cross-currency transfers | table `organization_exchange_rates` | ✅ (2026-07-21) |
+| `106`/`108`/`109` Multilingual + FX fixes | `language` CHECK allows `'ro'`; `create_money_transfer` runs without 42702/42703 | ✅ (maintainer-confirmed 2026-07-21) |
 
 Migrations are applied **manually** by the maintainer (the Supabase CLI is not
 logged in). See `docs/runbooks/rollback.md` before applying anything irreversible.
