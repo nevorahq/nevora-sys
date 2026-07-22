@@ -9,8 +9,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 const sweepMock = vi.fn();
+const flushMock = vi.fn();
 vi.mock("@/modules/billing/services/reconcile-usage-counters", () => ({
   reconcileUsageCounters: sweepMock,
+}));
+vi.mock("@/lib/observability/flush-after-response", () => ({
+  flushMonitoringAfterResponse: flushMock,
 }));
 
 const ROOT = process.cwd();
@@ -25,7 +29,7 @@ async function callRoute(authorization?: string) {
 
 describe("cron/usage-reconcile: fail-closed auth", () => {
   const prev = process.env.CRON_SECRET;
-  beforeEach(() => { vi.resetModules(); sweepMock.mockReset(); });
+  beforeEach(() => { vi.resetModules(); sweepMock.mockReset(); flushMock.mockReset(); });
   afterEach(() => {
     if (prev === undefined) delete process.env.CRON_SECRET;
     else process.env.CRON_SECRET = prev;
@@ -56,6 +60,13 @@ describe("cron/usage-reconcile: fail-closed auth", () => {
     process.env.CRON_SECRET = "s3cret";
     sweepMock.mockResolvedValue({ ok: false, configured: true, repairEnabled: false, orgsScanned: 0, discrepancies: 0, repaired: 0, alerts: 0 });
     expect((await callRoute("Bearer s3cret")).status).toBe(500);
+  });
+
+  it("flushes monitoring after a drift alert", async () => {
+    process.env.CRON_SECRET = "s3cret";
+    sweepMock.mockResolvedValue({ ok: true, configured: true, repairEnabled: false, orgsScanned: 3, discrepancies: 1, repaired: 0, alerts: 1 });
+    expect((await callRoute("Bearer s3cret")).status).toBe(200);
+    expect(flushMock).toHaveBeenCalledOnce();
   });
 });
 

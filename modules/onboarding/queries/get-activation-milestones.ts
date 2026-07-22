@@ -17,9 +17,11 @@ import {
 
 const DEFAULT_WINDOW_DAYS = 30;
 const MAX_ROWS = 50_000;
+/** Supabase/PostgREST caps one response at 1,000 rows (supabase/config.toml). */
+const PAGE_SIZE = 1_000;
 
 export type ActivationMilestonesResult =
-  | { ok: true; windowDays: number; milestones: ActivationMilestones }
+  | { ok: true; windowDays: number; milestones: ActivationMilestones; capped: boolean }
   | { ok: false; error: string; configured: boolean };
 
 export async function getActivationMilestones(
@@ -34,19 +36,28 @@ export async function getActivationMilestones(
 
   const cutoff = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data, error } = await supabase
-    .from("domain_events")
-    .select("organization_id, event_name")
-    .in("event_name", MILESTONE_EVENT_NAMES)
-    .gte("created_at", cutoff)
-    .limit(MAX_ROWS);
+  const events: MilestoneEvent[] = [];
+  for (let offset = 0; offset < MAX_ROWS; offset += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("domain_events")
+      .select("organization_id, event_name, aggregate_id")
+      .in("event_name", MILESTONE_EVENT_NAMES)
+      .gte("created_at", cutoff)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
 
-  if (error) {
-    log.error("events_select_failed", { error: error.message });
-    return { ok: false, error: "Could not read milestones.", configured: true };
+    if (error) {
+      log.error("events_select_failed", { error: error.message, offset });
+      return { ok: false, error: "Could not read milestones.", configured: true };
+    }
+    const page = (data ?? []) as MilestoneEvent[];
+    events.push(...page);
+    if (page.length < PAGE_SIZE) break;
   }
 
-  const milestones = computeActivationMilestones((data ?? []) as MilestoneEvent[]);
-  log.info("done", { windowDays, events: (data ?? []).length });
-  return { ok: true, windowDays, milestones };
+  const milestones = computeActivationMilestones(events);
+  const capped = events.length === MAX_ROWS;
+  log.info("done", { windowDays, events: events.length, capped });
+  return { ok: true, windowDays, milestones, capped };
 }

@@ -27,16 +27,28 @@ export const FAILURE_EVENTS = [
   "planner_suggestion.failed",
 ] as const;
 
+/** Events that mark a failed aggregate as recovered (same `aggregate_id`). */
+export const RECOVERY_EVENTS = [
+  "action_item.resolved",
+  "action_item.restored",
+  "planner_entry.processed",
+  "planner_suggestion.accepted",
+] as const;
+
 /** The events this layer needs from `domain_events`. */
 export const MILESTONE_EVENT_NAMES: string[] = [
-  ...Object.values(ACTIVATION_MILESTONES),
-  ...FAILURE_EVENTS,
+  ...new Set<string>([
+    ...Object.values(ACTIVATION_MILESTONES),
+    ...FAILURE_EVENTS,
+    ...RECOVERY_EVENTS,
+  ]),
 ];
 
-/** Minimal event shape — org + name only; timestamps/content are not needed. */
+/** Minimal event shape — org + name + aggregate id; timestamps/content not needed. */
 export interface MilestoneEvent {
   organization_id: string;
   event_name: string;
+  aggregate_id?: string;
 }
 
 export interface ActivationMilestones {
@@ -46,6 +58,10 @@ export interface ActivationMilestones {
   failureEvents: number;
   /** Total Action Center resolutions — the recovery/closure signal. */
   resolutionEvents: number;
+  /** Distinct failed aggregates that were later recovered (same aggregate_id). */
+  recoveredFailures: number;
+  /** Distinct failed aggregates (denominator for the recovery ratio). */
+  failedAggregates: number;
 }
 
 /**
@@ -66,16 +82,42 @@ export function computeActivationMilestones(events: MilestoneEvent[]): Activatio
   let failureEvents = 0;
   let resolutionEvents = 0;
   const failureSet = new Set<string>(FAILURE_EVENTS);
+  const recoverySet = new Set<string>(RECOVERY_EVENTS);
+  // Failure→recovery is correlated by tenant + aggregate and processed in
+  // created_at order (the query guarantees that order). A newer failure resets
+  // recovery until the same aggregate emits a later recovery event.
+  const failedAggregateIds = new Set<string>();
+  const recoveredAggregateIds = new Set<string>();
 
   for (const e of events) {
     const milestone = eventToMilestone.get(e.event_name);
     if (milestone) byMilestone.get(milestone)!.add(e.organization_id);
-    if (failureSet.has(e.event_name)) failureEvents++;
+    if (failureSet.has(e.event_name)) {
+      failureEvents++;
+      if (e.aggregate_id) {
+        const key = `${e.organization_id}:${e.aggregate_id}`;
+        failedAggregateIds.add(key);
+        recoveredAggregateIds.delete(key);
+      }
+    }
+    if (recoverySet.has(e.event_name) && e.aggregate_id) {
+      const key = `${e.organization_id}:${e.aggregate_id}`;
+      if (failedAggregateIds.has(key)) recoveredAggregateIds.add(key);
+    }
     if (e.event_name === ACTIVATION_MILESTONES.action_center_resolution) resolutionEvents++;
   }
 
   const reach = {} as Record<ActivationMilestone, number>;
   for (const [milestone, orgs] of byMilestone) reach[milestone] = orgs.size;
 
-  return { reach, failureEvents, resolutionEvents };
+  let recoveredFailures = 0;
+  for (const agg of failedAggregateIds) if (recoveredAggregateIds.has(agg)) recoveredFailures++;
+
+  return {
+    reach,
+    failureEvents,
+    resolutionEvents,
+    recoveredFailures,
+    failedAggregates: failedAggregateIds.size,
+  };
 }

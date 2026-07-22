@@ -56,7 +56,7 @@ AI — это **ассистент** (саммари, инсайты, реком
 | `NEXT_PUBLIC_APP_URL` | да | Базовый URL приложения (ссылки в письмах, redirect-и). |
 | `SUPABASE_SERVICE_ROLE_KEY` | для rate-limit и sweep | Server-only ключ. Без него rate-лимитер и durable extraction sweep деградируют в no-op (fail-open). |
 | `CRON_SECRET` | для cron | **Fail-closed**: без него все `/api/cron/*` отвечают 401. Vercel Cron шлёт его как `Authorization: Bearer`. `openssl rand -hex 32`. |
-| `METRICS_SECRET` | для метрик | **Fail-closed**: без него `/api/internal/activation-funnel` отказывается отвечать. Держать отличным от `CRON_SECRET`. |
+| `METRICS_SECRET` | для метрик | **Fail-closed**: без него `/api/internal/activation-funnel` и `/api/internal/job-health` отказываются отвечать. Передавать как `Authorization: Bearer <METRICS_SECRET>` и держать отличным от `CRON_SECRET`. |
 | `ANTHROPIC_API_KEY` | для AI | AI-модуль (summaries, insights, recommendations) и извлечение из документов. |
 | `RESEND_API_KEY` | для почты | Ключ Resend для транзакционных писем. |
 | `RESEND_FROM_EMAIL` | для почты | Подтверждённый отправитель/домен в Resend. |

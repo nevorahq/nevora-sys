@@ -43,7 +43,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     // Aggregate-only; a milestone read failure must not fail the funnel response.
     const milestonesResult = await getActivationMilestones(days);
     return NextResponse.json(
-      { ...result, milestones: milestonesResult.ok ? milestonesResult.milestones : null },
+      {
+        ...result,
+        milestones: milestonesResult.ok ? milestonesResult.milestones : null,
+        milestonesCapped: milestonesResult.ok ? milestonesResult.capped : null,
+      },
       { status: 200 },
     );
   } catch (error) {

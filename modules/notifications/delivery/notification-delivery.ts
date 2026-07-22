@@ -18,6 +18,14 @@ export interface DeliverNotificationInput {
   targetUrl?: string;
   deduplicationKey: string;
   actionItemId?: string;
+  /**
+   * Mandatory (billing/security) notification: its PUSH bypasses the category
+   * mute and quiet hours — a user preference must not silence a billing or
+   * security signal. The durable in-app record is created unconditionally for
+   * EVERY notification regardless of this flag (see `deliverNotification`), so
+   * nothing is ever hidden; `mandatory` only escalates the disruptive channel.
+   */
+  mandatory?: boolean;
 }
 
 export interface DeliveryResult {
@@ -78,8 +86,15 @@ async function deliverPush(input: DeliverNotificationInput, notificationId: stri
     .eq("organization_id", input.organizationId).eq("user_id", input.userId).maybeSingle();
   const preferences = row ? mapPreferences(row) : DEFAULT_NOTIFICATION_PREFERENCES;
   if (!preferences.browserNotificationsEnabled) return { channel: "push", status: "skipped", reason: "disabled" };
-  if (!isCategoryEnabled(preferences, input.category)) return { channel: "push", status: "skipped", reason: "category_disabled" };
-  if (isWithinQuietHours(new Date(), preferences)) return { channel: "push", status: "skipped", reason: "quiet_hours" };
+  // A mandatory (billing/security) notification bypasses the category mute and
+  // quiet hours — those are user preferences, and a mandatory signal must not be
+  // silenced by them. It still respects the channel opt-in above: if the user
+  // never enabled browser push there is no push channel, but the in-app record
+  // (created unconditionally in deliverNotification) still carries it.
+  if (!isMandatoryNotification(input)) {
+    if (!isCategoryEnabled(preferences, input.category)) return { channel: "push", status: "skipped", reason: "category_disabled" };
+    if (isWithinQuietHours(new Date(), preferences)) return { channel: "push", status: "skipped", reason: "quiet_hours" };
+  }
 
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
@@ -122,6 +137,19 @@ async function deliverPush(input: DeliverNotificationInput, notificationId: stri
   }));
   if (sent > 0) return { channel: "push", status: "sent", reason: failed > 0 ? "partial_failure" : undefined };
   return { channel: "push", status: "failed", reason: "all_subscriptions_failed" };
+}
+
+/**
+ * High/critical billing signals are mandatory by policy. `mandatory: true`
+ * remains an explicit escape hatch for security/system producers that use the
+ * generic Action Center category.
+ */
+export function isMandatoryNotification(
+  input: Pick<DeliverNotificationInput, "category" | "priority" | "mandatory">,
+): boolean {
+  return input.mandatory === true
+    || ((input.category === "payment" || input.category === "subscription")
+      && (input.priority === "high" || input.priority === "critical"));
 }
 
 export function isPermanentPushFailure(statusCode: number | undefined): boolean {
