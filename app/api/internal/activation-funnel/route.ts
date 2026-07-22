@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getActivationFunnel, DEFAULT_WINDOW_DAYS } from "@/modules/onboarding/queries/get-activation-funnel";
+import { getActivationMilestones } from "@/modules/onboarding/queries/get-activation-milestones";
 import { logger } from "@/lib/observability/logger";
 
 /**
@@ -38,7 +39,13 @@ export async function GET(request: Request): Promise<NextResponse> {
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: result.configured ? 500 : 503 });
     }
-    return NextResponse.json(result, { status: 200 });
+    // Full-product milestones (Sprint 6 / S6.2) alongside the first-action funnel.
+    // Aggregate-only; a milestone read failure must not fail the funnel response.
+    const milestonesResult = await getActivationMilestones(days);
+    return NextResponse.json(
+      { ...result, milestones: milestonesResult.ok ? milestonesResult.milestones : null },
+      { status: 200 },
+    );
   } catch (error) {
     logger.error("activation_funnel.threw", {
       error: error instanceof Error ? error.message : String(error),
