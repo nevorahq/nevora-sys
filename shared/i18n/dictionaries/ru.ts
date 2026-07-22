@@ -11,6 +11,7 @@ export const ru: Dictionary = {
   nav: {
     logout: "Выйти",
     dashboard: "Обзор",
+    home: "Главная",
     overview: "Сводка",
     inbox: "Входящие",
     add: "Добавить",

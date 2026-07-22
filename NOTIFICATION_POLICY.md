@@ -5,6 +5,11 @@ durable reminder schedule, notification delivery, and `read_at`. Reading a
 notification acknowledges one delivery only. It never resolves, snoozes,
 dismisses, pays, posts, completes, or cancels anything.
 
+> The canonical semantics (Inbox / Notification / Action item / Resolved) and the
+> domain-signal → surface mapping live in
+> [`docs/contracts/attention-model.md`](docs/contracts/attention-model.md). This
+> file covers the reminder scheduling + delivery half of that contract.
+
 | Source | Milestones | Stop conditions |
 | --- | --- | --- |
 | Task | default: -3d, -1d, due day, +1d; high: -7d, -3d, -1d, due day, +1d, +3d | done, deleted, due date removed, recipient unassigned/inactive |

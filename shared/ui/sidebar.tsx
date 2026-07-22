@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboardIcon, CheckSquareIcon, WalletIcon,
+  HomeIcon, CheckSquareIcon, WalletIcon,
   FileTextIcon, SettingsIcon,
   InboxIcon,
 } from "lucide-react";
@@ -41,6 +41,12 @@ interface NavItem {
    * still resolves as a deep link, but in the nav it belongs to Money.
    */
   activeMatch?: string[];
+  /**
+   * Match the pathname EXACTLY rather than by prefix. Home points at `/dashboard`,
+   * which is a prefix of every dashboard route — without this it would report
+   * active everywhere.
+   */
+  exact?: boolean;
 }
 
 interface SidebarProps {
@@ -50,28 +56,32 @@ interface SidebarProps {
 export function Sidebar({ dict }: SidebarProps) {
   const pathname = usePathname();
 
-  // Sprint 2 surface reduction: the primary nav holds at most six sections.
-  // Subscriptions folded INTO Money (its route still resolves and is reached from
-  // the Money page), so it is no longer a standalone nav item.
+  // Six-section primary nav (Sprint 2 surface reduction + Sprint 3 GAP-C).
   //
-  // Inbox is the primary operating screen (post-auth landing). The Action Center
-  // (`/dashboard`), Analytics and AI are temporarily hidden from the nav — their
-  // pages still resolve by URL; this is a cosmetic hide, not a route gate. The
-  // generic metrics roll-up sits further down as "Overview".
+  // Home is the Action Center (`/dashboard`): "what needs my attention today?".
+  // Sprint 3 decided Home = Action Center, so the attention queue is no longer
+  // hidden — it IS the landing section. The secondary metrics roll-up folded into
+  // Home (`/dashboard/overview` redirects here); its summaries also live in each
+  // module. Inbox stays as the Capture/Review surface.
+  //
+  // Subscriptions folded INTO Money (reached from the Money page); its route
+  // still resolves as a deep link. Analytics and AI remain reachable by URL but
+  // are not primary sections.
   //
   // CRM and Booking are PAUSED modules: they are absent here on purpose, and the
   // hiding is cosmetic only — `shared/config/paused-modules` gates their pages,
   // Server Actions and route handlers server-side.
   const navItems: NavItem[] = [
-    { href: ROUTES.inbox,     label: dict.nav.inbox,     icon: InboxIcon },
+    { href: ROUTES.dashboard, label: dict.nav.home,      icon: HomeIcon, exact: true },
     { href: ROUTES.tasks,     label: dict.nav.tasks,     icon: CheckSquareIcon },
     { href: ROUTES.money,     label: dict.nav.money,     icon: WalletIcon, activeMatch: [ROUTES.subscriptions] },
     { href: ROUTES.documents, label: dict.nav.documents, icon: FileTextIcon },
-    { href: ROUTES.overview,  label: dict.nav.overview,  icon: LayoutDashboardIcon },
+    { href: ROUTES.inbox,     label: dict.nav.inbox,     icon: InboxIcon },
     { href: ROUTES.settings,  label: dict.nav.settings,  icon: SettingsIcon },
   ];
 
   function isActive(item: NavItem): boolean {
+    if (item.exact) return pathname === item.href;
     if (pathname.startsWith(item.href)) return true;
     return (item.activeMatch ?? []).some((p) => pathname.startsWith(p));
   }
