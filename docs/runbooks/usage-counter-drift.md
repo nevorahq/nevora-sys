@@ -20,6 +20,19 @@ payment blocked by a limit, that is a bug, not drift.
 
 ## 1. Diagnose
 
+The `usage-reconcile` sweep already detects drift automatically: it logs each
+discrepancy, alerts above threshold (Sentry), and — once migration `112` is
+applied — records a durable row in `public.usage_reconciliation_discrepancies`
+(service-role only). Check that table for recent drift history before probing by
+hand:
+
+```sql
+SELECT organization_id, counter_key, counter_value, authoritative_value, delta, repaired, detected_at
+FROM public.usage_reconciliation_discrepancies
+ORDER BY detected_at DESC
+LIMIT 50;
+```
+
 Compare the counter to reality for one org:
 
 ```sql

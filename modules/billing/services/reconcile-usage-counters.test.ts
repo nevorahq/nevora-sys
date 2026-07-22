@@ -24,6 +24,10 @@ interface StubConfig {
   counterRows: { key: string; value: number }[];
   counts: Record<string, number>;
   repairs: string[];
+  /** Rows inserted into the discrepancy audit table (captured for assertions). */
+  audited?: unknown[];
+  /** Simulate the audit table being unavailable (e.g. migration 112 not applied). */
+  auditError?: string;
 }
 
 /** Minimal Supabase stub: resolves org list, counter rows, head-counts, updates. */
@@ -31,19 +35,22 @@ function makeClient(cfg: StubConfig) {
   function builder(table: string) {
     let isCount = false;
     let isUpdate = false;
+    let isInsert = false;
     const b = {
       select(_cols: string, opts?: { count?: string; head?: boolean }) {
         if (opts?.count) isCount = true;
         return b;
       },
       update() { isUpdate = true; return b; },
+      insert(rows: unknown) { isInsert = true; (cfg.audited ??= []).push(...(rows as unknown[])); return b; },
       eq() { return b; },
       is() { return b; },
       in() { return b; },
       limit() { return b; },
       then(resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) {
         let payload: unknown;
-        if (isUpdate) { cfg.repairs.push(table); payload = { error: null }; }
+        if (isInsert) payload = { error: cfg.auditError ? { message: cfg.auditError } : null };
+        else if (isUpdate) { cfg.repairs.push(table); payload = { error: null }; }
         else if (table === "organizations") payload = { data: cfg.orgs, error: null };
         else if (table === "organization_usage_counters" && !isCount) payload = { data: cfg.counterRows, error: null };
         else if (isCount) payload = { count: cfg.counts[table] ?? 0, error: null };
@@ -108,6 +115,47 @@ describe("reconcileUsageCounters", () => {
     expect(result.discrepancies).toBe(1);
     expect(result.repaired).toBe(1);
     expect(cfg.repairs).toContain("organization_usage_counters");
+  });
+
+  it("persists each discrepancy to the audit table", async () => {
+    const cfg: StubConfig = {
+      orgs: [{ id: "org-1" }],
+      counterRows: [{ key: "tasks.count", value: 5 }],
+      counts: { ...NO_COUNTS, todos: 3 },
+      repairs: [],
+    };
+    h.client = makeClient(cfg);
+
+    const result = await run();
+
+    expect(result.persisted).toBe(1);
+    expect(cfg.audited).toEqual([
+      expect.objectContaining({
+        organization_id: "org-1",
+        counter_key: "tasks.count",
+        counter_value: 5,
+        authoritative_value: 3,
+        delta: 2,
+        repaired: false,
+      }),
+    ]);
+  });
+
+  it("is best-effort: an unavailable audit table does not fail the sweep", async () => {
+    const cfg: StubConfig = {
+      orgs: [{ id: "org-1" }],
+      counterRows: [{ key: "tasks.count", value: 5 }],
+      counts: { ...NO_COUNTS, todos: 3 },
+      repairs: [],
+      auditError: "relation \"usage_reconciliation_discrepancies\" does not exist",
+    };
+    h.client = makeClient(cfg);
+
+    const result = await run();
+
+    expect(result.ok).toBe(true);
+    expect(result.discrepancies).toBe(1);
+    expect(result.persisted).toBe(0); // table unavailable → not persisted, but sweep succeeds
   });
 
   it("escalates above-threshold drift to the monitoring seam", async () => {
