@@ -394,6 +394,19 @@ export const ro: Dictionary = {
     title: "Finanțe",
     description: "Urmărește veniturile și cheltuielile",
     subscriptionsLink: "Abonamente",
+    tabs: {
+      transactions: "Tranzacții",
+      financialTasks: "Sarcini financiare",
+      subscriptions: "Abonamente",
+    },
+    states: {
+      detected: "Detectat",
+      needs_review: "De verificat",
+      planned: "Planificat",
+      due: "De plată",
+      paid: "Plătit",
+      cancelled: "Anulat",
+    },
     summary: {
       balance: "Sold curent",
       income: "Venit lunar",

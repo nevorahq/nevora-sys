@@ -7,6 +7,11 @@ Nevora is **AI-assisted, not AI-controlled**. This document is the normative
 contract for when money may be written. It is not aspirational — every clause
 below is asserted by a test that fails the build if the clause is broken.
 
+> The canonical financial-state vocabulary (`detected → needs_review → planned →
+> due → paid | cancelled`) and the mapping of every per-surface status onto it
+> live in [`financial-state-machine.md`](./financial-state-machine.md). This file
+> covers *when* money may be written; that one covers *what state everything is in*.
+
 ---
 
 ## 1. The invariants

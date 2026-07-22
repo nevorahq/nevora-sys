@@ -414,6 +414,20 @@ export const en = {
     title: "Finances",
     description: "Track your income and expenses",
     subscriptionsLink: "Subscriptions",
+    tabs: {
+      transactions: "Transactions",
+      financialTasks: "Financial Tasks",
+      subscriptions: "Subscriptions",
+    },
+    /** Canonical financial-state labels (docs/contracts/financial-state-machine.md). */
+    states: {
+      detected: "Detected",
+      needs_review: "Needs review",
+      planned: "Planned",
+      due: "Due",
+      paid: "Paid",
+      cancelled: "Cancelled",
+    },
     summary: {
       balance: "Current Balance",
       income: "Monthly Income",
