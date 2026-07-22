@@ -168,6 +168,7 @@ export const MACHINE_ROUTES = [
   "/api/cron/suggestions-sweep",
   "/api/cron/reminders",
   "/api/cron/subscription-sweep",
+  "/api/cron/action-items-sweep",
   "/api/cron/trial-sweep",
   "/api/cron/purge-deleted-accounts",
   "/api/internal/activation-funnel",

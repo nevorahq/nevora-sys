@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { reconcileStaleActionItems } from "./reconcile-stale-action-items";
-import type { CurrentContext } from "@/lib/context/current-context";
 
-const ctx = { org: { id: "org-1" }, user: { id: "user-1" } } as unknown as CurrentContext;
+const ORG_ID = "org-1";
 
 /**
  * A chainable + thenable Supabase stub. Every filter method returns the same
@@ -59,7 +58,7 @@ describe("reconcileStaleActionItems", () => {
       money_transactions: [{ id: "tx-posted", status: "posted" }], // no longer planned → i-tx stale
     });
 
-    const result = await reconcileStaleActionItems(supabase as never, ctx);
+    const result = await reconcileStaleActionItems(supabase as never, ORG_ID);
 
     expect(result.closed).toBe(2);
     expect(captured.closedIds).toContain("i-task");
@@ -73,7 +72,7 @@ describe("reconcileStaleActionItems", () => {
       money_transactions: [{ id: "tx-1", status: "planned" }],
     });
 
-    const result = await reconcileStaleActionItems(supabase as never, ctx);
+    const result = await reconcileStaleActionItems(supabase as never, ORG_ID);
 
     expect(result.closed).toBe(0);
     expect(captured.closedIds).toBeNull();
@@ -85,7 +84,7 @@ describe("reconcileStaleActionItems", () => {
       documents: [], // deleted → not found → stale
     });
 
-    const result = await reconcileStaleActionItems(supabase as never, ctx);
+    const result = await reconcileStaleActionItems(supabase as never, ORG_ID);
 
     expect(result.closed).toBe(1);
     expect(captured.closedIds).toEqual(["i-doc"]);
@@ -101,7 +100,7 @@ describe("reconcileStaleActionItems", () => {
       financial_suggestions: [],
     });
 
-    const result = await reconcileStaleActionItems(supabase as never, ctx);
+    const result = await reconcileStaleActionItems(supabase as never, ORG_ID);
 
     expect(result.closed).toBe(1);
     expect(captured.closedIds).toEqual(["i-doc"]);
@@ -114,7 +113,7 @@ describe("reconcileStaleActionItems", () => {
       financial_suggestions: [{ source_id: "doc-1" }], // confirmed/rejected
     });
 
-    const result = await reconcileStaleActionItems(supabase as never, ctx);
+    const result = await reconcileStaleActionItems(supabase as never, ORG_ID);
 
     expect(result.closed).toBe(1);
     expect(captured.closedIds).toEqual(["i-doc"]);
@@ -127,7 +126,7 @@ describe("reconcileStaleActionItems", () => {
       financial_suggestions: [],
     });
 
-    const result = await reconcileStaleActionItems(supabase as never, ctx);
+    const result = await reconcileStaleActionItems(supabase as never, ORG_ID);
 
     expect(result.closed).toBe(0);
     expect(captured.closedIds).toBeNull();
@@ -135,7 +134,40 @@ describe("reconcileStaleActionItems", () => {
 
   it("no-ops when there are no active items", async () => {
     const { supabase, captured } = makeSupabase({ action_items: [] });
-    const result = await reconcileStaleActionItems(supabase as never, ctx);
+    const result = await reconcileStaleActionItems(supabase as never, ORG_ID);
+    expect(result.closed).toBe(0);
+    expect(captured.closedIds).toBeNull();
+  });
+
+  // Sprint 3 unit 3.3 — extraction-failure items self-clear on a successful retry.
+  it("closes a risk_detected item once the document's latest extraction is no longer failed", async () => {
+    const { supabase, captured } = makeSupabase({
+      action_items: [{ id: "i-fail", type: "risk_detected", source_type: "document", source_id: "doc-1" }],
+      documents: [{ id: "doc-1", status: "draft", inbox_capture_id: null }],
+      financial_suggestions: [],
+      // Newest-first: the retry completed, so the latest extraction is no longer failed.
+      document_extractions: [
+        { document_id: "doc-1", status: "completed" },
+        { document_id: "doc-1", status: "failed" },
+      ],
+    });
+
+    const result = await reconcileStaleActionItems(supabase as never, ORG_ID);
+
+    expect(result.closed).toBe(1);
+    expect(captured.closedIds).toEqual(["i-fail"]);
+  });
+
+  it("keeps a risk_detected item open while the latest extraction is still failed", async () => {
+    const { supabase, captured } = makeSupabase({
+      action_items: [{ id: "i-fail", type: "risk_detected", source_type: "document", source_id: "doc-1" }],
+      documents: [{ id: "doc-1", status: "draft", inbox_capture_id: null }],
+      financial_suggestions: [],
+      document_extractions: [{ document_id: "doc-1", status: "failed" }],
+    });
+
+    const result = await reconcileStaleActionItems(supabase as never, ORG_ID);
+
     expect(result.closed).toBe(0);
     expect(captured.closedIds).toBeNull();
   });

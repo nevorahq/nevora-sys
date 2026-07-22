@@ -47,11 +47,48 @@ function dedupeKey(type: string, sourceType: string, sourceId: string): string {
   return `${type}:${sourceType}:${sourceId}`;
 }
 
+/**
+ * Actor for a generation run. The interactive path passes a real user + their
+ * workspace (from `CurrentContext`) and asks for notification delivery. The
+ * durable cron sweep (`sweepActionItems`) has no session, so it passes
+ * `actorUserId: null` / `workspaceId: null` and `deliverNotifications: false`:
+ * it only guarantees the action_items EXIST — durable milestone delivery
+ * (reminders cron) owns per-user notifications for obligations.
+ */
+export interface GenerateActionItemsParams {
+  orgId: string;
+  workspaceId: string | null;
+  actorUserId: string | null;
+  deliverNotifications: boolean;
+}
+
+/**
+ * Interactive entry point: generate for the caller's org, attributing rows to
+ * the current user and delivering their notifications. Unchanged behaviour —
+ * a thin wrapper over `generateActionItemsForOrg`.
+ */
 export async function syncActionItems(
   supabase: SupabaseClient,
   ctx: CurrentContext,
 ): Promise<{ created: number }> {
-  const orgId = ctx.org.id;
+  return generateActionItemsForOrg(supabase, {
+    orgId: ctx.org.id,
+    workspaceId: ctx.workspace.id,
+    actorUserId: ctx.user.id,
+    deliverNotifications: true,
+  });
+}
+
+/**
+ * Org-scoped generation, session-free. Idempotent: one active item per
+ * (org, type, source_type, source_id) via `action_items_dedupe_idx`, so the
+ * interactive path and the cron sweep can both run without creating duplicates.
+ */
+export async function generateActionItemsForOrg(
+  supabase: SupabaseClient,
+  params: GenerateActionItemsParams,
+): Promise<{ created: number }> {
+  const { orgId, workspaceId, actorUserId, deliverNotifications } = params;
 
   // Repair net (runs every sync / Refresh): close items whose source is now
   // terminal but had no synchronous closer — most importantly a task marked done,
@@ -59,7 +96,7 @@ export async function syncActionItems(
   // read-only Action Center this is what keeps stale items from piling up where the
   // user can no longer clear them by hand — but owning services still close their
   // own items synchronously, so this is a backstop, not the primary mechanism.
-  await reconcileStaleActionItems(supabase, ctx).catch((e) =>
+  await reconcileStaleActionItems(supabase, orgId).catch((e) =>
     console.error("[syncActionItems] reconcile failed:", e),
   );
 
@@ -79,6 +116,7 @@ export async function syncActionItems(
     detectSubscriptions(supabase, orgId, candidates),
     detectTransactions(supabase, orgId, candidates),
     detectDocuments(supabase, orgId, candidates),
+    detectFailedExtractions(supabase, orgId, candidates),
     // CRM is paused: scanning its tables would surface a paused module's data
     // on the primary screen. Gated at the call site so the tables are not read
     // at all, and re-enabling the module restores the scan with no code change.
@@ -99,7 +137,7 @@ export async function syncActionItems(
     });
     return {
       organization_id: orgId,
-      workspace_id: ctx.workspace.id,
+      workspace_id: workspaceId,
       title: c.title,
       description: c.description ?? null,
       type: c.type,
@@ -115,7 +153,7 @@ export async function syncActionItems(
       ai_confidence: c.aiConfidence ?? null,
       ai_reason: c.aiReason ?? null,
       metadata: c.metadata ?? {},
-      created_by: ctx.user.id,
+      created_by: actorUserId,
     };
   });
 
@@ -145,7 +183,7 @@ export async function syncActionItems(
       if (!id) return null;
       return {
         organization_id: orgId,
-        workspace_id: ctx.workspace.id,
+        workspace_id: workspaceId,
         action_item_id: id,
         entity_type: c.primaryEntityType,
         entity_id: c.primaryEntityId,
@@ -159,7 +197,9 @@ export async function syncActionItems(
   }
 
   // Action Center stays the source; delivery is best-effort and channel failures
-  // never roll back generated action items.
+  // never roll back generated action items. The cron sweep skips delivery
+  // (no session recipient) — reminders own durable per-user notifications.
+  if (deliverNotifications && actorUserId) {
   await Promise.allSettled(fresh.map(async (candidate) => {
     // Durable milestone delivery owns these obligation categories. The legacy
     // scanner may still materialize the Action Center item, but must not create
@@ -183,17 +223,18 @@ export async function syncActionItems(
     });
     await deliverNotification(supabase, {
       organizationId: orgId,
-      workspaceId: ctx.workspace.id,
-      userId: ctx.user.id,
+      workspaceId: workspaceId,
+      userId: actorUserId,
       title: candidate.title,
       body: candidate.description ?? "Open Action Center to review this item.",
       category: notificationCategory(candidate.sourceType),
       priority: notificationPriority(priority),
       targetUrl: notificationTarget(candidate.sourceType, candidate.sourceId),
-      deduplicationKey: `action-item:${actionItemId}:${ctx.user.id}`,
+      deduplicationKey: `action-item:${actionItemId}:${actorUserId}`,
       actionItemId,
     });
   }));
+  }
 
   return { created: inserted?.length ?? 0 };
 }
@@ -415,6 +456,48 @@ async function detectDocuments(supabase: SupabaseClient, orgId: string, out: Can
     const id = d.id as string;
     if (decidedDocs.has(id)) continue;
     out.push({ title: `Document needs review: ${(d.title as string) || "Document"}`, type: "document_review", sourceType: "document", sourceId: id, primaryEntityType: "document", primaryEntityId: id });
+  }
+}
+
+/**
+ * Failure visibility (Sprint 3 — unit 3.3): a document whose extraction FAILED
+ * becomes a visible, recoverable `risk_detected` item pointing at the document
+ * (where Retry lives). Without this, a background extraction failure is silent —
+ * the document just never gains its draft transaction and no one is told why.
+ *
+ * One item per document (keyed on document_id via the dedupe index). It is
+ * self-clearing: `reconcileStaleActionItems` closes it once the document's latest
+ * extraction is no longer `failed` (a successful retry) or the document is gone.
+ */
+async function detectFailedExtractions(supabase: SupabaseClient, orgId: string, out: Candidate[]): Promise<void> {
+  const { data: extractions } = await supabase
+    .from("document_extractions")
+    .select("document_id, status, error_message, created_at")
+    .eq("organization_id", orgId)
+    .order("created_at", { ascending: false })
+    .limit(SCAN_LIMIT);
+  if (!extractions?.length) return;
+
+  // Latest extraction per document (rows arrive newest-first).
+  const latestByDoc = new Map<string, { status: string; error: string | null }>();
+  for (const e of extractions) {
+    const docId = e.document_id as string;
+    if (latestByDoc.has(docId)) continue;
+    latestByDoc.set(docId, { status: e.status as string, error: (e.error_message as string | null) ?? null });
+  }
+
+  for (const [docId, latest] of latestByDoc) {
+    if (latest.status !== "failed") continue;
+    out.push({
+      title: "Document extraction failed",
+      description: latest.error ?? "We couldn't read this document. Open it to retry the extraction.",
+      type: "risk_detected",
+      sourceType: "document",
+      sourceId: docId,
+      primaryEntityType: "document",
+      primaryEntityId: docId,
+      metadata: { failure: "extraction" },
+    });
   }
 }
 

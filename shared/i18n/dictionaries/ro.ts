@@ -20,6 +20,7 @@ export const ro: Dictionary = {
   nav: {
     logout: "Deconectare",
     dashboard: "Tablou de bord",
+    home: "Acasă",
     overview: "Prezentare generală",
     inbox: "Mesaje primite",
     add: "Adaugă",

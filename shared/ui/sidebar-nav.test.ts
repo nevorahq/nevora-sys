@@ -66,3 +66,34 @@ describe("Subscriptions folded into Money", () => {
     expect(money).toContain("dict.money.subscriptionsLink");
   });
 });
+
+// Sprint 3 — GAP-C: Home = Action Center.
+describe("Home = Action Center", () => {
+  it("Home is the first nav item and points at the Action Center (/dashboard)", () => {
+    expect(navItemsBlock).toMatch(/href:\s*ROUTES\.dashboard,\s*label:\s*dict\.nav\.home/);
+  });
+
+  it("matches /dashboard exactly so Home is not active on every dashboard route", () => {
+    // ROUTES.dashboard is a prefix of every dashboard path; the Home item must
+    // use exact matching to avoid always reporting active.
+    expect(navItemsBlock).toMatch(/href:\s*ROUTES\.dashboard[\s\S]*exact:\s*true/);
+    expect(read("shared/ui/sidebar.tsx")).toMatch(/if\s*\(item\.exact\)\s*return\s+pathname\s*===\s*item\.href/);
+  });
+
+  it("renders /dashboard (the Action Center) as the Home page", () => {
+    expect(read("app/(dashboard)/dashboard/page.tsx")).toContain("ActionCenterPage");
+  });
+
+  it("drops Overview as a standalone nav item", () => {
+    expect(navItemsBlock).not.toMatch(/href:\s*ROUTES\.overview\b/);
+  });
+
+  it("folds /dashboard/overview into Home via a redirect (no 404, deep links kept)", () => {
+    const overview = read("app/(dashboard)/dashboard/overview/page.tsx");
+    expect(overview).toContain("redirect(ROUTES.dashboard)");
+  });
+
+  it("keeps Inbox as the Capture/Review section", () => {
+    expect(navItemsBlock).toMatch(/href:\s*ROUTES\.inbox,\s*label:\s*dict\.nav\.inbox/);
+  });
+});

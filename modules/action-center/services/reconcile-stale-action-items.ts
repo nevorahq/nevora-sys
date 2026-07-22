@@ -1,6 +1,5 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CurrentContext } from "@/lib/context/current-context";
 import type { ActionItemType, ActionSourceType } from "../types/action-item.types";
 
 /**
@@ -32,9 +31,8 @@ interface ActiveRow {
 
 export async function reconcileStaleActionItems(
   supabase: SupabaseClient,
-  ctx: CurrentContext,
+  orgId: string,
 ): Promise<{ closed: number }> {
-  const orgId = ctx.org.id;
 
   const { data: rows, error } = await supabase
     .from("action_items")
@@ -164,7 +162,13 @@ async function reconcileDocuments(
   out: string[],
 ): Promise<void> {
   if (ids.length === 0) return;
-  const [{ data }, { data: decided }] = await Promise.all([
+
+  // Extraction-failure items (risk_detected) self-clear once the document's
+  // LATEST extraction is no longer `failed` (a successful retry). Only fetch the
+  // extraction rows when there is such an item to reconcile.
+  const riskDocIds = [...new Set(rows.filter((r) => r.type === "risk_detected").map((r) => r.source_id))];
+
+  const [{ data }, { data: decided }, { data: extractions }] = await Promise.all([
     supabase
       .from("documents")
       .select("id, status, inbox_capture_id")
@@ -178,6 +182,14 @@ async function reconcileDocuments(
       .eq("source_type", "document")
       .in("review_state", ["confirmed", "rejected"])
       .in("source_id", ids),
+    riskDocIds.length > 0
+      ? supabase
+          .from("document_extractions")
+          .select("document_id, status, created_at")
+          .eq("organization_id", orgId)
+          .in("document_id", riskDocIds)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] as { document_id: string; status: string }[] }),
   ]);
 
   const byId = new Map(
@@ -185,10 +197,22 @@ async function reconcileDocuments(
   );
   const decidedDocs = new Set((decided ?? []).map((s) => s.source_id as string));
 
+  // Latest extraction status per document (rows arrive newest-first).
+  const latestExtractionByDoc = new Map<string, string>();
+  for (const e of extractions ?? []) {
+    const docId = e.document_id as string;
+    if (!latestExtractionByDoc.has(docId)) latestExtractionByDoc.set(docId, e.status as string);
+  }
+
   for (const row of rows) {
     const doc = byId.get(row.source_id);
     if (doc === undefined) {
       out.push(row.id); // deleted / gone
+      continue;
+    }
+    if (row.type === "risk_detected") {
+      // Live only while the latest extraction is still failed.
+      if (latestExtractionByDoc.get(row.source_id) !== "failed") out.push(row.id);
       continue;
     }
     if (row.type !== "document_review") continue;
