@@ -65,6 +65,8 @@ export interface UsageReconcileResult {
   discrepancies: number;
   repaired: number;
   alerts: number;
+  /** Discrepancy rows written to the audit table (0 if the table is unavailable). */
+  persisted: number;
 }
 
 /** Thin builder wrapper so RECONCILED can describe a count query declaratively. */
@@ -109,19 +111,30 @@ export async function reconcileUsageCounters(): Promise<UsageReconcileResult> {
   const supabase = getServiceRoleClient();
   if (!supabase) {
     log.warn("skipped.no_service_role");
-    return { ok: false, configured: false, repairEnabled: REPAIR_ENABLED, orgsScanned: 0, discrepancies: 0, repaired: 0, alerts: 0 };
+    return { ok: false, configured: false, repairEnabled: REPAIR_ENABLED, orgsScanned: 0, discrepancies: 0, repaired: 0, alerts: 0, persisted: 0 };
   }
 
   const { data: orgs, error } = await supabase.from("organizations").select("id").limit(ORG_BATCH_LIMIT);
   if (error) {
     log.error("orgs_select_failed", { error: error.message });
-    return { ok: false, configured: true, repairEnabled: REPAIR_ENABLED, orgsScanned: 0, discrepancies: 0, repaired: 0, alerts: 0 };
+    return { ok: false, configured: true, repairEnabled: REPAIR_ENABLED, orgsScanned: 0, discrepancies: 0, repaired: 0, alerts: 0, persisted: 0 };
   }
 
   let orgsScanned = 0;
   let discrepancies = 0;
   let repaired = 0;
   let alerts = 0;
+  // Collected for the durable audit table (migration 112). Kept in memory and
+  // written once at the end — best-effort, so a missing table (not yet applied)
+  // never fails the sweep.
+  const auditRows: {
+    organization_id: string;
+    counter_key: string;
+    counter_value: number;
+    authoritative_value: number;
+    delta: number;
+    repaired: boolean;
+  }[] = [];
 
   for (const org of (orgs ?? []) as { id: string }[]) {
     const orgId = org.id;
@@ -159,6 +172,7 @@ export async function reconcileUsageCounters(): Promise<UsageReconcileResult> {
         log.warn("discrepancy", { ...detail });
       }
 
+      let repairedThis = false;
       if (REPAIR_ENABLED) {
         const { error: repairError } = await supabase
           .from("organization_usage_counters")
@@ -166,10 +180,30 @@ export async function reconcileUsageCounters(): Promise<UsageReconcileResult> {
           .eq("organization_id", orgId)
           .eq("key", key)
           .is("period_end", null);
-        if (!repairError) repaired++;
+        if (!repairError) { repaired++; repairedThis = true; }
         else log.error("repair_failed", { ...detail, error: repairError.message });
       }
+
+      auditRows.push({
+        organization_id: orgId,
+        counter_key: key,
+        counter_value: counter,
+        authoritative_value: authoritative,
+        delta,
+        repaired: repairedThis,
+      });
     }
+  }
+
+  // Durable audit (migration 112). Best-effort: if the table is not yet applied
+  // the sweep still logs + alerts, so this never blocks reconciliation.
+  let persisted = 0;
+  if (auditRows.length > 0) {
+    const { error: auditError } = await supabase
+      .from("usage_reconciliation_discrepancies")
+      .insert(auditRows);
+    if (auditError) log.warn("audit_persist_skipped", { reason: auditError.message });
+    else persisted = auditRows.length;
   }
 
   const result: UsageReconcileResult = {
@@ -180,6 +214,7 @@ export async function reconcileUsageCounters(): Promise<UsageReconcileResult> {
     discrepancies,
     repaired,
     alerts,
+    persisted,
   };
   log.info("done", { ...result });
   return result;

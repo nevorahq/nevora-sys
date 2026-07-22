@@ -1,6 +1,6 @@
 # Release Checklist — Nevora Business OS
 
-**Status:** Canonical · **Last updated:** 2026-07-22 (job-health + durable notification history, migrations `110`–`111`)
+**Status:** Canonical · **Last updated:** 2026-07-22 (usage-discrepancy audit table, migration `112` — tree `000`–`112`)
 **Supersedes:** [`phase-7-release-checklist.md`](./phase-7-release-checklist.md)
 (kept for history; its migration section stops at 077 and is stale)
 
@@ -28,9 +28,9 @@ rotation + I-09 interactive smoke still open).
 
 | | |
 |---|---|
-| **Current baseline (tree)** | `000` – `111` (111 files, no duplicate prefixes; `054` is a known, intentional gap) |
-| **Next free number** | **`112`** |
-| **Remote state** | `000`–`111` applied on `uimpykbnatzhykzpastd` (**maintainer-confirmed complete 2026-07-22**). `000`–`105` confirmed 2026-07-13 (`105` = inbox universal-capture idempotency); `106`–`109` (multilingual + FX) applied 2026-07-16 (PR #46); `110`–`111` (job-health indexes + durable notification history) applied 2026-07-22 (PR #55). |
+| **Current baseline (tree)** | `000` – `112` (112 files, no duplicate prefixes; `054` is a known, intentional gap) |
+| **Next free number** | **`113`** |
+| **Remote state** | `000`–`112` applied on `uimpykbnatzhykzpastd` (**maintainer-confirmed 2026-07-22**). `000`–`105` confirmed 2026-07-13 (`105` = inbox universal-capture idempotency); `106`–`109` (multilingual + FX) applied 2026-07-16 (PR #46); `110`–`111` (job-health indexes + durable notification history) applied 2026-07-22 (PR #55); `112` (usage-discrepancy audit table) applied 2026-07-22. |
 | **`098` status** | Applied. Anon can no longer read booking tables or EXECUTE the public booking RPCs (verified with the public anon key). |
 | **`099` status** | Applied. `todos.source_suggestion_id` + the four exactly-once indexes are live; the migration went in before the app deploy that writes the column. |
 | **`100`/`101` status** | Applied. `100` enforces the Paddle-only billing provider boundary; `101` fixes it to still allow the internal `'manual'` default so `create_organization` does not roll back. |
@@ -38,6 +38,7 @@ rotation + I-09 interactive smoke still open).
 | **`106`–`109` status** | Applied (user-confirmed 2026-07-16, PR #46). `106` widens the `language` CHECK to allow `'ro'`; `107` adds `organization_exchange_rates` + cross-currency transfer RPC (re-verified present on remote 2026-07-21); `108`/`109` fix `create_money_transfer` runtime errors (42702/42703). |
 | **`110` status** | Applied (2026-07-22). Partial indexes for the cross-org job-health status/time-window counts. |
 | **`111` status** | Applied (2026-07-22). `process_due_reminders` now always materializes the action item + in-app notification for a due reminder; category mutes gate only the disruptive channels, not durable history. |
+| **`112` status** | Applied (2026-07-22). `usage_reconciliation_discrepancies` audit table (service-role only, RLS on / no policy). The usage-reconcile sweep writes to it best-effort. |
 | **Phase A schema change** | **None.** Phase A is code + docs only. |
 | **Phase B–D schema change** | `094` (planner confirmation), `095` (onboarding progress), `096` (Phase D commercial readiness), `097` (documents↔money↔subscriptions). |
 | **Paddle billing schema change** | `100` (Paddle-only billing boundary), `101` (fix boundary to allow internal `'manual'` provider). |
