@@ -385,6 +385,19 @@ export const ru: Dictionary = {
     title: "Финансы",
     description: "Учёт доходов и расходов",
     subscriptionsLink: "Подписки",
+    tabs: {
+      transactions: "Транзакции",
+      financialTasks: "Финансовые задачи",
+      subscriptions: "Подписки",
+    },
+    states: {
+      detected: "Обнаружено",
+      needs_review: "На проверке",
+      planned: "Запланировано",
+      due: "К оплате",
+      paid: "Оплачено",
+      cancelled: "Отменено",
+    },
     summary: {
       balance: "Текущий баланс",
       income: "Доходы за месяц",

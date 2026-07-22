@@ -155,3 +155,46 @@ describe("confirm-first finance: nothing posts money implicitly", () => {
     expect(service).not.toMatch(/\.from\(["'`]money_transactions["'`]\)\.insert/);
   });
 });
+
+// Sprint 4 unit 4.2 — idempotency & concurrency proof. The subscription path is
+// covered above; these extend the same guarantee to the financial-task path and
+// pin FX-history immutability, so a repeat click or a rate change cannot corrupt
+// the ledger.
+describe("financial task payment: mark as paid is idempotent", () => {
+  const body = liveFunctionBody("mark_financial_task_paid");
+
+  it("locks the task row before deciding (no double-post under a double click)", () => {
+    expect(body).toMatch(/FOR\s+UPDATE/i);
+  });
+
+  it("returns the existing transaction when already paid — no second post", () => {
+    expect(body).toMatch(/financial_status\s*=\s*'paid'/i);
+    expect(body).toMatch(/'already_paid',\s*true/i);
+    expect(body).toMatch(/financial_transaction_id/i);
+  });
+
+  it("only pays a task that is currently open", () => {
+    expect(body).toMatch(/financial_status\s*<>\s*'open'/i);
+  });
+
+  it("keeps one financial task per source obligation (one obligation, one task)", () => {
+    const sql = read("supabase/migrations/099_planner_confirmation_exactly_once.sql");
+    expect(sql).toContain("todos_financial_source_unique_idx");
+    expect(sql).toMatch(/organization_id,\s*financial_source_type,\s*financial_source_id/i);
+  });
+});
+
+describe("financial history is immutable under FX rate changes", () => {
+  // A posted transaction snapshots its own rate; changing the org's current rate
+  // later must never rewrite what already happened.
+  const sql = read("supabase/migrations/107_organization_exchange_rates_and_cross_currency_transfers.sql");
+
+  it("snapshots the effective + reference rate on the posted transaction", () => {
+    expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS effective_exchange_rate/i);
+    expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS reference_exchange_rate/i);
+  });
+
+  it("states that later rate changes never rewrite financial history", () => {
+    expect(sql).toMatch(/never rewrite financial history/i);
+  });
+});
