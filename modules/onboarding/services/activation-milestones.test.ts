@@ -16,7 +16,8 @@ import {
  */
 
 const ROOT = process.cwd();
-const ev = (organization_id: string, event_name: string): MilestoneEvent => ({ organization_id, event_name });
+const ev = (organization_id: string, event_name: string, aggregate_id?: string): MilestoneEvent =>
+  ({ organization_id, event_name, aggregate_id });
 
 describe("computeActivationMilestones", () => {
   const events: MilestoneEvent[] = [
@@ -55,6 +56,56 @@ describe("computeActivationMilestones", () => {
     expect(computeActivationMilestones([ev("o", "org.created")]).failureEvents).toBe(0);
   });
 
+  it("correlates failure→recovery by aggregate_id", () => {
+    const r = computeActivationMilestones([
+      ev("org-1", "action_item.failed", "ai-1"),
+      ev("org-1", "action_item.resolved", "ai-1"), // ai-1 recovered
+      ev("org-1", "planner_entry.failed", "pe-2"), // pe-2 never recovered
+      ev("org-2", "planner_suggestion.failed", "ps-3"),
+      ev("org-2", "planner_suggestion.accepted", "ps-3"), // ps-3 recovered
+    ]);
+    expect(r.failedAggregates).toBe(3); // ai-1, pe-2, ps-3
+    expect(r.recoveredFailures).toBe(2); // ai-1, ps-3
+  });
+
+  it("does not credit recovery on a different aggregate", () => {
+    const r = computeActivationMilestones([
+      ev("org-1", "action_item.failed", "ai-1"),
+      ev("org-1", "action_item.resolved", "ai-OTHER"), // different aggregate
+    ]);
+    expect(r.failedAggregates).toBe(1);
+    expect(r.recoveredFailures).toBe(0);
+  });
+
+  it("does not credit a recovery that happened before the failure", () => {
+    const r = computeActivationMilestones([
+      ev("org-1", "action_item.resolved", "ai-1"),
+      ev("org-1", "action_item.failed", "ai-1"),
+    ]);
+    expect(r.failedAggregates).toBe(1);
+    expect(r.recoveredFailures).toBe(0);
+  });
+
+  it("does not correlate equal aggregate ids across organizations", () => {
+    const r = computeActivationMilestones([
+      ev("org-1", "action_item.failed", "same-id"),
+      ev("org-2", "action_item.resolved", "same-id"),
+    ]);
+    expect(r.failedAggregates).toBe(1);
+    expect(r.recoveredFailures).toBe(0);
+  });
+
+  it("deduplicates repeated failures and resets recovery after a later failure", () => {
+    const r = computeActivationMilestones([
+      ev("org-1", "action_item.failed", "ai-1"),
+      ev("org-1", "action_item.failed", "ai-1"),
+      ev("org-1", "action_item.resolved", "ai-1"),
+      ev("org-1", "action_item.failed", "ai-1"),
+    ]);
+    expect(r.failedAggregates).toBe(1);
+    expect(r.recoveredFailures).toBe(0);
+  });
+
   it("carries only aggregate numbers (no ids/content in the shape)", () => {
     expect(typeof result.failureEvents).toBe("number");
     expect(Object.values(result.reach).every((v) => typeof v === "number")).toBe(true);
@@ -82,7 +133,9 @@ describe("activation milestones: privacy + wiring", () => {
     expect(q).toContain('.from("domain_events")');
     expect(q).toContain("getServiceRoleClient");
     // aggregate-only: it selects org + name, never payload/content
-    expect(q).toContain('.select("organization_id, event_name")');
+    expect(q).toContain('.select("organization_id, event_name, aggregate_id")');
+    expect(q).toContain('.order("created_at", { ascending: true })');
+    expect(q).toContain('.range(offset, offset + PAGE_SIZE - 1)');
     expect(q).not.toMatch(/payload/);
   });
 

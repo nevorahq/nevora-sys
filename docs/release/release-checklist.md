@@ -1,6 +1,6 @@
 # Release Checklist — Nevora Business OS
 
-**Status:** Canonical · **Last updated:** 2026-07-21 (migration baseline realigned `101` → `109`)
+**Status:** Canonical · **Last updated:** 2026-07-22 (job-health + durable notification history, migrations `110`–`111`)
 **Supersedes:** [`phase-7-release-checklist.md`](./phase-7-release-checklist.md)
 (kept for history; its migration section stops at 077 and is stale)
 
@@ -28,14 +28,16 @@ rotation + I-09 interactive smoke still open).
 
 | | |
 |---|---|
-| **Current baseline (tree)** | `000` – `109` (109 files, no duplicate prefixes; `054` is a known, intentional gap) |
-| **Next free number** | **`110`** |
-| **Remote state** | `000`–`109` applied on `uimpykbnatzhykzpastd` (**maintainer-confirmed complete 2026-07-21**). `000`–`105` confirmed 2026-07-13 (`105` = inbox universal-capture idempotency); `106`–`109` (multilingual + FX) applied 2026-07-16 (PR #46); `107`'s `organization_exchange_rates` re-verified present on remote 2026-07-21. |
+| **Current baseline (tree)** | `000` – `111` (111 files, no duplicate prefixes; `054` is a known, intentional gap) |
+| **Next free number** | **`112`** |
+| **Remote state** | `000`–`109` applied on `uimpykbnatzhykzpastd` (**maintainer-confirmed complete 2026-07-21**); `110`–`111` are pending deployment with the job-health diagnostic and durable notification-history fix. `000`–`105` confirmed 2026-07-13 (`105` = inbox universal-capture idempotency); `106`–`109` (multilingual + FX) applied 2026-07-16 (PR #46); `107`'s `organization_exchange_rates` re-verified present on remote 2026-07-21. |
 | **`098` status** | Applied. Anon can no longer read booking tables or EXECUTE the public booking RPCs (verified with the public anon key). |
 | **`099` status** | Applied. `todos.source_suggestion_id` + the four exactly-once indexes are live; the migration went in before the app deploy that writes the column. |
 | **`100`/`101` status** | Applied. `100` enforces the Paddle-only billing provider boundary; `101` fixes it to still allow the internal `'manual'` default so `create_organization` does not roll back. |
 | **`102`–`105` status** | Applied (per migration-baseline verification 2026-07-13). `102`/`103` = auth-user-delete FK safety; `104` = `account_deletion_requests` (self-service deletion); `105` = inbox universal-capture idempotency. |
 | **`106`–`109` status** | Applied (user-confirmed 2026-07-16, PR #46). `106` widens the `language` CHECK to allow `'ro'`; `107` adds `organization_exchange_rates` + cross-currency transfer RPC (re-verified present on remote 2026-07-21); `108`/`109` fix `create_money_transfer` runtime errors (42702/42703). |
+| **`110` status** | Pending deployment. Adds partial indexes for the cross-org job-health status/time-window counts. |
+| **`111` status** | Pending deployment. Keeps durable in-app reminder history independent from category mutes. |
 | **Phase A schema change** | **None.** Phase A is code + docs only. |
 | **Phase B–D schema change** | `094` (planner confirmation), `095` (onboarding progress), `096` (Phase D commercial readiness), `097` (documents↔money↔subscriptions). |
 | **Paddle billing schema change** | `100` (Paddle-only billing boundary), `101` (fix boundary to allow internal `'manual'` provider). |

@@ -108,10 +108,15 @@ drop:
   clear next step: retry / fix input / contact support.
 - **Snoozed** items return to `open` at `snoozed_until` (migration `075` restore
   path).
-- **Mandatory billing/security** signals use `high`/`critical` priority; per
-  `modules/notifications/preferences.ts` importance (`high | critical`) is NOT
-  suppressible by sound/quiet-hours preferences. Sprint 3 unit 3.3 verifies these
-  cannot be hidden by user notification preferences.
+- **Mandatory billing/security** cannot be hidden by notification preferences.
+  Two guarantees enforce it
+  (`modules/notifications/delivery/notification-mandatory.test.ts`):
+  (a) the **durable in-app record + the action item are created unconditionally**
+  for every notification — no category mute or quiet-hours setting suppresses the
+  bell/history; (b) a notification delivered with `mandatory: true` also has its
+  **push** bypass the category mute and quiet hours, while a non-mandatory push
+  still respects them. The disruptive push/audio channel is otherwise suppressible
+  by design (see `NOTIFICATION_POLICY.md`); the durable record is not.
 
 ---
 

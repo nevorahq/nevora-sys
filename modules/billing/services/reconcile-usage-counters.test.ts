@@ -1,4 +1,8 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const ROOT_DIR = process.cwd();
 
 /**
  * Sprint 5 — S5.2: usage-counter reconciliation behaviour. Verifies drift is
@@ -8,6 +12,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({ client: null as unknown }));
 
+const mon = vi.hoisted(() => ({ captureMessage: vi.fn() }));
+vi.mock("@/lib/observability/monitoring", () => ({ getMonitoring: () => mon }));
 vi.mock("@/lib/supabase/service-role", () => ({ getServiceRoleClient: () => h.client }));
 vi.mock("@/lib/observability/logger", () => ({
   logger: { child: () => ({ info() {}, warn() {}, error() {} }) },
@@ -104,6 +110,41 @@ describe("reconcileUsageCounters", () => {
     expect(cfg.repairs).toContain("organization_usage_counters");
   });
 
+  it("escalates above-threshold drift to the monitoring seam", async () => {
+    mon.captureMessage.mockClear();
+    const cfg: StubConfig = {
+      orgs: [{ id: "org-1" }],
+      counterRows: [{ key: "tasks.count", value: 15 }], // cached 15
+      counts: { ...NO_COUNTS, todos: 3 }, // authoritative 3 → drift 12 ≥ threshold 10
+      repairs: [],
+    };
+    h.client = makeClient(cfg);
+
+    const result = await run();
+
+    expect(result.alerts).toBe(1);
+    expect(mon.captureMessage).toHaveBeenCalledOnce();
+    expect(mon.captureMessage).toHaveBeenCalledWith(
+      expect.stringMatching(/drift/i),
+      "warning",
+      expect.objectContaining({ event: "billing.usage.drift" }),
+    );
+  });
+
+  it("does NOT escalate a below-threshold drift", async () => {
+    mon.captureMessage.mockClear();
+    const cfg: StubConfig = {
+      orgs: [{ id: "org-1" }],
+      counterRows: [{ key: "tasks.count", value: 5 }],
+      counts: { ...NO_COUNTS, todos: 3 }, // drift 2 < threshold
+      repairs: [],
+    };
+    h.client = makeClient(cfg);
+    const result = await run();
+    expect(result.alerts).toBe(0);
+    expect(mon.captureMessage).not.toHaveBeenCalled();
+  });
+
   it("is a no-op when the counter already matches (idempotent)", async () => {
     const cfg: StubConfig = {
       orgs: [{ id: "org-1" }],
@@ -124,5 +165,32 @@ describe("reconcileUsageCounters", () => {
     const result = await run();
     expect(result.ok).toBe(false);
     expect(result.configured).toBe(false);
+  });
+});
+
+/**
+ * Reconciliation covers exactly the CACHED counters. `ai_calls` and `storage_mb`
+ * are computed live (no cache in `organization_usage_counters`), so they cannot
+ * drift and must NOT be reconciled — a guard so a future change that starts
+ * caching them also adds them here deliberately.
+ */
+describe("reconcile scope: cached lifetime counters only", () => {
+  const src = readFileSync(join(ROOT_DIR, "modules/billing/services/reconcile-usage-counters.ts"), "utf8");
+
+  it("reconciles the seven cached lifetime counter keys", () => {
+    for (const key of [
+      "tasks.count", "documents.count", "money_transactions.count", "subscriptions.count",
+      "developer_api_keys.count", "developer_webhooks.count", "members.count",
+    ]) {
+      expect(src, `reconcile omits cached counter "${key}"`).toContain(key);
+    }
+  });
+
+  it("does NOT reconcile the live-computed metrics", () => {
+    // ai_calls / storage_mb are not cached — see reserve_organization_usage (072)
+    // and the live-count triggers (033). They appear only in the explanatory note.
+    const reconciledBlock = src.slice(src.indexOf("const RECONCILED"), src.indexOf("const REPAIR_ENABLED"));
+    expect(reconciledBlock).not.toMatch(/["'`]ai_calls["'`]/);
+    expect(reconciledBlock).not.toMatch(/["'`]storage_mb["'`]/);
   });
 });

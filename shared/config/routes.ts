@@ -173,6 +173,7 @@ export const MACHINE_ROUTES = [
   "/api/cron/trial-sweep",
   "/api/cron/purge-deleted-accounts",
   "/api/internal/activation-funnel",
+  "/api/internal/job-health",
   "/api/billing/webhook",
 ] as const;
 

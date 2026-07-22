@@ -26,6 +26,13 @@ unset, `401` on a wrong secret.
 | `purge-deleted-accounts` | `0 4 * * *` | CRON_SECRET | only purges rows past the 30-day grace; re-running is a no-op | idempotent hard-purge | n/a |
 | `usage-reconcile` | `15 5 * * *` | CRON_SECRET | report-first; repair only when `USAGE_RECONCILE_REPAIR` set; setting a counter to its authoritative value is idempotent | logs every discrepancy, alerts above threshold; repair is gated | detects + repairs counter drift itself |
 
+**On-demand diagnostic:** `GET /api/internal/job-health` (METRICS_SECRET-gated,
+aggregate-only) reports the current stuck-job + recent terminal-failure counts
+across all orgs — reminders/extraction stuck in `processing` past their window,
+plus reminder and system-automation failures in the last 24h. Above-threshold
+usage-counter drift additionally escalates to the error monitor (Sentry seam) via
+`usage-reconcile`.
+
 ## 2. SLO (proposed — to be ratified by the ops owner)
 
 Aligned with the roadmap guardrail (protected cron success ≥ 99.5%):

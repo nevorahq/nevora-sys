@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { reconcileUsageCounters } from "@/modules/billing/services/reconcile-usage-counters";
 import { logger } from "@/lib/observability/logger";
+import { flushMonitoringAfterResponse } from "@/lib/observability/flush-after-response";
 
 /**
  * Usage-counter reconciliation sweep (Sprint 5 — S5.2). Detects drift between the
@@ -26,6 +27,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   try {
     const result = await reconcileUsageCounters();
+    if (result.alerts > 0) flushMonitoringAfterResponse();
     logger.info("cron.usage_reconcile", { ...result });
     return NextResponse.json(result, { status: result.ok ? 200 : 500 });
   } catch (error) {

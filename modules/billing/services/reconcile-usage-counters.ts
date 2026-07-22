@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getServiceRoleClient } from "@/lib/supabase/service-role";
 import { logger } from "@/lib/observability/logger";
+import { getMonitoring } from "@/lib/observability/monitoring";
 
 /**
  * Usage-counter reconciliation sweep (Sprint 5 — S5.2).
@@ -27,7 +28,14 @@ const ORG_BATCH_LIMIT = 500;
 const ALERT_THRESHOLD = 10;
 
 /** Lifetime counter keys → their authoritative live count. Definitions mirror the
- *  072 seed / 081 release trigger exactly, so recompute == what the trigger meant. */
+ *  072 seed / 081 release trigger exactly, so recompute == what the trigger meant.
+ *
+ *  These are the ONLY cached counters. `ai_calls` and `storage_mb` are deliberately
+ *  absent: they are NOT cached in `organization_usage_counters` — `reserve_organization_usage`
+ *  rejects them, they are enforced by the live-count triggers in migration 033, and
+ *  `get-usage` computes them live from the source tables. With no cache there is
+ *  nothing to drift, so there is nothing to reconcile. If either is ever promoted to
+ *  a cached counter, add it here (and to `RECONCILED_LIVE_ONLY` in the test). */
 const RECONCILED: Record<string, (q: CountQuery) => CountQuery> = {
   "tasks.count": (q) => q.from("todos").is("deleted_at", null),
   "documents.count": (q) => q.from("documents").is("deleted_at", null),
@@ -141,6 +149,12 @@ export async function reconcileUsageCounters(): Promise<UsageReconcileResult> {
       if (Math.abs(delta) >= ALERT_THRESHOLD) {
         alerts++;
         log.error("discrepancy.alert", { ...detail });
+        // Escalate above-threshold drift to the error monitor (Sentry, when the
+        // seam is configured). Fields are PII-safe: an org id + key + counts.
+        getMonitoring().captureMessage("usage counter drift above threshold", "warning", {
+          event: "billing.usage.drift",
+          fields: { ...detail },
+        });
       } else {
         log.warn("discrepancy", { ...detail });
       }
