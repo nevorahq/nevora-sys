@@ -117,6 +117,12 @@ drop:
   **push** bypass the category mute and quiet hours, while a non-mandatory push
   still respects them. The disruptive push/audio channel is otherwise suppressible
   by design (see `NOTIFICATION_POLICY.md`); the durable record is not.
+  `mandatory` is **derived** for billing signals — `isMandatoryNotification`
+  treats any `payment`/`subscription` notification at `high`/`critical` priority
+  as mandatory automatically, so no caller has to set the flag for those. It stays
+  an explicit escape hatch for a **security/system** producer on the generic
+  `action_center` category (none exists today; a future one must pass
+  `mandatory: true`).
 
 ---
 
