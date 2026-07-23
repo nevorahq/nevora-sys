@@ -1,6 +1,6 @@
 # Release Checklist — Nevora Business OS
 
-**Status:** Canonical · **Last updated:** 2026-07-23 (schema-drift repair, migration `113` — tree `000`–`113`)
+**Status:** Canonical · **Last updated:** 2026-07-23 (schema-drift repair, migration `113` — tree `000`–`113`, applied on remote)
 **Supersedes:** [`phase-7-release-checklist.md`](./phase-7-release-checklist.md)
 (kept for history; its migration section stops at 077 and is stale)
 
@@ -30,7 +30,7 @@ rotation + I-09 interactive smoke still open).
 |---|---|
 | **Current baseline (tree)** | `000` – `113` (113 files, no duplicate prefixes; `054` is a known, intentional gap) |
 | **Next free number** | **`114`** |
-| **Remote state** | `000`–`112` applied on `uimpykbnatzhykzpastd` (**maintainer-confirmed 2026-07-22**). `000`–`105` confirmed 2026-07-13 (`105` = inbox universal-capture idempotency); `106`–`109` (multilingual + FX) applied 2026-07-16 (PR #46); `110`–`111` (job-health indexes + durable notification history) applied 2026-07-22 (PR #55); `112` (usage-discrepancy audit table) applied 2026-07-22. |
+| **Remote state** | `000`–`113` applied on `uimpykbnatzhykzpastd` (`113` confirmed 2026-07-23; `000`–`112` **maintainer-confirmed 2026-07-22**). `000`–`105` confirmed 2026-07-13 (`105` = inbox universal-capture idempotency); `106`–`109` (multilingual + FX) applied 2026-07-16 (PR #46); `110`–`111` (job-health indexes + durable notification history) applied 2026-07-22 (PR #55); `112` (usage-discrepancy audit table) applied 2026-07-22. |
 | **`098` status** | Applied. Anon can no longer read booking tables or EXECUTE the public booking RPCs (verified with the public anon key). |
 | **`099` status** | Applied. `todos.source_suggestion_id` + the four exactly-once indexes are live; the migration went in before the app deploy that writes the column. |
 | **`100`/`101` status** | Applied. `100` enforces the Paddle-only billing provider boundary; `101` fixes it to still allow the internal `'manual'` default so `create_organization` does not roll back. |
@@ -39,7 +39,7 @@ rotation + I-09 interactive smoke still open).
 | **`110` status** | Applied (2026-07-22). Partial indexes for the cross-org job-health status/time-window counts. |
 | **`111` status** | Applied (2026-07-22). `process_due_reminders` now always materializes the action item + in-app notification for a due reminder; category mutes gate only the disruptive channels, not durable history. |
 | **`112` status** | Applied (2026-07-22). `usage_reconciliation_discrepancies` audit table (service-role only, RLS on / no policy). The usage-reconcile sweep writes to it best-effort. |
-| **`113` status** | **NOT YET APPLIED — and a NO-OP on remote by design.** Repairs drift found 2026-07-23 by running the opt-in integration test against a database rebuilt from this tree: `workspaces.slug` was missing (so `create_organization()` failed) and `money_accounts.user_id` was `NOT NULL` while no code sets it (so every account insert failed). Remote already has the slug column and no `user_id` column, so applying it changes nothing there — its value is that staging / DR / CI can rebuild a WORKING database. Proof: `supabase/tests/113_schema_drift_repair_verification.sql` actually calls `create_organization()` and inserts an account inside a rolled-back transaction; it FAILS without `113`. |
+| **`113` status** | **Applied 2026-07-23 (maintainer-confirmed, and independently verified: the `workspaces.slug` COMMENT that only `113` sets is present on remote via the PostgREST OpenAPI description).** A NO-OP on remote by design — Repairs drift found 2026-07-23 by running the opt-in integration test against a database rebuilt from this tree: `workspaces.slug` was missing (so `create_organization()` failed) and `money_accounts.user_id` was `NOT NULL` while no code sets it (so every account insert failed). Remote already has the slug column and no `user_id` column, so applying it changes nothing there — its value is that staging / DR / CI can rebuild a WORKING database. Proof: `supabase/tests/113_schema_drift_repair_verification.sql` actually calls `create_organization()` and inserts an account inside a rolled-back transaction; it FAILS without `113`. |
 | **Phase A schema change** | **None.** Phase A is code + docs only. |
 | **Phase B–D schema change** | `094` (planner confirmation), `095` (onboarding progress), `096` (Phase D commercial readiness), `097` (documents↔money↔subscriptions). |
 | **Paddle billing schema change** | `100` (Paddle-only billing boundary), `101` (fix boundary to allow internal `'manual'` provider). |
