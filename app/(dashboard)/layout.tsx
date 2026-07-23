@@ -84,7 +84,7 @@ export default async function DashboardLayout({
             {/* Header — user info, controls (прилипает к верху при скролле) */}
             <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border-soft bg-background px-6 py-3.5">
               <div className="flex min-w-0 items-center gap-2">
-                <OrganizationSwitcher currentOrganizationId={context.org.id} organizations={userOrganizations} />
+                <OrganizationSwitcher currentOrganizationId={context.org.id} organizations={userOrganizations} t={dict.organizationSwitcher} />
                 <p className="truncate text-sm text-text-muted">
                   {user.email?.split("@")[0]}
                 </p>

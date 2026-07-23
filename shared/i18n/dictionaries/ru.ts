@@ -1153,6 +1153,11 @@ export const ru: Dictionary = {
     dismiss: "Отклонить",
     markingNote: "Отметка об оплате проводит один расход в Финансы. До этого это запланированное обязательство и не влияет на баланс.",
   },
+  organizationSwitcher: {
+    label: "Организация",
+    ariaLabel: "Текущая организация — переключить",
+    switching: "Переключаем…",
+  },
   settings: {
     system: "Система",
     title: "Настройки",
