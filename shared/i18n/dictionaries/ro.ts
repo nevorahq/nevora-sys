@@ -748,6 +748,7 @@ export const ro: Dictionary = {
       createFailed: "Crearea organizației a eșuat. Încearcă din nou.",
       serverError: "Ceva n-a mers bine. Încearcă din nou.",
       slugTaken: "Acest identificator este deja folosit. Te rugăm să alegi altul.",
+      alreadyHasOrganization: "Ai deja o organizație. Folosește comutatorul de organizații din antet pentru a naviga între ele.",
     },
   },
   booking: {

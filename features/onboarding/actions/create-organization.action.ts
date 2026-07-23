@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/require-user";
+import { hasActiveOrganization } from "@/lib/auth/require-no-organization";
 import { createClient } from "@/lib/supabase/server";
 import { seedDefaultMoneyAccount } from "@/modules/moneyflow/services/money-account-service";
 import { getOnboardingSchema } from "../schemas/onboarding.schema";
@@ -36,6 +37,14 @@ export async function createOrganizationAction(
 
   // 1. Authentication
   const user = await requireUser();
+
+  // 1b. One organization per account, for now. The page guard hides the form,
+  // but this action is a POST endpoint reachable without it — and a second
+  // organization is created trial-less and read-only (migration 086), with no
+  // checkout to escape it in private beta.
+  if (await hasActiveOrganization(user.id)) {
+    return { error: dict.onboarding.errors.alreadyHasOrganization };
+  }
 
   // 2. Validation
   const rawData = {
