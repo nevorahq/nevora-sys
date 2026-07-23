@@ -54,7 +54,7 @@ export function LandingHeader({ nav, header, locale }: LandingHeaderProps) {
           </Link>
           <Link
             href={ROUTES.register}
-            className="soft-focus hidden h-9 items-center justify-center rounded-(--neu-radius-pill) bg-text-primary px-4 text-sm font-semibold text-text-inverse shadow-neu-control transition-shadow hover:shadow-neu-card active:shadow-neu-inset md:inline-flex"
+            className="soft-focus hidden h-9 items-center justify-center whitespace-nowrap rounded-(--neu-radius-pill) bg-text-primary px-4 text-sm font-semibold text-text-inverse shadow-neu-control transition-shadow hover:shadow-neu-card active:shadow-neu-inset md:inline-flex"
           >
             {header.cta}
           </Link>

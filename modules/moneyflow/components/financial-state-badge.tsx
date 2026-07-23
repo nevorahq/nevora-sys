@@ -15,7 +15,12 @@ import {
  * somehow unmapped, so it never renders blank.
  */
 
-const STATE_STYLE: Record<CanonicalFinancialState, string> = {
+/**
+ * Цвет каждого канонического состояния. Экспортируется, чтобы лендинг
+ * (`states-section`) показывал те же цвета, что и приложение, из одного места —
+ * обещание «одинаково на каждом экране» держится структурно, а не копипастой.
+ */
+export const STATE_STYLE: Record<CanonicalFinancialState, string> = {
   detected: "bg-surface-sunken text-text-secondary",
   needs_review: "bg-info-soft text-info",
   planned: "bg-surface-sunken text-text-secondary",

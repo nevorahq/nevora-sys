@@ -21,7 +21,11 @@ export function PlansSection({ content, locale }: PlansSectionProps) {
         <p className="mt-3 text-pretty text-text-secondary">{content.subtitle}</p>
       </div>
 
-      <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <p className="mx-auto mt-6 max-w-3xl text-pretty text-center text-sm text-text-secondary">
+        {content.betaNotice}
+      </p>
+
+      <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {plans.map((plan, i) => (
           <PricingCard key={plan.key} plan={plan} locale={locale} index={i} />
         ))}
@@ -38,6 +42,10 @@ export function PlansSection({ content, locale }: PlansSectionProps) {
           ))}
         </ul>
       </div>
+
+      <p className="mx-auto mt-6 max-w-3xl text-pretty text-center text-xs text-text-tertiary">
+        {content.workspace}
+      </p>
     </section>
   );
 }

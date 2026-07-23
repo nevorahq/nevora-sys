@@ -218,6 +218,8 @@ export interface PricingPageCopy {
   limitsHeading: string;
   featuresSuffix: string;
   privateBetaCardNote: string;
+  /** Бейдж рекомендованного плана (был захардкожен "Recommended" в карточке). */
+  recommendedBadge: string;
 }
 
 export const pricingPageCopyByLocale: Record<PublicLocale, PricingPageCopy> = {
@@ -231,6 +233,7 @@ export const pricingPageCopyByLocale: Record<PublicLocale, PricingPageCopy> = {
     limitsHeading: "Limits",
     featuresSuffix: "features",
     privateBetaCardNote: "Private beta. No paid checkout yet.",
+    recommendedBadge: "Recommended",
   },
   ru: {
     eyebrow: "Тарифы",
@@ -242,6 +245,7 @@ export const pricingPageCopyByLocale: Record<PublicLocale, PricingPageCopy> = {
     limitsHeading: "Лимиты",
     featuresSuffix: "— возможности",
     privateBetaCardNote: "Закрытая бета. Платная оплата пока недоступна.",
+    recommendedBadge: "Рекомендуем",
   },
   ro: {
     eyebrow: "Prețuri",
@@ -253,6 +257,7 @@ export const pricingPageCopyByLocale: Record<PublicLocale, PricingPageCopy> = {
     limitsHeading: "Limite",
     featuresSuffix: "— funcții",
     privateBetaCardNote: "Versiune beta privată. Fără plată încă.",
+    recommendedBadge: "Recomandat",
   },
 };
 
