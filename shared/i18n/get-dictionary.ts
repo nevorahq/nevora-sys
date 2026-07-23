@@ -40,3 +40,12 @@ export async function getDictionary() {
   const locale = await getLocale();
   return { dict: dictionaries[locale], locale };
 }
+
+/**
+ * Словарь для ЯВНОЙ локали, минуя cookie. Нужен там, где локаль задана извне и не
+ * должна зависеть от cookie посетителя — например, canonical-входы лендинга
+ * `/en` `/ru` `/ro`, где cookie может не совпадать с URL.
+ */
+export function getDictionaryFor(locale: Locale) {
+  return dictionaries[locale];
+}

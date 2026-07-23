@@ -55,6 +55,8 @@
   --color-danger-soft:  var(--danger-soft);
   --color-info:         var(--info);
   --color-info-soft:    var(--info-soft);
+  --color-success:      var(--success);
+  --color-success-soft: var(--success-soft);
   --color-focus-ring:   var(--focus-ring);
 
   /* Typography — self-hosted via @fontsource (см. app/layout.tsx).
@@ -106,6 +108,8 @@
   --danger-soft: #FEE2E2;
   --info:        #629FDE;
   --info-soft:   #DBEAFE;
+  --success:     #3E9E3C;
+  --success-soft: #DFF2DE;
   --focus-ring:  #629FDE;
 
   /* Neumorphic shadows — light
@@ -170,6 +174,8 @@
   --danger-soft: #3F1D1D;
   --info:        #99B3DC;
   --info-soft:   #1F2937;
+  --success:     #9BD69A;
+  --success-soft: #17281A;
   --focus-ring:  #99B3DC;
 
   /* Neumorphic shadows — dark
