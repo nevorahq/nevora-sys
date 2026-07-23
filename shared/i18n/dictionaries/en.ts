@@ -1188,6 +1188,16 @@ export const en = {
     dismiss: "Dismiss",
     markingNote: "Marking as paid posts a single expense to Money. Until then this is a planned obligation and does not affect your balance.",
   },
+  /**
+   * Header organization switcher. The current tenant must be unmistakable:
+   * data isolation is a P0 invariant, so "which organization am I acting in"
+   * cannot be a guess.
+   */
+  organizationSwitcher: {
+    label: "Organization",
+    ariaLabel: "Current organization — switch",
+    switching: "Switching…",
+  },
   settings: {
     system: "System",
     title: "Settings",

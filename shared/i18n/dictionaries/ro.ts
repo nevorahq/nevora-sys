@@ -1162,6 +1162,11 @@ export const ro: Dictionary = {
     dismiss: "Respinge",
     markingNote: "Marcarea ca plătit înregistrează o singură cheltuială în Finanțe. Până atunci este o obligație planificată și nu-ți afectează soldul.",
   },
+  organizationSwitcher: {
+    label: "Organizație",
+    ariaLabel: "Organizația curentă — comută",
+    switching: "Se comută…",
+  },
   settings: {
     system: "Sistem",
     title: "Setări",
