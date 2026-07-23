@@ -1,5 +1,5 @@
 /**
- * SubTracker domain constants.
+ * Subscriptions domain constants.
  */
 
 export const BILLING_CYCLES = ["weekly", "monthly", "yearly"] as const;

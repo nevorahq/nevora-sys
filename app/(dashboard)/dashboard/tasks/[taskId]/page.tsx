@@ -111,6 +111,9 @@ export default async function TaskPreviewPage({ params }: PageProps<"/dashboard/
               providerName={paymentSubscription?.name ?? "Subscription"}
               accounts={paymentAccounts.map((a) => ({ id: a.id, name: a.name, currency: a.currency }))}
               canWrite={canEditTask}
+              stateLabels={dict.money.states}
+              inlineAccount={dict.money.inlineAccount}
+              accountTypeLabels={dict.money.accounts.types}
             />
           )}
           {isFinancialTask && !paymentCycle && (
@@ -131,6 +134,9 @@ export default async function TaskPreviewPage({ params }: PageProps<"/dashboard/
               accounts={financialAccounts.map((a) => ({ id: a.id, name: a.name, currency: a.currency }))}
               canWrite={canEditTask}
               t={dict.financialTask}
+              stateLabels={dict.money.states}
+              inlineAccount={dict.money.inlineAccount}
+              accountTypeLabels={dict.money.accounts.types}
             />
           )}
           {document && <section className="soft-card p-5 sm:p-6"><div className="flex items-center gap-2"><FileTextIcon size={18} className="text-text-secondary" /><h2 className="text-base font-semibold text-text-primary">Document</h2></div><Link href={`${ROUTES.documents}/${document.id}`} className="mt-3 block text-sm font-medium text-text-secondary underline hover:text-text-primary">{document.title}</Link></section>}

@@ -84,7 +84,7 @@ export async function InboxPage({ initialTab = "inbox", focusSuggestionId = null
           Documents review UI + review Server Actions (money-safe, no duplication). */}
       {documentReviews.map(({ documentId, state }) => (
         <div key={documentId} id={`document-${documentId}`} className="scroll-mt-24">
-          <DocumentExtractionReview documentId={documentId} state={state} canConfirm={canConfirmFinancial} t={fullDict.documents} />
+          <DocumentExtractionReview documentId={documentId} state={state} canConfirm={canConfirmFinancial} t={fullDict.documents} stateLabels={fullDict.money.states} />
         </div>
       ))}
     </div>

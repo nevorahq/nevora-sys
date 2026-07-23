@@ -67,7 +67,7 @@ export default async function DocumentPreviewPage({ params }: PageProps<"/dashbo
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
       <main className="space-y-6">
         {isFinancial && extractionState && (
-          <DocumentExtractionReview documentId={document.id} state={extractionState} canConfirm={canDo(ctx, "data.write")} t={t} />
+          <DocumentExtractionReview documentId={document.id} state={extractionState} canConfirm={canDo(ctx, "data.write")} t={t} stateLabels={dict.money.states} />
         )}
         {obligationSuggestion && (
           <DocumentObligationSuggestion

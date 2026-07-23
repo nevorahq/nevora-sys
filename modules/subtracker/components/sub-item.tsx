@@ -12,6 +12,7 @@ import { Modal } from "@/shared/ui/modal";
 import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import { cn } from "@/shared/utils/cn";
 import { formatDate } from "@/shared/utils/format-date";
+import { FinancialStateBadge } from "@/modules/moneyflow/components/financial-state-badge";
 import type { Subscription } from "../types/subtracker.types";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
@@ -25,11 +26,6 @@ interface SubItemProps {
   dict: Dictionary;
   cycle?: SubPaymentIndicator;
 }
-
-const PAYMENT_BADGE_STYLE: Record<string, string> = {
-  planned: "bg-surface-sunken text-text-muted",
-  task_open: "bg-info-soft text-info",
-};
 
 export function SubItem({ subscription: sub, dict, cycle }: SubItemProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -96,20 +92,13 @@ export function SubItem({ subscription: sub, dict, cycle }: SubItemProps) {
             {cycles[sub.billing_cycle as keyof typeof cycles] ?? sub.billing_cycle}
           </p>
           {cycle && (
-            <span
-              className={cn(
-                "mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium capitalize",
-                cycle.due_date <= new Date().toISOString().slice(0, 10)
-                  ? "bg-accent-yellow-soft text-accent-yellow"
-                  : PAYMENT_BADGE_STYLE[cycle.status] ?? "bg-surface-sunken text-text-muted",
-              )}
-            >
-              {cycle.due_date <= new Date().toISOString().slice(0, 10)
-                ? "Payment due"
-                : cycle.status === "task_open"
-                  ? "Task open"
-                  : "Planned"}
-            </span>
+            <FinancialStateBadge
+              surface="subscription_cycle"
+              status={cycle.status}
+              labels={dict.money.states}
+              dueDate={cycle.due_date}
+              className="mt-1 px-2 py-0.5 text-[10px]"
+            />
           )}
         </div>
 

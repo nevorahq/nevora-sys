@@ -2,7 +2,7 @@ import { SparklesIcon, AlertTriangleIcon, Loader2Icon, ReceiptTextIcon } from "l
 import type { DocumentExtractionState } from "../queries/get-document-extraction";
 import { ExtractionReviewActions } from "./extraction-review-actions";
 import { ExtractionStatusPoller } from "./extraction-status-poller";
-import { REVIEW_STATE_LABELS } from "@/modules/review/constants/review.constants";
+import { FinancialStateBadge } from "@/modules/moneyflow/components/financial-state-badge";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 type DocsDict = Dictionary["documents"];
@@ -17,11 +17,14 @@ export function DocumentExtractionReview({
   state,
   canConfirm,
   t,
+  stateLabels,
 }: {
   documentId: string;
   state: DocumentExtractionState;
   canConfirm: boolean;
   t: DocsDict;
+  /** Canonical financial-state labels (`dict.money.states`) for the draft badge. */
+  stateLabels: Dictionary["money"]["states"];
 }) {
   const x = t.extraction;
   const { extraction, financialData, items, financialSuggestion, accounts, categories, contexts, classification } = state;
@@ -128,9 +131,11 @@ export function DocumentExtractionReview({
           <div className="flex items-center gap-2 text-text-secondary">
             <ReceiptTextIcon size={16} />
             <span className="text-sm font-semibold">{x.draftSuggestion}</span>
-            <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-text-muted">
-              {REVIEW_STATE_LABELS[financialSuggestion.review_state]}
-            </span>
+            <FinancialStateBadge
+              surface="suggestion"
+              status={financialSuggestion.review_state}
+              labels={stateLabels}
+            />
           </div>
           <p className="mt-2 text-lg font-semibold text-text-primary">
             {formatMoney(financialSuggestion.amount, financialSuggestion.currency)}

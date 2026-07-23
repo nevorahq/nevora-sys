@@ -11,7 +11,7 @@ import { SubCreateButton } from "@/modules/subtracker/components/sub-create-butt
 import { SubEmptyState } from "@/modules/subtracker/components/sub-empty-state";
 
 /**
- * SubTracker Page — /dashboard/subscriptions
+ * Subscriptions Page — /dashboard/subscriptions
  *
  * Форма создания скрыта по умолчанию.
  * Кнопка "Create Record" открывает модальное окно с формой.

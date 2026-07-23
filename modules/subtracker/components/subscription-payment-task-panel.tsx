@@ -8,6 +8,9 @@ import { Select } from "@/shared/ui/select";
 import { formatMoney } from "@/shared/utils/format-money";
 import { formatDate } from "@/shared/utils/format-date";
 import { ROUTES } from "@/shared/config/routes";
+import { FinancialStateBadge } from "@/modules/moneyflow/components/financial-state-badge";
+import { InlineAccountPrompt } from "@/modules/moneyflow/components/inline-account-prompt";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import { markSubscriptionPaymentAction } from "../actions/mark-subscription-payment.action";
 import { skipSubscriptionPaymentAction } from "../actions/skip-subscription-payment.action";
 import type { SubscriptionPaymentCycle } from "../types/payment-cycle.types";
@@ -23,6 +26,11 @@ interface Props {
   providerName: string;
   accounts: AccountOption[];
   canWrite: boolean;
+  /** Canonical financial-state labels (`dict.money.states`) for the cycle badge. */
+  stateLabels: Dictionary["money"]["states"];
+  /** Copy for the inline "no money account yet" resolution. */
+  inlineAccount: Dictionary["money"]["inlineAccount"];
+  accountTypeLabels: Dictionary["money"]["accounts"]["types"];
 }
 
 /**
@@ -30,13 +38,20 @@ interface Props {
  * Routes completion through the specialized Mark-as-paid flow — NOT generic
  * task completion — so the expense + next cycle are created correctly.
  */
-export function SubscriptionPaymentTaskPanel({ cycle, providerName, accounts, canWrite }: Props) {
+export function SubscriptionPaymentTaskPanel({
+  cycle,
+  providerName,
+  accounts,
+  canWrite,
+  stateLabels,
+  inlineAccount,
+  accountTypeLabels,
+}: Props) {
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const isOpen = cycle.status === "planned" || cycle.status === "task_open";
-  const isPaid = cycle.status === "paid";
 
   function run(fn: () => Promise<{ error?: string }>) {
     setError(null);
@@ -48,9 +63,18 @@ export function SubscriptionPaymentTaskPanel({ cycle, providerName, accounts, ca
 
   return (
     <section className="soft-card p-5 sm:p-6">
-      <div className="flex items-center gap-2">
-        <RepeatIcon size={18} className="text-accent-lilac" />
-        <h2 className="text-base font-semibold text-text-primary">Subscription payment</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <RepeatIcon size={18} className="text-accent-lilac" />
+          <h2 className="text-base font-semibold text-text-primary">Subscription payment</h2>
+        </div>
+        <FinancialStateBadge
+          surface="subscription_cycle"
+          status={cycle.status}
+          labels={stateLabels}
+          dueDate={cycle.due_date}
+          className="px-3 py-1"
+        />
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
@@ -81,12 +105,6 @@ export function SubscriptionPaymentTaskPanel({ cycle, providerName, accounts, ca
         </div>
       </dl>
 
-      {isPaid && (
-        <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-success-soft px-3 py-1 text-xs font-medium text-success">
-          <CheckCircleIcon size={13} /> Paid
-        </p>
-      )}
-
       {canWrite && isOpen && (
         <div className="mt-4 space-y-3">
           {accounts.length > 0 ? (
@@ -98,7 +116,13 @@ export function SubscriptionPaymentTaskPanel({ cycle, providerName, accounts, ca
               options={accounts.map((a) => ({ value: a.id, label: `${a.name} · ${a.currency}` }))}
             />
           ) : (
-            <p className="text-xs text-text-muted">Add a money account to record this payment.</p>
+            <InlineAccountPrompt
+              obligationKind="subscription_cycle"
+              obligationId={cycle.id}
+              currency={cycle.currency}
+              t={inlineAccount}
+              accountTypes={accountTypeLabels}
+            />
           )}
           <div className="flex flex-wrap gap-2">
             <Button

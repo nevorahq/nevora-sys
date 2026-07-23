@@ -8,14 +8,6 @@ export const REVIEW_STATES = [
 
 export type ReviewState = (typeof REVIEW_STATES)[number];
 
-export const REVIEW_STATE_LABELS: Record<ReviewState, string> = {
-  detected: "Detected",
-  suggested: "Suggested",
-  waiting_confirmation: "Waiting confirmation",
-  confirmed: "Confirmed",
-  rejected: "Rejected",
-};
-
 export const FINANCIAL_SUGGESTION_TYPES = [
   "create_expense",
   "review_subscription",
