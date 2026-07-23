@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { OnboardingForm } from "@/features/onboarding/components/onboarding-form";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { currencyForCountry } from "@/shared/config/currencies";
-import { requireUser } from "@/lib/auth/require-user";
+import { requireNoOrganization } from "@/lib/auth/require-no-organization";
 import { PendingInvitesCard, getPendingInvites } from "@/modules/members";
 import { getTrialEligibilityForCurrentUser, isTrialAlreadyUsed } from "@/modules/billing";
 import type { Metadata } from "next";
@@ -14,9 +14,9 @@ export const metadata: Metadata = {
 /**
  * Onboarding Page — первый экран после регистрации.
  *
- * Proxy гарантирует: сюда попадают только аутентифицированные
- * пользователи без организации. Дополнительная проверка auth
- * происходит в самом Server Action (requireUser).
+ * Proxy гарантирует только аутентификацию. Отсутствие организации —
+ * НЕ его забота: это проверяет requireNoOrganization() здесь, а Server Action
+ * повторяет проверку самостоятельно (он POST-эндпоинт и достижим без страницы).
  *
  * Server Component: данные для формы приходят через props (dict).
  * Никакого client-side fetching не нужно.
@@ -26,7 +26,9 @@ export const metadata: Metadata = {
  * подтверждает или меняет значение перед созданием организации.
  */
 export default async function OnboardingPage() {
-  const [{ dict }] = await Promise.all([getDictionary(), requireUser()]);
+  // A user who already has an organization is sent to the dashboard — creating
+  // a second one produces a trial-less, read-only org (see requireNoOrganization).
+  const [{ dict }] = await Promise.all([getDictionary(), requireNoOrganization()]);
   const [pendingInvites, trialEligibility] = await Promise.all([
     getPendingInvites(),
     // Trial Identity Hardening (089): UX-подсказка. Не security boundary —

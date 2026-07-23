@@ -184,6 +184,11 @@ export function isMachineRoute(pathname: string): boolean {
 /**
  * Пути, доступные авторизованным пользователям БЕЗ организации.
  * Пользователь с org не может зайти на эти пути (редирект на dashboard).
+ *
+ * Enforced by `requireNoOrganization()` — вызывается страницей КАЖДОГО пути из
+ * этого списка (proxy проверяет только аутентификацию). Правило закреплено
+ * тестом `lib/auth/require-no-organization.test.ts`: новый onboarding-маршрут
+ * без guard'а уронит сборку тестов, а не тихо откроет дыру.
  */
 export const ONBOARDING_ROUTES = [
   ROUTES.onboarding,

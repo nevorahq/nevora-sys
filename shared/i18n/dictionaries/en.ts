@@ -774,6 +774,7 @@ export const en = {
       createFailed: "Failed to create organization. Please try again.",
       serverError: "Something went wrong. Please try again.",
       slugTaken: "This slug is already taken. Please choose another.",
+      alreadyHasOrganization: "You already have an organization. Use the organization switcher in the header to move between them.",
     },
   },
   booking: {
