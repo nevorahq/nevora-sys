@@ -7,7 +7,9 @@ import { Select } from "@/shared/ui/select";
 import { Input } from "@/shared/ui/input";
 import { formatMoney } from "@/shared/utils/format-money";
 import { formatDate } from "@/shared/utils/format-date";
-import { cn } from "@/shared/utils/cn";
+import { FinancialStateBadge } from "@/modules/moneyflow/components/financial-state-badge";
+import { InlineAccountPrompt } from "@/modules/moneyflow/components/inline-account-prompt";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import { markSubscriptionPaymentAction } from "../actions/mark-subscription-payment.action";
 import { skipSubscriptionPaymentAction } from "../actions/skip-subscription-payment.action";
 import { changeSubscriptionPaymentDueDateAction } from "../actions/change-subscription-payment-due-date.action";
@@ -29,16 +31,12 @@ interface Props {
   history: SubscriptionPaymentCycle[];
   accounts: AccountOption[];
   canWrite: boolean;
+  /** Canonical financial-state labels (`dict.money.states`) for the cycle badge. */
+  stateLabels: Dictionary["money"]["states"];
+  /** Copy for the inline "no money account yet" resolution. */
+  inlineAccount: Dictionary["money"]["inlineAccount"];
+  accountTypeLabels: Dictionary["money"]["accounts"]["types"];
 }
-
-const STATUS_STYLE: Record<string, string> = {
-  planned: "bg-surface-sunken text-text-secondary",
-  task_open: "bg-info-soft text-info",
-  paid: "bg-success-soft text-success",
-  skipped: "bg-surface-sunken text-text-muted",
-  cancelled: "bg-surface-sunken text-text-muted",
-  failed: "bg-danger-soft text-danger",
-};
 
 export function SubscriptionPaymentWorkflowPanel({
   subscriptionId,
@@ -49,6 +47,9 @@ export function SubscriptionPaymentWorkflowPanel({
   history,
   accounts,
   canWrite,
+  stateLabels,
+  inlineAccount,
+  accountTypeLabels,
 }: Props) {
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [showDueDate, setShowDueDate] = useState(false);
@@ -102,14 +103,13 @@ export function SubscriptionPaymentWorkflowPanel({
                   {formatMoney(Number(currentCycle.expected_amount))} {currentCycle.currency}
                 </p>
               </div>
-              <span
-                className={cn(
-                  "rounded-full px-3 py-1 text-xs font-medium capitalize",
-                  STATUS_STYLE[currentCycle.status] ?? "bg-surface-sunken text-text-secondary",
-                )}
-              >
-                {currentCycle.status.replace("_", " ")}
-              </span>
+              <FinancialStateBadge
+                surface="subscription_cycle"
+                status={currentCycle.status}
+                labels={stateLabels}
+                dueDate={currentCycle.due_date}
+                className="px-3 py-1"
+              />
             </div>
 
             {canWrite && cycleOpen && (
@@ -123,7 +123,13 @@ export function SubscriptionPaymentWorkflowPanel({
                     options={accounts.map((a) => ({ value: a.id, label: `${a.name} · ${a.currency}` }))}
                   />
                 ) : (
-                  <p className="text-xs text-text-muted">Add a money account to record this payment.</p>
+                  <InlineAccountPrompt
+                    obligationKind="subscription_cycle"
+                    obligationId={currentCycle.id}
+                    currency={currentCycle.currency}
+                    t={inlineAccount}
+                    accountTypes={accountTypeLabels}
+                  />
                 )}
 
                 <div className="flex flex-wrap gap-2">
@@ -229,14 +235,11 @@ export function SubscriptionPaymentWorkflowPanel({
                   <span className="tabular-nums text-text-muted">
                     {formatMoney(Number(c.expected_amount))} {c.currency}
                   </span>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-xs font-medium capitalize",
-                      STATUS_STYLE[c.status] ?? "bg-surface-sunken text-text-secondary",
-                    )}
-                  >
-                    {c.status.replace("_", " ")}
-                  </span>
+                  <FinancialStateBadge
+                    surface="subscription_cycle"
+                    status={c.status}
+                    labels={stateLabels}
+                  />
                 </span>
               </li>
             ))}

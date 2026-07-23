@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/require-user";
 import { createClient } from "@/lib/supabase/server";
+import { seedDefaultMoneyAccount } from "@/modules/moneyflow/services/money-account-service";
 import { getOnboardingSchema } from "../schemas/onboarding.schema";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
@@ -34,7 +35,7 @@ export async function createOrganizationAction(
   const schema = getOnboardingSchema(dict.onboarding.errors);
 
   // 1. Authentication
-  await requireUser();
+  const user = await requireUser();
 
   // 2. Validation
   const rawData = {
@@ -60,7 +61,7 @@ export async function createOrganizationAction(
   try {
     const supabase = await createClient();
 
-    const { error } = await supabase.rpc("create_organization", {
+    const { data: organizationId, error } = await supabase.rpc("create_organization", {
       p_name: parsed.data.name,
       p_slug: parsed.data.slug,
       p_base_currency: parsed.data.baseCurrency,
@@ -80,6 +81,20 @@ export async function createOrganizationAction(
 
       console.error("createOrganization RPC error:", error);
       return { error: dict.onboarding.errors.createFailed };
+    }
+
+    // Give the new organization one account in its base currency. Without it the
+    // first invoice or subscription reaches "Mark as paid" with nowhere to post,
+    // and the button is inert. Runs AFTER the RPC committed and never fails the
+    // onboarding — the inline prompt on the obligation covers the miss.
+    if (typeof organizationId === "string") {
+      const currency = parsed.data.baseCurrency.toUpperCase();
+      await seedDefaultMoneyAccount(supabase, {
+        organizationId,
+        userId: user.id,
+        currency,
+        name: dict.money.inlineAccount.defaultName.replaceAll("{currency}", currency),
+      });
     }
 
     shouldRedirect = true;

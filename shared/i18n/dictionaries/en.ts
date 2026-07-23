@@ -22,7 +22,6 @@ export const en = {
     tasks: "Work",
     crm: "CRM",
     money: "Finances",
-    subscriptions: "Subs",
     documents: "Documents",
     analytics: "Analytics",
     ai: "AI",
@@ -427,6 +426,29 @@ export const en = {
       due: "Due",
       paid: "Paid",
       cancelled: "Cancelled",
+    },
+    /**
+     * Shown where an obligation cannot be marked as paid because the
+     * organization has no account in that currency. Creating the account posts
+     * nothing — payment still requires the explicit Mark-as-paid confirmation.
+     */
+    inlineAccount: {
+      title: "A money account is needed to record this payment",
+      body: "Marking this as paid posts a {currency} transaction, and this organization has no {currency} account yet. Creating one records no money.",
+      cta: "Create a {currency} account",
+      nameLabel: "Account name",
+      defaultName: "{currency} account",
+      typeLabel: "Account type",
+      currencyLabel: "Currency",
+      submit: "Create account",
+      cancel: "Cancel",
+      close: "Close",
+      errors: {
+        permission: "You do not have permission to create money accounts.",
+        notFound: "This payment could not be found or is already settled.",
+        lookupFailed: "Money accounts could not be checked. Please try again.",
+        createFailed: "The account could not be created. Please try again.",
+      },
     },
     summary: {
       balance: "Current Balance",
@@ -840,7 +862,7 @@ export const en = {
     },
   },
   subscriptions: {
-    title: "SubTracker",
+    title: "Subscriptions",
     description: "Track and manage your subscriptions",
     summary: {
       active: "Active Subscriptions",
@@ -1143,10 +1165,6 @@ export const en = {
       expense_review: "Expense review",
       document_review: "Document review",
     },
-    statusOpen: "Open",
-    statusPaid: "Paid",
-    statusSkipped: "Skipped",
-    statusDismissed: "Dismissed",
     amountGtZero: "Enter an amount greater than zero",
     currencyCode: "Use a 3-letter currency code",
     type: "Type",
@@ -1164,7 +1182,6 @@ export const en = {
     saveAmount: "Save amount",
     cancel: "Cancel",
     payFromAccount: "Pay from account",
-    addMoneyAccount: "Add a money account to record this payment.",
     markAsPaid: "Mark as paid",
     skip: "Skip",
     dismiss: "Dismiss",

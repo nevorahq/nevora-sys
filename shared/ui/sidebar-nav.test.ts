@@ -53,7 +53,7 @@ describe("Subscriptions folded into Money", () => {
   it("keeps Money active when the user is on the Subscriptions route", () => {
     // The Money nav item claims the subscriptions path via activeMatch, so the
     // folded section still highlights its parent section.
-    expect(navItemsBlock).toMatch(/href:\s*ROUTES\.money[\s\S]*activeMatch:\s*\[ROUTES\.subscriptions\]/);
+    expect(navItemsBlock).toMatch(/href:\s*ROUTES\.money[\s\S]*activeMatch:\s*\[[^\]]*ROUTES\.subscriptions/);
   });
 
   it("still resolves as a deep link (page not deleted)", () => {
@@ -64,6 +64,37 @@ describe("Subscriptions folded into Money", () => {
     const money = read("app/(dashboard)/dashboard/money/page.tsx");
     expect(money).toMatch(/href=\{ROUTES\.subscriptions\}/);
     expect(money).toContain("dict.money.subscriptionsLink");
+  });
+});
+
+/**
+ * A folded section must still tell the user where they are. The sidebar reports
+ * Finances on `/dashboard/subscriptions/*`; if the Money workspace chrome is not
+ * mounted there, the page shows no Finances context at all and the highlight
+ * reads as a bug. Both halves are asserted together on purpose.
+ */
+describe("a folded section keeps its parent context visible", () => {
+  it.each([
+    ["app/(dashboard)/dashboard/money/layout.tsx", "Transactions"],
+    ["app/(dashboard)/dashboard/subscriptions/layout.tsx", "Subscriptions"],
+    ["app/(dashboard)/dashboard/tasks/financial/layout.tsx", "Financial Tasks"],
+    // Detail routes inherit their section's layout, so a subscription detail
+    // page carries the same chrome as the list.
+  ])("%s mounts the Money workspace chrome", (layoutPath) => {
+    expect(existsSync(join(ROOT, layoutPath))).toBe(true);
+    expect(read(layoutPath)).toContain("MoneyWorkspaceTabs");
+  });
+
+  it("never lights two sections at once for Financial Tasks", () => {
+    // /dashboard/tasks/financial sits under Work's href but belongs to Finances.
+    expect(navItemsBlock).toMatch(/href:\s*ROUTES\.tasks,[\s\S]*excludeMatch:\s*\[ROUTES\.tasksFinancial\]/);
+    expect(navItemsBlock).toMatch(/href:\s*ROUTES\.money[\s\S]*ROUTES\.tasksFinancial/);
+    // The exclusion has to be evaluated BEFORE the prefix match, or Work wins.
+    const isActiveFn = sidebar.slice(sidebar.indexOf("function isActive"));
+    const excludeAt = isActiveFn.indexOf("excludeMatch");
+    const prefixAt = isActiveFn.indexOf("pathname.startsWith(item.href)");
+    expect(excludeAt).toBeGreaterThan(-1);
+    expect(excludeAt).toBeLessThan(prefixAt);
   });
 });
 

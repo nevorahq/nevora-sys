@@ -10,6 +10,8 @@ import { Select } from "@/shared/ui/select";
 import { formatMoney } from "@/shared/utils/format-money";
 import { formatDate } from "@/shared/utils/format-date";
 import { ROUTES } from "@/shared/config/routes";
+import { FinancialStateBadge } from "@/modules/moneyflow/components/financial-state-badge";
+import { InlineAccountPrompt } from "@/modules/moneyflow/components/inline-account-prompt";
 import type { TaskContextType, FinancialTaskStatus } from "../constants/task.constants";
 import { markFinancialTaskPaidAction } from "../actions/mark-financial-task-paid.action";
 import { setFinancialTaskAmountAction } from "../actions/set-financial-task-amount.action";
@@ -41,14 +43,12 @@ interface Props {
   accounts: AccountOption[];
   canWrite: boolean;
   t: Dictionary["financialTask"];
+  /** Canonical financial-state labels (`dict.money.states`) for the status badge. */
+  stateLabels: Dictionary["money"]["states"];
+  /** Copy for the inline "no money account yet" resolution. */
+  inlineAccount: Dictionary["money"]["inlineAccount"];
+  accountTypeLabels: Dictionary["money"]["accounts"]["types"];
 }
-
-const STATUS_CLASS: Record<FinancialTaskStatus, string> = {
-  open:      "bg-accent-lilac-soft text-accent-lilac",
-  paid:      "bg-success-soft text-success",
-  skipped:   "bg-surface-sunken text-text-secondary",
-  dismissed: "bg-surface-sunken text-text-muted",
-};
 
 /**
  * Financial Context panel on a task detail page (spec §15). Shown for one-off
@@ -56,19 +56,21 @@ const STATUS_CLASS: Record<FinancialTaskStatus, string> = {
  * cycle). Routes Mark-as-paid through the idempotent one-off flow, and offers
  * Skip / Dismiss for obligations settled elsewhere or false positives.
  */
-export function FinancialTaskPanel({ task, accounts, canWrite, t }: Props) {
+export function FinancialTaskPanel({
+  task,
+  accounts,
+  canWrite,
+  t,
+  stateLabels,
+  inlineAccount,
+  accountTypeLabels,
+}: Props) {
   const router = useRouter();
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const isOpen = task.financial_status === "open";
-  const statusLabel: Record<FinancialTaskStatus, string> = {
-    open: t.statusOpen,
-    paid: t.statusPaid,
-    skipped: t.statusSkipped,
-    dismissed: t.statusDismissed,
-  };
   const canPay = Boolean(task.amount && task.amount > 0 && task.currency);
 
   // Amount editor: a capture without a number ("оплатить аренду 20 числа") creates
@@ -116,7 +118,13 @@ export function FinancialTaskPanel({ task, accounts, canWrite, t }: Props) {
           <WalletIcon size={18} className="text-accent-lilac" />
           <h2 className="text-base font-semibold text-text-primary">{t.title}</h2>
         </div>
-        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[task.financial_status]}`}>{statusLabel[task.financial_status]}</span>
+        <FinancialStateBadge
+          surface="financial_task"
+          status={task.financial_status}
+          labels={stateLabels}
+          dueDate={task.financial_due_date}
+          className="px-2.5 py-1"
+        />
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
@@ -228,7 +236,13 @@ export function FinancialTaskPanel({ task, accounts, canWrite, t }: Props) {
                 options={accounts.map((a) => ({ value: a.id, label: `${a.name} · ${a.currency}` }))}
               />
             ) : (
-              <p className="text-xs text-text-muted">{t.addMoneyAccount}</p>
+              <InlineAccountPrompt
+                obligationKind="financial_task"
+                obligationId={task.id}
+                currency={task.currency ?? ""}
+                t={inlineAccount}
+                accountTypes={accountTypeLabels}
+              />
             )
           )}
           <div className="flex flex-wrap gap-2">

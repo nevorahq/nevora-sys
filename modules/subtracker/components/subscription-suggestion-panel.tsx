@@ -6,9 +6,10 @@ import {
   confirmSubscriptionTaskSuggestion,
   rejectFinancialSuggestion,
 } from "@/modules/review/actions/financial-suggestion.actions";
-import { REVIEW_STATE_LABELS } from "@/modules/review/constants/review.constants";
+import { FinancialStateBadge } from "@/modules/moneyflow/components/financial-state-badge";
 import { Button } from "@/shared/ui/button";
 import { formatDate } from "@/shared/utils/format-date";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 export interface SubscriptionSuggestionItem {
   id: string;
@@ -22,9 +23,12 @@ export interface SubscriptionSuggestionItem {
 export function SubscriptionSuggestionPanel({
   suggestions,
   canWrite,
+  stateLabels,
 }: {
   suggestions: SubscriptionSuggestionItem[];
   canWrite: boolean;
+  /** Canonical financial-state labels (`dict.money.states`). */
+  stateLabels: Dictionary["money"]["states"];
 }) {
   const [visible, setVisible] = useState(suggestions);
   const [error, setError] = useState<string | null>(null);
@@ -58,13 +62,21 @@ export function SubscriptionSuggestionPanel({
           <li key={suggestion.id} className="rounded-(--neu-radius-md) bg-surface-sunken p-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-text-primary">
+                <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-text-primary">
                   {labelFor(suggestion.suggestion_type)}
+                  <FinancialStateBadge
+                    surface="suggestion"
+                    status={suggestion.review_state}
+                    labels={stateLabels}
+                  />
                 </p>
                 <p className="mt-1 text-xs text-text-muted">
-                  {REVIEW_STATE_LABELS[suggestion.review_state]}
-                  {suggestion.due_date ? ` · due ${formatDate(suggestion.due_date)}` : ""}
-                  {suggestion.amount && suggestion.currency ? ` · ${suggestion.amount} ${suggestion.currency}` : ""}
+                  {[
+                    suggestion.due_date ? `due ${formatDate(suggestion.due_date)}` : null,
+                    suggestion.amount && suggestion.currency ? `${suggestion.amount} ${suggestion.currency}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               </div>
               {canWrite && suggestion.review_state === "waiting_confirmation" && (

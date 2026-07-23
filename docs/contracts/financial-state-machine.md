@@ -55,6 +55,11 @@ through an explicit, authorized, idempotent workflow (user confirm, or
 | `skipped` | cancelled |
 | `cancelled` | cancelled |
 
+A `planned` cycle whose `due_date` has arrived resolves to **due** — §1 defines
+`due` as "its date has arrived / a payment task is open", and the task-generating
+sweep may not have run yet. This is a **label** derivation only: no DB status is
+rewritten, and it never turns anything into `paid`.
+
 ### `todos.financial_status` (migration 079)
 | DB value | Canonical |
 |---|---|
@@ -116,3 +121,13 @@ action item (attention-model §5). Extraction status never means money moved.
 
 Sprint 4 unit 4.3 unifies these under one Money workspace; the vocabulary here is
 what every tab and label must use (unit 4.4).
+
+**Unit 4.4 rollout (done).** The mapping lives in
+`modules/moneyflow/lib/canonical-financial-state.ts` and is rendered by the single
+`FinancialStateBadge` component, whose labels always come from `dict.money.states`
+(en/ru/ro). Converted surfaces: subscription payment workflow panel, subscription
+payment task panel, subscription suggestion panel, subscription list item,
+financial task panel, document extraction review. The competing hardcoded
+`REVIEW_STATE_LABELS` map was deleted, as were the `financialTask.status*`
+dictionary keys. `modules/moneyflow/components/financial-state-badge.test.tsx`
+fails if a surface reintroduces its own vocabulary.

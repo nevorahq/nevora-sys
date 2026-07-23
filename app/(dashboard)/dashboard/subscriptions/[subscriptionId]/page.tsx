@@ -9,12 +9,14 @@ import { getPaymentCyclesForSubscription } from "@/modules/subtracker/queries/ge
 import { SubscriptionPaymentWorkflowPanel } from "@/modules/subtracker/components/subscription-payment-workflow-panel";
 import { SubscriptionSuggestionPanel } from "@/modules/subtracker/components/subscription-suggestion-panel";
 import { getAccounts } from "@/modules/moneyflow/queries/get-accounts";
+import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 
 export default async function SubscriptionDetailPage({ params }: PageProps<"/dashboard/subscriptions/[subscriptionId]">) {
   const { subscriptionId } = await params;
   const ctx = await requireOrg();
   const { org } = ctx;
+  const { dict } = await getDictionary();
 
   const supabase = await createClient();
   const { data: sub } = await supabase
@@ -45,7 +47,7 @@ export default async function SubscriptionDetailPage({ params }: PageProps<"/das
   return (
     <>
       <div className="mb-6">
-        <Link href={ROUTES.subscriptions} className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-text-primary"><ArrowLeftIcon size={16} /> Subscriptions</Link>
+        <Link href={ROUTES.subscriptions} className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-text-primary"><ArrowLeftIcon size={16} /> {dict.subscriptions.title}</Link>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-text-primary">{sub.name}</h1>
@@ -67,6 +69,7 @@ export default async function SubscriptionDetailPage({ params }: PageProps<"/das
               due_date: (s.due_date as string | null) ?? null,
             }))}
             canWrite={canWrite}
+            stateLabels={dict.money.states}
           />
           <SubscriptionPaymentWorkflowPanel
             subscriptionId={sub.id}
@@ -77,6 +80,9 @@ export default async function SubscriptionDetailPage({ params }: PageProps<"/das
             history={history}
             accounts={accounts.map((a) => ({ id: a.id, name: a.name, currency: a.currency }))}
             canWrite={canWrite}
+            stateLabels={dict.money.states}
+            inlineAccount={dict.money.inlineAccount}
+            accountTypeLabels={dict.money.accounts.types}
           />
           {sub.note && <section className="soft-card p-5 sm:p-6"><h2 className="text-base font-semibold text-text-primary">Notes</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-primary">{sub.note}</p></section>}
           <UniversalRelationViewer entityType="subscription" entityId={sub.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.subscriptions}/${sub.id}`} />

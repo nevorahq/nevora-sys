@@ -42,6 +42,13 @@ interface NavItem {
    */
   activeMatch?: string[];
   /**
+   * Path prefixes that must NOT light this item up even though they sit under
+   * its own href. Financial Tasks lives at `/dashboard/tasks/financial` but is a
+   * Money-workspace tab, so Work must yield it to Finances — otherwise two
+   * sections report active at once.
+   */
+  excludeMatch?: string[];
+  /**
    * Match the pathname EXACTLY rather than by prefix. Home points at `/dashboard`,
    * which is a prefix of every dashboard route — without this it would report
    * active everywhere.
@@ -73,8 +80,8 @@ export function Sidebar({ dict }: SidebarProps) {
   // Server Actions and route handlers server-side.
   const navItems: NavItem[] = [
     { href: ROUTES.dashboard, label: dict.nav.home,      icon: HomeIcon, exact: true },
-    { href: ROUTES.tasks,     label: dict.nav.tasks,     icon: CheckSquareIcon },
-    { href: ROUTES.money,     label: dict.nav.money,     icon: WalletIcon, activeMatch: [ROUTES.subscriptions] },
+    { href: ROUTES.tasks,     label: dict.nav.tasks,     icon: CheckSquareIcon, excludeMatch: [ROUTES.tasksFinancial] },
+    { href: ROUTES.money,     label: dict.nav.money,     icon: WalletIcon, activeMatch: [ROUTES.subscriptions, ROUTES.tasksFinancial] },
     { href: ROUTES.documents, label: dict.nav.documents, icon: FileTextIcon },
     { href: ROUTES.inbox,     label: dict.nav.inbox,     icon: InboxIcon },
     { href: ROUTES.settings,  label: dict.nav.settings,  icon: SettingsIcon },
@@ -82,6 +89,7 @@ export function Sidebar({ dict }: SidebarProps) {
 
   function isActive(item: NavItem): boolean {
     if (item.exact) return pathname === item.href;
+    if ((item.excludeMatch ?? []).some((p) => pathname.startsWith(p))) return false;
     if (pathname.startsWith(item.href)) return true;
     return (item.activeMatch ?? []).some((p) => pathname.startsWith(p));
   }
