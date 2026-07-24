@@ -82,6 +82,33 @@ SELECT pg_temp.assert_true(
   'mark-all changes delivery read state and leaves pending reminders intact'
 );
 
+-- The due-today milestone is scheduled at 09:00 in the organization timezone
+-- (`reminder_execution_at`), i.e. 06:00 UTC for Europe/Chisinau in summer. Whether
+-- it was already due therefore depended on the wall clock: this harness passed
+-- only when CI happened to run after that hour, and failed every early-morning
+-- run for a reason that had nothing to do with the change under test.
+--
+-- Make the row due explicitly instead. `scheduled_at <= now()` is exactly the
+-- worker's claim condition, and moving only `scheduled_at` leaves `source_due_at`
+-- untouched — so the worker's revalidation
+-- (`reminder_execution_at(next_billing_date, …) = source_due_at`) still has to
+-- hold for delivery to happen. The later milestones (overdue +1d/+3d) stay in the
+-- future, so exactly one row is claimable and the "no duplicate" assertion below
+-- keeps its meaning.
+UPDATE public.reminder_schedules
+SET scheduled_at = now() - interval '1 minute'
+WHERE source_type = 'subscription'
+  AND source_id = '44000000-0000-4000-8000-00000000000a'
+  AND trigger_type = 'due-today'
+  AND status = 'pending';
+
+-- Pin the precondition: without it a future regression could leave zero rows due
+-- and the delivery assertions would pass vacuously for the wrong reason.
+SELECT pg_temp.assert_true(
+  (SELECT count(*) FROM public.reminder_schedules WHERE status = 'pending' AND scheduled_at <= now()) = 1,
+  'exactly one milestone is due before the worker runs'
+);
+
 SET LOCAL ROLE service_role;
 SELECT set_config('request.jwt.claim.role', 'service_role', true);
 SELECT pg_temp.assert_true(
