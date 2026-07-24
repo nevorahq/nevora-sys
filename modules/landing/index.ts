@@ -1,12 +1,14 @@
 export { LandingPage } from "./components/landing-page";
 export { LandingHeader } from "./components/landing-header";
 export { HeroSection } from "./components/hero-section";
+export { ProductPreviewSection } from "./components/product-preview-section";
 export { HowItWorksSection } from "./components/how-it-works-section";
 export { AreasSection } from "./components/areas-section";
 export { AttentionSection } from "./components/attention-section";
 export { DocJourneySection } from "./components/doc-journey-section";
 export { StatesSection } from "./components/states-section";
 export { AiLimitsSection } from "./components/ai-limits-section";
+export { ProofSection } from "./components/proof-section";
 export { ControlSection } from "./components/control-section";
 export { PlansSection } from "./components/plans-section";
 export { FaqSection } from "./components/faq-section";

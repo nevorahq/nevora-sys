@@ -13,6 +13,8 @@ import { HtmlLangSync } from "./html-lang-sync";
 import { LandingFooter } from "./landing-footer";
 import { LandingHeader } from "./landing-header";
 import { PlansSection } from "./plans-section";
+import { ProductPreviewSection } from "./product-preview-section";
+import { ProofSection } from "./proof-section";
 import { StatesSection } from "./states-section";
 import { StorySection } from "./story-section";
 
@@ -33,6 +35,18 @@ export function LandingPage({ locale }: LandingPageProps) {
       <LandingHeader nav={content.nav} header={content.header} locale={locale} />
       <main className="flex-1">
         <HeroSection content={content.hero} />
+        <ProductPreviewSection
+          content={content.preview}
+          navLabels={{
+            home: dict.nav.home,
+            work: dict.nav.tasks,
+            money: dict.nav.money,
+            documents: dict.nav.documents,
+            inbox: dict.nav.inbox,
+            settings: dict.nav.settings,
+          }}
+          stateLabels={dict.money.states}
+        />
         <HowItWorksSection content={content.how} />
         <AreasSection content={content.areas} />
         <AttentionSection content={content.attention} />
@@ -40,6 +54,7 @@ export function LandingPage({ locale }: LandingPageProps) {
         <StatesSection content={content.states} labels={dict.money.states} />
         <AiLimitsSection content={content.aiLimits} />
         <ControlSection content={content.control} />
+        <ProofSection content={content.proof} />
         <PlansSection content={content.plans} locale={locale} />
         <FaqSection content={content.faq} />
         <StorySection story={content.story} contact={content.contact} />

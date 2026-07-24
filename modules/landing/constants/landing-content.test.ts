@@ -5,6 +5,7 @@ import {
   AREA_IDS,
   ATTENTION_IDS,
   FAQ_IDS,
+  PROOF_IDS,
   LANDING_LOCALES,
   getLandingContent,
 } from "./landing-content";
@@ -54,6 +55,39 @@ describe("landing content", () => {
       for (const item of items) {
         expect(item.q.length, `empty FAQ question "${item.id}" in "${locale}"`).toBeGreaterThan(0);
         expect(item.a.length, `empty FAQ answer "${item.id}" in "${locale}"`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("labels every product-preview row with a canonical financial state, same rows across locales", () => {
+    // Превью-фрейм красит бейджи через STATE_STYLE и берёт подпись из
+    // dict.money.states по row.state — незнакомое состояние осталось бы без
+    // цвета и подписи. Держим состояния каноническими и одинаковыми по локалям.
+    const enRows = getLandingContent("en").preview.rows;
+    for (const locale of LANDING_LOCALES) {
+      const rows = getLandingContent(locale).preview.rows;
+      expect(rows.length, `preview row count for "${locale}"`).toBe(enRows.length);
+      rows.forEach((row, i) => {
+        expect(
+          CANONICAL_FINANCIAL_STATES as readonly string[],
+          `preview row ${i} state "${row.state}" in "${locale}"`,
+        ).toContain(row.state);
+        // Состояние строки не переводится — это ключ бейджа, общий для всех локалей.
+        expect(row.state, `preview row ${i} state drifted in "${locale}"`).toBe(enRows[i].state);
+      });
+    }
+  });
+
+  it("keeps the same proof ids, in the same order, with non-empty claim/how, in every locale", () => {
+    for (const locale of LANDING_LOCALES) {
+      const items = getLandingContent(locale).proof.items;
+      expect(
+        items.map((item) => item.id),
+        `proof ids for locale "${locale}"`,
+      ).toEqual([...PROOF_IDS]);
+      for (const item of items) {
+        expect(item.claim.length, `empty proof claim "${item.id}" in "${locale}"`).toBeGreaterThan(0);
+        expect(item.how.length, `empty proof how "${item.id}" in "${locale}"`).toBeGreaterThan(0);
       }
     }
   });

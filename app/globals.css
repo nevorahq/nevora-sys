@@ -55,6 +55,7 @@
   --color-danger-soft:  var(--danger-soft);
   --color-info:         var(--info);
   --color-info-soft:    var(--info-soft);
+  /* success = posted-transaction / paid state (FinancialStateBadge) */
   --color-success:      var(--success);
   --color-success-soft: var(--success-soft);
   --color-focus-ring:   var(--focus-ring);

@@ -49,6 +49,23 @@ export const FAQ_IDS = ["beta", "afterTrial", "workspace", "data", "ai", "langua
 
 export type FaqId = (typeof FAQ_IDS)[number];
 
+/**
+ * Гарантии секции «как мы это доказываем». Каждая привязана к реальному
+ * контрактному тесту (docs/contracts/* + test/release-invariants), поэтому
+ * формулировки — проверяемые инварианты, а не маркетинг. Стабильные `id`
+ * держат порядок и состав во всех локалях.
+ */
+export const PROOF_IDS = [
+  "money",
+  "idempotent",
+  "notifications",
+  "ai",
+  "isolation",
+  "privacy",
+] as const;
+
+export type ProofId = (typeof PROOF_IDS)[number];
+
 const en = {
   meta: {
     title: "Nevora Business OS — One workspace that tells you what needs action",
@@ -80,6 +97,18 @@ const en = {
     secondaryCta: "See pricing",
     microcopy: "Private beta · 14-day trial · 500 MB storage · no card · EN / RU / RO.",
     audience: "Built for small and growing teams that want order without heavy software.",
+  },
+  preview: {
+    title: "A look inside",
+    subtitle:
+      "The Money workspace. Every obligation carries the same state label you meet everywhere else in the product.",
+    caption: "Illustrative preview — sample data, not a real account.",
+    rows: [
+      { name: "Acme Studio — invoice", amount: "€1,200", state: "due" },
+      { name: "Cloud storage — subscription", amount: "€15", state: "paid" },
+      { name: "Office rent", amount: "€800", state: "planned" },
+      { name: "Scanned receipt", amount: "—", state: "needs_review" },
+    ],
   },
   how: {
     title: "Add, review, execute",
@@ -203,6 +232,45 @@ const en = {
     ],
     closing:
       "Important obligations stay visible until they are resolved — not just until a notification is read.",
+  },
+  proof: {
+    title: "How we prove it, not just say it",
+    subtitle:
+      "Each guarantee below is a contract test in our codebase. Break it, and the build fails — the promise ships with the code.",
+    items: [
+      {
+        id: "money",
+        claim: "Money moves only when you confirm it",
+        how: "Nothing posts a transaction on its own. The confirm-first rule is checked by a test, not left to convention.",
+      },
+      {
+        id: "idempotent",
+        claim: "Paying twice can’t charge twice",
+        how: "Marking the same obligation paid more than once is idempotent by construction — the second confirm is a no-op.",
+      },
+      {
+        id: "notifications",
+        claim: "Reading a notice doesn’t resolve it",
+        how: "Notification state and obligation state are separate. Clearing a badge never closes the underlying work.",
+      },
+      {
+        id: "ai",
+        claim: "The AI can’t act on its own",
+        how: "AI writes only to its own suggestion tables — it can’t post money, mark anything paid, change your plan or permissions, or delete data.",
+      },
+      {
+        id: "isolation",
+        claim: "Your workspace is sealed off",
+        how: "A request for another workspace’s data comes back empty, as if it didn’t exist — enforced row by row, not by hiding a button.",
+      },
+      {
+        id: "privacy",
+        claim: "Analytics never sees your content",
+        how: "Usage events carry no document text, file names or email addresses — only that something happened.",
+      },
+    ],
+    closing:
+      "These are not badges we drew. Each one fails our build the moment it stops being true.",
   },
   aiLimits: {
     title: "What the AI can do — and what it can never do alone",
@@ -367,6 +435,18 @@ const ru: LandingContent = {
     microcopy: "Закрытая бета · пробный период 14 дней · 500 МБ · без карты · EN / RU / RO.",
     audience: "Для малых и растущих команд, которым нужен порядок без тяжёлых программ.",
   },
+  preview: {
+    title: "Взгляд внутрь",
+    subtitle:
+      "Рабочее пространство «Финансы». Каждое обязательство несёт ту же подпись состояния, что и везде в продукте.",
+    caption: "Иллюстративное превью — примерные данные, не реальный аккаунт.",
+    rows: [
+      { name: "Acme Studio — счёт", amount: "€1 200", state: "due" },
+      { name: "Облачное хранилище — подписка", amount: "€15", state: "paid" },
+      { name: "Аренда офиса", amount: "€800", state: "planned" },
+      { name: "Отсканированный чек", amount: "—", state: "needs_review" },
+    ],
+  },
   how: {
     title: "Добавьте, проверьте, выполните",
     subtitle:
@@ -489,6 +569,45 @@ const ru: LandingContent = {
     ],
     closing:
       "Важные обязательства остаются видимыми до завершения — а не только до прочтения уведомления.",
+  },
+  proof: {
+    title: "Как мы это доказываем, а не просто заявляем",
+    subtitle:
+      "Каждая гарантия ниже — это контрактный тест в нашем коде. Нарушь её — и сборка падает; обещание идёт вместе с кодом.",
+    items: [
+      {
+        id: "money",
+        claim: "Деньги двигаются только после вашего подтверждения",
+        how: "Ничто не проводит транзакцию само. Правило «сначала подтверждение» проверяется тестом, а не держится на договорённости.",
+      },
+      {
+        id: "idempotent",
+        claim: "Двойная оплата не спишет дважды",
+        how: "Отметить одно обязательство оплаченным дважды идемпотентно по построению — второе подтверждение ничего не делает.",
+      },
+      {
+        id: "notifications",
+        claim: "Прочтение уведомления его не закрывает",
+        how: "Состояние уведомления и состояние обязательства раздельны. Сброс значка никогда не завершает саму работу.",
+      },
+      {
+        id: "ai",
+        claim: "ИИ не может действовать сам",
+        how: "ИИ пишет только в свои таблицы предложений — он не проводит деньги, не отмечает оплату, не меняет тариф или права и не удаляет данные.",
+      },
+      {
+        id: "isolation",
+        claim: "Ваше рабочее пространство изолировано",
+        how: "Запрос данных чужого пространства возвращается пустым, как будто их нет, — на уровне каждой строки, а не спрятанной кнопки.",
+      },
+      {
+        id: "privacy",
+        claim: "Аналитика не видит ваш контент",
+        how: "События использования не несут текста документов, имён файлов и адресов почты — только факт, что что-то произошло.",
+      },
+    ],
+    closing:
+      "Это не бейджи, которые мы нарисовали. Каждый из них роняет нашу сборку в тот момент, когда перестаёт быть правдой.",
   },
   aiLimits: {
     title: "Что ИИ может — и чего он никогда не сделает сам",
@@ -651,6 +770,18 @@ const ro: LandingContent = {
     microcopy: "Versiune beta privată · probă de 14 zile · 500 MB · fără card · EN / RU / RO.",
     audience: "Pentru echipe mici și în creștere care vor ordine fără programe grele.",
   },
+  preview: {
+    title: "O privire înăuntru",
+    subtitle:
+      "Spațiul de lucru Finanțe. Fiecare obligație poartă aceeași etichetă de stare pe care o întâlnești peste tot în produs.",
+    caption: "Previzualizare ilustrativă — date de exemplu, nu un cont real.",
+    rows: [
+      { name: "Acme Studio — factură", amount: "€1.200", state: "due" },
+      { name: "Stocare cloud — abonament", amount: "€15", state: "paid" },
+      { name: "Chirie birou", amount: "€800", state: "planned" },
+      { name: "Bon scanat", amount: "—", state: "needs_review" },
+    ],
+  },
   how: {
     title: "Adaugă, verifică, execută",
     subtitle:
@@ -773,6 +904,45 @@ const ro: LandingContent = {
     ],
     closing:
       "Obligațiile importante rămân vizibile până sunt rezolvate — nu doar până este citită o notificare.",
+  },
+  proof: {
+    title: "Cum dovedim, nu doar spunem",
+    subtitle:
+      "Fiecare garanție de mai jos este un test de contract în codul nostru. Încalc-o și build-ul pică — promisiunea vine odată cu codul.",
+    items: [
+      {
+        id: "money",
+        claim: "Banii se mișcă doar când confirmi tu",
+        how: "Nimic nu înregistrează o tranzacție singur. Regula „mai întâi confirmarea” este verificată de un test, nu lăsată pe seama convenției.",
+      },
+      {
+        id: "idempotent",
+        claim: "Plata de două ori nu debitează de două ori",
+        how: "Marcarea aceleiași obligații ca plătită de mai multe ori este idempotentă prin construcție — a doua confirmare nu face nimic.",
+      },
+      {
+        id: "notifications",
+        claim: "Citirea unei notificări nu o rezolvă",
+        how: "Starea notificării și starea obligației sunt separate. Ștergerea unui indicator nu închide niciodată lucrul de bază.",
+      },
+      {
+        id: "ai",
+        claim: "IA nu poate acționa singură",
+        how: "IA scrie doar în propriile tabele de sugestii — nu înregistrează bani, nu marchează plăți, nu îți schimbă planul sau drepturile și nu șterge date.",
+      },
+      {
+        id: "isolation",
+        claim: "Spațiul tău de lucru este izolat",
+        how: "O cerere pentru datele altui spațiu se întoarce goală, ca și cum nu ar exista — impus rând cu rând, nu prin ascunderea unui buton.",
+      },
+      {
+        id: "privacy",
+        claim: "Analitica nu îți vede conținutul",
+        how: "Evenimentele de utilizare nu poartă textul documentelor, numele fișierelor sau adresele de e-mail — doar faptul că ceva s-a întâmplat.",
+      },
+    ],
+    closing:
+      "Nu sunt insigne pe care le-am desenat. Fiecare pică build-ul nostru în momentul în care încetează să fie adevărat.",
   },
   aiLimits: {
     title: "Ce poate face IA — și ce nu poate face niciodată singură",
