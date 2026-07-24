@@ -156,6 +156,10 @@ vite.config.ts.timestamp-*
 *~
 .*.swp
 
+# macOS Finder metadata — per-directory, so match at any depth
+.DS_Store
+**/.DS_Store
+
 # Graphify generated knowledge-graph artifacts
 graphify-out/
 **/graphify-out/
