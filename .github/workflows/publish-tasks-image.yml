@@ -1,0 +1,106 @@
+name: Publish Tasks staging image
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: publish-tasks-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout selected revision
+        uses: actions/checkout@v4
+
+      - name: Resolve immutable image tag
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          repository="ghcr.io/${owner}/nevora-tasks"
+          echo "repository=${repository}" >> "$GITHUB_OUTPUT"
+          echo "immutable=${repository}:sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "staging=${repository}:staging" >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate to GitHub Container Registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
+            --username "${{ github.actor }}" \
+            --password-stdin
+
+      - name: Build image
+        env:
+          IMMUTABLE_IMAGE: ${{ steps.image.outputs.immutable }}
+          STAGING_IMAGE: ${{ steps.image.outputs.staging }}
+        run: |
+          set -euo pipefail
+          docker build --pull \
+            --file apps/tasks/Dockerfile \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --tag "$IMMUTABLE_IMAGE" \
+            --tag "$STAGING_IMAGE" \
+            .
+
+      - name: Verify image before publishing
+        env:
+          IMMUTABLE_IMAGE: ${{ steps.image.outputs.immutable }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(docker image inspect "$IMMUTABLE_IMAGE" --format '{{.Config.User}}')" = "nextjs"
+
+          container="nevora-tasks-publish-smoke"
+          docker run --detach --rm \
+            --name "$container" \
+            --publish 127.0.0.1:3101:3001 \
+            "$IMMUTABLE_IMAGE"
+          trap 'docker stop "$container" >/dev/null 2>&1 || true' EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3101/api/health >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs "$container"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          status="$(curl --silent --output /tmp/tasks-ready.json --write-out '%{http_code}' \
+            http://127.0.0.1:3101/api/ready)"
+          test "$status" = "503"
+          grep --quiet '"status":"not_ready"' /tmp/tasks-ready.json
+
+      - name: Publish immutable and staging tags
+        env:
+          IMMUTABLE_IMAGE: ${{ steps.image.outputs.immutable }}
+          STAGING_IMAGE: ${{ steps.image.outputs.staging }}
+        run: |
+          set -euo pipefail
+          docker push "$IMMUTABLE_IMAGE"
+          docker push "$STAGING_IMAGE"
+
+      - name: Record release
+        env:
+          IMMUTABLE_IMAGE: ${{ steps.image.outputs.immutable }}
+        run: |
+          {
+            echo "## Tasks staging image"
+            echo
+            echo "Published immutable image: \`$IMMUTABLE_IMAGE\`"
+            echo
+            echo "Deploy the immutable tag; do not pin staging infrastructure to the mutable alias."
+          } >> "$GITHUB_STEP_SUMMARY"
