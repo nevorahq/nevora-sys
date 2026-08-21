@@ -1,0 +1,14 @@
+.git
+.github
+.next
+**/.next
+node_modules
+**/node_modules
+coverage
+.gstack
+.env
+.env.*
+*.log
+*.tsbuildinfo
+docs
+supabase

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor, fireEvent } from "@testing-library/react";
 
 const changeTaskStatusAction = vi.fn();
-vi.mock("@/modules/tasks/actions/change-task-status.action", () => ({ changeTaskStatusAction }));
+vi.mock("@/modules/tasks/actions", () => ({ changeTaskStatusAction }));
 
 const { TaskStatusBadge } = await import("./task-status-badge");
 

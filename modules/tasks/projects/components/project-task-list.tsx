@@ -7,7 +7,7 @@ import { PlusIcon, XIcon, LinkIcon } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Modal } from "@/shared/ui/modal";
 import { Select } from "@/shared/ui/select";
-import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
+import { RestrictedActionTooltip, useAccessGate } from "@/platform/access/ui";
 import { cn } from "@/shared/utils/cn";
 import { ROUTES } from "@/shared/config/routes";
 import { TaskStatusBadge } from "@/features/todos/components/task-status-badge";

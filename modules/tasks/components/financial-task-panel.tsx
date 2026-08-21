@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircleIcon, PencilIcon, SkipForwardIcon, XCircleIcon, WalletIcon } from "lucide-react";
@@ -10,10 +11,8 @@ import { Select } from "@/shared/ui/select";
 import { formatMoney } from "@/shared/utils/format-money";
 import { formatDate } from "@/shared/utils/format-date";
 import { ROUTES } from "@/shared/config/routes";
-import { FinancialStateBadge } from "@/modules/moneyflow/components/financial-state-badge";
-import { InlineAccountPrompt } from "@/modules/moneyflow/components/inline-account-prompt";
+import { FinancialStateBadge } from "@nevora/financial-state/ui";
 import type { TaskContextType, FinancialTaskStatus } from "../constants/task.constants";
-import { markFinancialTaskPaidAction } from "../actions/mark-financial-task-paid.action";
 import { setFinancialTaskAmountAction } from "../actions/set-financial-task-amount.action";
 import { skipFinancialTaskAction, dismissFinancialTaskAction } from "../actions/resolve-financial-task.action";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
@@ -38,16 +37,17 @@ export interface FinancialTaskPanelData {
   source_document_id: string | null;
 }
 
-interface Props {
+export interface FinancialTaskPanelProps {
   task: FinancialTaskPanelData;
   accounts: AccountOption[];
   canWrite: boolean;
   t: Dictionary["financialTask"];
   /** Canonical financial-state labels (`dict.money.states`) for the status badge. */
   stateLabels: Dictionary["money"]["states"];
-  /** Copy for the inline "no money account yet" resolution. */
-  inlineAccount: Dictionary["money"]["inlineAccount"];
-  accountTypeLabels: Dictionary["money"]["accounts"]["types"];
+  /** Integration slot supplied by a workflow when no payment account exists. */
+  emptyAccountPrompt?: ReactNode;
+  /** Workflow-owned mutation that atomically posts the expense and settles the task. */
+  onMarkAsPaid: (input: { taskId: string; accountId: string }) => Promise<{ error?: string }>;
 }
 
 /**
@@ -62,9 +62,9 @@ export function FinancialTaskPanel({
   canWrite,
   t,
   stateLabels,
-  inlineAccount,
-  accountTypeLabels,
-}: Props) {
+  emptyAccountPrompt,
+  onMarkAsPaid,
+}: FinancialTaskPanelProps) {
   const router = useRouter();
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -235,15 +235,7 @@ export function FinancialTaskPanel({
                 onChange={(e) => setAccountId(e.target.value)}
                 options={accounts.map((a) => ({ value: a.id, label: `${a.name} · ${a.currency}` }))}
               />
-            ) : (
-              <InlineAccountPrompt
-                obligationKind="financial_task"
-                obligationId={task.id}
-                currency={task.currency ?? ""}
-                t={inlineAccount}
-                accountTypes={accountTypeLabels}
-              />
-            )
+            ) : emptyAccountPrompt
           )}
           <div className="flex flex-wrap gap-2">
             {canPay && !editingAmount && (
@@ -251,7 +243,7 @@ export function FinancialTaskPanel({
                 type="button"
                 isLoading={isPending}
                 disabled={!accountId || accounts.length === 0}
-                onClick={() => run(() => markFinancialTaskPaidAction({ taskId: task.id, accountId }))}
+                onClick={() => run(() => onMarkAsPaid({ taskId: task.id, accountId }))}
               >
                 <CheckCircleIcon size={15} className="mr-1.5" /> {t.markAsPaid}
               </Button>

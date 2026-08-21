@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
+import { retireGeneratedTasks } from "@/platform/task-lifecycle/server";
 import { calculateNextPaymentDate } from "./calculate-next-payment-date";
 import { provisionSubscriptionPaymentCycle } from "./provision-subscription-payment-cycle";
 import {
@@ -54,12 +55,11 @@ export async function skipSubscriptionPaymentCycle(params: {
   // Retire the open payment task (soft delete keeps history, drops it from
   // active lists).
   if (cycle.task_id) {
-    await supabase
-      .from("todos")
-      .update({ deleted_at: new Date().toISOString(), updated_by: ctx.user.id })
-      .eq("id", cycle.task_id)
-      .eq("organization_id", ctx.org.id)
-      .is("deleted_at", null);
+    await retireGeneratedTasks({
+      supabase,
+      ctx,
+      taskIds: [cycle.task_id],
+    });
   }
 
   const { data: subRow } = await supabase

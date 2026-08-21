@@ -2,8 +2,8 @@ import { cn } from "@/shared/utils/cn";
 import {
   CANONICAL_FINANCIAL_STATES,
   type CanonicalFinancialState,
-} from "@/modules/moneyflow/lib/canonical-financial-state";
-import { STATE_STYLE } from "@/modules/moneyflow/components/financial-state-badge";
+} from "@/modules/moneyflow/contracts";
+import { STATE_STYLE } from "@nevora/financial-state/ui";
 import type { LandingContent } from "../constants/landing-content";
 
 /**

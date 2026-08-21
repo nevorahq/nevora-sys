@@ -6,13 +6,14 @@ const canDo = vi.fn();
 const emitDomainEvent = vi.fn();
 const getDictionary = vi.fn();
 const revalidatePath = vi.fn();
+const findPaidObligationForTransaction = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/lib/supabase/server", () => ({ createClient }));
 vi.mock("@/lib/auth/require-org", () => ({ requireOrg }));
 // Phase 2: actions now funnel through requireAppAccess; mock that boundary and
 // delegate to the existing requireOrg fixture (the guard has its own tests).
-vi.mock("@/lib/security", () => ({
+vi.mock("@/platform/access/server", () => ({
   requireAppAccess: () => requireOrg(),
   accessErrorToActionResult: () => null,
   isAccessError: () => false,
@@ -20,6 +21,7 @@ vi.mock("@/lib/security", () => ({
 vi.mock("@/lib/context/current-context", () => ({ canDo }));
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
 vi.mock("@/shared/i18n/get-dictionary", () => ({ getDictionary }));
+vi.mock("@/platform/financial-obligations/server", () => ({ findPaidObligationForTransaction }));
 
 const { deleteTransactionAction } = await import("./delete-transaction.action");
 
@@ -33,26 +35,7 @@ const organizationEq = vi.fn(() => ({ select }));
 const transactionEq = vi.fn(() => ({ eq: organizationEq }));
 const deleteQuery = vi.fn(() => ({ eq: transactionEq }));
 
-// Paid-obligation guard: two read chains resolved before the delete.
-// .select(...).eq(...).eq(...).eq(...).limit(1).maybeSingle()
-const cycleMaybeSingle = vi.fn();
-const taskMaybeSingle = vi.fn();
-function makeSelectChain(maybeSingleFn: ReturnType<typeof vi.fn>) {
-  const chain: Record<string, unknown> = {};
-  chain.select = vi.fn(() => chain);
-  chain.eq = vi.fn(() => chain);
-  chain.limit = vi.fn(() => chain);
-  chain.maybeSingle = maybeSingleFn;
-  return chain;
-}
-const cycleChain = makeSelectChain(cycleMaybeSingle);
-const taskChain = makeSelectChain(taskMaybeSingle);
-
-const from = vi.fn((table: string) => {
-  if (table === "subscription_payment_cycles") return cycleChain;
-  if (table === "todos") return taskChain;
-  return { delete: deleteQuery };
-});
+const from = vi.fn(() => ({ delete: deleteQuery }));
 const rpc = vi.fn(async () => ({ error: null }));
 
 beforeEach(() => {
@@ -69,8 +52,7 @@ beforeEach(() => {
     },
   });
   // Default: the transaction backs no paid obligation, so the delete proceeds.
-  cycleMaybeSingle.mockResolvedValue({ data: null, error: null });
-  taskMaybeSingle.mockResolvedValue({ data: null, error: null });
+  findPaidObligationForTransaction.mockResolvedValue(null);
   requireOrg.mockResolvedValue({
     user: { id: USER_ID },
     org: { id: ORGANIZATION_ID },
@@ -145,7 +127,7 @@ describe("deleteTransactionAction", () => {
   });
 
   it("refuses to delete a transaction that backs a paid subscription cycle", async () => {
-    cycleMaybeSingle.mockResolvedValue({ data: { id: "cycle-1" }, error: null });
+    findPaidObligationForTransaction.mockResolvedValue("subscription_cycle");
 
     await expect(deleteTransactionAction(TRANSACTION_ID)).resolves.toEqual({
       error: "Linked to a paid obligation",
@@ -157,7 +139,7 @@ describe("deleteTransactionAction", () => {
   });
 
   it("refuses to delete a transaction that backs a paid financial task", async () => {
-    taskMaybeSingle.mockResolvedValue({ data: { id: "task-1" }, error: null });
+    findPaidObligationForTransaction.mockResolvedValue("financial_task");
 
     await expect(deleteTransactionAction(TRANSACTION_ID)).resolves.toEqual({
       error: "Linked to a paid obligation",

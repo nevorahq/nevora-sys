@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { ROUTES, projectDetailUrl } from "@/shared/config/routes";
 import { uuidSchema } from "@/lib/validators/common";
-import { recalculateProjectProgress } from "@/modules/tasks/projects/services/recalculate-project-progress";
+import { recalculateProjectProgress } from "@/modules/tasks/server";
 
 /**
  * Server Action: удалить todo.

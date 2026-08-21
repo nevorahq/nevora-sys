@@ -10,7 +10,17 @@ import { describe, expect, it } from "vitest";
  */
 
 const ROOT = join(__dirname, "..");
-const SOURCE_DIRS = ["app", "modules", "features", "shared", "entities"];
+const SOURCE_DIRS = [
+  "app",
+  "apps",
+  "modules",
+  "packages",
+  "workflows",
+  "platform",
+  "features",
+  "shared",
+  "entities",
+];
 const SOURCE_EXT = /\.(tsx?|css)$/;
 const SKIP_DIRS = new Set(["node_modules", ".next", "graphify-out"]);
 

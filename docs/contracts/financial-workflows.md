@@ -1,6 +1,6 @@
 # Contract — Financial Workflows (confirm-first)
 
-**Status:** Active · **Last verified:** 2026-07-08 (Phase A)
+**Status:** Active · **Last verified:** 2026-08-21
 **Enforced by:** [`test/release-invariants.test.ts`](../../test/release-invariants.test.ts)
 
 Nevora is **AI-assisted, not AI-controlled**. This document is the normative
@@ -37,8 +37,10 @@ Every `money_transactions` row with `status='posted'` originates from exactly on
    The user saw the amount and pressed a button.
 
 2. **An approved idempotent workflow.**
-   `markSubscriptionPaymentAction` → `mark_subscription_payment_paid` RPC (078)
-   `markFinancialTaskPaidAction` → `mark_financial_task_paid` RPC (079)
+   `workflows/financial-obligations/actions.ts::markSubscriptionPaymentAction`
+   → `mark_subscription_payment_paid` RPC (078)
+   `workflows/financial-obligations/actions.ts::markFinancialTaskPaidAction`
+   → `mark_financial_task_paid` RPC (079)
    Still user-initiated ("Mark as paid"), but the posting is atomic and replay-safe.
 
 Nothing else. In particular **no cron, no AI job, and no event handler posts money.**
@@ -72,7 +74,7 @@ Capture / Document / Subscription / Task
   → System prepares a reviewable action (draft / planned — NOT posted)
   → Action Center shows what needs attention
   → Human confirms / edits / rejects / snoozes
-  → Existing module service executes  (the ONLY writer of business data)
+  → Owning product/workflow service executes (the ONLY writer of business data)
   → Domain event records the change
   → Notifications, relations, analytics, AI context update
 ```

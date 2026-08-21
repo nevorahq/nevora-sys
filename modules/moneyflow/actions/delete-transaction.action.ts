@@ -2,12 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
+import { requireAppAccess, accessErrorToActionResult } from "@/platform/access/server";
 import { canDo } from "@/lib/context/current-context";
 import { emitDomainEvent } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
+import { findPaidObligationForTransaction } from "@/platform/financial-obligations/server";
 
 export async function deleteTransactionAction(id: string): Promise<{ error?: string }> {
   const { dict } = await getDictionary();
@@ -39,27 +40,13 @@ export async function deleteTransactionAction(id: string): Promise<{ error?: str
     // null the link while the obligation stays `paid` — a phantom-paid row (this
     // is the origin of the one legacy cycle found on remote 2026-07-08). Refuse
     // and point the user at the obligation instead of corrupting its state.
-    const { data: linkedCycle } = await supabase
-      .from("subscription_payment_cycles")
-      .select("id")
-      .eq("transaction_id", id)
-      .eq("status", "paid")
-      .eq("organization_id", ctx.org.id)
-      .limit(1)
-      .maybeSingle();
+    const linkedObligation = await findPaidObligationForTransaction({
+      supabase,
+      currentContext: ctx,
+      transactionId: id,
+    });
 
-    const { data: linkedTask } = linkedCycle
-      ? { data: null }
-      : await supabase
-          .from("todos")
-          .select("id")
-          .eq("financial_transaction_id", id)
-          .eq("financial_status", "paid")
-          .eq("organization_id", ctx.org.id)
-          .limit(1)
-          .maybeSingle();
-
-    if (linkedCycle || linkedTask) {
+    if (linkedObligation) {
       return { error: dict.money.errors.transactionLinkedToPaidObligation };
     }
 

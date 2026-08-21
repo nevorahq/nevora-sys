@@ -7,7 +7,7 @@ import { confirmFinancialSuggestion, rejectFinancialSuggestion } from "@/modules
 import { retryDocumentExtractionAction } from "../actions/retry-document-extraction.action";
 import { CreateAccountInlineCTA } from "./create-account-inline-cta";
 import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
-import type { MoneyAccountOption } from "@/modules/moneyflow/services/money-account-service";
+import type { MoneyAccountOption } from "@/modules/moneyflow/contracts";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import { Toast } from "@/shared/ui/toast";
 

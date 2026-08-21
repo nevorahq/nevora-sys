@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAppAccess, isAccessError } from "@/lib/security";
+import { requireAppAccess, isAccessError } from "@/platform/access/server";
 import { canDo } from "@/lib/context/current-context";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";

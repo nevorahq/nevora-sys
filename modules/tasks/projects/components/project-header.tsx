@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeftIcon, CalendarIcon, PencilIcon, ArchiveIcon } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Modal } from "@/shared/ui/modal";
-import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
+import { RestrictedActionTooltip, useAccessGate } from "@/platform/access/ui";
 import { ROUTES } from "@/shared/config/routes";
 import { formatDate } from "@/shared/utils/format-date";
 import { ProjectStatusBadge } from "./project-status-badge";

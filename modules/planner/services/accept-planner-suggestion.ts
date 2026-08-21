@@ -3,10 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { canDo, type CurrentContext } from "@/lib/context/current-context";
 import { emitDomainEvent } from "@/lib/events";
 import { createEntityLink } from "@/lib/entity-links";
-import { createStandardTask } from "@/modules/tasks/services/create-standard-task";
-import { createFinancialTask } from "@/modules/tasks/services/create-financial-task";
+import { getTasksApplication } from "@/platform/tasks/server";
 import { createActionItemForDocument } from "@/modules/action-center/services/create-action-item-for-document";
-import { DEFAULT_REMINDER_OFFSET_DAYS, type TaskContextType } from "@/modules/tasks/constants/task.constants";
+import { DEFAULT_REMINDER_OFFSET_DAYS, type TaskContextType } from "@nevora/tasks-contracts";
 import {
   createTaskPayloadSchema,
   financialTaskPayloadSchema,
@@ -294,6 +293,7 @@ async function routeAccept(
   suggestion: PlannerSuggestion,
 ): Promise<AcceptResult> {
   const payload = suggestion.proposed_payload ?? {};
+  const tasks = await getTasksApplication({ supabase, currentContext: ctx });
 
   switch (suggestion.suggestion_type) {
     case "create_task": {
@@ -302,7 +302,7 @@ async function routeAccept(
       if (!parsed.success) return { ok: false, error: "Invalid task payload" };
       // Task priority tops out at 'high'; map 'urgent' down.
       const priority = parsed.data.priority === "urgent" ? "high" : parsed.data.priority;
-      const res = await createStandardTask(supabase, ctx, {
+      const res = await tasks.createStandardTask({
         title: parsed.data.title,
         description: parsed.data.description,
         priority,
@@ -332,7 +332,7 @@ async function routeAccept(
       const contextType = FINANCIAL_CONTEXT_BY_TYPE[suggestion.suggestion_type] ?? "invoice_payment";
       // Money-safe: createFinancialTask records a planned obligation only. A
       // posted expense can ONLY come later from an explicit Mark-as-paid.
-      const res = await createFinancialTask(supabase, ctx, {
+      const res = await tasks.createFinancialTask({
         contextType,
         title: parsed.data.title,
         providerName: parsed.data.providerName ?? null,

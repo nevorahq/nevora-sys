@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
+import { requireAppAccess, accessErrorToActionResult } from "@/platform/access/server";
 import { emitAuditLog } from "@/lib/events";
 import { updateTaskSchema } from "../schemas/task.schema";
 import { ROUTES } from "@/shared/config/routes";

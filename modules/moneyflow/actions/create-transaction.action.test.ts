@@ -15,16 +15,14 @@ vi.mock("@/lib/supabase/server", () => ({ createClient }));
 vi.mock("@/lib/auth/require-org", () => ({ requireOrg }));
 // Phase 2: actions now funnel through requireAppAccess; mock that boundary and
 // delegate to the existing requireOrg fixture (the guard has its own tests).
-vi.mock("@/lib/security", () => ({
+vi.mock("@/platform/access/server", () => ({
   requireAppAccess: () => requireOrg(),
   accessErrorToActionResult: () => null,
   isAccessError: () => false,
-}));
-vi.mock("@/lib/events", () => ({ emitDomainEvent }));
-vi.mock("@/modules/billing", () => ({
   reserveOrganizationUsage,
   releaseOrganizationUsage,
 }));
+vi.mock("@/lib/events", () => ({ emitDomainEvent }));
 vi.mock("../services/money-categorization.service", () => ({ categorizeTransaction }));
 vi.mock("@/shared/i18n/get-dictionary", () => ({
   getDictionary: async () => ({ dict: { money: { errors: {} } } }),

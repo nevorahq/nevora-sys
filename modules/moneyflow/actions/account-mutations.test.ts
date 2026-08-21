@@ -12,7 +12,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/auth/require-org", () => ({ requireOrg: mocks.requireOrg }));
 // Phase 2: actions funnel through requireAppAccess; mock that boundary and
 // delegate to the existing requireOrg fixture (the guard has its own tests).
-vi.mock("@/lib/security", () => ({
+vi.mock("@/platform/access/server", () => ({
   requireAppAccess: () => mocks.requireOrg(),
   accessErrorToActionResult: () => null,
   isAccessError: () => false,

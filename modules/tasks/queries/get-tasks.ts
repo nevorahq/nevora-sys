@@ -1,11 +1,12 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { listTasks as listRuntimeTasks } from "@nevora/tasks-runtime";
 import { createClient } from "@/lib/supabase/server";
 import type { Task, TaskWithAssignees } from "../types/task.types";
 import type { TaskStatus, TaskPriority } from "../constants/task.constants";
 import { ACTIVE_STATUSES } from "../constants/task.constants";
-import { applyTaskSort, TASK_LIST_VIEW } from "./apply-task-sort";
-import { DEFAULT_TASK_SORT, type TaskSort } from "../constants/task-sort.constants";
+import type { TaskSort } from "../constants/task-sort.constants";
 
 export interface GetTasksOptions {
   workspaceId?: string;
@@ -26,9 +27,6 @@ export interface GetTasksOptions {
 const FINANCIAL_COLUMNS =
   "task_context_type, financial_due_date, reminder_offset_days, amount, currency, provider_name, financial_source_type, financial_source_id, source_document_id, financial_transaction_id, financial_status, financial_confidence, financial_paid_at, financial_skipped_at";
 
-const TASK_VIEW_COLUMNS =
-  `id, organization_id, workspace_id, project_id, created_by, updated_by, title, description, status, priority, due_date, recurrence, recurrence_source_id, position, is_completed, created_at, updated_at, deleted_at, priority_weight, is_closed, sort_overdue, ${FINANCIAL_COLUMNS}`;
-
 /**
  * Organization tasks with server-side sorting (smart_default by default) and
  * the full filter set: workspace, project, assignee, status, priority +
@@ -41,56 +39,11 @@ const TASK_VIEW_COLUMNS =
 export async function getTasks(
   orgId: string,
   options: GetTasksOptions = {},
+  client?: SupabaseClient,
 ): Promise<Task[]> {
-  const supabase = await createClient();
-
-  // Assignee filter: resolve the user's task ids first (the view is a single
-  // table projection without an assignee join), then constrain by id.
-  let assigneeTaskIds: string[] | null = null;
-  if (options.assigneeId) {
-    const { data: links } = await supabase
-      .from("task_assignees")
-      .select("task_id")
-      .eq("user_id", options.assigneeId);
-    assigneeTaskIds = (links ?? []).map((l) => l.task_id as string);
-    if (assigneeTaskIds.length === 0) return [];
-  }
-
-  let query = supabase
-    .from(TASK_LIST_VIEW)
-    .select(TASK_VIEW_COLUMNS)
-    .eq("organization_id", orgId)
-    .is("deleted_at", null);
-
-  if (options.workspaceId) query = query.eq("workspace_id", options.workspaceId);
-  if (options.projectId) query = query.eq("project_id", options.projectId);
-  if (options.financialOnly) query = query.neq("task_context_type", "standard");
-  if (assigneeTaskIds) query = query.in("id", assigneeTaskIds);
-
-  if (options.onlyActive) {
-    query = query.in("status", ACTIVE_STATUSES);
-  } else if (options.status) {
-    const statuses = Array.isArray(options.status) ? options.status : [options.status];
-    query = query.in("status", statuses);
-  }
-
-  if (options.priority) query = query.eq("priority", options.priority);
-
-  query = applyTaskSort(query, options.sort ?? DEFAULT_TASK_SORT);
-
-  if (options.limit) query = query.limit(options.limit);
-  if (options.offset !== undefined) {
-    query = query.range(options.offset, options.offset + (options.limit ?? 50) - 1);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error("getTasks error:", error);
-    return [];
-  }
-
-  return (data ?? []) as unknown as Task[];
+  const supabase = client ?? await createClient();
+  const { workspaceId, ...input } = options;
+  return listRuntimeTasks(supabase, orgId, workspaceId, input);
 }
 
 /**

@@ -1,8 +1,8 @@
 import { WalletIcon, AlertTriangleIcon, ClockIcon } from "lucide-react";
 import { requireOrg } from "@/lib/auth/require-org";
 import { TasksSubnav } from "@/features/todos/components/tasks-subnav";
-import { getFinancialTasks, getFinancialTaskSummary } from "@/modules/tasks/queries/get-financial-tasks";
-import { FinancialTaskCard } from "@/modules/tasks/components/financial-task-card";
+import { getFinancialTasks, getFinancialTaskSummary } from "@/modules/tasks/server";
+import { FinancialTaskCard } from "@/modules/tasks/ui";
 import { formatMoney } from "@/shared/utils/format-money";
 
 /**

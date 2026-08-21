@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CalendarClockIcon, CheckIcon } from "lucide-react";
 import { postPlannedTransactionAction } from "../actions/post-planned-transaction.action";
 import { DeleteTransactionButton } from "./delete-transaction-button";
-import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
+import { RestrictedActionTooltip, useAccessGate } from "@/platform/access/ui";
 import { formatMoney } from "@/shared/utils/format-money";
 import { formatDate } from "@/shared/utils/format-date";
 import { cn } from "@/shared/utils/cn";

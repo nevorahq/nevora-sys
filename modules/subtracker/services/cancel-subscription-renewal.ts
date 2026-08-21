@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
+import { retireGeneratedTasks } from "@/platform/task-lifecycle/server";
 
 type Result = { ok: true; cancelledCycles: number; cancelledTasks: number } | { ok: false; error: string };
 
@@ -49,17 +50,12 @@ export async function cancelSubscriptionRenewal(params: {
     .map((c) => c.task_id as string | null)
     .filter((id): id is string => Boolean(id));
 
-  let cancelledTasks = 0;
-  if (taskIds.length > 0) {
-    const { data: retired } = await supabase
-      .from("todos")
-      .update({ deleted_at: now, updated_by: ctx.user.id })
-      .in("id", taskIds)
-      .eq("organization_id", ctx.org.id)
-      .is("deleted_at", null)
-      .select("id");
-    cancelledTasks = retired?.length ?? 0;
-  }
+  const cancelledTasks = await retireGeneratedTasks({
+    supabase,
+    ctx,
+    taskIds,
+    retiredAt: now,
+  });
 
   const cancelledCount = cancelledCycles?.length ?? 0;
 

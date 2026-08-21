@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
+import { requireAppAccess, accessErrorToActionResult } from "@/platform/access/server";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { updateTaskDueDateSchema } from "../schemas/task-due-date.schema";
 import { resolveDueDateChange } from "../lib/resolve-due-date-change";

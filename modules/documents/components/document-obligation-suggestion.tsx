@@ -7,8 +7,8 @@ import { Button } from "@/shared/ui/button";
 import { formatMoney } from "@/shared/utils/format-money";
 import { formatDate } from "@/shared/utils/format-date";
 import { ROUTES } from "@/shared/config/routes";
-import type { TaskContextType } from "@/modules/tasks/constants/task.constants";
-import { createFinancialTaskFromDocumentAction } from "@/modules/tasks/actions/create-financial-task-from-document.action";
+import type { TaskContextType } from "@nevora/tasks-contracts";
+import { createFinancialTaskFromDocumentAction } from "@/modules/tasks/actions";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 export interface ObligationSuggestion {

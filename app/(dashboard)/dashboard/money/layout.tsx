@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
-import { MoneyWorkspaceTabs } from "@/modules/moneyflow/components/money-workspace-tabs";
+import { MoneyWorkspaceTabs } from "@/modules/moneyflow/ui";
 
 /**
  * Money workspace layout (Sprint 4 — S4.1). Renders the workspace tabs above

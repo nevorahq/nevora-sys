@@ -2,15 +2,25 @@
   "name": "nevora-sys",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "engines": {
     "node": ">=20.9.0 <24"
   },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:tasks": "npm run build --workspace @nevora/tasks-app",
+    "canary:tasks": "node scripts/tasks-cutover-check.mjs",
+    "dev:tasks": "npm run dev --workspace @nevora/tasks-app",
+    "smoke:tasks": "node scripts/tasks-standalone-smoke.mjs",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "next typegen && tsc --noEmit",
+    "rehearse:tasks": "node scripts/tasks-local-rehearsal.mjs",
+    "typecheck": "next typegen && tsc --noEmit && npm run typecheck:packages",
+    "typecheck:packages": "tsc -p packages/financial-state/tsconfig.json && tsc -p packages/tasks-contracts/tsconfig.json && tsc -p packages/tasks-api/tsconfig.json && tsc -p packages/tasks-runtime/tsconfig.json && npm run typecheck --workspace @nevora/tasks-app",
     "test": "vitest run",
     "test:watch": "vitest",
     "hooks:install": "git config core.hooksPath .githooks && echo 'pre-commit hook enabled (gitleaks)'",
@@ -18,6 +28,10 @@
     "scan:secrets:staged": "gitleaks git --staged --redact --no-banner"
   },
   "dependencies": {
+    "@nevora/financial-state": "0.1.0",
+    "@nevora/tasks-api": "0.1.0",
+    "@nevora/tasks-contracts": "0.1.0",
+    "@nevora/tasks-runtime": "0.1.0",
     "@anthropic-ai/sdk": "^0.105.0",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource/geist-mono": "^5.2.8",

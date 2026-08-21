@@ -108,7 +108,6 @@ export {
   buildFinancialTaskExpenseIdempotencyKey,
 } from "./services/financial-task-keys";
 export { createFinancialTask } from "./services/create-financial-task";
-export { markFinancialTaskAsPaid } from "./services/mark-financial-task-paid";
 export { resolveFinancialTask } from "./services/resolve-financial-task";
 export {
   getFinancialTasks,
@@ -123,7 +122,6 @@ export {
   changeFinancialDueDateSchema,
 } from "./schemas/financial-task.schema";
 export { createFinancialTaskFromDocumentAction } from "./actions/create-financial-task-from-document.action";
-export { markFinancialTaskPaidAction } from "./actions/mark-financial-task-paid.action";
 export { skipFinancialTaskAction, dismissFinancialTaskAction } from "./actions/resolve-financial-task.action";
 export { FinancialTaskPanel } from "./components/financial-task-panel";
 export { FinancialTaskCard } from "./components/financial-task-card";

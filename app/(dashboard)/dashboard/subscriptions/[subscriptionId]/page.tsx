@@ -5,10 +5,10 @@ import { requireOrg } from "@/lib/auth/require-org";
 import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
 import { UniversalRelationViewer } from "@/modules/relations";
-import { getPaymentCyclesForSubscription } from "@/modules/subtracker/queries/get-payment-cycles";
-import { SubscriptionPaymentWorkflowPanel } from "@/modules/subtracker/components/subscription-payment-workflow-panel";
-import { SubscriptionSuggestionPanel } from "@/modules/subtracker/components/subscription-suggestion-panel";
-import { getAccounts } from "@/modules/moneyflow/queries/get-accounts";
+import { getPaymentCyclesForSubscription } from "@/modules/subtracker/server";
+import { SubscriptionPaymentWorkflowPanel } from "@/workflows/financial-obligations/ui";
+import { SubscriptionSuggestionPanel } from "@/modules/subtracker/ui";
+import { getAccounts } from "@/modules/moneyflow/server";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 

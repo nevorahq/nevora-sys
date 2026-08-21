@@ -4,7 +4,7 @@ import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Modal } from "@/shared/ui/modal";
-import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
+import { RestrictedActionTooltip, useAccessGate } from "@/platform/access/ui";
 import { CreateSubscriptionForm } from "./create-subscription-form";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 

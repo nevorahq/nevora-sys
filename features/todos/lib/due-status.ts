@@ -1,4 +1,4 @@
-import type { TaskStatus } from "@/modules/tasks/constants/task.constants";
+import type { TaskStatus } from "@nevora/tasks-contracts";
 
 /**
  * "Heightened attention" classification for a task's due date.

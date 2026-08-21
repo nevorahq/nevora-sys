@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CANONICAL_FINANCIAL_STATES } from "@/modules/moneyflow/lib/canonical-financial-state";
+import { CANONICAL_FINANCIAL_STATES } from "@/modules/moneyflow/contracts";
 import {
   AREA_IDS,
   ATTENTION_IDS,

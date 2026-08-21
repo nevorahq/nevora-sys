@@ -59,14 +59,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Next 16 typed routes: PageProps/RouteContext globals live in
-      # .next/dev/types (referenced by next-env.d.ts). They don't exist on a
-      # fresh checkout, so generate them before tsc or the type check fails.
-      - name: Generate route types
-        run: npx next typegen
-
       - name: Type check
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Lint
         run: npm run lint
@@ -83,6 +77,15 @@ jobs:
           # Реальные значения подставляются в рантайме на хостинге.
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+
+      - name: Build Tasks deployment shell
+        run: npm run build:tasks
+
+      - name: Smoke test Tasks standalone runtime
+        run: npm run smoke:tasks
+
+      - name: Build Tasks container
+        run: docker build --file apps/tasks/Dockerfile --tag nevora-tasks:ci .
 
   # Fresh-from-scratch database verification (I-11): apply every migration in
   # supabase/migrations/ onto a clean local Postgres seeded with hosted-like

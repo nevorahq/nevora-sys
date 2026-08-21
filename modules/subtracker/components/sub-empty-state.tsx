@@ -5,7 +5,7 @@ import { RepeatIcon } from "lucide-react";
 import { Modal } from "@/shared/ui/modal";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { FirstActionCta } from "@/modules/onboarding/components/first-action-cta";
-import { useAccessGate } from "@/modules/billing/components/access-state";
+import { useAccessGate } from "@/platform/access/ui";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import { CreateSubscriptionForm } from "./create-subscription-form";
 

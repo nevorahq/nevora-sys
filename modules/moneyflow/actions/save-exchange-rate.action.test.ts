@@ -7,7 +7,7 @@ const revalidatePath = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/lib/supabase/server", () => ({ createClient }));
-vi.mock("@/lib/security", () => ({
+vi.mock("@/platform/access/server", () => ({
   requireAppAccess,
   accessErrorToActionResult: () => null,
 }));

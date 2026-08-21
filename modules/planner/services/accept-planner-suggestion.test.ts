@@ -11,13 +11,17 @@ const canDo = vi.fn((_ctx: unknown, _permission: string) => true);
 // Parameters are declared so the assertions can read `.mock.calls[i][n]`.
 const emitDomainEvent = vi.fn(async (_event: { eventName: string }) => undefined);
 const createStandardTask = vi.fn(
-  async (_supabase: unknown, _ctx: unknown, _input: { sourceSuggestionId?: string | null }) => ({
+  async (_input: { sourceSuggestionId?: string | null }) => ({
     ok: true as const,
     taskId: "task-1",
     created: true,
   }),
 );
 const createFinancialTask = vi.fn(async () => ({ ok: true as const, taskId: "task-1", created: true }));
+const getTasksApplication = vi.fn(async () => ({
+  createStandardTask,
+  createFinancialTask,
+}));
 interface EntityLinkInput {
   sourceType: string;
   sourceId: string;
@@ -33,8 +37,7 @@ const resolvePlannerActionItems = vi.fn(async () => undefined);
 vi.mock("@/lib/context/current-context", () => ({ canDo }));
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
 vi.mock("@/lib/entity-links", () => ({ createEntityLink }));
-vi.mock("@/modules/tasks/services/create-standard-task", () => ({ createStandardTask }));
-vi.mock("@/modules/tasks/services/create-financial-task", () => ({ createFinancialTask }));
+vi.mock("@/platform/tasks/server", () => ({ getTasksApplication }));
 vi.mock("@/modules/action-center/services/create-action-item-for-document", () => ({
   createActionItemForDocument,
 }));
@@ -344,7 +347,7 @@ describe("acceptPlannerSuggestion — exactly-once across a retried confirm", ()
 
     // Without this key nothing links the todo back to the draft, so migration
     // 099's todos_source_suggestion_unique_idx can never fire.
-    expect(createStandardTask.mock.calls[0][2]).toMatchObject({ sourceSuggestionId: "sug-1" });
+    expect(createStandardTask.mock.calls[0][0]).toMatchObject({ sourceSuggestionId: "sug-1" });
   });
 
   it("records the pre-existing task and does not duplicate it on retry", async () => {

@@ -6,8 +6,11 @@ import { TRANSACTION_TYPES } from "../constants/moneyflow.constants";
 import { Input } from "@/shared/ui/input";
 import { Select } from "@/shared/ui/select";
 import { Button } from "@/shared/ui/button";
-import type { MoneyAccount, MoneyCategory } from "../types/moneyflow.types";
-import type { Subscription } from "@/modules/subtracker/types/subtracker.types";
+import type {
+  MoneyAccount,
+  MoneyCategory,
+  TransactionSubscriptionOption,
+} from "../types/moneyflow.types";
 import type { ActionResult } from "@/lib/validators/common";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
@@ -27,7 +30,7 @@ interface CreateTransactionFormProps {
   dict: Dictionary;
   accounts: MoneyAccount[];
   categories: MoneyCategory[];
-  subscriptions?: Subscription[];
+  subscriptions?: TransactionSubscriptionOption[];
   onSuccess?: () => void;
 }
 

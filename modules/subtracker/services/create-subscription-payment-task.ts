@@ -1,8 +1,8 @@
-import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { createEntityLink } from "@/lib/entity-links";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
+import { createGeneratedTaskRecord } from "@/platform/task-lifecycle/server";
 import { buildSubscriptionPaymentTaskTitle } from "./subscription-payment-keys";
 import type { SubscriptionForPayment, SubscriptionPaymentCycle } from "../types/payment-cycle.types";
 
@@ -38,33 +38,20 @@ export async function createSubscriptionPaymentTaskForCycle(params: {
     return { ok: true, taskId: "", created: false };
   }
 
-  const taskId = randomUUID();
   const title = buildSubscriptionPaymentTaskTitle(subscription.name, cycle.billing_period_key);
   const workspaceId = cycle.workspace_id ?? subscription.workspace_id ?? ctx.workspace.id;
 
-  // Pre-generated UUID avoids INSERT ... RETURNING racing the task-scoped SELECT
-  // RLS before the AFTER INSERT assignee trigger commits (same pattern as
-  // create-task.action).
-  const { error: taskError } = await supabase.from("todos").insert({
-    id: taskId,
-    organization_id: ctx.org.id,
-    workspace_id: workspaceId,
-    created_by: ctx.user.id,
-    updated_by: ctx.user.id,
+  const taskResult = await createGeneratedTaskRecord({
+    supabase,
+    ctx,
     title,
-    description: "",
-    priority: "medium",
-    // Subscription payment tasks start in progress (they represent an active
-    // obligation with a due date), unlike generic tasks which start as 'todo'.
-    status: "in_progress",
-    due_date: cycle.due_date,
-    recurrence: "none",
+    dueDate: cycle.due_date,
+    workspaceId,
   });
-
-  if (taskError) {
-    console.error("[createSubscriptionPaymentTaskForCycle] task insert failed:", taskError.message);
+  if (!taskResult.ok) {
     return { ok: false, error: "Failed to create payment task" };
   }
+  const taskId = taskResult.taskId;
 
   // Promote the cycle. Guard on task_id IS NULL so a concurrent creator cannot
   // double-attach; a lost race leaves an orphan todo the safety cron can adopt.

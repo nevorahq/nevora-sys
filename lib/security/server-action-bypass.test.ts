@@ -46,9 +46,9 @@ vi.mock("@/modules/moneyflow/services/money-categorization.service", () => ({
   categorizeTransaction: vi.fn(),
 }));
 
-const { createTaskAction } = await import("@/modules/tasks/actions/create-task.action");
+const { createTaskAction } = await import("@/modules/tasks/actions");
 const { createDocumentAction } = await import("@/modules/documents/actions/create-document.action");
-const { createTransactionAction } = await import("@/modules/moneyflow/actions/create-transaction.action");
+const { createTransactionAction } = await import("@/modules/moneyflow/actions");
 const { executeActionItem } = await import("@/modules/action-center/actions/execute-action-item");
 const { createCheckoutSessionAction } = await import("@/modules/billing/actions/create-checkout-session.action");
 const { acceptInviteAction } = await import("@/modules/members/actions/accept-invite.action");

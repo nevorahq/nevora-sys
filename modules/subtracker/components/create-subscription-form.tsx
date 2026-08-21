@@ -12,8 +12,7 @@ import {
 import { Input } from "@/shared/ui/input";
 import { Select } from "@/shared/ui/select";
 import { Button } from "@/shared/ui/button";
-import { DocumentFileUpload } from "@/modules/documents/components/document-file-upload";
-import { useDocumentFiles } from "@/modules/documents/hooks/use-document-files";
+import { DocumentFileUpload, useDocumentFiles } from "@/modules/documents/ui";
 import type { ActionResult } from "@/lib/validators/common";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 

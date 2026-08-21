@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
+import { requireAppAccess, accessErrorToActionResult } from "@/platform/access/server";
 import { canDo } from "@/lib/context/current-context";
 import { getAccountSchemas } from "../schemas/account.schema";
 import { createMoneyAccount } from "../services/money-account-service";

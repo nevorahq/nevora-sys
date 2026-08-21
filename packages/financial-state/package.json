@@ -1,0 +1,14 @@
+{
+  "name": "@nevora/financial-state",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./contracts": "./src/contracts.ts",
+    "./ui": "./src/ui.tsx"
+  },
+  "peerDependencies": {
+    "react": "^19.2.4"
+  }
+}

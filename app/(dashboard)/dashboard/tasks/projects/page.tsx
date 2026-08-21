@@ -1,8 +1,8 @@
 import { requireOrg } from "@/lib/auth/require-org";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
-import { getProjects } from "@/modules/tasks/projects/queries/get-projects";
-import { ProjectList } from "@/modules/tasks/projects/components/project-list";
-import { CreateProjectButton } from "@/modules/tasks/projects/components/create-project-button";
+import { getProjects } from "@/modules/tasks/server";
+import { ProjectList } from "@/modules/tasks/ui";
+import { CreateProjectButton } from "@/modules/tasks/ui";
 import { TasksSubnav } from "@/features/todos/components/tasks-subnav";
 
 export const metadata = { title: "Projects" };

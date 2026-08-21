@@ -13,7 +13,7 @@ import { DocumentExtractionReview } from "@/modules/documents/components/documen
 import { DocumentObligationSuggestion } from "@/modules/documents/components/document-obligation-suggestion";
 import { ExtractedFinancialDocumentSchema } from "@/modules/documents/schemas/extracted-financial-document.schema";
 import { classifyFinancialDocumentType } from "@/modules/documents/services/classify-financial-document";
-import { DEFAULT_REMINDER_OFFSET_DAYS } from "@/modules/tasks/constants/task.constants";
+import { DEFAULT_REMINDER_OFFSET_DAYS } from "@nevora/tasks-contracts";
 import { UniversalRelationViewer } from "@/modules/relations";
 import { ROUTES } from "@/shared/config/routes";
 import { DocumentDetailActions } from "@/modules/documents/components/document-detail-actions";

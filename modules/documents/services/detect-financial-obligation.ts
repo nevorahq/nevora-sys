@@ -3,8 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { emitDomainEvent } from "@/lib/events";
 import { logger } from "@/lib/observability/logger";
-import { createFinancialTask } from "@/modules/tasks/services/create-financial-task";
-import { DEFAULT_REMINDER_OFFSET_DAYS } from "@/modules/tasks/constants/task.constants";
+import { getTasksApplication } from "@/platform/tasks/server";
+import { DEFAULT_REMINDER_OFFSET_DAYS } from "@nevora/tasks-contracts";
 import type { ExtractedFinancialDocument } from "../schemas/extracted-financial-document.schema";
 import {
   classifyFinancialDocumentType,
@@ -106,7 +106,11 @@ export async function detectFinancialObligation(
     payload: { context_type: classification.contextType, confidence: classification.confidence },
   }).catch(() => undefined);
 
-  const created = await createFinancialTask(supabase, ctx, {
+  const tasks = await getTasksApplication({
+    supabase,
+    currentContext: ctx,
+  });
+  const created = await tasks.createFinancialTask({
     contextType: classification.contextType,
     providerName: classification.providerName,
     amount: classification.amount,

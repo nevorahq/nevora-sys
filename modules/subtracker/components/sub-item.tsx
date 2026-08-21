@@ -9,10 +9,10 @@ import { renewSubscriptionAction } from "../actions/renew-subscription.action";
 import { formatMoney } from "@/shared/utils/format-money";
 import { SubEditForm } from "./sub-edit-form";
 import { Modal } from "@/shared/ui/modal";
-import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
+import { RestrictedActionTooltip, useAccessGate } from "@/platform/access/ui";
 import { cn } from "@/shared/utils/cn";
 import { formatDate } from "@/shared/utils/format-date";
-import { FinancialStateBadge } from "@/modules/moneyflow/components/financial-state-badge";
+import { FinancialStateBadge } from "@nevora/financial-state/ui";
 import type { Subscription } from "../types/subtracker.types";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 

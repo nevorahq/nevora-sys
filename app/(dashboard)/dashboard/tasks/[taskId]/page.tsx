@@ -4,16 +4,19 @@ import { ArrowLeftIcon, CircleDotIcon, FileTextIcon, Repeat2Icon, TagIcon, Users
 import { requireOrg } from "@/lib/auth/require-org";
 import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
-import { getTaskById, TASK_PRIORITY_LABELS, type TaskPriority, type TaskStatus } from "@/modules/tasks";
-import { getTaskActivityView } from "@/modules/tasks/queries/get-task-activity-view";
-import { TaskAssigneesManager, type TaskAssigneeView } from "@/modules/tasks/components/task-assignees-manager";
-import { TaskActivity } from "@/modules/tasks/components/task-activity";
-import { TaskDueDateField } from "@/modules/tasks/components/task-due-date-field";
+import { TASK_PRIORITY_LABELS, type TaskPriority, type TaskStatus } from "@nevora/tasks-contracts";
+import { getTaskById } from "@/modules/tasks/server";
+import { getTaskActivityView } from "@/modules/tasks/server";
+import { TaskAssigneesManager, type TaskAssigneeView } from "@/modules/tasks/ui";
+import { TaskActivity } from "@/modules/tasks/ui";
+import { TaskDueDateField } from "@/modules/tasks/ui";
 import { getOrgMembers } from "@/modules/crm/queries/get-org-members";
-import { getPaymentCycleByTaskId } from "@/modules/subtracker/queries/get-payment-cycles";
-import { SubscriptionPaymentTaskPanel } from "@/modules/subtracker/components/subscription-payment-task-panel";
-import { FinancialTaskPanel } from "@/modules/tasks/components/financial-task-panel";
-import { getAccounts } from "@/modules/moneyflow/queries/get-accounts";
+import { getPaymentCycleByTaskId } from "@/modules/subtracker/server";
+import {
+  FinancialTaskWorkflowPanel,
+  SubscriptionPaymentTaskWorkflowPanel,
+} from "@/workflows/financial-obligations/ui";
+import { getAccounts } from "@/modules/moneyflow/server";
 import { UniversalRelationViewer } from "@/modules/relations";
 import { TaskStatusBadge } from "@/features/todos/components/task-status-badge";
 import {
@@ -106,7 +109,7 @@ export default async function TaskPreviewPage({ params }: PageProps<"/dashboard/
             <InlineTaskDescription />
           </section>
           {paymentCycle && (
-            <SubscriptionPaymentTaskPanel
+            <SubscriptionPaymentTaskWorkflowPanel
               cycle={paymentCycle}
               providerName={paymentSubscription?.name ?? "Subscription"}
               accounts={paymentAccounts.map((a) => ({ id: a.id, name: a.name, currency: a.currency }))}
@@ -117,7 +120,7 @@ export default async function TaskPreviewPage({ params }: PageProps<"/dashboard/
             />
           )}
           {isFinancialTask && !paymentCycle && (
-            <FinancialTaskPanel
+            <FinancialTaskWorkflowPanel
               task={{
                 id: task.id,
                 task_context_type: task.task_context_type,

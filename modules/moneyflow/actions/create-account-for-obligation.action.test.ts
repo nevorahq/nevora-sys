@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
 const action = readFileSync(
-  join(ROOT, "modules/moneyflow/actions/create-account-for-obligation.action.ts"),
+  join(ROOT, "workflows/financial-obligations/actions/create-account-for-obligation.action.ts"),
   "utf8",
 );
 const prompt = readFileSync(

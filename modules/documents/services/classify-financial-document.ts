@@ -1,4 +1,4 @@
-import type { TaskContextType } from "@/modules/tasks/constants/task.constants";
+import type { TaskContextType } from "@nevora/tasks-contracts";
 import type { ExtractedFinancialDocument } from "../schemas/extracted-financial-document.schema";
 
 /**

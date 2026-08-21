@@ -2,11 +2,11 @@ import { notFound } from "next/navigation";
 import { requireOrg } from "@/lib/auth/require-org";
 import { createClient } from "@/lib/supabase/server";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
-import { getProjectById } from "@/modules/tasks/projects/queries/get-project-by-id";
-import { getProjectTasks, getUnassignedTasks } from "@/modules/tasks/projects/queries/get-project-tasks";
-import { ProjectHeader } from "@/modules/tasks/projects/components/project-header";
-import { ProjectTaskList } from "@/modules/tasks/projects/components/project-task-list";
-import { parseTaskSort } from "@/modules/tasks/schemas/task-sort.schema";
+import { getProjectById } from "@/modules/tasks/server";
+import { getProjectTasks, getUnassignedTasks } from "@/modules/tasks/server";
+import { ProjectHeader } from "@/modules/tasks/ui";
+import { ProjectTaskList } from "@/modules/tasks/ui";
+import { parseTaskSort } from "@nevora/tasks-contracts";
 
 export const metadata = { title: "Project" };
 

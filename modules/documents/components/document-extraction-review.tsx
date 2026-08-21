@@ -2,7 +2,7 @@ import { SparklesIcon, AlertTriangleIcon, Loader2Icon, ReceiptTextIcon } from "l
 import type { DocumentExtractionState } from "../queries/get-document-extraction";
 import { ExtractionReviewActions } from "./extraction-review-actions";
 import { ExtractionStatusPoller } from "./extraction-status-poller";
-import { FinancialStateBadge } from "@/modules/moneyflow/components/financial-state-badge";
+import { FinancialStateBadge } from "@nevora/financial-state/ui";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 type DocsDict = Dictionary["documents"];

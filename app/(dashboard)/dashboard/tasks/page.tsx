@@ -1,11 +1,11 @@
 import { requireOrg } from "@/lib/auth/require-org";
 import { getTodosQuery } from "@/features/todos/queries/get-todos.query";
-import { getProjects } from "@/modules/tasks/projects/queries/get-projects";
+import { getProjects } from "@/modules/tasks/server";
 import { TodoCreateButton } from "@/features/todos/components/todo-create-button";
 import { TodoList } from "@/features/todos/components/todo-list";
 import { TasksSubnav } from "@/features/todos/components/tasks-subnav";
 import { TaskSortSelect } from "@/features/todos/components/task-sort-select";
-import { parseTaskSort } from "@/modules/tasks/schemas/task-sort.schema";
+import { parseTaskSort } from "@nevora/tasks-contracts";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 
 export default async function TasksPage({

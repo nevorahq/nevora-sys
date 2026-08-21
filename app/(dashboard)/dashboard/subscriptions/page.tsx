@@ -1,14 +1,14 @@
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { requireOrg } from "@/lib/auth/require-org";
-import { getSubSummary } from "@/modules/subtracker/queries/get-sub-summary";
-import { getSubscriptions } from "@/modules/subtracker/queries/get-subscriptions";
-import { getUpcomingRenewals } from "@/modules/subtracker/queries/get-upcoming-renewals";
-import { getOpenCyclesBySubscription } from "@/modules/subtracker/queries/get-payment-cycles";
-import { SubSummaryCards } from "@/modules/subtracker/components/sub-summary-cards";
-import { SubUpcomingRenewals } from "@/modules/subtracker/components/sub-upcoming-renewals";
-import { SubList } from "@/modules/subtracker/components/sub-list";
-import { SubCreateButton } from "@/modules/subtracker/components/sub-create-button";
-import { SubEmptyState } from "@/modules/subtracker/components/sub-empty-state";
+import { getSubSummary } from "@/modules/subtracker/server";
+import { getSubscriptions } from "@/modules/subtracker/server";
+import { getUpcomingRenewals } from "@/modules/subtracker/server";
+import { getOpenCyclesBySubscription } from "@/modules/subtracker/server";
+import { SubSummaryCards } from "@/modules/subtracker/ui";
+import { SubUpcomingRenewals } from "@/modules/subtracker/ui";
+import { SubList } from "@/modules/subtracker/ui";
+import { SubCreateButton } from "@/modules/subtracker/ui";
+import { SubEmptyState } from "@/modules/subtracker/ui";
 
 /**
  * Subscriptions Page — /dashboard/subscriptions

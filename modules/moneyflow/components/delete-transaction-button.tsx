@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Trash2Icon } from "lucide-react";
 import { deleteTransactionAction } from "../actions/delete-transaction.action";
 import { useNotificationIndicator } from "@/modules/notifications/components/notification-provider";
-import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
+import { RestrictedActionTooltip, useAccessGate } from "@/platform/access/ui";
 import { Modal } from "@/shared/ui/modal";
 import { cn } from "@/shared/utils/cn";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";

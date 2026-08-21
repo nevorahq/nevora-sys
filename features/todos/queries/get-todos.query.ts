@@ -2,8 +2,8 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import type { Todo } from "@/entities/todo/model";
-import { applyTaskSort, TASK_LIST_VIEW } from "@/modules/tasks/queries/apply-task-sort";
-import { DEFAULT_TASK_SORT, type TaskSort } from "@/modules/tasks/constants/task-sort.constants";
+import { applyTaskSort, TASK_LIST_VIEW } from "@/modules/tasks/server";
+import { DEFAULT_TASK_SORT, type TaskSort } from "@nevora/tasks-contracts";
 
 interface GetTodosOptions {
   /** Whitelisted sort mode. Defaults to the business-importance order. */
