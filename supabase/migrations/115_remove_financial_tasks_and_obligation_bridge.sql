@@ -12,10 +12,12 @@
 --   A. Drops mark_financial_task_paid() (079) and mark_subscription_payment_
 --      paid() (078) — both existed only to atomically post a Money
 --      transaction from Tasks/Subscriptions, which no caller does anymore.
---   B. Drops the financial-context columns/indexes/constraint added to
+--   B. Drops task_smart_list (061) FIRST — `SELECT t.*` makes it depend on
+--      every todos column, so it must go before the columns it reads.
+--   C. Drops the financial-context columns/indexes/constraint added to
 --      public.todos by migration 079.
---   C. Recreates task_smart_list (061) so t.* stops expanding into the
---      dropped columns.
+--   D. Recreates task_smart_list so t.* re-expands without the dropped
+--      columns.
 --
 -- subscription_payment_cycles (078) is UNCHANGED: Subscriptions still owns its
 -- native payment-cycle schedule, and Money's transaction detail page still
@@ -37,7 +39,12 @@ DROP FUNCTION IF EXISTS public.mark_financial_task_paid(UUID, UUID, UUID, DATE, 
 DROP FUNCTION IF EXISTS public.mark_subscription_payment_paid(UUID, UUID, UUID, DATE, TEXT, TEXT, DATE, DATE, DATE);
 
 -- ============================================================
--- B. Drop Financial Context columns from todos (migration 079)
+-- B. Drop task_smart_list first — it depends on every todos column via `t.*`
+-- ============================================================
+DROP VIEW IF EXISTS public.task_smart_list;
+
+-- ============================================================
+-- C. Drop Financial Context columns from todos (migration 079)
 -- ============================================================
 ALTER TABLE public.todos
   DROP CONSTRAINT IF EXISTS todos_financial_context_consistency;
@@ -62,9 +69,8 @@ ALTER TABLE public.todos
   DROP COLUMN IF EXISTS financial_skipped_at;
 
 -- ============================================================
--- C. Recreate task_smart_list so t.* stops expanding into the dropped columns
+-- D. Recreate task_smart_list so t.* re-expands without the dropped columns
 -- ============================================================
-DROP VIEW IF EXISTS public.task_smart_list;
 CREATE VIEW public.task_smart_list
   WITH (security_invoker = true)
   AS
