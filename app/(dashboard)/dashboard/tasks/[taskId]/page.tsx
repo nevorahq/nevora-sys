@@ -11,12 +11,9 @@ import { TaskAssigneesManager, type TaskAssigneeView } from "@/modules/tasks/ui"
 import { TaskActivity } from "@/modules/tasks/ui";
 import { TaskDueDateField } from "@/modules/tasks/ui";
 import { getOrgMembers } from "@/modules/crm/queries/get-org-members";
-import { getPaymentCycleByTaskId } from "@/modules/subtracker/server";
-import {
-  FinancialTaskWorkflowPanel,
-  SubscriptionPaymentTaskWorkflowPanel,
-} from "@/workflows/financial-obligations/ui";
-import { getAccounts } from "@/modules/moneyflow/server";
+import { getSubscriptionsApplication } from "@/platform/subscriptions/server";
+import { SubscriptionPaymentTaskPanel } from "@/modules/subtracker/ui";
+import { markSubscriptionPaymentAction } from "@/modules/subtracker/actions";
 import { UniversalRelationViewer } from "@/modules/relations";
 import { TaskStatusBadge } from "@/features/todos/components/task-status-badge";
 import {
@@ -58,25 +55,18 @@ export default async function TaskPreviewPage({ params }: PageProps<"/dashboard/
   const canManageAssignees = task.created_by === user.id || canDo(ctx, "data.delete");
   const canEditTask = canDo(ctx, "data.write");
 
-  // Subscription payment task? Surface the specialized Mark-as-paid workflow.
-  const paymentCycle = await getPaymentCycleByTaskId(org.id, task.id);
-  const [paymentSubscription, paymentAccounts] = paymentCycle
-    ? await Promise.all([
-        supabase
-          .from("subscriptions")
-          .select("id, name")
-          .eq("id", paymentCycle.subscription_id)
-          .eq("organization_id", org.id)
-          .maybeSingle()
-          .then((r) => r.data),
-        getAccounts(org.id),
-      ])
-    : [null, []];
-
-  // One-off Financial Context Task (not a subscription payment cycle)? Surface
-  // the Financial Context panel with the idempotent Mark-as-paid / Skip / Dismiss.
-  const isFinancialTask = task.task_context_type !== "standard";
-  const financialAccounts = isFinancialTask && !paymentCycle ? await getAccounts(org.id) : [];
+  // Subscription payment task? Surface the specialized Mark-as-paid panel.
+  const subscriptionsApp = await getSubscriptionsApplication({ supabase, currentContext: ctx });
+  const paymentCycle = await subscriptionsApp.getPaymentCycleByTaskId(task.id);
+  const paymentSubscription = paymentCycle
+    ? await supabase
+        .from("subscriptions")
+        .select("id, name")
+        .eq("id", paymentCycle.subscription_id)
+        .eq("organization_id", org.id)
+        .maybeSingle()
+        .then((r) => r.data)
+    : null;
 
   // Уникальные assignees (по user_id) с пометкой создателя.
   const assigneeViews: TaskAssigneeView[] = Array.from(
@@ -109,37 +99,12 @@ export default async function TaskPreviewPage({ params }: PageProps<"/dashboard/
             <InlineTaskDescription />
           </section>
           {paymentCycle && (
-            <SubscriptionPaymentTaskWorkflowPanel
+            <SubscriptionPaymentTaskPanel
               cycle={paymentCycle}
               providerName={paymentSubscription?.name ?? "Subscription"}
-              accounts={paymentAccounts.map((a) => ({ id: a.id, name: a.name, currency: a.currency }))}
               canWrite={canEditTask}
               stateLabels={dict.money.states}
-              inlineAccount={dict.money.inlineAccount}
-              accountTypeLabels={dict.money.accounts.types}
-            />
-          )}
-          {isFinancialTask && !paymentCycle && (
-            <FinancialTaskWorkflowPanel
-              task={{
-                id: task.id,
-                task_context_type: task.task_context_type,
-                provider_name: task.provider_name,
-                amount: task.amount,
-                currency: task.currency,
-                financial_due_date: task.financial_due_date,
-                due_date: task.due_date,
-                reminder_offset_days: task.reminder_offset_days,
-                financial_status: task.financial_status,
-                financial_transaction_id: task.financial_transaction_id,
-                source_document_id: task.source_document_id,
-              }}
-              accounts={financialAccounts.map((a) => ({ id: a.id, name: a.name, currency: a.currency }))}
-              canWrite={canEditTask}
-              t={dict.financialTask}
-              stateLabels={dict.money.states}
-              inlineAccount={dict.money.inlineAccount}
-              accountTypeLabels={dict.money.accounts.types}
+              onMarkAsPaid={markSubscriptionPaymentAction}
             />
           )}
           {document && <section className="soft-card p-5 sm:p-6"><div className="flex items-center gap-2"><FileTextIcon size={18} className="text-text-secondary" /><h2 className="text-base font-semibold text-text-primary">Document</h2></div><Link href={`${ROUTES.documents}/${document.id}`} className="mt-3 block text-sm font-medium text-text-secondary underline hover:text-text-primary">{document.title}</Link></section>}

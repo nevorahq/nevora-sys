@@ -1,11 +1,9 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** Result of checking a prospective ledger transaction for a likely duplicate. */
-export interface DuplicateTransactionMatch {
-  isDuplicate: boolean;
-  matchedTransactionId: string | null;
-}
+/** Compatibility facade; canonical type lives in the workspace package. */
+export type { DuplicateTransactionMatch } from "@nevora/finance-contracts";
+import type { DuplicateTransactionMatch } from "@nevora/finance-contracts";
 
 /**
  * Find an existing transaction with the same financial identity. The check is

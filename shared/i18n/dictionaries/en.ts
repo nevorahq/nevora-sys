@@ -15,13 +15,12 @@ export const en = {
     overview: "Overview",
     /** Nav label for /dashboard/inbox — the universal capture + triage surface. */
     inbox: "Capture",
-    /** Global capture entry point (top-bar "+ Add" button → Inbox). */
-    add: "Add",
     /** Labels /dashboard — the Action Center is the primary operating screen. */
     actions: "Actions",
     tasks: "Work",
     crm: "CRM",
     money: "Finances",
+    subscriptions: "Subscriptions",
     documents: "Documents",
     analytics: "Analytics",
     ai: "AI",
@@ -412,12 +411,6 @@ export const en = {
   money: {
     title: "Finances",
     description: "Track your income and expenses",
-    subscriptionsLink: "Subscriptions",
-    tabs: {
-      transactions: "Transactions",
-      financialTasks: "Financial Tasks",
-      subscriptions: "Subscriptions",
-    },
     /** Canonical financial-state labels (docs/contracts/financial-state-machine.md). */
     states: {
       detected: "Detected",
@@ -749,8 +742,6 @@ export const en = {
       createTransactionFailed: "Failed to create transaction",
       updateTransactionFailed: "Failed to update transaction",
       deleteTransactionFailed: "Failed to delete transaction",
-      transactionLinkedToPaidObligation:
-        "This payment backs a paid subscription cycle or financial task. Cancel the payment on that obligation before deleting the transaction.",
       currencyMismatch: "This transaction's currency differs from its account. Open it to pick a matching account before posting.",
       serverError: "Something went wrong. Please try again.",
     },
@@ -1111,15 +1102,6 @@ export const en = {
       createAccount: "Create account",
       close: "Close",
     },
-    obligation: {
-      title: "AI detected a possible financial obligation",
-      needDate: "Add a payment date to create a task.",
-      taskCreated: "Financial task created",
-      viewTask: "View task",
-      createTask: "Create task",
-      reminderNote: "A reminder task is created {days} days before the payment date. No money is moved.",
-      noDateDetected: "No payment date was detected — open the document to confirm details before creating a task.",
-    },
   },
   relations: {
     title: "Linked Entities",
@@ -1152,41 +1134,6 @@ export const en = {
       transaction: "Transactions",
       subscription: "Subscriptions",
     },
-  },
-  financialTask: {
-    title: "Financial context",
-    types: {
-      standard: "Standard",
-      subscription_payment: "Subscription payment",
-      invoice_payment: "Invoice payment",
-      tax_payment: "Tax payment",
-      domain_renewal: "Domain renewal",
-      hosting_payment: "Hosting payment",
-      client_invoice_followup: "Client invoice follow-up",
-      expense_review: "Expense review",
-      document_review: "Document review",
-    },
-    amountGtZero: "Enter an amount greater than zero",
-    currencyCode: "Use a 3-letter currency code",
-    type: "Type",
-    provider: "Provider",
-    amount: "Amount",
-    paymentDate: "Payment date",
-    actionDue: "Action due",
-    reminderOffset: "Reminder offset",
-    daysBefore: "{days} days before",
-    editAmount: "Edit amount",
-    viewSourceDocument: "View source document",
-    viewPostedTransaction: "View posted transaction",
-    capturedWithoutAmount: "This obligation was captured without an amount. Add it to record the payment.",
-    currency: "Currency",
-    saveAmount: "Save amount",
-    cancel: "Cancel",
-    payFromAccount: "Pay from account",
-    markAsPaid: "Mark as paid",
-    skip: "Skip",
-    dismiss: "Dismiss",
-    markingNote: "Marking as paid posts a single expense to Money. Until then this is a planned obligation and does not affect your balance.",
   },
   /**
    * Header organization switcher. The current tenant must be unmistakable:

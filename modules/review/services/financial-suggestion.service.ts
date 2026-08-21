@@ -7,12 +7,11 @@ import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { reserveOrganizationUsage, releaseOrganizationUsage } from "@/modules/billing";
 import { createActionItemForDocument } from "@/modules/action-center/services/create-action-item-for-document";
 import { classifyExpense, normalizeMerchantName, upsertPrivateMerchantRule } from "@/modules/moneyflow/server";
-import { findDuplicateTransaction } from "@/modules/moneyflow/server";
+import { getFinanceApplication } from "@/platform/finance/server";
 import { createBillingPeriodKey } from "@/modules/subtracker/server";
-import { createSubscriptionPaymentCycle } from "@/modules/subtracker/server";
+import { getSubscriptionsApplication } from "@/platform/subscriptions/server";
 import { markDocumentPlannerEntry } from "@/modules/planner/services/mark-document-planner-entry";
-import { createSubscriptionPaymentTaskForCycle } from "@/modules/subtracker/server";
-import type { SubscriptionForPayment } from "@/modules/subtracker/contracts";
+import type { SubscriptionForPayment } from "@nevora/subscriptions-contracts";
 import { assertReviewStateTransition, type ReviewState } from "../constants/review.constants";
 import type {
   CreateDocumentSuggestionInput,
@@ -53,8 +52,7 @@ export async function createDocumentFinancialSuggestionRecord(
 
   const duplicate =
     input.amount && input.currency
-      ? await findDuplicateTransaction(supabase, {
-          organizationId: ctx.org.id,
+      ? await (await getFinanceApplication({ supabase, currentContext: ctx })).findDuplicateTransaction({
           merchantName: input.vendorName,
           totalAmount: input.amount,
           currency: input.currency,
@@ -935,17 +933,14 @@ async function confirmPaymentTaskSuggestion(
     workspace_id: (subscription.workspace_id as string | null) ?? ctx.workspace.id,
   };
 
-  const cycle = await createSubscriptionPaymentCycle({
-    supabase,
-    ctx,
+  const subscriptions = await getSubscriptionsApplication({ supabase, currentContext: ctx });
+  const cycle = await subscriptions.createSubscriptionPaymentCycle({
     subscription: subscriptionForPayment,
     dueDate,
   });
   if (!cycle.ok) return cycle;
 
-  const task = await createSubscriptionPaymentTaskForCycle({
-    supabase,
-    ctx,
+  const task = await subscriptions.createSubscriptionPaymentTaskForCycle({
     subscription: subscriptionForPayment,
     cycle: cycle.cycle,
   });

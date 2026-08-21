@@ -21,6 +21,12 @@
     "paths": {
       "@/*": ["./*"],
       "@nevora/financial-state/*": ["./packages/financial-state/src/*"],
+      "@nevora/finance-contracts": ["./packages/finance-contracts/src/index.ts"],
+      "@nevora/finance-api": ["./packages/finance-api/src/index.ts"],
+      "@nevora/finance-runtime": ["./packages/finance-runtime/src/index.ts"],
+      "@nevora/subscriptions-contracts": ["./packages/subscriptions-contracts/src/index.ts"],
+      "@nevora/subscriptions-api": ["./packages/subscriptions-api/src/index.ts"],
+      "@nevora/subscriptions-runtime": ["./packages/subscriptions-runtime/src/index.ts"],
       "@nevora/tasks-api": ["./packages/tasks-api/src/index.ts"],
       "@nevora/tasks-contracts": ["./packages/tasks-contracts/src/index.ts"],
       "@nevora/tasks-runtime": ["./packages/tasks-runtime/src/index.ts"]

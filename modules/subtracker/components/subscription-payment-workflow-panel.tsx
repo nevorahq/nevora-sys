@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { ReactNode } from "react";
 import { CheckCircleIcon, SkipForwardIcon, CalendarClockIcon, XCircleIcon } from "lucide-react";
 import { Button } from "@/shared/ui/button";
-import { Select } from "@/shared/ui/select";
 import { Input } from "@/shared/ui/input";
 import { formatMoney } from "@/shared/utils/format-money";
 import { formatDate } from "@/shared/utils/format-date";
@@ -15,12 +13,6 @@ import { changeSubscriptionPaymentDueDateAction } from "../actions/change-subscr
 import { cancelSubscriptionAction } from "../actions/cancel-subscription.action";
 import type { SubscriptionPaymentCycle } from "../types/payment-cycle.types";
 
-interface AccountOption {
-  id: string;
-  name: string;
-  currency: string;
-}
-
 export interface SubscriptionPaymentWorkflowPanelProps {
   subscriptionId: string;
   isActive: boolean;
@@ -28,14 +20,11 @@ export interface SubscriptionPaymentWorkflowPanelProps {
   nextPaymentDate: string;
   currentCycle: SubscriptionPaymentCycle | null;
   history: SubscriptionPaymentCycle[];
-  accounts: AccountOption[];
   canWrite: boolean;
   /** Canonical financial-state labels (`dict.money.states`) for the cycle badge. */
   stateLabels: Dictionary["money"]["states"];
-  /** Integration slot supplied by a workflow when no payment account exists. */
-  emptyAccountPrompt?: ReactNode;
-  /** Workflow-owned mutation that posts the expense and advances the cycle. */
-  onMarkAsPaid: (input: { cycleId: string; accountId: string }) => Promise<{ error?: string }>;
+  /** Marks the cycle paid locally — no Money transaction is created. */
+  onMarkAsPaid: (input: { cycleId: string }) => Promise<{ error?: string }>;
 }
 
 export function SubscriptionPaymentWorkflowPanel({
@@ -45,13 +34,10 @@ export function SubscriptionPaymentWorkflowPanel({
   nextPaymentDate,
   currentCycle,
   history,
-  accounts,
   canWrite,
   stateLabels,
-  emptyAccountPrompt,
   onMarkAsPaid,
 }: SubscriptionPaymentWorkflowPanelProps) {
-  const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [showDueDate, setShowDueDate] = useState(false);
   const [newDueDate, setNewDueDate] = useState(currentCycle?.due_date ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -114,24 +100,13 @@ export function SubscriptionPaymentWorkflowPanel({
 
             {canWrite && cycleOpen && (
               <div className="mt-4 space-y-3">
-                {accounts.length > 0 ? (
-                  <Select
-                    id="pay-account"
-                    label="Pay from account"
-                    value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    options={accounts.map((a) => ({ value: a.id, label: `${a.name} · ${a.currency}` }))}
-                  />
-                ) : emptyAccountPrompt}
-
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     isLoading={isPending}
-                    disabled={!accountId || accounts.length === 0}
                     onClick={() =>
                       run(() =>
-                        onMarkAsPaid({ cycleId: currentCycle.id, accountId }),
+                        onMarkAsPaid({ cycleId: currentCycle.id }),
                       )
                     }
                   >

@@ -5,10 +5,8 @@ import { emitDomainEvent } from "@/lib/events";
 import { createEntityLink } from "@/lib/entity-links";
 import { getTasksApplication } from "@/platform/tasks/server";
 import { createActionItemForDocument } from "@/modules/action-center/services/create-action-item-for-document";
-import { DEFAULT_REMINDER_OFFSET_DAYS, type TaskContextType } from "@nevora/tasks-contracts";
 import {
   createTaskPayloadSchema,
-  financialTaskPayloadSchema,
   linkEntitiesPayloadSchema,
   createActionItemPayloadSchema,
   type SuggestionLinkTarget,
@@ -18,7 +16,6 @@ import {
   PLANNER_SUGGESTION_OPEN_STATUSES,
   type PlannerSuggestion,
   type PlannerSuggestionStatus,
-  type PlannerSuggestionType,
 } from "../types/planner.types";
 import { resolvePlannerActionItems } from "./resolve-planner-action-item";
 
@@ -62,10 +59,7 @@ export type AcceptResult =
  * Guarantees (spec §16, §6; Phase B security requirement #3):
  *   1. Tenant + status + permission checks before any write.
  *   2. proposed_payload is re-validated per suggestion_type (no mass assignment).
- *   3. Money safety: financial types route to createFinancialTask, which can
- *      never post a money transaction. This layer has no path to a posted
- *      expense/income.
- *   4. Exactly-once, at two levels:
+ *   3. Exactly-once, at two levels:
  *
  *      (a) The suggestion is CLAIMED (pending|edited -> 'processing') by a guarded
  *          UPDATE before the entity is created. Exactly one concurrent caller wins
@@ -281,12 +275,6 @@ async function findActiveEntityLink(
   return data.id as string;
 }
 
-const FINANCIAL_CONTEXT_BY_TYPE: Partial<Record<PlannerSuggestionType, Exclude<TaskContextType, "standard">>> = {
-  create_financial_task: "invoice_payment",
-  create_money_reminder: "expense_review",
-  create_subscription_reminder: "subscription_payment",
-};
-
 async function routeAccept(
   supabase: SupabaseClient,
   ctx: CurrentContext,
@@ -318,33 +306,6 @@ async function routeAccept(
       if (res.created) {
         await drawSuggestedLink(ctx, parsed.data.linkTo, "task", res.taskId);
       }
-      return { ok: true, entityType: "task", entityId: res.taskId, created: res.created };
-    }
-
-    case "create_financial_task":
-    case "create_money_reminder":
-    case "create_subscription_reminder": {
-      if (!canDo(ctx, "data.write")) return { ok: false, error: "Forbidden" };
-      const parsed = financialTaskPayloadSchema.safeParse({ title: suggestion.title, ...payload });
-      if (!parsed.success) {
-        return { ok: false, error: "Add a payment date (and amount) before accepting" };
-      }
-      const contextType = FINANCIAL_CONTEXT_BY_TYPE[suggestion.suggestion_type] ?? "invoice_payment";
-      // Money-safe: createFinancialTask records a planned obligation only. A
-      // posted expense can ONLY come later from an explicit Mark-as-paid.
-      const res = await tasks.createFinancialTask({
-        contextType,
-        title: parsed.data.title,
-        providerName: parsed.data.providerName ?? null,
-        amount: parsed.data.amount ?? null,
-        currency: parsed.data.currency ?? null,
-        financialDueDate: parsed.data.financialDueDate,
-        reminderOffsetDays: parsed.data.reminderOffsetDays ?? DEFAULT_REMINDER_OFFSET_DAYS,
-        sourceType: "manual",
-        sourceId: suggestion.id,
-        confidence: suggestion.confidence,
-      });
-      if (!res.ok) return { ok: false, error: res.error };
       return { ok: true, entityType: "task", entityId: res.taskId, created: res.created };
     }
 
@@ -402,9 +363,15 @@ async function routeAccept(
     }
 
     // Not part of the MVP surface — accept safely refuses instead of guessing.
+    // create_financial_task/create_money_reminder/create_subscription_reminder
+    // routed to the now-removed Financial Tasks concept; Tasks/Money/Subscriptions
+    // no longer bridge, so these fall back to manual entry too.
     case "create_document":
     case "assign_project":
     case "create_project":
+    case "create_financial_task":
+    case "create_money_reminder":
+    case "create_subscription_reminder":
     default:
       return {
         ok: false,

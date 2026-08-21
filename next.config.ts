@@ -37,7 +37,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@nevora/financial-state", "@nevora/tasks-api", "@nevora/tasks-contracts", "@nevora/tasks-runtime"],
+  transpilePackages: ["@nevora/financial-state", "@nevora/finance-contracts", "@nevora/finance-api", "@nevora/finance-runtime", "@nevora/subscriptions-contracts", "@nevora/subscriptions-api", "@nevora/subscriptions-runtime", "@nevora/tasks-api", "@nevora/tasks-contracts", "@nevora/tasks-runtime"],
   headers: async () => [
     {
       // Применяем headers ко ВСЕМ роутам

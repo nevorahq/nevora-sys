@@ -46,13 +46,13 @@ export const ROUTES = {
   /**
    * Post-auth landing screen ("home"). Single source of truth for where a
    * signed-in user lands (login / register / invite-accept / already-authed on
-   * /login). Currently the Inbox: the Action Center is hidden from the primary
-   * nav, so the Inbox is the day-to-day entry point. Change here, not at each
-   * redirect site. (`home` is the PUBLIC root `/`; this is the signed-in landing.)
+   * /login). Home (Action Center) and Inbox were removed from the primary nav
+   * as cross-product surfaces, so Tasks is the day-to-day entry point. Change
+   * here, not at each redirect site. (`home` is the PUBLIC root `/`; this is
+   * the signed-in landing.)
    */
-  appHome: "/dashboard/inbox",
+  appHome: "/dashboard/tasks",
   tasks: "/dashboard/tasks",
-  tasksFinancial: "/dashboard/tasks/financial",
   projects: "/dashboard/tasks/projects",
   crm: "/dashboard/crm",
   money: "/dashboard/money",
@@ -179,6 +179,22 @@ export const MACHINE_ROUTES = [
 
 export function isMachineRoute(pathname: string): boolean {
   return MACHINE_ROUTES.some((route) => pathname === route);
+}
+
+/** Exact service-token bypass; the handler still verifies the HMAC token. */
+export function isFinanceServiceTransportRequest(
+  pathname: string,
+  authorization: string | null,
+): boolean {
+  return pathname === "/api/internal/finance" && authorization?.startsWith("Bearer nfs1.") === true;
+}
+
+/** Exact service-token bypass; the handler still verifies the HMAC token. */
+export function isSubscriptionsServiceTransportRequest(
+  pathname: string,
+  authorization: string | null,
+): boolean {
+  return pathname === "/api/internal/subscriptions" && authorization?.startsWith("Bearer nss1.") === true;
 }
 
 /** Exact service-token bypass; the handler still verifies the HMAC token. */

@@ -6,7 +6,6 @@ const canDo = vi.fn();
 const emitDomainEvent = vi.fn();
 const getDictionary = vi.fn();
 const revalidatePath = vi.fn();
-const findPaidObligationForTransaction = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/lib/supabase/server", () => ({ createClient }));
@@ -21,7 +20,6 @@ vi.mock("@/platform/access/server", () => ({
 vi.mock("@/lib/context/current-context", () => ({ canDo }));
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
 vi.mock("@/shared/i18n/get-dictionary", () => ({ getDictionary }));
-vi.mock("@/platform/financial-obligations/server", () => ({ findPaidObligationForTransaction }));
 
 const { deleteTransactionAction } = await import("./delete-transaction.action");
 
@@ -45,14 +43,11 @@ beforeEach(() => {
       money: {
         errors: {
           deleteTransactionFailed: "Failed to delete transaction",
-          transactionLinkedToPaidObligation: "Linked to a paid obligation",
           serverError: "Server error",
         },
       },
     },
   });
-  // Default: the transaction backs no paid obligation, so the delete proceeds.
-  findPaidObligationForTransaction.mockResolvedValue(null);
   requireOrg.mockResolvedValue({
     user: { id: USER_ID },
     org: { id: ORGANIZATION_ID },
@@ -124,27 +119,5 @@ describe("deleteTransactionAction", () => {
     });
     expect(emitDomainEvent).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
-  });
-
-  it("refuses to delete a transaction that backs a paid subscription cycle", async () => {
-    findPaidObligationForTransaction.mockResolvedValue("subscription_cycle");
-
-    await expect(deleteTransactionAction(TRANSACTION_ID)).resolves.toEqual({
-      error: "Linked to a paid obligation",
-    });
-    // The delete never runs, so nothing is un-backed and no event is emitted.
-    expect(deleteQuery).not.toHaveBeenCalled();
-    expect(emitDomainEvent).not.toHaveBeenCalled();
-    expect(revalidatePath).not.toHaveBeenCalled();
-  });
-
-  it("refuses to delete a transaction that backs a paid financial task", async () => {
-    findPaidObligationForTransaction.mockResolvedValue("financial_task");
-
-    await expect(deleteTransactionAction(TRANSACTION_ID)).resolves.toEqual({
-      error: "Linked to a paid obligation",
-    });
-    expect(deleteQuery).not.toHaveBeenCalled();
-    expect(emitDomainEvent).not.toHaveBeenCalled();
   });
 });

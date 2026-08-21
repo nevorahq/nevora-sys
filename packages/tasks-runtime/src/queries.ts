@@ -10,11 +10,8 @@ import type { TasksListInput } from "@nevora/tasks-api";
 
 export const TASK_LIST_VIEW = "task_smart_list" as const;
 
-const FINANCIAL_COLUMNS =
-  "task_context_type, financial_due_date, reminder_offset_days, amount, currency, provider_name, financial_source_type, financial_source_id, source_document_id, financial_transaction_id, financial_status, financial_confidence, financial_paid_at, financial_skipped_at";
-
 const TASK_VIEW_COLUMNS =
-  `id, organization_id, workspace_id, project_id, created_by, updated_by, title, description, status, priority, due_date, recurrence, recurrence_source_id, position, is_completed, created_at, updated_at, deleted_at, priority_weight, is_closed, sort_overdue, ${FINANCIAL_COLUMNS}`;
+  "id, organization_id, workspace_id, project_id, created_by, updated_by, title, description, status, priority, due_date, recurrence, recurrence_source_id, position, is_completed, created_at, updated_at, deleted_at, priority_weight, is_closed, sort_overdue";
 
 interface Orderable {
   order(
@@ -80,7 +77,6 @@ export async function listTasks(
 
   if (workspaceId) query = query.eq("workspace_id", workspaceId);
   if (input.projectId) query = query.eq("project_id", input.projectId);
-  if (input.financialOnly) query = query.neq("task_context_type", "standard");
   if (assigneeTaskIds) query = query.in("id", assigneeTaskIds);
   if (input.onlyActive) {
     query = query.in("status", ACTIVE_STATUSES);
@@ -170,21 +166,3 @@ export function normalizeTaskPreview<T extends Record<string, unknown>>(task: T)
   };
 }
 
-export async function hasPaidTaskForTransaction(
-  supabase: SupabaseClient,
-  organizationId: string,
-  transactionId: string,
-  workspaceId?: string,
-): Promise<boolean> {
-  let query = supabase
-    .from("todos")
-    .select("id")
-    .eq("financial_transaction_id", transactionId)
-    .eq("financial_status", "paid")
-    .eq("organization_id", organizationId);
-  if (workspaceId) query = query.eq("workspace_id", workspaceId);
-  const { data } = await query
-    .limit(1)
-    .maybeSingle();
-  return Boolean(data);
-}

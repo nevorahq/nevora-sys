@@ -1,8 +1,10 @@
 import { existsSync, readdirSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import {
+  isFinanceServiceTransportRequest,
   isMachineRoute,
   isPublicRoute,
+  isSubscriptionsServiceTransportRequest,
   isTasksServiceTransportRequest,
   MACHINE_ROUTES,
   ROUTES,
@@ -93,6 +95,24 @@ describe("isPublicRoute", () => {
     expect(isTasksServiceTransportRequest("/api/internal/tasks", "Bearer nts1.payload.signature")).toBe(true);
     expect(isTasksServiceTransportRequest("/api/internal/tasks", "Bearer wrong")).toBe(false);
     expect(isTasksServiceTransportRequest("/api/internal/tasks/raw", "Bearer nts1.payload.signature")).toBe(false);
+  });
+
+  it("пропускает только точный Subscriptions service-token запрос", () => {
+    expect(isSubscriptionsServiceTransportRequest("/api/internal/subscriptions", "Bearer nss1.payload.signature")).toBe(true);
+    expect(isSubscriptionsServiceTransportRequest("/api/internal/subscriptions", "Bearer wrong")).toBe(false);
+    expect(isSubscriptionsServiceTransportRequest("/api/internal/subscriptions/raw", "Bearer nss1.payload.signature")).toBe(false);
+    // Cross-service tokens must not be accepted on the wrong endpoint.
+    expect(isSubscriptionsServiceTransportRequest("/api/internal/subscriptions", "Bearer nts1.payload.signature")).toBe(false);
+    expect(isTasksServiceTransportRequest("/api/internal/tasks", "Bearer nss1.payload.signature")).toBe(false);
+  });
+
+  it("пропускает только точный Finance service-token запрос", () => {
+    expect(isFinanceServiceTransportRequest("/api/internal/finance", "Bearer nfs1.payload.signature")).toBe(true);
+    expect(isFinanceServiceTransportRequest("/api/internal/finance", "Bearer wrong")).toBe(false);
+    expect(isFinanceServiceTransportRequest("/api/internal/finance/raw", "Bearer nfs1.payload.signature")).toBe(false);
+    // Cross-service tokens must not be accepted on the wrong endpoint.
+    expect(isFinanceServiceTransportRequest("/api/internal/finance", "Bearer nts1.payload.signature")).toBe(false);
+    expect(isTasksServiceTransportRequest("/api/internal/tasks", "Bearer nfs1.payload.signature")).toBe(false);
   });
 
   /**

@@ -15,4 +15,3 @@ export { createBillingPeriodKey } from "./services/billing-period-key";
 export { createSubscriptionPaymentCycle } from "./services/create-subscription-payment-cycle";
 export { createSubscriptionPaymentTaskForCycle } from "./services/create-subscription-payment-task";
 export { sweepSubscriptionPaymentWorkflow } from "./services/sweep-subscription-payment-workflow";
-export { hasPaidSubscriptionCycleForTransaction } from "./services/paid-cycle-link";

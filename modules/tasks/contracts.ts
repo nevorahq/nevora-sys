@@ -8,9 +8,7 @@ export type {
   TaskWithAssignees,
   TaskWithDetails,
   TaskSummary,
-  FinancialTask,
 } from "./types/task.types";
-export { isFinancialTask } from "./types/task.types";
 export type { TaskDueDateChange } from "./types/task-due-date.types";
 
 export {
@@ -27,13 +25,6 @@ export {
   TASK_COMMENT_MAX_LENGTH,
   TASK_DUE_DATE_CHANGE_TYPES,
   TASK_DUE_DATE_REASON_MAX_LENGTH,
-  TASK_CONTEXT_TYPES,
-  TASK_CONTEXT_TYPE_LABELS,
-  PAYABLE_CONTEXT_TYPES,
-  FINANCIAL_TASK_STATUSES,
-  FINANCIAL_SOURCE_TYPES,
-  DEFAULT_REMINDER_OFFSET_DAYS,
-  MAX_REMINDER_OFFSET_DAYS,
 } from "./constants/task.constants";
 export type {
   TaskStatus,
@@ -41,9 +32,6 @@ export type {
   TaskRelationType,
   TaskFilter,
   TaskDueDateChangeType,
-  TaskContextType,
-  FinancialTaskStatus,
-  FinancialSourceType,
 } from "./constants/task.constants";
 
 export {
@@ -56,14 +44,6 @@ export {
 export { taskSortSchema, parseTaskSort } from "./schemas/task-sort.schema";
 export { updateTaskDueDateSchema } from "./schemas/task-due-date.schema";
 export type { UpdateTaskDueDateInput } from "./schemas/task-due-date.schema";
-export {
-  markFinancialTaskPaidSchema,
-} from "./schemas/financial-task.schema";
-export type { MarkFinancialTaskPaidInput } from "./schemas/financial-task.schema";
-export {
-  buildFinancialTaskExpenseIdempotencyKey,
-  buildFinancialTaskExpenseTitle,
-} from "./services/financial-task-keys";
 
 export type { Project, ProjectWithStats, ProjectRef } from "./projects/types/project.types";
 export {

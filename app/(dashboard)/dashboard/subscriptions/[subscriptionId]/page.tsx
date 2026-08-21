@@ -6,9 +6,8 @@ import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
 import { UniversalRelationViewer } from "@/modules/relations";
 import { getPaymentCyclesForSubscription } from "@/modules/subtracker/server";
-import { SubscriptionPaymentWorkflowPanel } from "@/workflows/financial-obligations/ui";
-import { SubscriptionSuggestionPanel } from "@/modules/subtracker/ui";
-import { getAccounts } from "@/modules/moneyflow/server";
+import { SubscriptionPaymentWorkflowPanel, SubscriptionSuggestionPanel } from "@/modules/subtracker/ui";
+import { markSubscriptionPaymentAction } from "@/modules/subtracker/actions";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 
@@ -28,9 +27,8 @@ export default async function SubscriptionDetailPage({ params }: PageProps<"/das
 
   if (!sub) notFound();
 
-  const [cycles, accounts, suggestionsRes] = await Promise.all([
+  const [cycles, suggestionsRes] = await Promise.all([
     getPaymentCyclesForSubscription(org.id, sub.id),
-    getAccounts(org.id),
     supabase
       .from("financial_suggestions")
       .select("id, suggestion_type, review_state, amount, currency, due_date")
@@ -78,11 +76,9 @@ export default async function SubscriptionDetailPage({ params }: PageProps<"/das
             nextPaymentDate={sub.next_billing_date}
             currentCycle={currentCycle}
             history={history}
-            accounts={accounts.map((a) => ({ id: a.id, name: a.name, currency: a.currency }))}
             canWrite={canWrite}
             stateLabels={dict.money.states}
-            inlineAccount={dict.money.inlineAccount}
-            accountTypeLabels={dict.money.accounts.types}
+            onMarkAsPaid={markSubscriptionPaymentAction}
           />
           {sub.note && <section className="soft-card p-5 sm:p-6"><h2 className="text-base font-semibold text-text-primary">Notes</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-primary">{sub.note}</p></section>}
           <UniversalRelationViewer entityType="subscription" entityId={sub.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.subscriptions}/${sub.id}`} />

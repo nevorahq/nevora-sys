@@ -56,12 +56,14 @@ export interface DraftExplanation {
   unsupported: boolean;
 }
 
-/** Types routeAccept() knows how to execute. Everything else fails on confirm. */
+/**
+ * Types routeAccept() knows how to execute. Everything else fails on confirm.
+ * create_financial_task/create_money_reminder/create_subscription_reminder
+ * routed to the now-removed Financial Tasks concept — Tasks/Money/Subscriptions
+ * no longer bridge, so accept refuses them too (see accept-planner-suggestion.ts).
+ */
 const SUPPORTED_TYPES: readonly PlannerSuggestionType[] = [
   "create_task",
-  "create_financial_task",
-  "create_money_reminder",
-  "create_subscription_reminder",
   "link_entities",
   "create_action_item",
 ];
@@ -109,11 +111,6 @@ function deriveEffects(suggestion: PlannerSuggestion): DraftEffect[] {
       return effects;
     }
 
-    case "create_financial_task":
-    case "create_money_reminder":
-    case "create_subscription_reminder":
-      return [{ kind: "create", entityType: "financial_task" }];
-
     case "link_entities": {
       const from = typeof payload.sourceType === "string" ? payload.sourceType : null;
       const to = typeof payload.targetType === "string" ? payload.targetType : null;
@@ -129,6 +126,9 @@ function deriveEffects(suggestion: PlannerSuggestion): DraftEffect[] {
     case "create_document":
     case "assign_project":
     case "create_project":
+    case "create_financial_task":
+    case "create_money_reminder":
+    case "create_subscription_reminder":
     default:
       return [];
   }

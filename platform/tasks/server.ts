@@ -11,12 +11,10 @@ import {
 import type { CurrentContext } from "@/lib/context/current-context";
 import { logger } from "@/lib/observability/logger";
 import {
-  createFinancialTask,
   createGeneratedTaskRecord,
   createStandardTask,
   getTaskById,
   getTasks,
-  hasPaidTaskForTransaction,
   retireGeneratedTasks,
   updateGeneratedTaskDueDate,
 } from "@/modules/tasks/server";
@@ -63,14 +61,7 @@ export function createInProcessTasksApplication(
         { ...input, workspaceId: context.workspaceId },
         supabase,
       ),
-    hasPaidTaskForTransaction: (transactionId) =>
-      hasPaidTaskForTransaction({
-        supabase,
-        organizationId: context.organizationId,
-        transactionId,
-      }),
     createStandardTask: (input) => createStandardTask(supabase, currentContext, input),
-    createFinancialTask: (input) => createFinancialTask(supabase, currentContext, input),
     createGeneratedTask: (input) =>
       createGeneratedTaskRecord({
         supabase,

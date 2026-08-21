@@ -13,12 +13,9 @@ import {
   type MoneyAccountOption,
 } from "../services/money-account-service";
 
-export type InlineAccountCreationResult = {
-  error?: string;
-  fieldErrors?: Record<string, string[]>;
-  account?: MoneyAccountOption;
-  created?: boolean;
-};
+/** Compatibility facade; canonical Money DTOs live in the workspace package. */
+export type { InlineAccountCreationResult } from "@nevora/finance-contracts";
+import type { InlineAccountCreationResult } from "@nevora/finance-contracts";
 
 const inlineAccountSchema = z.object({
   transactionId: z.string().uuid("Invalid suggestion ID."),

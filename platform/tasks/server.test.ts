@@ -12,9 +12,7 @@ vi.mock("next/server", () => ({ after: vi.fn() }));
 
 const getTaskById = vi.fn();
 const getTasks = vi.fn();
-const hasPaidTaskForTransaction = vi.fn();
 const createStandardTask = vi.fn();
-const createFinancialTask = vi.fn();
 const createGeneratedTaskRecord = vi.fn();
 const updateGeneratedTaskDueDate = vi.fn();
 const retireGeneratedTasks = vi.fn();
@@ -22,9 +20,7 @@ const retireGeneratedTasks = vi.fn();
 vi.mock("@/modules/tasks/server", () => ({
   getTaskById,
   getTasks,
-  hasPaidTaskForTransaction,
   createStandardTask,
-  createFinancialTask,
   createGeneratedTaskRecord,
   updateGeneratedTaskDueDate,
   retireGeneratedTasks,
@@ -104,16 +100,6 @@ describe("createInProcessTasksApplication", () => {
     });
   });
 
-  it("scopes transaction ownership checks to the authenticated organization", async () => {
-    const application = createInProcessTasksApplication({ supabase, currentContext });
-    await application.hasPaidTaskForTransaction("transaction-1");
-
-    expect(hasPaidTaskForTransaction).toHaveBeenCalledWith({
-      supabase,
-      organizationId: "org-1",
-      transactionId: "transaction-1",
-    });
-  });
 });
 
 describe("Tasks transport selection", () => {

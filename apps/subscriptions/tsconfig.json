@@ -1,0 +1,57 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "strict": true,
+    "noEmit": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "baseUrl": "../..",
+    "paths": {
+      "@nevora/subscriptions-api": [
+        "packages/subscriptions-api/src/index.ts"
+      ],
+      "@nevora/subscriptions-contracts": [
+        "packages/subscriptions-contracts/src/index.ts"
+      ],
+      "@nevora/subscriptions-runtime": [
+        "packages/subscriptions-runtime/src/index.ts"
+      ],
+      "@nevora/tasks-api": [
+        "packages/tasks-api/src/index.ts"
+      ],
+      "@nevora/tasks-contracts": [
+        "packages/tasks-contracts/src/index.ts"
+      ]
+    },
+    "allowJs": true,
+    "incremental": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "instrumentation.ts",
+    "proxy.ts",
+    "src/**/*.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

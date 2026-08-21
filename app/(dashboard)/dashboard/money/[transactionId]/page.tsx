@@ -6,7 +6,7 @@ import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
 import { UniversalRelationViewer } from "@/modules/relations";
 import { AiSuggestionPanel } from "@/modules/moneyflow/ui";
-import { getPaymentCycleByTransactionId } from "@/modules/subtracker/server";
+import { getSubscriptionsApplication } from "@/platform/subscriptions/server";
 import { ROUTES } from "@/shared/config/routes";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { formatMoney } from "@/shared/utils/format-money";
@@ -28,7 +28,8 @@ export default async function TransactionDetailPage({ params }: PageProps<"/dash
   if (!tx) notFound();
 
   // Was this expense created from a subscription payment cycle? (migration 078)
-  const paymentCycle = await getPaymentCycleByTransactionId(org.id, tx.id);
+  const subscriptionsApp = await getSubscriptionsApplication({ supabase, currentContext: ctx });
+  const paymentCycle = await subscriptionsApp.getPaymentCycleByTransactionId(tx.id);
   const paymentSubscription = paymentCycle
     ? await supabase
         .from("subscriptions")

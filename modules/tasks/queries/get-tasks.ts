@@ -15,17 +15,10 @@ export interface GetTasksOptions {
   status?: TaskStatus | TaskStatus[];
   priority?: TaskPriority;
   onlyActive?: boolean;
-  /** Only Financial Context Tasks (task_context_type != 'standard'). */
-  financialOnly?: boolean;
   sort?: TaskSort;
   limit?: number;
   offset?: number;
 }
-
-// Financial-context columns (migration 079). Kept in a shared fragment so every
-// task read projects the same shape.
-const FINANCIAL_COLUMNS =
-  "task_context_type, financial_due_date, reminder_offset_days, amount, currency, provider_name, financial_source_type, financial_source_id, source_document_id, financial_transaction_id, financial_status, financial_confidence, financial_paid_at, financial_skipped_at";
 
 /**
  * Organization tasks with server-side sorting (smart_default by default) and
@@ -64,7 +57,6 @@ export async function getTasksWithAssignees(
       id, organization_id, workspace_id, project_id, created_by, updated_by,
       title, description, status, priority, due_date, recurrence, recurrence_source_id, position,
       is_completed, created_at, updated_at, deleted_at,
-      ${FINANCIAL_COLUMNS},
       task_assignees (
         id, task_id, user_id, assigned_by, created_at
       )

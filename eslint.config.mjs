@@ -127,6 +127,12 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": [
         "error",
         {
+          paths: [
+            {
+              name: "@/modules/moneyflow/contracts",
+              message: "Use the extractable @nevora/finance-contracts workspace package.",
+            },
+          ],
           patterns: [
             {
               regex: "^@/modules/moneyflow(?:$|/(?!contracts$|server$|actions$|ui$).+)",
@@ -144,6 +150,12 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": [
         "error",
         {
+          paths: [
+            {
+              name: "@/modules/subtracker/contracts",
+              message: "Use the extractable @nevora/subscriptions-contracts workspace package.",
+            },
+          ],
           patterns: [
             {
               regex: "^@/modules/subtracker(?:$|/(?!contracts$|server$|actions$|ui$).+)",
@@ -227,7 +239,12 @@ const eslintConfig = defineConfig([
   // application. The Tasks runtime may own Supabase, but not root aliases or
   // framework APIs.
   {
-    files: ["packages/**/*.{ts,tsx,mts}", "apps/tasks/src/**/*.{ts,tsx,mts}"],
+    files: [
+      "packages/**/*.{ts,tsx,mts}",
+      "apps/tasks/src/**/*.{ts,tsx,mts}",
+      "apps/subscriptions/src/**/*.{ts,tsx,mts}",
+      "apps/finance/src/**/*.{ts,tsx,mts}",
+    ],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -249,6 +266,10 @@ const eslintConfig = defineConfig([
   {
     files: [
       "packages/financial-state/**/*.{ts,tsx,mts}",
+      "packages/finance-contracts/**/*.{ts,tsx,mts}",
+      "packages/finance-api/**/*.{ts,tsx,mts}",
+      "packages/subscriptions-contracts/**/*.{ts,tsx,mts}",
+      "packages/subscriptions-api/**/*.{ts,tsx,mts}",
       "packages/tasks-api/**/*.{ts,tsx,mts}",
       "packages/tasks-contracts/**/*.{ts,tsx,mts}",
     ],
@@ -280,6 +301,46 @@ const eslintConfig = defineConfig([
             {
               regex: "^@supabase(?:$|/)",
               message: "Keep database infrastructure in apps/tasks/src, outside Route Handlers.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["apps/subscriptions/app/**/*.{ts,tsx,mts}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^@/",
+              message: "The Subscriptions deployment cannot import the root application's @/ alias.",
+            },
+            {
+              regex: "^@supabase(?:$|/)",
+              message: "Keep database infrastructure in apps/subscriptions/src, outside Route Handlers.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["apps/finance/app/**/*.{ts,tsx,mts}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^@/",
+              message: "The Finance deployment cannot import the root application's @/ alias.",
+            },
+            {
+              regex: "^@supabase(?:$|/)",
+              message: "Keep database infrastructure in apps/finance/src, outside Route Handlers.",
             },
           ],
         },

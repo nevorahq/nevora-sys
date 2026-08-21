@@ -1,6 +1,7 @@
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { requireOrg } from "@/lib/auth/require-org";
 import { canDo, isAdmin } from "@/lib/context/current-context";
+import { createClient } from "@/lib/supabase/server";
 import { getMoneySummary } from "@/modules/moneyflow/server";
 import { getAccountsWithBalances } from "@/modules/moneyflow/server";
 import { getCategories } from "@/modules/moneyflow/server";
@@ -14,7 +15,7 @@ import {
   getUncategorizedTransactions,
 } from "@/modules/moneyflow/server";
 import { getCategorizationDiagnostics } from "@/modules/moneyflow/server";
-import { getSubscriptions } from "@/modules/subtracker/server";
+import { getSubscriptionsApplication } from "@/platform/subscriptions/server";
 import { MoneySummaryCards } from "@/modules/moneyflow/ui";
 import { MoneyCreateButtons } from "@/modules/moneyflow/ui";
 import { MoneyRecentTransactions } from "@/modules/moneyflow/ui";
@@ -50,6 +51,8 @@ export default async function MoneyPage({
 
   const ctx = await requireOrg();
   const admin = isAdmin(ctx);
+  const supabase = await createClient();
+  const subscriptionsApp = await getSubscriptionsApplication({ supabase, currentContext: ctx });
   const [summary, accounts, categories, transactions, planned, subscriptions, breakdown, intelligence, uncategorizedCount, uncategorized, diagnostics, exchangeRates] =
     await Promise.all([
       getMoneySummary(monthWindow),
@@ -57,7 +60,7 @@ export default async function MoneyPage({
       getCategories(ctx.org.id),
       getTransactions(ctx.org.id, { limit: 20, ...monthWindow }),
       getPlannedTransactions(ctx.org.id),
-      getSubscriptions(ctx.org.id),
+      subscriptionsApp.getSubscriptions(),
       getExpenseBreakdown(monthWindow),
       getCategoryIntelligence(monthWindow),
       getUncategorizedCount(ctx.org.id, monthWindow),
@@ -142,14 +145,8 @@ export default async function MoneyPage({
           {dict.money.intelligence.uncategorizedFilter} · {uncategorizedCount}
         </Link>
         <Link
-          href={ROUTES.subscriptions}
-          className="ml-auto min-h-9 rounded-full bg-surface-sunken px-4 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary"
-        >
-          {dict.money.subscriptionsLink}
-        </Link>
-        <Link
           href={`${ROUTES.money}/rules`}
-          className="min-h-9 rounded-full bg-surface-sunken px-4 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary"
+          className="ml-auto min-h-9 rounded-full bg-surface-sunken px-4 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary"
         >
           {dict.money.intelligence.rulesLink}
         </Link>

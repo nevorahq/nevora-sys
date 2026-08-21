@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createGeneratedTaskRecord,
-  hasPaidTaskForTransaction,
   retireGeneratedTasks,
 } from "./generated-task-lifecycle";
 
@@ -59,19 +58,5 @@ describe("generated task lifecycle", () => {
       deleted_at: "2026-08-21T10:00:00.000Z",
       updated_by: USER_ID,
     }));
-  });
-
-  it("recognizes a transaction already attached to a paid task", async () => {
-    const chain: Record<string, ReturnType<typeof vi.fn>> = {};
-    chain.select = vi.fn(() => chain);
-    chain.eq = vi.fn(() => chain);
-    chain.limit = vi.fn(() => chain);
-    chain.maybeSingle = vi.fn().mockResolvedValue({ data: { id: "task-1" } });
-
-    await expect(hasPaidTaskForTransaction({
-      supabase: { from: vi.fn(() => chain) } as never,
-      organizationId: ORGANIZATION_ID,
-      transactionId: "44444444-4444-4444-8444-444444444444",
-    })).resolves.toBe(true);
   });
 });

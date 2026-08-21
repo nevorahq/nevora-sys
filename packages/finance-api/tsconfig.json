@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["esnext"],
+    "strict": true,
+    "noEmit": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "baseUrl": "../..",
+    "paths": {
+      "@nevora/finance-contracts": ["packages/finance-contracts/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

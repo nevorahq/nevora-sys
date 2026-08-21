@@ -49,5 +49,6 @@ export { updateSubscriptionAction } from "./actions/update-subscription.action";
 export { deleteSubscriptionAction } from "./actions/delete-subscription.action";
 export { renewSubscriptionAction } from "./actions/renew-subscription.action";
 export { skipSubscriptionPaymentAction } from "./actions/skip-subscription-payment.action";
+export { markSubscriptionPaymentAction } from "./actions/mark-subscription-payment.action";
 export { changeSubscriptionPaymentDueDateAction } from "./actions/change-subscription-payment-due-date.action";
 export { cancelSubscriptionAction } from "./actions/cancel-subscription.action";

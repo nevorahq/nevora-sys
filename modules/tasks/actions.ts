@@ -10,7 +10,6 @@ import {
   assignTaskAction as assignTask,
   unassignTaskAction as unassignTask,
 } from "./actions/assign-task.action";
-import { createFinancialTaskFromDocumentAction as createFinancialTaskFromDocument } from "./actions/create-financial-task-from-document.action";
 import { createProjectAction as createProject } from "./projects/actions/create-project.action";
 import { updateProjectAction as updateProject } from "./projects/actions/update-project.action";
 import { archiveProjectAction as archiveProject } from "./projects/actions/archive-project.action";
@@ -49,12 +48,6 @@ export async function assignTaskAction(...args: Parameters<typeof assignTask>) {
 
 export async function unassignTaskAction(...args: Parameters<typeof unassignTask>) {
   return unassignTask(...args);
-}
-
-export async function createFinancialTaskFromDocumentAction(
-  ...args: Parameters<typeof createFinancialTaskFromDocument>
-) {
-  return createFinancialTaskFromDocument(...args);
 }
 
 export async function createProjectAction(...args: Parameters<typeof createProject>) {

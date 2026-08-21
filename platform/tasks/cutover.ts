@@ -10,7 +10,7 @@ export type TasksCutoverOutcome =
   | "remote_read_fallback";
 
 export interface TasksCutoverObservation {
-  operation: "getTask" | "listTasks" | "hasPaidTaskForTransaction";
+  operation: "getTask" | "listTasks";
   outcome: TasksCutoverOutcome;
   localSize?: number;
   remoteSize?: number;
@@ -102,14 +102,7 @@ export function createCutoverTasksApplication(
       read("getTask", () => local.getTask(taskId), () => remote.getTask(taskId)),
     listTasks: (input = {}) =>
       read("listTasks", () => local.listTasks(input), () => remote.listTasks(input)),
-    hasPaidTaskForTransaction: (transactionId) =>
-      read(
-        "hasPaidTaskForTransaction",
-        () => local.hasPaidTaskForTransaction(transactionId),
-        () => remote.hasPaidTaskForTransaction(transactionId),
-      ),
     createStandardTask: (input) => writes.createStandardTask(input),
-    createFinancialTask: (input) => writes.createFinancialTask(input),
     createGeneratedTask: (input) => writes.createGeneratedTask(input),
     updateGeneratedTaskDueDate: (input) => writes.updateGeneratedTaskDueDate(input),
     retireGeneratedTasks: (input) => writes.retireGeneratedTasks(input),

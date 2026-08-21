@@ -12,12 +12,5 @@ export { ExpenseQuestion } from "./components/expense-question";
 export { MonthNavigator } from "./components/month-navigator";
 export { ExchangeRatesWidget } from "./components/exchange-rates-widget";
 export { CategoryRulesManager } from "./components/category-rules-manager";
-export { MoneyWorkspaceTabs } from "./components/money-workspace-tabs";
 export { AiSuggestionPanel } from "./components/ai-suggestion-panel";
 export { FinancialStateBadge, STATE_STYLE } from "@nevora/financial-state/ui";
-export { InlineAccountPrompt } from "./components/inline-account-prompt";
-export type {
-  CreateAccountForObligationAction,
-  InlineObligationAccountResult,
-  ObligationKind,
-} from "./components/inline-account-prompt";

@@ -343,9 +343,6 @@ export interface DomainEventPayloadMap {
     subscription_id: string;
     cycle_id: string;
     billing_period_key: string;
-    transaction_id: string;
-    amount: number;
-    currency: string;
     paid_at: string;
   };
   "subscription.payment_cycle.skipped": {

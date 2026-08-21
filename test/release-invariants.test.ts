@@ -99,22 +99,21 @@ describe("notification lifecycle: read is NOT resolved", () => {
   });
 });
 
-describe("subscription payment: mark as paid is idempotent", () => {
-  const body = liveFunctionBody("mark_subscription_payment_paid");
-
-  it("locks the cycle row before deciding (no double-post under a double click)", () => {
-    expect(body).toMatch(/FOR\s+UPDATE/i);
-  });
-
-  it("returns early with already_paid when the cycle is already paid", () => {
-    expect(body).toMatch(/IF\s+v_cycle\.status\s*=\s*'paid'\s+THEN/i);
-    expect(body).toMatch(/'already_paid',\s*true/i);
-  });
-
-  it("the expense is keyed so a retry cannot duplicate it", () => {
+describe("subscription payment cycle: mark as paid is idempotent", () => {
+  // mark_subscription_payment_paid() (078) was dropped when Tasks/Money/
+  // Subscriptions stopped bridging — see markSubscriptionPaymentAsPaid in
+  // modules/subtracker/services, which now owns this guarantee in TypeScript
+  // (a guarded UPDATE ... WHERE status IN ('planned','task_open')) instead of
+  // a SECURITY DEFINER RPC, since it no longer needs to atomically post money.
+  it("the expense-cycle key stays unique so a retry cannot duplicate it", () => {
     const schema = read("supabase/migrations/078_subscription_payment_cycles.sql");
     expect(schema).toContain("UNIQUE (organization_id, idempotency_key)");
     expect(schema).toContain("UNIQUE (organization_id, subscription_id, billing_period_key)");
+  });
+
+  it("the local mark-as-paid service guards against a concurrent pay/skip", () => {
+    const src = read("modules/subtracker/services/mark-subscription-payment-as-paid.ts");
+    expect(src).toMatch(/\.in\(\s*["'`]status["'`],\s*\[\s*["'`]planned["'`],\s*["'`]task_open["'`]\s*\]\s*\)/);
   });
 });
 
@@ -156,34 +155,9 @@ describe("confirm-first finance: nothing posts money implicitly", () => {
   });
 });
 
-// Sprint 4 unit 4.2 — idempotency & concurrency proof. The subscription path is
-// covered above; these extend the same guarantee to the financial-task path and
-// pin FX-history immutability, so a repeat click or a rate change cannot corrupt
-// the ledger.
-describe("financial task payment: mark as paid is idempotent", () => {
-  const body = liveFunctionBody("mark_financial_task_paid");
-
-  it("locks the task row before deciding (no double-post under a double click)", () => {
-    expect(body).toMatch(/FOR\s+UPDATE/i);
-  });
-
-  it("returns the existing transaction when already paid — no second post", () => {
-    expect(body).toMatch(/financial_status\s*=\s*'paid'/i);
-    expect(body).toMatch(/'already_paid',\s*true/i);
-    expect(body).toMatch(/financial_transaction_id/i);
-  });
-
-  it("only pays a task that is currently open", () => {
-    expect(body).toMatch(/financial_status\s*<>\s*'open'/i);
-  });
-
-  it("keeps one financial task per source obligation (one obligation, one task)", () => {
-    const sql = read("supabase/migrations/099_planner_confirmation_exactly_once.sql");
-    expect(sql).toContain("todos_financial_source_unique_idx");
-    expect(sql).toMatch(/organization_id,\s*financial_source_type,\s*financial_source_id/i);
-  });
-});
-
+// Sprint 4 unit 4.2 pinned FX-history immutability alongside the mark-as-paid
+// idempotency proofs above. Financial Tasks (and mark_financial_task_paid())
+// were removed when Tasks/Money/Subscriptions stopped bridging — see the ADR.
 describe("financial history is immutable under FX rate changes", () => {
   // A posted transaction snapshots its own rate; changing the org's current rate
   // later must never rewrite what already happened.

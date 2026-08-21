@@ -1,25 +1,18 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
-import type { AccountType } from "../constants/moneyflow.constants";
 
-export type MoneyAccountOption = {
-  id: string;
-  name: string;
-  currency: string;
-};
-
-export type CreateMoneyAccountInput = {
-  name: string;
-  type: AccountType;
-  initialBalance: number;
-  currency: string;
-  creationRequestId?: string;
-};
-
-export type CreateMoneyAccountResult =
-  | { ok: true; account: MoneyAccountOption; created: boolean }
-  | { ok: false; error: unknown };
+/** Compatibility facade; canonical Money DTOs live in the workspace package. */
+export type {
+  MoneyAccountOption,
+  CreateMoneyAccountInput,
+  CreateMoneyAccountResult,
+} from "@nevora/finance-contracts";
+import type {
+  MoneyAccountOption,
+  CreateMoneyAccountInput,
+  CreateMoneyAccountResult,
+} from "@nevora/finance-contracts";
 
 /**
  * Return active, non-deleted accounts in one currency for the organization.

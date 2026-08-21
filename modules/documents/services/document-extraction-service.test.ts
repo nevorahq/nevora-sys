@@ -5,7 +5,6 @@ const createActionItemForDocument = vi.fn();
 const createDocumentSuggestionWithClassification = vi.fn();
 const normalizeFinancialDocument = vi.fn();
 const routeExtraction = vi.fn();
-const detectFinancialObligation = vi.fn();
 const getBlockedReason = vi.fn();
 const assertWithinLimit = vi.fn();
 
@@ -22,7 +21,6 @@ vi.mock("@/modules/billing", () => ({
   usageService: { assertWithinLimit },
 }));
 vi.mock("./document-extraction-router", () => ({ routeExtraction }));
-vi.mock("./detect-financial-obligation", () => ({ detectFinancialObligation }));
 
 const { runDocumentExtraction } = await import("./document-extraction-service");
 
@@ -117,13 +115,6 @@ beforeEach(() => {
   });
   getBlockedReason.mockResolvedValue(null);
   assertWithinLimit.mockResolvedValue(undefined);
-  detectFinancialObligation.mockResolvedValue({
-    detected: false,
-    autoCreated: false,
-    taskId: null,
-    band: "none",
-    reason: "No financial obligation detected.",
-  });
   routeExtraction.mockResolvedValue({
     ok: true,
     provider: "pdf_parse",

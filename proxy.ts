@@ -2,8 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 import {
   ROUTES,
+  isFinanceServiceTransportRequest,
   isMachineRoute,
   isPublicRoute,
+  isSubscriptionsServiceTransportRequest,
   isTasksServiceTransportRequest,
 } from "@/shared/config/routes";
 
@@ -32,10 +34,17 @@ export async function proxy(request: NextRequest) {
   // проверяет свой shared secret сам — см. MACHINE_ROUTES.
   if (isMachineRoute(pathname)) return NextResponse.next();
 
-  // The Tasks service transport has no browser session. Only the exact route
-  // and token envelope bypass session refresh; the Route Handler verifies the
-  // HMAC signature, expiry, operation and live membership before any DB access.
+  // The Tasks/Subscriptions/Finance service transports have no browser
+  // session. Only the exact route and token envelope bypass session refresh;
+  // the Route Handler verifies the HMAC signature, expiry, operation and
+  // live membership before any DB access.
   if (isTasksServiceTransportRequest(pathname, request.headers.get("authorization"))) {
+    return NextResponse.next();
+  }
+  if (isSubscriptionsServiceTransportRequest(pathname, request.headers.get("authorization"))) {
+    return NextResponse.next();
+  }
+  if (isFinanceServiceTransportRequest(pathname, request.headers.get("authorization"))) {
     return NextResponse.next();
   }
 

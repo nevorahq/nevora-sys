@@ -80,10 +80,7 @@ export function createHttpTasksApplication(
     context: dependencies.context,
     getTask: (taskId) => send({ operation: "getTask", input: { taskId } }),
     listTasks: (input = {}) => send({ operation: "listTasks", input }),
-    hasPaidTaskForTransaction: (transactionId) =>
-      send({ operation: "hasPaidTaskForTransaction", input: { transactionId } }),
     createStandardTask: (input) => send({ operation: "createStandardTask", input }),
-    createFinancialTask: (input) => send({ operation: "createFinancialTask", input }),
     createGeneratedTask: (input) =>
       send({
         operation: "createGeneratedTask",

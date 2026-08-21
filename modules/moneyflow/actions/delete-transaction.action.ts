@@ -8,7 +8,6 @@ import { emitDomainEvent } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
-import { findPaidObligationForTransaction } from "@/platform/financial-obligations/server";
 
 export async function deleteTransactionAction(id: string): Promise<{ error?: string }> {
   const { dict } = await getDictionary();
@@ -33,22 +32,6 @@ export async function deleteTransactionAction(id: string): Promise<{ error?: str
 
   try {
     const supabase = await createClient();
-
-    // Guard: never let a delete silently un-back a confirmed payment. The FK on
-    // both subscription_payment_cycles.transaction_id and
-    // todos.financial_transaction_id is ON DELETE SET NULL, so a raw delete would
-    // null the link while the obligation stays `paid` — a phantom-paid row (this
-    // is the origin of the one legacy cycle found on remote 2026-07-08). Refuse
-    // and point the user at the obligation instead of corrupting its state.
-    const linkedObligation = await findPaidObligationForTransaction({
-      supabase,
-      currentContext: ctx,
-      transactionId: id,
-    });
-
-    if (linkedObligation) {
-      return { error: dict.money.errors.transactionLinkedToPaidObligation };
-    }
 
     const { data: deletedTransaction, error } = await supabase
       .from("money_transactions")

@@ -4,7 +4,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import {
   createGeneratedTask,
-  hasPaidTaskForTransaction as runtimeHasPaidTaskForTransaction,
   retireGeneratedTasks as runtimeRetireGeneratedTasks,
   updateGeneratedTaskDueDate as runtimeUpdateGeneratedTaskDueDate,
 } from "@nevora/tasks-runtime";
@@ -47,14 +46,3 @@ export function retireGeneratedTasks(
   );
 }
 
-export function hasPaidTaskForTransaction(params: {
-  supabase: SupabaseClient;
-  organizationId: string;
-  transactionId: string;
-}): Promise<boolean> {
-  return runtimeHasPaidTaskForTransaction(
-    params.supabase,
-    params.organizationId,
-    params.transactionId,
-  );
-}

@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { ReactNode } from "react";
 import { CheckCircleIcon, RepeatIcon, SkipForwardIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/shared/ui/button";
-import { Select } from "@/shared/ui/select";
 import { formatMoney } from "@/shared/utils/format-money";
 import { formatDate } from "@/shared/utils/format-date";
 import { ROUTES } from "@/shared/config/routes";
@@ -14,40 +12,28 @@ import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import { skipSubscriptionPaymentAction } from "../actions/skip-subscription-payment.action";
 import type { SubscriptionPaymentCycle } from "../types/payment-cycle.types";
 
-interface AccountOption {
-  id: string;
-  name: string;
-  currency: string;
-}
-
 export interface SubscriptionPaymentTaskPanelProps {
   cycle: SubscriptionPaymentCycle;
   providerName: string;
-  accounts: AccountOption[];
   canWrite: boolean;
   /** Canonical financial-state labels (`dict.money.states`) for the cycle badge. */
   stateLabels: Dictionary["money"]["states"];
-  /** Integration slot supplied by a workflow when no payment account exists. */
-  emptyAccountPrompt?: ReactNode;
-  /** Workflow-owned mutation that posts the expense and advances the cycle. */
-  onMarkAsPaid: (input: { cycleId: string; accountId: string }) => Promise<{ error?: string }>;
+  /** Marks the cycle paid locally — no Money transaction is created. */
+  onMarkAsPaid: (input: { cycleId: string }) => Promise<{ error?: string }>;
 }
 
 /**
  * Rendered on a task detail page when the task is a subscription payment task.
  * Routes completion through the specialized Mark-as-paid flow — NOT generic
- * task completion — so the expense + next cycle are created correctly.
+ * task completion — so the cycle and schedule advance correctly.
  */
 export function SubscriptionPaymentTaskPanel({
   cycle,
   providerName,
-  accounts,
   canWrite,
   stateLabels,
-  emptyAccountPrompt,
   onMarkAsPaid,
 }: SubscriptionPaymentTaskPanelProps) {
-  const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -107,21 +93,11 @@ export function SubscriptionPaymentTaskPanel({
 
       {canWrite && isOpen && (
         <div className="mt-4 space-y-3">
-          {accounts.length > 0 ? (
-            <Select
-              id="task-pay-account"
-              label="Pay from account"
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              options={accounts.map((a) => ({ value: a.id, label: `${a.name} · ${a.currency}` }))}
-            />
-          ) : emptyAccountPrompt}
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               isLoading={isPending}
-              disabled={!accountId || accounts.length === 0}
-              onClick={() => run(() => onMarkAsPaid({ cycleId: cycle.id, accountId }))}
+              onClick={() => run(() => onMarkAsPaid({ cycleId: cycle.id }))}
             >
               <CheckCircleIcon size={15} className="mr-1.5" /> Mark as paid
             </Button>

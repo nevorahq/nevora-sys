@@ -1,6 +1,4 @@
 import type {
-  CreateFinancialTaskCommand,
-  CreateFinancialTaskResult,
   CreateGeneratedTaskInput,
   CreateStandardTaskInput,
   CreateStandardTaskResult,
@@ -28,7 +26,6 @@ export interface TasksListInput {
   status?: TaskStatus | TaskStatus[];
   priority?: TaskPriority;
   onlyActive?: boolean;
-  financialOnly?: boolean;
   sort?: TaskSort;
   limit?: number;
   offset?: number;
@@ -46,10 +43,8 @@ export interface TasksApplication {
 
   getTask(taskId: string): Promise<TaskWithDetails | null>;
   listTasks(input?: TasksListInput): Promise<Task[]>;
-  hasPaidTaskForTransaction(transactionId: string): Promise<boolean>;
 
   createStandardTask(input: CreateStandardTaskInput): Promise<CreateStandardTaskResult>;
-  createFinancialTask(input: CreateFinancialTaskCommand): Promise<CreateFinancialTaskResult>;
   createGeneratedTask(input: CreateGeneratedTaskInput): Promise<GeneratedTaskMutationResult>;
   updateGeneratedTaskDueDate(input: UpdateGeneratedTaskDueDateInput): Promise<boolean>;
   retireGeneratedTasks(input: RetireGeneratedTasksInput): Promise<number>;

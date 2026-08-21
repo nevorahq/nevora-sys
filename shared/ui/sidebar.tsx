@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  HomeIcon, CheckSquareIcon, WalletIcon,
+  CheckSquareIcon, WalletIcon,
   FileTextIcon, SettingsIcon,
-  InboxIcon,
+  RepeatIcon,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { ROUTES } from "@/shared/config/routes";
@@ -34,26 +34,6 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ElementType;
-  /**
-   * Extra path prefixes that should light this item up as active, for surfaces
-   * that were folded INTO this section but keep their own route. Subscriptions
-   * folded into Money (Sprint 2 surface reduction): `/dashboard/subscriptions`
-   * still resolves as a deep link, but in the nav it belongs to Money.
-   */
-  activeMatch?: string[];
-  /**
-   * Path prefixes that must NOT light this item up even though they sit under
-   * its own href. Financial Tasks lives at `/dashboard/tasks/financial` but is a
-   * Money-workspace tab, so Work must yield it to Finances — otherwise two
-   * sections report active at once.
-   */
-  excludeMatch?: string[];
-  /**
-   * Match the pathname EXACTLY rather than by prefix. Home points at `/dashboard`,
-   * which is a prefix of every dashboard route — without this it would report
-   * active everywhere.
-   */
-  exact?: boolean;
 }
 
 interface SidebarProps {
@@ -63,35 +43,24 @@ interface SidebarProps {
 export function Sidebar({ dict }: SidebarProps) {
   const pathname = usePathname();
 
-  // Six-section primary nav (Sprint 2 surface reduction + Sprint 3 GAP-C).
-  //
-  // Home is the Action Center (`/dashboard`): "what needs my attention today?".
-  // Sprint 3 decided Home = Action Center, so the attention queue is no longer
-  // hidden — it IS the landing section. The secondary metrics roll-up folded into
-  // Home (`/dashboard/overview` redirects here); its summaries also live in each
-  // module. Inbox stays as the Capture/Review surface.
-  //
-  // Subscriptions folded INTO Money (reached from the Money page); its route
-  // still resolves as a deep link. Analytics and AI remain reachable by URL but
-  // are not primary sections.
+  // Product independence: Tasks, Money and Subscriptions are separate primary
+  // sections with no shared surfaces between them. Home (Action Center) and
+  // Inbox were cross-product aggregators and were dropped. Analytics and AI
+  // remain reachable by URL but are not primary sections.
   //
   // CRM and Booking are PAUSED modules: they are absent here on purpose, and the
   // hiding is cosmetic only — `shared/config/paused-modules` gates their pages,
   // Server Actions and route handlers server-side.
   const navItems: NavItem[] = [
-    { href: ROUTES.dashboard, label: dict.nav.home,      icon: HomeIcon, exact: true },
-    { href: ROUTES.tasks,     label: dict.nav.tasks,     icon: CheckSquareIcon, excludeMatch: [ROUTES.tasksFinancial] },
-    { href: ROUTES.money,     label: dict.nav.money,     icon: WalletIcon, activeMatch: [ROUTES.subscriptions, ROUTES.tasksFinancial] },
-    { href: ROUTES.documents, label: dict.nav.documents, icon: FileTextIcon },
-    { href: ROUTES.inbox,     label: dict.nav.inbox,     icon: InboxIcon },
-    { href: ROUTES.settings,  label: dict.nav.settings,  icon: SettingsIcon },
+    { href: ROUTES.tasks,         label: dict.nav.tasks,         icon: CheckSquareIcon },
+    { href: ROUTES.money,         label: dict.nav.money,         icon: WalletIcon },
+    { href: ROUTES.subscriptions, label: dict.nav.subscriptions, icon: RepeatIcon },
+    { href: ROUTES.documents,     label: dict.nav.documents,     icon: FileTextIcon },
+    { href: ROUTES.settings,      label: dict.nav.settings,      icon: SettingsIcon },
   ];
 
   function isActive(item: NavItem): boolean {
-    if (item.exact) return pathname === item.href;
-    if ((item.excludeMatch ?? []).some((p) => pathname.startsWith(p))) return false;
-    if (pathname.startsWith(item.href)) return true;
-    return (item.activeMatch ?? []).some((p) => pathname.startsWith(p));
+    return pathname.startsWith(item.href);
   }
 
   return (

@@ -74,18 +74,12 @@ describe("Sprint 4.4 rollout: converted surfaces use the badge", () => {
     "utf8",
   );
 
-  const financialTaskPanel = readFileSync(
-    join(ROOT, "modules/tasks/components/financial-task-panel.tsx"),
-    "utf8",
-  );
-
-  /** Every money surface converted in unit 4.4. */
+  /** Every money surface converted in unit 4.4 (Financial Tasks removed since). */
   const CONVERTED = [
     "modules/subtracker/components/subscription-payment-workflow-panel.tsx",
     "modules/subtracker/components/subscription-payment-task-panel.tsx",
     "modules/subtracker/components/subscription-suggestion-panel.tsx",
     "modules/subtracker/components/sub-item.tsx",
-    "modules/tasks/components/financial-task-panel.tsx",
     "modules/documents/components/document-extraction-review.tsx",
   ] as const;
 
@@ -93,12 +87,6 @@ describe("Sprint 4.4 rollout: converted surfaces use the badge", () => {
     expect(panel).toContain("FinancialStateBadge");
     expect(panel).not.toMatch(/\.status\.replace\(/);
     expect(panel).not.toContain("STATUS_STYLE");
-  });
-
-  it("the financial task panel renders the badge, not its own status map", () => {
-    expect(financialTaskPanel).toContain("FinancialStateBadge");
-    expect(financialTaskPanel).not.toContain("STATUS_CLASS");
-    expect(financialTaskPanel).not.toContain("statusLabel");
   });
 
   it.each(CONVERTED)("%s renders the canonical badge", (file) => {

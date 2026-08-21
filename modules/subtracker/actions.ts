@@ -5,6 +5,7 @@ import { updateSubscriptionAction as updateSubscription } from "./actions/update
 import { deleteSubscriptionAction as deleteSubscription } from "./actions/delete-subscription.action";
 import { renewSubscriptionAction as renewSubscription } from "./actions/renew-subscription.action";
 import { skipSubscriptionPaymentAction as skipSubscriptionPayment } from "./actions/skip-subscription-payment.action";
+import { markSubscriptionPaymentAction as markSubscriptionPayment } from "./actions/mark-subscription-payment.action";
 import { changeSubscriptionPaymentDueDateAction as changeSubscriptionPaymentDueDate } from "./actions/change-subscription-payment-due-date.action";
 import { cancelSubscriptionAction as cancelSubscription } from "./actions/cancel-subscription.action";
 
@@ -28,6 +29,12 @@ export async function skipSubscriptionPaymentAction(
   ...args: Parameters<typeof skipSubscriptionPayment>
 ) {
   return skipSubscriptionPayment(...args);
+}
+
+export async function markSubscriptionPaymentAction(
+  ...args: Parameters<typeof markSubscriptionPayment>
+) {
+  return markSubscriptionPayment(...args);
 }
 
 export async function changeSubscriptionPaymentDueDateAction(
