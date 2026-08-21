@@ -82,3 +82,22 @@ manual. It publishes `ghcr.io/nevorahq/nevora-tasks:sha-<full-commit>` only afte
 starting and checking the image, then updates the convenience `staging` alias.
 Deploy the immutable sha tag from the workflow summary. A portable staging
 definition and environment template live under `deploy/tasks/`.
+
+## Netlify staging
+
+The Tasks runtime can also be deployed as a separate Netlify Next.js site. This
+uses Netlify's serverless Next.js adapter instead of the container, while the
+Docker/GHCR deployment remains available as a provider-neutral fallback.
+
+Create the site from the same repository with these monorepo settings:
+
+- base directory: repository root (`/`);
+- package directory: `apps/tasks`;
+- configuration file: `apps/tasks/netlify.toml`;
+- production branch: `main`.
+
+Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and
+`TASKS_SERVICE_AUTH_SECRET` in the Tasks site's runtime environment. Use
+`/api/health` for liveness and `/api/ready` for readiness after the variables
+are configured. The root site receives the generated Tasks site URL through
+`TASKS_API_URL` and must use the same `TASKS_SERVICE_AUTH_SECRET`.

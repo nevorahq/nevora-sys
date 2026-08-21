@@ -115,6 +115,7 @@ dist
 
 # Serverless directories
 .serverless/
+**/.netlify/
 
 # FuseBox cache
 .fusebox/
