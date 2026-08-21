@@ -8,7 +8,7 @@ import { formatMoney } from "@/shared/utils/format-money";
 import { DeleteTransactionButton } from "./delete-transaction-button";
 import { TransactionEditForm } from "./transaction-edit-form";
 import { Modal } from "@/shared/ui/modal";
-import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
+import { RestrictedActionTooltip, useAccessGate } from "@/platform/access/ui";
 import { cn } from "@/shared/utils/cn";
 import { formatDate, formatTime } from "@/shared/utils/format-date";
 import type { MoneyAccount, MoneyCategory, MoneyTransactionWithRelations } from "../types/moneyflow.types";

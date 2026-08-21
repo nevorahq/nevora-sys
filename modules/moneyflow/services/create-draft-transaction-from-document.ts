@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { DEFAULT_CURRENCY } from "../constants/moneyflow.constants";
-import { findDuplicateTransaction } from "@/modules/documents/services/duplicate-detection";
+import { findDuplicateTransaction } from "./duplicate-detection";
 
 /**
  * Create a DRAFT money transaction from extracted financial data.

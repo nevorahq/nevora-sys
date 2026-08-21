@@ -4,10 +4,12 @@ import { useActionState, useEffect, useState } from "react";
 import { WalletIcon } from "lucide-react";
 import {
   createAccountForDocumentExpenseAction,
-  type InlineAccountCreationResult,
-} from "@/modules/moneyflow/actions/create-account-for-document-expense.action";
-import { ACCOUNT_TYPES } from "@/modules/moneyflow/constants/moneyflow.constants";
-import type { MoneyAccountOption } from "@/modules/moneyflow/services/money-account-service";
+} from "@/modules/moneyflow/actions";
+import { ACCOUNT_TYPES } from "@/modules/moneyflow/contracts";
+import type {
+  InlineAccountCreationResult,
+  MoneyAccountOption,
+} from "@/modules/moneyflow/contracts";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Modal } from "@/shared/ui/modal";

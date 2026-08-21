@@ -5,7 +5,7 @@ const emitAuditLog = vi.fn();
 const findDuplicateTransaction = vi.fn();
 
 vi.mock("@/lib/events", () => ({ emitDomainEvent, emitAuditLog }));
-vi.mock("@/modules/documents/services/duplicate-detection", () => ({ findDuplicateTransaction }));
+vi.mock("./duplicate-detection", () => ({ findDuplicateTransaction }));
 
 const { createDraftTransactionFromDocument } = await import("./create-draft-transaction-from-document");
 

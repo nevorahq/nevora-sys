@@ -9,11 +9,18 @@ import { Modal } from "@/shared/ui/modal";
 import { Select } from "@/shared/ui/select";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import { ACCOUNT_TYPES } from "../constants/moneyflow.constants";
-import {
-  createAccountForObligationAction,
-  type InlineObligationAccountResult,
-  type ObligationKind,
-} from "../actions/create-account-for-obligation.action";
+
+export type ObligationKind = "financial_task" | "subscription_cycle";
+export type InlineObligationAccountResult = {
+  error?: string;
+  fieldErrors?: Record<string, string[]>;
+  account?: { id: string; name: string; currency: string };
+  created?: boolean;
+};
+export type CreateAccountForObligationAction = (
+  previousState: InlineObligationAccountResult,
+  formData: FormData,
+) => Promise<InlineObligationAccountResult>;
 
 type InlineAccountDict = Dictionary["money"]["inlineAccount"];
 type AccountTypeDict = Dictionary["money"]["accounts"]["types"];
@@ -32,6 +39,7 @@ export function InlineAccountPrompt({
   currency,
   t,
   accountTypes,
+  onCreateAccount,
 }: {
   obligationKind: ObligationKind;
   obligationId: string;
@@ -39,6 +47,7 @@ export function InlineAccountPrompt({
   currency: string;
   t: InlineAccountDict;
   accountTypes: AccountTypeDict;
+  onCreateAccount: CreateAccountForObligationAction;
 }) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -73,6 +82,7 @@ export function InlineAccountPrompt({
           currency={currency}
           t={t}
           accountTypes={accountTypes}
+          onCreateAccount={onCreateAccount}
           onPendingChange={setIsSubmitting}
           onCancel={closeDialog}
           onSuccess={() => {
@@ -94,6 +104,7 @@ function InlineAccountForm({
   currency,
   t,
   accountTypes,
+  onCreateAccount,
   onPendingChange,
   onCancel,
   onSuccess,
@@ -104,13 +115,14 @@ function InlineAccountForm({
   currency: string;
   t: InlineAccountDict;
   accountTypes: AccountTypeDict;
+  onCreateAccount: CreateAccountForObligationAction;
   onPendingChange: (pending: boolean) => void;
   onCancel: () => void;
   onSuccess: () => void;
 }) {
   const [state, formAction, isPending] = useActionState<InlineObligationAccountResult, FormData>(
     async (previousState, formData) => {
-      const result = await createAccountForObligationAction(previousState, formData);
+      const result = await onCreateAccount(previousState, formData);
       if (result.account) onSuccess();
       return result;
     },

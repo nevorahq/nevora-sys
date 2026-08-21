@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
+import { requireAppAccess, accessErrorToActionResult } from "@/platform/access/server";
 import { emitDomainEvent } from "@/lib/events";
-import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
+import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/platform/access/server";
 import { getTransferSchema } from "../schemas/transfer.schema";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";

@@ -3,16 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
+import { requireAppAccess, accessErrorToActionResult } from "@/platform/access/server";
 import { canDo } from "@/lib/context/current-context";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
-import { ACCOUNT_NAME_MAX, ACCOUNT_TYPES } from "../constants/moneyflow.constants";
+import { ACCOUNT_NAME_MAX, ACCOUNT_TYPES } from "@/modules/moneyflow/contracts";
 import {
   createMoneyAccount,
   findActiveMoneyAccountsByCurrency,
   type MoneyAccountOption,
-} from "../services/money-account-service";
+} from "@/modules/moneyflow/server";
 
 /**
  * Inline Money-account creation from a blocked obligation.

@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
+import { requireAppAccess, accessErrorToActionResult } from "@/platform/access/server";
 import { emitDomainEvent } from "@/lib/events";
-import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/modules/billing";
+import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/platform/access/server";
 import { getSubscriptionSchemas } from "../schemas/subscription.schema";
 import { provisionSubscriptionPaymentCycle } from "../services/provision-subscription-payment-cycle";
 import type { SubscriptionForPayment } from "../types/payment-cycle.types";

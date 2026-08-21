@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
 import { canDo } from "@/lib/context/current-context";
 import { ROUTES } from "@/shared/config/routes";
-import { markFinancialTaskPaidSchema } from "../schemas/financial-task.schema";
+import { markFinancialTaskPaidSchema } from "@nevora/tasks-contracts";
 import { markFinancialTaskAsPaid } from "../services/mark-financial-task-paid";
 
 /**

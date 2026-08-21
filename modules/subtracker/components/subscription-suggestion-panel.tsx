@@ -6,7 +6,7 @@ import {
   confirmSubscriptionTaskSuggestion,
   rejectFinancialSuggestion,
 } from "@/modules/review/actions/financial-suggestion.actions";
-import { FinancialStateBadge } from "@/modules/moneyflow/components/financial-state-badge";
+import { FinancialStateBadge } from "@nevora/financial-state/ui";
 import { Button } from "@/shared/ui/button";
 import { formatDate } from "@/shared/utils/format-date";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";

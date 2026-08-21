@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { changeTaskStatusAction } from "@/modules/tasks/actions/change-task-status.action";
+import { changeTaskStatusAction } from "@/modules/tasks/actions";
 import { useAccessGate } from "@/modules/billing/components/access-state";
-import { TASK_STATUSES, type TaskStatus } from "@/modules/tasks/constants/task.constants";
+import { TASK_STATUSES, type TaskStatus } from "@nevora/tasks-contracts";
 import { cn } from "@/shared/utils/cn";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 

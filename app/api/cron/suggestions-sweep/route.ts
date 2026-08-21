@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { expireStaleSuggestions } from "@/modules/moneyflow/services/expire-stale-suggestions";
+import { expireStaleSuggestions } from "@/modules/moneyflow/server";
 import { expireStalePlannerSuggestions } from "@/modules/planner/services/expire-stale-planner-suggestions";
 import { logger } from "@/lib/observability/logger";
 

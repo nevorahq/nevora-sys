@@ -6,13 +6,13 @@ import { createEntityLink } from "@/lib/entity-links";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { reserveOrganizationUsage, releaseOrganizationUsage } from "@/modules/billing";
 import { createActionItemForDocument } from "@/modules/action-center/services/create-action-item-for-document";
-import { classifyExpense, normalizeMerchantName, upsertPrivateMerchantRule } from "@/modules/moneyflow/services/expense-classifier";
-import { findDuplicateTransaction } from "@/modules/documents/services/duplicate-detection";
-import { createBillingPeriodKey } from "@/modules/subtracker/services/billing-period-key";
-import { createSubscriptionPaymentCycle } from "@/modules/subtracker/services/create-subscription-payment-cycle";
+import { classifyExpense, normalizeMerchantName, upsertPrivateMerchantRule } from "@/modules/moneyflow/server";
+import { findDuplicateTransaction } from "@/modules/moneyflow/server";
+import { createBillingPeriodKey } from "@/modules/subtracker/server";
+import { createSubscriptionPaymentCycle } from "@/modules/subtracker/server";
 import { markDocumentPlannerEntry } from "@/modules/planner/services/mark-document-planner-entry";
-import { createSubscriptionPaymentTaskForCycle } from "@/modules/subtracker/services/create-subscription-payment-task";
-import type { SubscriptionForPayment } from "@/modules/subtracker/types/payment-cycle.types";
+import { createSubscriptionPaymentTaskForCycle } from "@/modules/subtracker/server";
+import type { SubscriptionForPayment } from "@/modules/subtracker/contracts";
 import { assertReviewStateTransition, type ReviewState } from "../constants/review.constants";
 import type {
   CreateDocumentSuggestionInput,

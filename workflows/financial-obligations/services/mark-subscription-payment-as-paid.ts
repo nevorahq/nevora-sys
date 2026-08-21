@@ -2,19 +2,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { createEntityLink } from "@/lib/entity-links";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
-import { calculateNextPaymentDate, previousDay } from "./calculate-next-payment-date";
-import { createBillingPeriodKey } from "./billing-period-key";
-import { createSubscriptionPaymentTaskForCycle } from "./create-subscription-payment-task";
 import {
+  calculateNextPaymentDate,
+  previousDay,
+  createBillingPeriodKey,
   buildSubscriptionExpenseIdempotencyKey,
   buildSubscriptionExpenseTitle,
-} from "./subscription-payment-keys";
+  type SubscriptionForPayment,
+  type SubscriptionPaymentCycle,
+} from "@/modules/subtracker/contracts";
+import { createSubscriptionPaymentTaskForCycle } from "@/modules/subtracker/server";
 import {
   PAYMENT_CYCLE_COLUMNS,
   SUBSCRIPTION_FOR_PAYMENT_COLUMNS,
-  type SubscriptionForPayment,
-  type SubscriptionPaymentCycle,
-} from "../types/payment-cycle.types";
+} from "@/modules/subtracker/contracts";
 
 type Result =
   | { ok: true; transactionId: string | null; alreadyPaid: boolean; nextCycleId: string | null }

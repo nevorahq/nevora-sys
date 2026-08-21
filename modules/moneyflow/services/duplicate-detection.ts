@@ -1,19 +1,16 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/**
- * Duplicate detection (spec §21). Before drafting a transaction we look for an
- * existing one in the same org with the same merchant + total + currency + date.
- * RLS scopes the query to the caller's org; we add an explicit org filter too.
- *
- * We never block silently — a likely duplicate is surfaced to the user as a
- * warning on the draft, not an auto-merge.
- */
-export interface DuplicateMatch {
+/** Result of checking a prospective ledger transaction for a likely duplicate. */
+export interface DuplicateTransactionMatch {
   isDuplicate: boolean;
   matchedTransactionId: string | null;
 }
 
+/**
+ * Find an existing transaction with the same financial identity. The check is
+ * advisory: callers surface a warning and keep the final decision with the user.
+ */
 export async function findDuplicateTransaction(
   supabase: SupabaseClient,
   params: {
@@ -24,7 +21,7 @@ export async function findDuplicateTransaction(
     transactionDate: string | null;
     excludeDocumentId?: string;
   },
-): Promise<DuplicateMatch> {
+): Promise<DuplicateTransactionMatch> {
   if (params.totalAmount == null || !params.currency) {
     return { isDuplicate: false, matchedTransactionId: null };
   }
@@ -38,20 +35,15 @@ export async function findDuplicateTransaction(
     .is("deleted_at", null)
     .limit(5);
 
-  if (params.merchantName) {
-    query = query.eq("merchant_name", params.merchantName);
-  }
-  if (params.transactionDate) {
-    query = query.eq("transaction_date", params.transactionDate);
-  }
+  if (params.merchantName) query = query.eq("merchant_name", params.merchantName);
+  if (params.transactionDate) query = query.eq("transaction_date", params.transactionDate);
 
   const { data, error } = await query;
   if (error || !data?.length) {
     return { isDuplicate: false, matchedTransactionId: null };
   }
 
-  // Ignore a transaction already drafted from this very document (re-extraction).
-  const match = data.find((r) => r.source_document_id !== params.excludeDocumentId);
+  const match = data.find((row) => row.source_document_id !== params.excludeDocumentId);
   return match
     ? { isDuplicate: true, matchedTransactionId: match.id as string }
     : { isDuplicate: false, matchedTransactionId: null };

@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAppAccess, isAccessError } from "@/lib/security";
+import { requireAppAccess, isAccessError } from "@/platform/access/server";
 import { canDo } from "@/lib/context/current-context";
 import { ROUTES } from "@/shared/config/routes";
-import { markSubscriptionPaymentSchema } from "../schemas/payment-cycle.schema";
+import { markSubscriptionPaymentSchema } from "@/modules/subtracker/contracts";
 import { markSubscriptionPaymentAsPaid } from "../services/mark-subscription-payment-as-paid";
 
 /**

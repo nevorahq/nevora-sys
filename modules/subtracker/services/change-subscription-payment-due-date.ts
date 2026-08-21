@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
+import { updateGeneratedTaskDueDate } from "@/platform/task-lifecycle/server";
 import { calculateNextPaymentDate, previousDay } from "./calculate-next-payment-date";
 import {
   PAYMENT_CYCLE_COLUMNS,
@@ -70,12 +71,12 @@ export async function changeSubscriptionPaymentDueDate(params: {
   }
 
   if (cycle.task_id) {
-    await supabase
-      .from("todos")
-      .update({ due_date: newDueDate, updated_by: ctx.user.id })
-      .eq("id", cycle.task_id)
-      .eq("organization_id", ctx.org.id)
-      .is("deleted_at", null);
+    await updateGeneratedTaskDueDate({
+      supabase,
+      ctx,
+      taskId: cycle.task_id,
+      dueDate: newDueDate,
+    });
   }
 
   // Re-anchor the subscription so subsequent periods follow the new day.

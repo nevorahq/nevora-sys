@@ -6,8 +6,8 @@ import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import {
   buildFinancialTaskExpenseIdempotencyKey,
   buildFinancialTaskExpenseTitle,
-} from "./financial-task-keys";
-import type { Task } from "../types/task.types";
+  type Task,
+} from "@nevora/tasks-contracts";
 
 type Result =
   | { ok: true; transactionId: string | null; alreadyPaid: boolean }
@@ -36,7 +36,7 @@ type RpcResult = {
  * nothing new — a duplicate click can never post a duplicate expense.
  *
  * Subscription payment tasks are NOT handled here — they carry a payment cycle
- * and go through markSubscriptionPaymentAsPaid (078) instead.
+ * and go through the subscription payment workflow instead.
  */
 export async function markFinancialTaskAsPaid(params: {
   supabase: SupabaseClient;

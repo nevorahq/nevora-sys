@@ -19,7 +19,11 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@nevora/financial-state/*": ["./packages/financial-state/src/*"],
+      "@nevora/tasks-api": ["./packages/tasks-api/src/index.ts"],
+      "@nevora/tasks-contracts": ["./packages/tasks-contracts/src/index.ts"],
+      "@nevora/tasks-runtime": ["./packages/tasks-runtime/src/index.ts"]
     }
   },
   "include": [
@@ -30,5 +34,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "supabase/functions"]
+  "exclude": ["node_modules", "supabase/functions", "apps/tasks/.next"]
 }

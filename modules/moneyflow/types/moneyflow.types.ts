@@ -150,3 +150,9 @@ export type MoneySummary = {
   /** Сводный итог в базовой валюте. */
   base: BaseSummary;
 };
+
+/** Minimal external reference needed to link a transaction to a subscription. */
+export interface TransactionSubscriptionOption {
+  id: string;
+  name: string;
+}

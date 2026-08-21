@@ -2,15 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { CalendarIcon, TagIcon } from "lucide-react";
-import { changeTaskStatusAction } from "@/modules/tasks/actions/change-task-status.action";
-import { TASK_STATUSES, TASK_STATUS_LABELS } from "@/modules/tasks/constants/task.constants";
+import { changeTaskStatusAction } from "@/modules/tasks/actions";
+import { TASK_STATUSES, TASK_STATUS_LABELS } from "@nevora/tasks-contracts";
 import { Modal } from "@/shared/ui/modal";
 import { TodoEditForm } from "./todo-edit-form";
 import { cn } from "@/shared/utils/cn";
 import { formatDate } from "@/shared/utils/format-date";
 import type { Todo } from "@/entities/todo/model";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
-import type { TaskStatus } from "@/modules/tasks/constants/task.constants";
+import type { TaskStatus } from "@nevora/tasks-contracts";
 
 interface TaskDetailModalProps {
   todo: Todo & { status: TaskStatus };

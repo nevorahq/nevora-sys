@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import type { ReactNode } from "react";
 import { CheckCircleIcon, RepeatIcon, SkipForwardIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/shared/ui/button";
@@ -8,10 +9,8 @@ import { Select } from "@/shared/ui/select";
 import { formatMoney } from "@/shared/utils/format-money";
 import { formatDate } from "@/shared/utils/format-date";
 import { ROUTES } from "@/shared/config/routes";
-import { FinancialStateBadge } from "@/modules/moneyflow/components/financial-state-badge";
-import { InlineAccountPrompt } from "@/modules/moneyflow/components/inline-account-prompt";
+import { FinancialStateBadge } from "@nevora/financial-state/ui";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
-import { markSubscriptionPaymentAction } from "../actions/mark-subscription-payment.action";
 import { skipSubscriptionPaymentAction } from "../actions/skip-subscription-payment.action";
 import type { SubscriptionPaymentCycle } from "../types/payment-cycle.types";
 
@@ -21,16 +20,17 @@ interface AccountOption {
   currency: string;
 }
 
-interface Props {
+export interface SubscriptionPaymentTaskPanelProps {
   cycle: SubscriptionPaymentCycle;
   providerName: string;
   accounts: AccountOption[];
   canWrite: boolean;
   /** Canonical financial-state labels (`dict.money.states`) for the cycle badge. */
   stateLabels: Dictionary["money"]["states"];
-  /** Copy for the inline "no money account yet" resolution. */
-  inlineAccount: Dictionary["money"]["inlineAccount"];
-  accountTypeLabels: Dictionary["money"]["accounts"]["types"];
+  /** Integration slot supplied by a workflow when no payment account exists. */
+  emptyAccountPrompt?: ReactNode;
+  /** Workflow-owned mutation that posts the expense and advances the cycle. */
+  onMarkAsPaid: (input: { cycleId: string; accountId: string }) => Promise<{ error?: string }>;
 }
 
 /**
@@ -44,9 +44,9 @@ export function SubscriptionPaymentTaskPanel({
   accounts,
   canWrite,
   stateLabels,
-  inlineAccount,
-  accountTypeLabels,
-}: Props) {
+  emptyAccountPrompt,
+  onMarkAsPaid,
+}: SubscriptionPaymentTaskPanelProps) {
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -115,21 +115,13 @@ export function SubscriptionPaymentTaskPanel({
               onChange={(e) => setAccountId(e.target.value)}
               options={accounts.map((a) => ({ value: a.id, label: `${a.name} · ${a.currency}` }))}
             />
-          ) : (
-            <InlineAccountPrompt
-              obligationKind="subscription_cycle"
-              obligationId={cycle.id}
-              currency={cycle.currency}
-              t={inlineAccount}
-              accountTypes={accountTypeLabels}
-            />
-          )}
+          ) : emptyAccountPrompt}
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               isLoading={isPending}
               disabled={!accountId || accounts.length === 0}
-              onClick={() => run(() => markSubscriptionPaymentAction({ cycleId: cycle.id, accountId }))}
+              onClick={() => run(() => onMarkAsPaid({ cycleId: cycle.id, accountId }))}
             >
               <CheckCircleIcon size={15} className="mr-1.5" /> Mark as paid
             </Button>

@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
+import { requireAppAccess, accessErrorToActionResult } from "@/platform/access/server";
 import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { uuidSchema } from "@/lib/validators/common";
 import { ROUTES } from "@/shared/config/routes";
-import { recordTaskDeletionInActionCenter } from "@/modules/action-center/services/record-task-deletion";
+import { recordTaskDeletionActivity } from "@/platform/activity/server";
 
 export async function deleteTaskAction(
   taskId: string,
@@ -71,7 +71,7 @@ export async function deleteTaskAction(
         oldData:        { title: task.title },
         metadata:       { source: "dashboard" },
       }),
-      recordTaskDeletionInActionCenter(supabase, ctx, {
+      recordTaskDeletionActivity(supabase, ctx, {
         taskId: task.id as string,
         title: task.title as string,
       }),

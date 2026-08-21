@@ -181,6 +181,14 @@ export function isMachineRoute(pathname: string): boolean {
   return MACHINE_ROUTES.some((route) => pathname === route);
 }
 
+/** Exact service-token bypass; the handler still verifies the HMAC token. */
+export function isTasksServiceTransportRequest(
+  pathname: string,
+  authorization: string | null,
+): boolean {
+  return pathname === "/api/internal/tasks" && authorization?.startsWith("Bearer nts1.") === true;
+}
+
 /**
  * Пути, доступные авторизованным пользователям БЕЗ организации.
  * Пользователь с org не может зайти на эти пути (редирект на dashboard).

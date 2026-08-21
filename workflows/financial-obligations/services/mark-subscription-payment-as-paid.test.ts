@@ -7,7 +7,7 @@ const createSubscriptionPaymentTaskForCycle = vi.fn();
 
 vi.mock("@/lib/entity-links", () => ({ createEntityLink }));
 vi.mock("@/lib/events", () => ({ emitDomainEvent, emitAuditLog }));
-vi.mock("./create-subscription-payment-task", () => ({ createSubscriptionPaymentTaskForCycle }));
+vi.mock("@/modules/subtracker/server", () => ({ createSubscriptionPaymentTaskForCycle }));
 
 const { markSubscriptionPaymentAsPaid } = await import("./mark-subscription-payment-as-paid");
 

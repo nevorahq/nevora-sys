@@ -202,7 +202,16 @@ describe("paused modules: read-path coverage", () => {
   };
 
   const activeFiles = walk("modules")
-    .concat(walk("features"), walk("lib"), walk("app"), walk("shared"))
+    .concat(
+      walk("workflows"),
+      walk("platform"),
+      walk("packages"),
+      walk("apps"),
+      walk("features"),
+      walk("lib"),
+      walk("app"),
+      walk("shared"),
+    )
     .filter((f) => f.endsWith(".ts") || f.endsWith(".tsx"))
     .filter((f) => !/\.test\.tsx?$/.test(f))
     .filter((f) => !PAUSED_SURFACES.some((p) => f.replace(/\\/g, "/").startsWith(p)));

@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: mocks.refresh }),
 }));
 
-vi.mock("@/modules/moneyflow/actions/create-account-for-document-expense.action", () => ({
+vi.mock("@/modules/moneyflow/actions", () => ({
   createAccountForDocumentExpenseAction: mocks.createAccount,
 }));
 

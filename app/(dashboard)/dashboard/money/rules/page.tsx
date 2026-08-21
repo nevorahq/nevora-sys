@@ -3,9 +3,9 @@ import { ArrowLeftIcon } from "lucide-react";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { requireOrg } from "@/lib/auth/require-org";
 import { isAdmin } from "@/lib/context/current-context";
-import { getCategories } from "@/modules/moneyflow/queries/get-categories";
-import { getCategoryRules } from "@/modules/moneyflow/queries/get-category-rules";
-import { CategoryRulesManager } from "@/modules/moneyflow/components/category-rules-manager";
+import { getCategories } from "@/modules/moneyflow/server";
+import { getCategoryRules } from "@/modules/moneyflow/server";
+import { CategoryRulesManager } from "@/modules/moneyflow/ui";
 import { ROUTES } from "@/shared/config/routes";
 
 /**

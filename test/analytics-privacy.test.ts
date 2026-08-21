@@ -29,7 +29,15 @@ function walk(dir: string): string[] {
 }
 
 /** Files that emit a domain event or an audit log. */
-const EVENT_FILES = [...walk("modules"), ...walk("app"), ...walk("lib")]
+const EVENT_FILES = [
+  ...walk("modules"),
+  ...walk("workflows"),
+  ...walk("platform"),
+  ...walk("packages"),
+  ...walk("apps"),
+  ...walk("app"),
+  ...walk("lib"),
+]
   .filter((f) => f.endsWith(".ts") || f.endsWith(".tsx"))
   .filter((f) => !/\.test\.tsx?$/.test(f))
   .filter((f) => /emit(DomainEvent|AuditLog)\(/.test(read(f)));

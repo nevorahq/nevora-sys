@@ -4,11 +4,14 @@ import { useState } from "react";
 import { WalletIcon, ArrowRightLeftIcon } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Modal } from "@/shared/ui/modal";
-import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
+import { RestrictedActionTooltip, useAccessGate } from "@/platform/access/ui";
 import { CreateAccountForm } from "./create-account-form";
 import { CreateTransactionForm } from "./create-transaction-form";
-import type { MoneyAccount, MoneyCategory } from "../types/moneyflow.types";
-import type { Subscription } from "@/modules/subtracker/types/subtracker.types";
+import type {
+  MoneyAccount,
+  MoneyCategory,
+  TransactionSubscriptionOption,
+} from "../types/moneyflow.types";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface MoneyCreateButtonsProps {
@@ -16,7 +19,7 @@ interface MoneyCreateButtonsProps {
   defaultCurrency: string;
   accounts: MoneyAccount[];
   categories: MoneyCategory[];
-  subscriptions?: Subscription[];
+  subscriptions?: TransactionSubscriptionOption[];
 }
 
 export function MoneyCreateButtons({ dict, defaultCurrency, accounts, categories, subscriptions }: MoneyCreateButtonsProps) {

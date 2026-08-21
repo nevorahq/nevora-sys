@@ -9,7 +9,7 @@ import {
   TASK_SORT_LABELS,
   DEFAULT_TASK_SORT,
   type TaskSort,
-} from "@/modules/tasks/constants/task-sort.constants";
+} from "@nevora/tasks-contracts";
 
 /**
  * Sort selector bound to the `?sort=` URL param.

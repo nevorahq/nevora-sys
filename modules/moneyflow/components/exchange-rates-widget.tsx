@@ -6,7 +6,7 @@ import { saveExchangeRateAction } from "../actions/save-exchange-rate.action";
 import { Input } from "@/shared/ui/input";
 import { Select } from "@/shared/ui/select";
 import { Button } from "@/shared/ui/button";
-import { useAccessGate } from "@/modules/billing/components/access-state";
+import { useAccessGate } from "@/platform/access/ui";
 import {
   isUnusualRate,
   normalizeLocalizedRate,

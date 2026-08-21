@@ -1,6 +1,12 @@
 import { existsSync, readdirSync } from "node:fs";
 import { describe, it, expect } from "vitest";
-import { isMachineRoute, isPublicRoute, MACHINE_ROUTES, ROUTES } from "./routes";
+import {
+  isMachineRoute,
+  isPublicRoute,
+  isTasksServiceTransportRequest,
+  MACHINE_ROUTES,
+  ROUTES,
+} from "./routes";
 
 /**
  * Логика proxy: какие пути доступны без сессии. Регрессия по этому набору
@@ -79,7 +85,14 @@ describe("isPublicRoute", () => {
 
   it("не открывает сессионные internal API", () => {
     expect(isMachineRoute("/api/internal/booking/availability-rules")).toBe(false);
+    expect(isMachineRoute("/api/internal/tasks")).toBe(false);
     expect(isMachineRoute("/dashboard")).toBe(false);
+  });
+
+  it("пропускает только точный Tasks service-token запрос", () => {
+    expect(isTasksServiceTransportRequest("/api/internal/tasks", "Bearer nts1.payload.signature")).toBe(true);
+    expect(isTasksServiceTransportRequest("/api/internal/tasks", "Bearer wrong")).toBe(false);
+    expect(isTasksServiceTransportRequest("/api/internal/tasks/raw", "Bearer nts1.payload.signature")).toBe(false);
   });
 
   /**

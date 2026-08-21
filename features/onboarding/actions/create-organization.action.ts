@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/require-user";
 import { hasActiveOrganization } from "@/lib/auth/require-no-organization";
 import { createClient } from "@/lib/supabase/server";
-import { seedDefaultMoneyAccount } from "@/modules/moneyflow/services/money-account-service";
+import { seedDefaultMoneyAccount } from "@/modules/moneyflow/server";
 import { getOnboardingSchema } from "../schemas/onboarding.schema";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";

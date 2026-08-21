@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sweepSubscriptionPaymentWorkflow } from "@/modules/subtracker/services/sweep-subscription-payment-workflow";
+import { sweepSubscriptionPaymentWorkflow } from "@/modules/subtracker/server";
 import { logger } from "@/lib/observability/logger";
 
 /**

@@ -7,7 +7,7 @@ import { requireOrg } from "@/lib/auth/require-org";
 import { checkPlanLimit } from "@/lib/billing";
 import { emitAuditLog, emitDomainEvent } from "@/lib/events";
 import { getTodoSchemas } from "../schemas/todo.schema";
-import { recalculateProjectProgress } from "@/modules/tasks/projects/services/recalculate-project-progress";
+import { recalculateProjectProgress } from "@/modules/tasks/server";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";

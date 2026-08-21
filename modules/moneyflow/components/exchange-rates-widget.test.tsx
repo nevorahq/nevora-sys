@@ -9,7 +9,7 @@ import type { ExchangeRateOverview } from "../queries/get-exchange-rates";
 vi.mock("../actions/save-exchange-rate.action", () => ({
   saveExchangeRateAction: vi.fn(async () => ({})),
 }));
-vi.mock("@/modules/billing/components/access-state", () => ({
+vi.mock("@/platform/access/ui", () => ({
   useAccessGate: () => ({ blocked: false, message: "" }),
 }));
 
