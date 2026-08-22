@@ -80,14 +80,20 @@ variables are configured. The root site receives the generated Subscriptions
 site URL through `SUBSCRIPTIONS_API_URL` and must use the same
 `SUBSCRIPTIONS_SERVICE_AUTH_SECRET`.
 
-## Not built yet (unlike `apps/tasks`)
+## Deploy tooling
 
-`apps/tasks` additionally has a manual GitHub Actions workflow that publishes
-a checked, immutable image to GHCR, a `deploy/tasks/` staging compose
-definition, and `canary:tasks` / `rehearse:tasks` / `smoke:tasks` operator
-scripts. None of those exist yet for Subscriptions — building them requires
-real infrastructure decisions (registry naming, staging host, secrets) that
-belong to whoever actually stands this deployment up, not something to
-presume. Docker build/run and the Netlify site settings above work today
-without them; add the automation layer the same way Tasks got it, when there
-is a real target to deploy to.
+Mirrors `apps/tasks`: a manual GitHub Actions workflow
+(`.github/workflows/publish-subscriptions-image.yml`) publishes a checked,
+immutable image to GHCR; `deploy/subscriptions/` holds the staging Compose
+definition and env template; `npm run canary:subscriptions` / `rehearse:
+subscriptions` / `smoke:subscriptions` are the operator scripts.
+`rehearse:subscriptions` is the one genuinely different script in the whole
+product: unlike Tasks and Finance, this deployment has no in-process fallback
+for its one write path (`createSubscriptionPaymentTaskForCycle` calls Tasks
+over HTTP), so the rehearsal boots **two** local containers — Tasks and
+Subscriptions — and proves the cross-service call lands a real row in
+Tasks-owned `todos`, not just that Subscriptions believed it did.
+
+Real infrastructure — a live Netlify site, or wherever this actually gets
+deployed — is still a decision for whoever stands this deployment up. The
+Netlify settings above are ready when that infrastructure exists.

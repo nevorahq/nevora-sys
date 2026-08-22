@@ -14,9 +14,11 @@ runbook's rationale sections if something here is unclear.
   `linkSubscriptionToTask`) are plain inserts into shared, already-existing
   tables (`domain_events`, `audit_logs`, `entity_links`).
 - Build `apps/subscriptions/Dockerfile` from the repository root. CI must pass
-  both a standalone build and a container build before deployment (Subscriptions
-  does not yet have `smoke:subscriptions`/`rehearse:subscriptions` scripts —
-  see the app's README "Not built yet" section; verify manually until they exist).
+  both a standalone build and a container build before deployment — run
+  `npm run smoke:subscriptions` after `build:subscriptions`, and
+  `npm run rehearse:subscriptions` against local Supabase before deploying;
+  the latter boots Tasks and Subscriptions together and proves the
+  cross-service payment-task write actually lands in Tasks-owned `todos`.
 - Deploy `apps/subscriptions` with the server-only runtime variables
   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
   `SUBSCRIPTIONS_SERVICE_AUTH_SECRET`, `TASKS_API_URL` and

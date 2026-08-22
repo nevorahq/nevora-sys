@@ -1,0 +1,28 @@
+name: nevora-subscriptions-staging
+
+services:
+  subscriptions:
+    image: ${SUBSCRIPTIONS_IMAGE:?Set SUBSCRIPTIONS_IMAGE to an immutable sha tag}
+    pull_policy: always
+    init: true
+    restart: unless-stopped
+    ports:
+      - "${SUBSCRIPTIONS_BIND_ADDRESS:-127.0.0.1}:${SUBSCRIPTIONS_PORT:-3002}:3002"
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3002
+      SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?Set SUPABASE_SERVICE_ROLE_KEY}
+      SUBSCRIPTIONS_SERVICE_AUTH_SECRET: ${SUBSCRIPTIONS_SERVICE_AUTH_SECRET:?Set SUBSCRIPTIONS_SERVICE_AUTH_SECRET}
+      # No in-process fallback: provisioning a payment task calls Tasks directly.
+      TASKS_API_URL: ${TASKS_API_URL:?Set TASKS_API_URL — Subscriptions has no local fallback for task creation}
+      TASKS_SERVICE_AUTH_SECRET: ${TASKS_SERVICE_AUTH_SECRET:?Set TASKS_SERVICE_AUTH_SECRET}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    mem_limit: ${SUBSCRIPTIONS_MEMORY_LIMIT:-512m}
+    cpus: ${SUBSCRIPTIONS_CPU_LIMIT:-0.50}
+    stop_grace_period: 15s
