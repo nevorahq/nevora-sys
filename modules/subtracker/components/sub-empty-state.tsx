@@ -30,8 +30,8 @@ export function SubEmptyState({ dict, defaultCurrency }: SubEmptyStateProps) {
     <>
       <EmptyState
         icon={<RepeatIcon size={24} className="text-text-muted" strokeWidth={1.5} />}
-        title={dict.firstRun.empty.subscriptionsTitle}
-        description={dict.firstRun.empty.subscriptionsBody}
+        title={dict.subscriptions.renewal.noSubscriptionsTitle}
+        description={dict.subscriptions.renewal.noSubscriptionsBody}
         actions={
           <FirstActionCta
             action="add_subscription"

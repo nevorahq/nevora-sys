@@ -9,3 +9,5 @@ export { SubscriptionPaymentWorkflowPanel } from "./components/subscription-paym
 export type { SubscriptionPaymentWorkflowPanelProps } from "./components/subscription-payment-workflow-panel";
 export { SubscriptionSuggestionPanel } from "./components/subscription-suggestion-panel";
 export { GmailInvoicePanel } from "./components/gmail-invoice-panel";
+export { RenewalInbox } from "./components/renewal-inbox";
+export { RenewalDecisionPanel } from "./components/renewal-decision-panel";

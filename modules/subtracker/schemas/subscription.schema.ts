@@ -20,7 +20,14 @@ export function getSubscriptionSchemas(errors: {
   invalidCurrency: string;
   dateRequired: string;
   invalidDate: string;
+  dateInPast?: string;
+  invalidReminderDays?: string;
 }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const reminderDaysSchema = z.preprocess(
+    (value) => value === "" || value === "never" || value == null ? null : value,
+    z.coerce.number().int().min(1, errors.invalidReminderDays).max(180, errors.invalidReminderDays).nullable(),
+  );
   const createSubscriptionSchema = z.object({
     name: z
       .string()
@@ -38,7 +45,8 @@ export function getSubscriptionSchemas(errors: {
     }),
     next_billing_date: z
       .string()
-      .min(1, errors.dateRequired),
+      .min(1, errors.dateRequired)
+      .refine((date) => date >= today, errors.dateInPast ?? errors.invalidDate),
     category: z.enum(SUB_CATEGORIES, {
       error: errors.invalidCategory,
     }),
@@ -52,6 +60,8 @@ export function getSubscriptionSchemas(errors: {
       .max(SUB_NOTE_MAX)
       .nullable()
       .default(null),
+    auto_renews: z.enum(["true", "false"]).transform((value) => value === "true"),
+    renewal_reminder_days: reminderDaysSchema,
   });
 
   const updateSubscriptionSchema = z.object({
@@ -60,10 +70,15 @@ export function getSubscriptionSchemas(errors: {
     amount: z.coerce.number({ error: errors.amountRequired }).positive(errors.amountPositive),
     currency: z.enum(SUPPORTED_CURRENCIES, { error: errors.invalidCurrency }),
     billing_cycle: z.enum(BILLING_CYCLES, { error: errors.invalidCycle }),
-    next_billing_date: z.string().min(1, errors.dateRequired),
+    next_billing_date: z.string().min(1, errors.dateRequired).refine(
+      (date) => date >= today,
+      errors.dateInPast ?? errors.invalidDate,
+    ),
     category: z.enum(SUB_CATEGORIES, { error: errors.invalidCategory }),
     url: z.string().max(SUB_URL_MAX).nullable().default(null),
     note: z.string().max(SUB_NOTE_MAX).nullable().default(null),
+    auto_renews: z.enum(["true", "false"]).transform((value) => value === "true"),
+    renewal_reminder_days: reminderDaysSchema,
   });
 
   return { createSubscriptionSchema, updateSubscriptionSchema };

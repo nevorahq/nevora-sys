@@ -5,13 +5,20 @@ import { requireOrg } from "@/lib/auth/require-org";
 import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
 import { UniversalRelationViewer } from "@/modules/relations";
-import { getPaymentCyclesForSubscription } from "@/modules/subtracker/server";
-import { SubscriptionPaymentWorkflowPanel, SubscriptionSuggestionPanel } from "@/modules/subtracker/ui";
-import { markSubscriptionPaymentAction } from "@/modules/subtracker/actions";
+import { getRenewalInbox } from "@/modules/subtracker/server";
+import { GmailInvoicePanel, RenewalDecisionPanel, SubscriptionSuggestionPanel } from "@/modules/subtracker/ui";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 
-export default async function SubscriptionDetailPage({ params }: PageProps<"/dashboard/subscriptions/[subscriptionId]">) {
+interface SubscriptionDetailPageProps {
+  params: PageProps<"/dashboard/subscriptions/[subscriptionId]">["params"];
+  productIsolated?: boolean;
+}
+
+export default async function SubscriptionDetailPage({
+  params,
+  productIsolated = false,
+}: SubscriptionDetailPageProps) {
   const { subscriptionId } = await params;
   const ctx = await requireOrg();
   const { org } = ctx;
@@ -20,15 +27,14 @@ export default async function SubscriptionDetailPage({ params }: PageProps<"/das
   const supabase = await createClient();
   const { data: sub } = await supabase
     .from("subscriptions")
-    .select("id, name, amount, currency, billing_cycle, next_billing_date, last_payment_date, category, is_active, cancelled_at, url, note")
+    .select("id, name, amount, currency, billing_cycle, next_billing_date, category, is_active, cancelled_at, url, note")
     .eq("id", subscriptionId)
     .eq("organization_id", org.id)
     .maybeSingle();
 
   if (!sub) notFound();
 
-  const [cycles, suggestionsRes] = await Promise.all([
-    getPaymentCyclesForSubscription(org.id, sub.id),
+  const [suggestionsRes, renewalItems] = await Promise.all([
     supabase
       .from("financial_suggestions")
       .select("id, suggestion_type, review_state, amount, currency, due_date")
@@ -37,10 +43,10 @@ export default async function SubscriptionDetailPage({ params }: PageProps<"/das
       .eq("source_id", sub.id)
       .in("review_state", ["suggested", "waiting_confirmation"])
       .order("created_at", { ascending: false }),
+    getRenewalInbox(org.id),
   ]);
-  const currentCycle = cycles.find((c) => c.status === "planned" || c.status === "task_open") ?? null;
-  const history = cycles.filter((c) => c.id !== currentCycle?.id);
   const canWrite = canDo(ctx, "data.write");
+  const renewalItem = renewalItems.find((item) => item.subscription_id === sub.id) ?? null;
 
   return (
     <>
@@ -57,6 +63,7 @@ export default async function SubscriptionDetailPage({ params }: PageProps<"/das
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <main className="space-y-6">
+          {renewalItem && <RenewalDecisionPanel item={renewalItem} dict={dict} canWrite={canWrite} />}
           <SubscriptionSuggestionPanel
             suggestions={(suggestionsRes.data ?? []).map((s) => ({
               id: s.id as string,
@@ -69,19 +76,9 @@ export default async function SubscriptionDetailPage({ params }: PageProps<"/das
             canWrite={canWrite}
             stateLabels={dict.money.states}
           />
-          <SubscriptionPaymentWorkflowPanel
-            subscriptionId={sub.id}
-            isActive={sub.is_active}
-            lastPaymentDate={sub.last_payment_date}
-            nextPaymentDate={sub.next_billing_date}
-            currentCycle={currentCycle}
-            history={history}
-            canWrite={canWrite}
-            stateLabels={dict.money.states}
-            onMarkAsPaid={markSubscriptionPaymentAction}
-          />
+          <div id="gmail-invoices"><GmailInvoicePanel subscriptionId={sub.id} canWrite={canWrite} /></div>
           {sub.note && <section className="soft-card p-5 sm:p-6"><h2 className="text-base font-semibold text-text-primary">Notes</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-primary">{sub.note}</p></section>}
-          <UniversalRelationViewer entityType="subscription" entityId={sub.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.subscriptions}/${sub.id}`} />
+          <UniversalRelationViewer entityType="subscription" entityId={sub.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.subscriptions}/${sub.id}`} allowedKinds={productIsolated ? ["subscription", "document"] : undefined} />
         </main>
         <aside className="space-y-4">
           <section className="soft-card-sm space-y-4 p-4">

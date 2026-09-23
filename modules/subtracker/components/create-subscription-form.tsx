@@ -15,6 +15,7 @@ import { Button } from "@/shared/ui/button";
 import { DocumentFileUpload, useDocumentFiles } from "@/modules/documents/ui";
 import type { ActionResult } from "@/lib/validators/common";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
+import { RenewalFormFields } from "./renewal-form-fields";
 
 /**
  * onSuccess — callback, вызывается после успешного создания.
@@ -157,14 +158,13 @@ export function CreateSubscriptionForm({
           error={state.fieldErrors?.category?.[0]}
         />
 
-        <Input
-          id="sub-next-date"
-          name="next_billing_date"
-          type="date"
-          label={t.nextDateLabel}
-          defaultValue={today}
-          required
-          error={state.fieldErrors?.next_billing_date?.[0]}
+        <RenewalFormFields
+          dict={dict}
+          defaultDate={today}
+          defaultReminderDays={7}
+          dateError={state.fieldErrors?.next_billing_date?.[0]}
+          reminderError={state.fieldErrors?.renewal_reminder_days?.[0]}
+          idPrefix="sub"
         />
 
         <Input

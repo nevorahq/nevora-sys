@@ -36,6 +36,8 @@ export async function updateSubscriptionAction(
     category: formData.get("category") as string,
     url: (formData.get("url") as string) || null,
     note: (formData.get("note") as string) || null,
+    auto_renews: (formData.get("auto_renews") as string) || "true",
+    renewal_reminder_days: (formData.get("renewal_reminder_days") as string) || null,
   };
 
   const parsed = updateSubscriptionSchema.safeParse(rawData);
@@ -60,9 +62,12 @@ export async function updateSubscriptionAction(
         currency: parsed.data.currency,
         billing_cycle: parsed.data.billing_cycle,
         next_billing_date: parsed.data.next_billing_date,
+        billing_anchor_day: Number(parsed.data.next_billing_date.slice(8, 10)),
         category: parsed.data.category,
         url: parsed.data.url,
         note: parsed.data.note,
+        auto_renews: parsed.data.auto_renews,
+        renewal_reminder_days: parsed.data.renewal_reminder_days,
         updated_by: user.id,
       })
       .eq("id", parsed.data.subscriptionId)
@@ -87,6 +92,8 @@ export async function updateSubscriptionAction(
         currency: parsed.data.currency,
         billing_cycle: parsed.data.billing_cycle,
         next_billing_date: parsed.data.next_billing_date,
+        auto_renews: parsed.data.auto_renews,
+        renewal_reminder_days: parsed.data.renewal_reminder_days,
       },
     });
   } catch (err) {
