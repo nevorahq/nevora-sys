@@ -1,4 +1,4 @@
--- Run after migration 117. Fixtures are disposable and roll back.
+-- Run after migrations 117 and 118. Fixtures are disposable and roll back.
 \set ON_ERROR_STOP on
 BEGIN;
 
@@ -46,12 +46,28 @@ SELECT pg_temp.assert_true(
      AND source_id = '46000000-0000-4000-8000-000000000001') = 1,
   'renewal case projects one Action Center item'
 );
+-- 118: payment milestones stay on the 075 schedule; the renewal decision adds
+-- exactly one review reminder on top.
 SELECT pg_temp.assert_true(
   (SELECT count(*) FROM public.reminder_schedules
    WHERE source_type = 'subscription'
      AND source_id = '46000000-0000-4000-8000-000000000001'
-     AND status = 'pending') = 3,
-  'renewal decision schedules exactly three durable milestones'
+     AND status = 'pending'
+     AND idempotency_key LIKE 'subscription:%') = 6,
+  'active subscription keeps its six payment milestones'
+);
+SELECT pg_temp.assert_true(
+  (SELECT count(*) FROM public.reminder_schedules
+   WHERE source_type = 'subscription'
+     AND source_id = '46000000-0000-4000-8000-000000000001'
+     AND status = 'pending'
+     AND idempotency_key LIKE 'subscription-renewal:%') = 1
+  AND EXISTS (SELECT 1 FROM public.reminder_schedules
+   WHERE source_id = '46000000-0000-4000-8000-000000000001'
+     AND status = 'pending'
+     AND idempotency_key LIKE 'subscription-renewal:%'
+     AND trigger_type = 'review-now'),
+  'renewal decision schedules exactly one review reminder'
 );
 
 INSERT INTO public.notifications (
@@ -96,8 +112,17 @@ SELECT pg_temp.assert_true(
       AND type = 'renewal_required' AND status = 'resolved')
   AND NOT EXISTS (SELECT 1 FROM public.reminder_schedules
     WHERE source_id = '46000000-0000-4000-8000-000000000001'
+      AND idempotency_key LIKE 'subscription-renewal:%'
       AND status IN ('pending', 'processing')),
-  'resolved renewal decision resolves attention and cancels future reminders'
+  'resolved renewal decision resolves attention and cancels the review reminder'
+);
+SELECT pg_temp.assert_true(
+  EXISTS (SELECT 1 FROM public.reminder_schedules
+    WHERE source_id = '46000000-0000-4000-8000-000000000001'
+      AND idempotency_key LIKE 'subscription:%'
+      AND trigger_type = 'due-today'
+      AND status = 'pending'),
+  'a recorded decision does not cancel the payment reminders'
 );
 
 -- Advancing the subscription after a resolved decision preserves history and
@@ -122,5 +147,22 @@ SELECT pg_temp.assert_true(
   'organization member can read own renewal history'
 );
 RESET ROLE;
+
+-- Switching renewal decisions off must not silence payment reminders.
+UPDATE public.subscriptions
+SET renewal_reminder_days = NULL
+WHERE id = '46000000-0000-4000-8000-000000000001';
+SELECT pg_temp.assert_true(
+  NOT EXISTS (SELECT 1 FROM public.reminder_schedules
+    WHERE source_id = '46000000-0000-4000-8000-000000000001'
+      AND idempotency_key LIKE 'subscription-renewal:%'
+      AND status IN ('pending', 'processing'))
+  AND EXISTS (SELECT 1 FROM public.reminder_schedules
+    WHERE source_id = '46000000-0000-4000-8000-000000000001'
+      AND idempotency_key LIKE 'subscription:%'
+      AND trigger_type = 'due-today'
+      AND status = 'pending'),
+  'disabling renewal decisions keeps payment reminders and drops the review reminder'
+);
 
 ROLLBACK;
