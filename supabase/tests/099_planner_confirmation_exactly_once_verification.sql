@@ -53,12 +53,11 @@ INSERT INTO public.organizations (id, name, slug)
 SELECT id, 'Exactly Once 099', 'exactly-once-099' FROM ids WHERE key = 'org';
 
 -- ---------------------------------------------------------------------------
--- 1. The four indexes the invariant rests on exist.
+-- 1. The three indexes the invariant rests on exist. (The financial-task index
+--    was dropped with Financial Context Tasks in migration 115.)
 -- ---------------------------------------------------------------------------
 SELECT pg_temp.assert_true(to_regclass('public.todos_source_suggestion_unique_idx') IS NOT NULL,
   'todos_source_suggestion_unique_idx is missing — create_task confirms can duplicate');
-SELECT pg_temp.assert_true(to_regclass('public.todos_financial_source_unique_idx') IS NOT NULL,
-  'todos_financial_source_unique_idx is missing — createFinancialTask''s 23505 branch is dead code');
 SELECT pg_temp.assert_true(to_regclass('public.action_items_dedupe_idx') IS NOT NULL,
   'action_items_dedupe_idx is missing');
 SELECT pg_temp.assert_true(to_regclass('public.entity_links_unique_active_idx') IS NOT NULL,
@@ -121,25 +120,7 @@ SELECT pg_temp.assert_true(
 );
 
 -- ---------------------------------------------------------------------------
--- 4. The same for financial tasks: (org, financial_source_type, financial_source_id).
---    createFinancialTask catches 23505 and re-reads the winner; before 099 no index
---    existed to raise it, so that recovery branch was unreachable and two confirms
---    both inserted.
--- ---------------------------------------------------------------------------
-INSERT INTO public.todos (organization_id, title, financial_source_type, financial_source_id)
-SELECT (SELECT id FROM ids WHERE key = 'org'), 'Pay invoice', 'manual', (SELECT id FROM ids WHERE key = 'sug');
-
-SELECT pg_temp.assert_true(
-  pg_temp.raises_unique_violation(format(
-    $fmt$INSERT INTO public.todos (organization_id, title, financial_source_type, financial_source_id)
-         VALUES (%L, 'Pay invoice twice', 'manual', %L)$fmt$,
-    (SELECT id FROM ids WHERE key = 'org'),
-    (SELECT id FROM ids WHERE key = 'sug'))),
-  'a retried confirm created a SECOND financial task for the same source'
-);
-
--- ---------------------------------------------------------------------------
--- 5. Cross-organization: the key is scoped per org, so two orgs may each confirm
+-- 4. Cross-organization: the key is scoped per org, so two orgs may each confirm
 --    a suggestion that happens to share an id. (Defensive: ids are UUIDs, but the
 --    index must not be the thing that enforces tenancy.)
 -- ---------------------------------------------------------------------------
