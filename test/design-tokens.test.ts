@@ -15,7 +15,6 @@ const SOURCE_DIRS = [
   "apps",
   "modules",
   "packages",
-  "workflows",
   "platform",
   "features",
   "shared",
