@@ -25,6 +25,10 @@ export type Subscription = {
   auto_task_enabled: boolean;
   auto_transaction_mode: "manual_confirm" | "auto_post_on_task_complete";
   cancelled_at: string | null;
+  // Renewal decision workflow (migration 116)
+  auto_renews: boolean;
+  /** NULL means renewal decisions/reminders are disabled. */
+  renewal_reminder_days: number | null;
 };
 
 /**

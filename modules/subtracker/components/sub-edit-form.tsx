@@ -10,6 +10,7 @@ import { Button } from "@/shared/ui/button";
 import type { Subscription } from "../types/subtracker.types";
 import type { ActionResult } from "@/lib/validators/common";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
+import { RenewalFormFields } from "./renewal-form-fields";
 
 interface SubEditFormProps {
   subscription: Subscription;
@@ -107,14 +108,14 @@ export function SubEditForm({ subscription: sub, dict, onSuccess }: SubEditFormP
           error={state.fieldErrors?.category?.[0]}
         />
 
-        <Input
-          id="edit-sub-next-date"
-          name="next_billing_date"
-          type="date"
-          label={t.nextDateLabel}
-          defaultValue={sub.next_billing_date}
-          required
-          error={state.fieldErrors?.next_billing_date?.[0]}
+        <RenewalFormFields
+          dict={dict}
+          defaultDate={sub.next_billing_date}
+          defaultAutoRenews={sub.auto_renews}
+          defaultReminderDays={sub.renewal_reminder_days}
+          dateError={state.fieldErrors?.next_billing_date?.[0]}
+          reminderError={state.fieldErrors?.renewal_reminder_days?.[0]}
+          idPrefix="edit-sub"
         />
 
         <Input

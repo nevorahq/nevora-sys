@@ -3,6 +3,10 @@ export type {
   Subscription,
   SubSummary,
   UpcomingRenewal,
+  SubscriptionRenewalCase,
+  RenewalInboxItem,
+  RenewalCaseStatus,
+  RenewalAttentionState,
 } from "./types/subtracker.types";
 
 // Constants
@@ -52,3 +56,4 @@ export { skipSubscriptionPaymentAction } from "./actions/skip-subscription-payme
 export { markSubscriptionPaymentAction } from "./actions/mark-subscription-payment.action";
 export { changeSubscriptionPaymentDueDateAction } from "./actions/change-subscription-payment-due-date.action";
 export { cancelSubscriptionAction } from "./actions/cancel-subscription.action";
+export { applyRenewalDecisionAction } from "./actions/apply-renewal-decision.action";

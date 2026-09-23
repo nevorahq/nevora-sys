@@ -33,15 +33,15 @@ export function SubCreateButton({ dict, defaultCurrency }: SubCreateButtonProps)
   return (
     <>
       {/* Mobile: круглая кнопка с иконкой. Desktop: pill-кнопка с текстом */}
-      <RestrictedActionTooltip message={blocked ? message : dict.common.createRecord}>
+      <RestrictedActionTooltip message={blocked ? message : dict.subscriptions.form.addButton}>
         <Button
           onClick={() => setIsOpen(true)}
           disabled={blocked}
-          aria-label={blocked ? `${dict.common.createRecord}. ${message}` : dict.common.createRecord}
+          aria-label={blocked ? `${dict.subscriptions.form.addButton}. ${message}` : dict.subscriptions.form.addButton}
           className="shrink-0 w-9 h-9 p-0 rounded-full sm:w-auto sm:h-auto sm:px-5 sm:py-2.5 sm:rounded-(--neu-radius-pill)"
         >
           <PlusIcon size={16} strokeWidth={2} />
-          <span className="hidden sm:inline">{dict.common.createRecord}</span>
+          <span className="hidden sm:inline">{dict.subscriptions.form.addButton}</span>
         </Button>
       </RestrictedActionTooltip>
 

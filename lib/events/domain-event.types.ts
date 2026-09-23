@@ -169,6 +169,13 @@ export interface DomainEventPayloadMap {
   "task.removed_from_project": { task_id: string; project_id: string; title: string };
   "task.created_from_subscription": Record<string, unknown>;
 
+  "subscription.renewal_case.created": Record<string, unknown>;
+  "subscription.renewal_decision.review_started": Record<string, unknown>;
+  "subscription.renewal_decision.keep": Record<string, unknown>;
+  "subscription.renewal_decision.wont_renew": Record<string, unknown>;
+  "subscription.renewal_decision.snoozed": Record<string, unknown>;
+  "subscription.renewal_decision.reopened": Record<string, unknown>;
+  "subscription.renewal_deadline.missed": Record<string, unknown>;
   "subscription.invoice.linked": Record<string, unknown>;
 
   "client.created": { name: string; email?: string | null };
@@ -316,6 +323,8 @@ export interface DomainEventPayloadMap {
     amount: number;
     currency: string;
     billing_cycle: string;
+    auto_renews?: boolean;
+    renewal_reminder_days?: number | null;
   };
   "subscription.renewed": {
     name: string;

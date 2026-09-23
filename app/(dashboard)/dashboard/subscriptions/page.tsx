@@ -1,14 +1,11 @@
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { requireOrg } from "@/lib/auth/require-org";
-import { getSubSummary } from "@/modules/subtracker/server";
+import { canDo } from "@/lib/context/current-context";
 import { getSubscriptions } from "@/modules/subtracker/server";
-import { getUpcomingRenewals } from "@/modules/subtracker/server";
-import { getOpenCyclesBySubscription } from "@/modules/subtracker/server";
-import { SubSummaryCards } from "@/modules/subtracker/ui";
-import { SubUpcomingRenewals } from "@/modules/subtracker/ui";
-import { SubList } from "@/modules/subtracker/ui";
+import { getRenewalInbox } from "@/modules/subtracker/server";
 import { SubCreateButton } from "@/modules/subtracker/ui";
 import { SubEmptyState } from "@/modules/subtracker/ui";
+import { RenewalInbox } from "@/modules/subtracker/ui";
 
 /**
  * Subscriptions Page — /dashboard/subscriptions
@@ -19,15 +16,10 @@ import { SubEmptyState } from "@/modules/subtracker/ui";
  */
 export default async function SubscriptionsPage() {
   const [{ dict }, ctx] = await Promise.all([getDictionary(), requireOrg()]);
-  const [summary, subscriptions, upcoming, openCycles] = await Promise.all([
-    getSubSummary(ctx.org.id),
+  const [subscriptions, renewalItems] = await Promise.all([
     getSubscriptions(ctx.org.id),
-    getUpcomingRenewals(ctx.org.id),
-    getOpenCyclesBySubscription(ctx.org.id),
+    getRenewalInbox(ctx.org.id),
   ]);
-  const cycleBySub = Object.fromEntries(
-    Array.from(openCycles.entries()).map(([subId, c]) => [subId, { status: c.status, due_date: c.due_date }]),
-  );
 
   return (
     <>
@@ -35,43 +27,26 @@ export default async function SubscriptionsPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-text-primary">
-            {dict.subscriptions.title}
+            {dict.subscriptions.renewal.title}
           </h1>
           <p className="mt-1 text-sm text-text-muted">
-            {dict.subscriptions.description}
+            {dict.subscriptions.renewal.subtitle}
           </p>
         </div>
         <SubCreateButton dict={dict} defaultCurrency={ctx.org.baseCurrency} />
       </div>
 
-      {/* Summary Cards */}
-      <section className="mt-6">
-        <SubSummaryCards summary={summary} dict={dict} />
-      </section>
-
-      {/* Upcoming Renewals */}
-      {upcoming.length > 0 && (
-        <section className="mt-6">
-          <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
-            {dict.subscriptions.upcoming.title}
-          </h2>
-          <SubUpcomingRenewals renewals={upcoming} dict={dict} />
-        </section>
+      {subscriptions.length > 0 ? (
+        <RenewalInbox
+          items={renewalItems}
+          subscriptions={subscriptions}
+          dict={dict}
+          canWrite={canDo(ctx, "data.write")}
+          canDelete={canDo(ctx, "data.delete")}
+        />
+      ) : (
+        <section className="mt-8"><SubEmptyState dict={dict} defaultCurrency={ctx.org.baseCurrency} /></section>
       )}
-
-      {/* Subscription List or Empty State */}
-      <section className="mt-8">
-        {subscriptions.length > 0 ? (
-          <>
-            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
-              {dict.subscriptions.summary.active}
-            </h2>
-            <SubList subscriptions={subscriptions} dict={dict} cycleBySub={cycleBySub} />
-          </>
-        ) : (
-          <SubEmptyState dict={dict} defaultCurrency={ctx.org.baseCurrency} />
-        )}
-      </section>
     </>
   );
 }

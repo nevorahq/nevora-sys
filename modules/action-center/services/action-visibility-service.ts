@@ -105,7 +105,8 @@ export function getAvailableActions(
         permission: "action_center.execute.subscription",
       });
     }
-    if (item.source_type === "subscription" && has("action_center.execute.subscription")) {
+    const isRenewalDecision = typeof item.metadata?.renewal_case_id === "string";
+    if (item.source_type === "subscription" && !isRenewalDecision && has("action_center.execute.subscription")) {
       actions.push({
         kind: "execute",
         executeKind: "cancel_subscription",
@@ -124,7 +125,7 @@ export function getAvailableActions(
         permission: "data.delete",
       });
     }
-    if (item.source_type === "subscription" && has("data.delete")) {
+    if (item.source_type === "subscription" && !isRenewalDecision && has("data.delete")) {
       actions.push({
         kind: "execute",
         executeKind: "delete_subscription",

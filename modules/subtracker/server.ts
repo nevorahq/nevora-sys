@@ -3,6 +3,7 @@ import "server-only";
 export { getSubscriptions } from "./queries/get-subscriptions";
 export { getSubSummary } from "./queries/get-sub-summary";
 export { getUpcomingRenewals } from "./queries/get-upcoming-renewals";
+export { getRenewalInbox, getCurrentRenewalCase } from "./queries/get-renewal-inbox";
 export {
   getPaymentCyclesForSubscription,
   getOpenPaymentCycle,

@@ -38,6 +38,8 @@ export async function createSubscriptionAction(
     category: formData.get("category") as string,
     url: (formData.get("url") as string) || null,
     note: (formData.get("note") as string) || null,
+    auto_renews: (formData.get("auto_renews") as string) || "true",
+    renewal_reminder_days: (formData.get("renewal_reminder_days") as string) || null,
   };
 
   const parsed = createSubscriptionSchema.safeParse(rawData);
@@ -85,6 +87,8 @@ export async function createSubscriptionAction(
         category: parsed.data.category,
         url: parsed.data.url,
         note: parsed.data.note,
+        auto_renews: parsed.data.auto_renews,
+        renewal_reminder_days: parsed.data.renewal_reminder_days,
       })
       .select("id")
       .single();
@@ -108,6 +112,8 @@ export async function createSubscriptionAction(
         amount: parsed.data.amount,
         currency: parsed.data.currency,
         billing_cycle: parsed.data.billing_cycle,
+        auto_renews: parsed.data.auto_renews,
+        renewal_reminder_days: parsed.data.renewal_reminder_days,
       },
     });
 

@@ -8,6 +8,7 @@ import { skipSubscriptionPaymentAction as skipSubscriptionPayment } from "./acti
 import { markSubscriptionPaymentAction as markSubscriptionPayment } from "./actions/mark-subscription-payment.action";
 import { changeSubscriptionPaymentDueDateAction as changeSubscriptionPaymentDueDate } from "./actions/change-subscription-payment-due-date.action";
 import { cancelSubscriptionAction as cancelSubscription } from "./actions/cancel-subscription.action";
+import { applyRenewalDecisionAction as applyRenewalDecision } from "./actions/apply-renewal-decision.action";
 
 export async function createSubscriptionAction(...args: Parameters<typeof createSubscription>) {
   return createSubscription(...args);
@@ -45,4 +46,8 @@ export async function changeSubscriptionPaymentDueDateAction(
 
 export async function cancelSubscriptionAction(...args: Parameters<typeof cancelSubscription>) {
   return cancelSubscription(...args);
+}
+
+export async function applyRenewalDecisionAction(...args: Parameters<typeof applyRenewalDecision>) {
+  return applyRenewalDecision(...args);
 }
