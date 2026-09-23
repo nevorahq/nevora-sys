@@ -32,6 +32,8 @@ interface UniversalRelationViewerProps {
   /** Путь для revalidate после мутаций (detail-страница). */
   revalidate?: string;
   title?: string;
+  /** В изолированном продукте не показывает сущности соседних продуктов. */
+  allowedKinds?: readonly EntityKind[];
 }
 
 const GROUP_ICON: Record<EntityKind, LucideIcon> = {
@@ -63,6 +65,7 @@ export async function UniversalRelationViewer({
   allowDelete = false,
   revalidate,
   title,
+  allowedKinds,
 }: UniversalRelationViewerProps) {
   const [res, { dict }] = await Promise.all([
     getRelationsForEntity({ entityType, entityId }),
@@ -70,6 +73,12 @@ export async function UniversalRelationViewer({
   ]);
   const r = dict.relations;
   const grouped = res.ok ? res.data : null;
+  const visibleGroups = allowedKinds
+    ? GROUP_ORDER.filter(({ kind }) => allowedKinds.includes(kind))
+    : GROUP_ORDER;
+  const visibleTotal = grouped
+    ? visibleGroups.reduce((total, { key }) => total + grouped[key].length, 0)
+    : 0;
 
   return (
     <section className="soft-card p-5 sm:p-6">
@@ -81,15 +90,16 @@ export async function UniversalRelationViewer({
             sourceEntityId={entityId}
             revalidate={revalidate}
             t={r}
+            allowedTargetTypes={allowedKinds}
           />
         )}
       </div>
 
       <div className={mode === "compact" ? "mt-3 space-y-4" : "mt-4 space-y-5"}>
-        {!grouped || grouped.total === 0 ? (
+        {!grouped || visibleTotal === 0 ? (
           <RelationEmptyState title={r.emptyTitle} body={r.emptyBody} compactText={r.emptyCompact} />
         ) : (
-          GROUP_ORDER.map(({ key, kind }) => {
+          visibleGroups.map(({ key, kind }) => {
             const items = grouped[key];
             if (items.length === 0) return null;
             return (

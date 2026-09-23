@@ -6,15 +6,20 @@ import { registerAction } from "../actions/register.action";
 import { Input } from "@/shared/ui/input";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
-import { ROUTES } from "@/shared/config/routes";
+import {
+  authUrl,
+  ROUTES,
+  type ProductEntryRoute,
+} from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface RegisterFormProps {
   dict: Dictionary;
+  destination: ProductEntryRoute;
 }
 
-export function RegisterForm({ dict }: RegisterFormProps) {
+export function RegisterForm({ dict, destination }: RegisterFormProps) {
   const t = dict.auth.register;
   const [state, formAction, isPending] = useActionState<ActionResult, FormData>(
     registerAction,
@@ -29,7 +34,7 @@ export function RegisterForm({ dict }: RegisterFormProps) {
         </h1>
         <p className="mt-2 text-sm text-text-secondary">{t.checkEmailBody}</p>
         <Link
-          href={ROUTES.login}
+          href={authUrl(ROUTES.login, destination)}
           className="mt-6 inline-block font-semibold text-text-primary underline-offset-4 hover:underline"
         >
           {t.loginLink}
@@ -52,6 +57,7 @@ export function RegisterForm({ dict }: RegisterFormProps) {
       )}
 
       <form action={formAction} className="space-y-4">
+        <input type="hidden" name="next" value={destination} />
         <Input
           id="displayName"
           name="displayName"
@@ -104,7 +110,7 @@ export function RegisterForm({ dict }: RegisterFormProps) {
       <p className="mt-5 text-center text-sm text-text-secondary">
         {t.hasAccount}{" "}
         <Link
-          href={ROUTES.login}
+          href={authUrl(ROUTES.login, destination)}
           className="font-semibold text-text-primary underline-offset-4 hover:underline"
         >
           {t.loginLink}

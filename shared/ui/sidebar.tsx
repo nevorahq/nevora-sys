@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CheckSquareIcon, WalletIcon,
-  FileTextIcon, SettingsIcon,
+  FileTextIcon, FolderKanbanIcon, SettingsIcon,
   RepeatIcon,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
-import { ROUTES } from "@/shared/config/routes";
+import { ROUTES, type ProductId } from "@/shared/config/routes";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
+import { productContextCookie } from "@/modules/products/product-context";
 
 /**
  * Sidebar Navigation — responsive.
@@ -38,30 +39,36 @@ interface NavItem {
 
 interface SidebarProps {
   dict: Dictionary;
+  /** Если задан — sidebar показывает только навигацию выбранного продукта. */
+  product?: ProductId;
 }
 
-export function Sidebar({ dict }: SidebarProps) {
+export function Sidebar({ dict, product }: SidebarProps) {
   const pathname = usePathname();
 
-  // Product independence: Tasks, Money and Subscriptions are separate primary
-  // sections with no shared surfaces between them. Home (Action Center) and
-  // Inbox were cross-product aggregators and were dropped. Analytics and AI
-  // remain reachable by URL but are not primary sections.
-  //
-  // CRM and Booking are PAUSED modules: they are absent here on purpose, and the
-  // hiding is cosmetic only — `shared/config/paused-modules` gates their pages,
-  // Server Actions and route handlers server-side.
-  const navItems: NavItem[] = [
-    { href: ROUTES.tasks,         label: dict.nav.tasks,         icon: CheckSquareIcon },
-    { href: ROUTES.money,         label: dict.nav.money,         icon: WalletIcon },
-    { href: ROUTES.subscriptions, label: dict.nav.subscriptions, icon: RepeatIcon },
-    { href: ROUTES.documents,     label: dict.nav.documents,     icon: FileTextIcon },
-    { href: ROUTES.settings,      label: dict.nav.settings,      icon: SettingsIcon },
+  const productNavigation: Record<ProductId, NavItem[]> = {
+    tasks: [
+      { href: ROUTES.tasks, label: dict.nav.tasks, icon: CheckSquareIcon },
+      { href: ROUTES.projects, label: dict.projects.back, icon: FolderKanbanIcon },
+    ],
+    finance: [
+      { href: ROUTES.money, label: dict.nav.money, icon: WalletIcon },
+    ],
+    subscriptions: [
+      { href: ROUTES.subscriptions, label: dict.nav.subscriptions, icon: RepeatIcon },
+      { href: ROUTES.documents, label: dict.nav.documents, icon: FileTextIcon },
+    ],
+  };
+  const platformNavigation: NavItem[] = [
+    { href: ROUTES.documents, label: dict.nav.documents, icon: FileTextIcon },
+    { href: ROUTES.settings, label: dict.nav.settings, icon: SettingsIcon },
   ];
-
-  function isActive(item: NavItem): boolean {
-    return pathname.startsWith(item.href);
-  }
+  const navItems = product
+    ? [...productNavigation[product], { href: ROUTES.settings, label: dict.nav.settings, icon: SettingsIcon }]
+    : platformNavigation;
+  const activeHref = navItems
+    .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
   return (
     <aside
@@ -99,13 +106,21 @@ export function Sidebar({ dict }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto px-2 py-4 md:px-3">
         <ul className="flex flex-col gap-1">
           {navItems.map((item) => {
-            const active = isActive(item);
+            const active = item.href === activeHref;
             const Icon = item.icon;
+            const sharedContextPath = item.href === ROUTES.settings
+              ? ROUTES.settings
+              : item.href === ROUTES.documents
+                ? ROUTES.documents
+                : null;
 
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={sharedContextPath
+                    ? () => { document.cookie = productContextCookie(product, sharedContextPath); }
+                    : undefined}
                   // title — нативный tooltip, показывает label при hover на mobile
                   title={item.label}
                   className={cn(

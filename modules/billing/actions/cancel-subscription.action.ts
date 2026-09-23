@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { billingProvider } from "@/modules/billing/services/billing-provider";
 import type { ActionResult } from "@/lib/validators/common";
+import { ROUTES } from "@/shared/config/routes";
 
 async function getBillingReturnUrl(): Promise<string> {
   const headerStore = await headers();
@@ -12,7 +13,7 @@ async function getBillingReturnUrl(): Promise<string> {
     headerStore.get("origin") ??
     process.env.NEXT_PUBLIC_APP_URL ??
     "http://localhost:3000";
-  return `${origin}/dashboard/settings/billing`;
+  return `${origin}${ROUTES.settingsBilling}`;
 }
 
 /**

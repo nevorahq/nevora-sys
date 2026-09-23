@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import type { ActionResult } from "@/lib/validators/common";
+import { ROUTES } from "@/shared/config/routes";
 import { changePlanSchema, type ChangePlanInput } from "../schemas/billing.schemas";
 import { getPaddleConfig } from "../config/paddle-env";
 import { billingProvider } from "../services/billing-provider";
@@ -21,7 +22,7 @@ async function getReturnUrl(): Promise<string> {
     headerStore.get("origin") ??
     process.env.NEXT_PUBLIC_APP_URL ??
     "http://localhost:3000";
-  return `${origin}/dashboard/settings/billing`;
+  return `${origin}${ROUTES.settingsBilling}`;
 }
 
 function fieldErrorsFromIssues(issues: { path: PropertyKey[]; message: string }[]) {

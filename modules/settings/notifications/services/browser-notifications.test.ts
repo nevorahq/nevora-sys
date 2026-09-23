@@ -10,6 +10,9 @@ describe("browser notification helpers", () => {
 
   it("falls back for missing, external, and protocol-relative targets", () => {
     expect(safeNotificationTarget("/dashboard/tasks/123")).toBe("/dashboard/tasks/123");
+    expect(safeNotificationTarget("/tasks/123")).toBe("/tasks/123");
+    expect(safeNotificationTarget("/finance/123")).toBe("/finance/123");
+    expect(safeNotificationTarget("/subscriptions/123")).toBe("/subscriptions/123");
     expect(safeNotificationTarget("https://evil.example")).toBe("/dashboard/actions");
     expect(safeNotificationTarget("//evil.example")).toBe("/dashboard/actions");
     expect(safeNotificationTarget(null)).toBe("/dashboard/actions");

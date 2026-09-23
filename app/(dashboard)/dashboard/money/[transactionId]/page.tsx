@@ -11,7 +11,15 @@ import { ROUTES } from "@/shared/config/routes";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { formatMoney } from "@/shared/utils/format-money";
 
-export default async function TransactionDetailPage({ params }: PageProps<"/dashboard/money/[transactionId]">) {
+interface TransactionDetailPageProps {
+  params: PageProps<"/dashboard/money/[transactionId]">["params"];
+  productIsolated?: boolean;
+}
+
+export default async function TransactionDetailPage({
+  params,
+  productIsolated = false,
+}: TransactionDetailPageProps) {
   const { transactionId } = await params;
   const [ctx, { dict }] = await Promise.all([requireOrg(), getDictionary()]);
   const { org } = ctx;
@@ -28,8 +36,12 @@ export default async function TransactionDetailPage({ params }: PageProps<"/dash
   if (!tx) notFound();
 
   // Was this expense created from a subscription payment cycle? (migration 078)
-  const subscriptionsApp = await getSubscriptionsApplication({ supabase, currentContext: ctx });
-  const paymentCycle = await subscriptionsApp.getPaymentCycleByTransactionId(tx.id);
+  const subscriptionsApp = productIsolated
+    ? null
+    : await getSubscriptionsApplication({ supabase, currentContext: ctx });
+  const paymentCycle = subscriptionsApp
+    ? await subscriptionsApp.getPaymentCycleByTransactionId(tx.id)
+    : null;
   const paymentSubscription = paymentCycle
     ? await supabase
         .from("subscriptions")
@@ -132,7 +144,7 @@ export default async function TransactionDetailPage({ params }: PageProps<"/dash
             />
           )}
           {tx.note && <section className="soft-card p-5 sm:p-6"><h2 className="text-base font-semibold text-text-primary">Notes</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-primary">{tx.note}</p></section>}
-          <UniversalRelationViewer entityType="transaction" entityId={tx.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.money}/${tx.id}`} />
+          <UniversalRelationViewer entityType="transaction" entityId={tx.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.money}/${tx.id}`} allowedKinds={productIsolated ? ["transaction", "document"] : undefined} />
         </main>
         <aside className="space-y-4">
           {paymentCycle && (

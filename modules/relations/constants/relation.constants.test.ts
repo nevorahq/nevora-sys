@@ -40,19 +40,19 @@ describe("RELATION_ENTITY_CONFIG (single source of truth)", () => {
       table: "subscriptions",
       label: "Subscription",
       pluralLabel: "Subscriptions",
-      route: "/dashboard/subscriptions",
+      route: "/subscriptions",
     });
     expect(RELATION_ENTITY_CONFIG.task).toMatchObject({
       table: "todos",
       label: "Task",
       pluralLabel: "Tasks",
-      route: "/dashboard/tasks",
+      route: "/tasks",
     });
     expect(RELATION_ENTITY_CONFIG.transaction).toMatchObject({
       table: "money_transactions",
       label: "Transaction",
       pluralLabel: "Money",
-      route: "/dashboard/money",
+      route: "/finance",
     });
   });
 
@@ -68,8 +68,8 @@ describe("RELATION_ENTITY_CONFIG (single source of truth)", () => {
 
   it("generates detail hrefs from centralized routes", () => {
     expect(ENTITY_KIND_ROUTE.document(ID)).toBe(`/dashboard/documents/${ID}`);
-    expect(ENTITY_KIND_ROUTE.subscription(ID)).toBe(`/dashboard/subscriptions/${ID}`);
-    expect(ENTITY_KIND_ROUTE.task(ID)).toBe(`/dashboard/tasks/${ID}`);
-    expect(ENTITY_KIND_ROUTE.transaction(ID)).toBe(`/dashboard/money/${ID}`);
+    expect(ENTITY_KIND_ROUTE.subscription(ID)).toBe(`/subscriptions/${ID}`);
+    expect(ENTITY_KIND_ROUTE.task(ID)).toBe(`/tasks/${ID}`);
+    expect(ENTITY_KIND_ROUTE.transaction(ID)).toBe(`/finance/${ID}`);
   });
 });

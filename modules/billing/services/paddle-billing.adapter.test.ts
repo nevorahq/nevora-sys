@@ -47,7 +47,7 @@ const checkoutInput = {
   actorId: "user-1",
   planCode: "pro" as const,
   billingCycle: "monthly" as const,
-  returnUrl: "https://app.example/dashboard/settings/billing",
+  returnUrl: "https://app.example/settings/billing",
 };
 
 describe("PaddleBillingAdapter.createCheckoutSession", () => {
@@ -113,7 +113,7 @@ describe("PaddleBillingAdapter.createCustomerPortal", () => {
     const adapter = new PaddleBillingAdapter(CONFIGURED);
     const session = await adapter.createCustomerPortal({
       organizationId: "org-1",
-      returnUrl: "https://app.example/dashboard/settings/billing",
+      returnUrl: "https://app.example/settings/billing",
     });
 
     expect(session).toMatchObject({ configured: true, url: "https://customer-portal.paddle.com/x" });
@@ -126,7 +126,7 @@ describe("PaddleBillingAdapter.createCustomerPortal", () => {
     const adapter = new PaddleBillingAdapter(CONFIGURED);
     const session = await adapter.createCustomerPortal({
       organizationId: "org-1",
-      returnUrl: "https://app.example/dashboard/settings/billing",
+      returnUrl: "https://app.example/settings/billing",
     });
 
     expect(session).toMatchObject({ configured: true, url: null });
@@ -141,7 +141,7 @@ describe("PaddleBillingAdapter.createCustomerPortal", () => {
     const adapter = new PaddleBillingAdapter(CONFIGURED);
     await adapter.createCustomerPortal({
       organizationId: "org-1",
-      returnUrl: "https://app.example/dashboard/settings/billing",
+      returnUrl: "https://app.example/settings/billing",
     });
 
     expect(portalMock).toHaveBeenCalledWith(CONFIGURED, { customerId: "ctm_1", subscriptionIds: undefined });

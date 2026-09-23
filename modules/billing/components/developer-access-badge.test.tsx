@@ -5,12 +5,15 @@ import { describe, expect, it } from "vitest";
 import { DeveloperAccessBadge } from "./developer-access-badge";
 
 describe("DeveloperAccessBadge", () => {
-  it("shows a persistent developer and unlimited access indicator", () => {
+  it("shows an icon-only developer status with an accessible label", () => {
     render(<DeveloperAccessBadge />);
 
     const badge = screen.getByTestId("developer-access-badge");
-    expect(badge.textContent).toContain("Developer");
-    expect(badge.textContent).toContain("Unlimited");
-    expect(badge.getAttribute("href")).toBe("/dashboard/settings/billing");
+    expect(badge.textContent).toBe("");
+    expect(badge.getAttribute("aria-label")).toBe("Developer Access · Unlimited product limits");
+    expect(badge.getAttribute("title")).toBe("Developer Access · Unlimited product limits");
+    expect(badge.getAttribute("href")).toBe("/settings/billing");
+    expect(badge.className).toContain("bg-transparent");
+    expect(badge.className).toContain("text-violet-600");
   });
 });

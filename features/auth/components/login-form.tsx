@@ -6,15 +6,16 @@ import { loginAction } from "../actions/login.action";
 import { Input } from "@/shared/ui/input";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
-import { ROUTES } from "@/shared/config/routes";
+import { authUrl, ROUTES, type ProductEntryRoute } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface LoginFormProps {
   dict: Dictionary;
+  destination: ProductEntryRoute;
 }
 
-export function LoginForm({ dict }: LoginFormProps) {
+export function LoginForm({ dict, destination }: LoginFormProps) {
   const t = dict.auth.login;
   const [state, formAction, isPending] = useActionState<ActionResult, FormData>(
     loginAction,
@@ -35,6 +36,7 @@ export function LoginForm({ dict }: LoginFormProps) {
       )}
 
       <form action={formAction} className="space-y-4">
+        <input type="hidden" name="next" value={destination} />
         <Input
           id="email"
           name="email"
@@ -65,7 +67,7 @@ export function LoginForm({ dict }: LoginFormProps) {
       <p className="mt-5 text-center text-sm text-text-secondary">
         {t.noAccount}{" "}
         <Link
-          href={ROUTES.register}
+          href={authUrl(ROUTES.register, destination)}
           className="font-semibold text-text-primary underline-offset-4 hover:underline"
         >
           {t.registerLink}

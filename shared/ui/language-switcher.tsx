@@ -10,6 +10,7 @@ import { cn } from "@/shared/utils/cn";
 interface LanguageSwitcherProps {
   locale: Locale;
   className?: string;
+  iconOnly?: boolean;
 }
 
 /**
@@ -18,7 +19,11 @@ interface LanguageSwitcherProps {
  * Список берётся из `LOCALES`, поэтому румынский появляется автоматически после
  * добавления словаря `dictionaries/ro.ts`.
  */
-export function LanguageSwitcher({ locale, className }: LanguageSwitcherProps) {
+export function LanguageSwitcher({
+  locale,
+  className,
+  iconOnly = false,
+}: LanguageSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
@@ -56,12 +61,18 @@ export function LanguageSwitcher({ locale, className }: LanguageSwitcherProps) {
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label={`Language: ${PUBLIC_LOCALE_NAMES[locale]}`}
+        title={`Language: ${PUBLIC_LOCALE_NAMES[locale]}`}
         disabled={isPending}
         onClick={() => setIsOpen((value) => !value)}
-        className="soft-icon-button h-9 min-w-9 gap-1.5 rounded-(--neu-radius-pill) px-3 text-sm font-medium disabled:opacity-60"
+        className={cn(
+          "soft-icon-button rounded-(--neu-radius-pill) disabled:opacity-60",
+          iconOnly
+            ? "h-9 w-9"
+            : "h-9 min-w-9 gap-1.5 px-3 text-sm font-medium",
+        )}
       >
         <GlobeIcon size={16} strokeWidth={1.9} aria-hidden="true" />
-        <span>{PUBLIC_LOCALE_NAMES[locale]}</span>
+        {!iconOnly && <span>{PUBLIC_LOCALE_NAMES[locale]}</span>}
       </button>
 
       {isOpen && (

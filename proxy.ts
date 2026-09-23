@@ -7,6 +7,8 @@ import {
   isPublicRoute,
   isSubscriptionsServiceTransportRequest,
   isTasksServiceTransportRequest,
+  productEntryRouteFromPathname,
+  resolveProductEntryRoute,
 } from "@/shared/config/routes";
 
 /**
@@ -53,7 +55,10 @@ export async function proxy(request: NextRequest) {
   // Неавторизован + protected route → на логин
   if (!user && !isPublicRoute(pathname)) {
     const url = request.nextUrl.clone();
+    const productDestination = productEntryRouteFromPathname(pathname);
     url.pathname = ROUTES.login;
+    url.search = "";
+    if (productDestination) url.searchParams.set("next", productDestination);
     // ВАЖНО: NextResponse.redirect, а не Response.redirect. Next пост-обрабатывает
     // только NextResponse и добавляет заголовки, по которым клиентский рантайм
     // Server Actions распознаёт редирект при RSC-навигации. Сырой Response.redirect
@@ -63,10 +68,15 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Авторизован + на странице логина/регистрации → на домашний экран (Inbox)
+  // Авторизован + login/register → в выбранный продукт или продукт по умолчанию.
   if (user && (pathname === ROUTES.login || pathname === ROUTES.register)) {
     const url = request.nextUrl.clone();
-    url.pathname = ROUTES.appHome;
+    const productDestination =
+      pathname === ROUTES.login
+        ? resolveProductEntryRoute(request.nextUrl.searchParams.get("next"))
+        : null;
+    url.pathname = productDestination ?? ROUTES.appHome;
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

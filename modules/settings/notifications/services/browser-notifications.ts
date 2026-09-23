@@ -1,5 +1,7 @@
 "use client";
 
+import { productIdFromPathname } from "@/shared/config/routes";
+
 export type BrowserNotificationState = "unsupported" | NotificationPermission;
 
 export function getBrowserNotificationState(): BrowserNotificationState {
@@ -30,7 +32,10 @@ export async function subscribeBrowser(publicKey: string): Promise<PushSubscript
 }
 
 export function safeNotificationTarget(value: unknown): string {
-  return typeof value === "string" && value.startsWith("/dashboard/") && !value.startsWith("//")
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
+    return "/dashboard/actions";
+  }
+  return value.startsWith("/dashboard/") || productIdFromPathname(value)
     ? value
     : "/dashboard/actions";
 }

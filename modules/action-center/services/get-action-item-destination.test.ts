@@ -38,17 +38,17 @@ describe("getActionItemDestination", () => {
 
   it("routes a task to Tasks", () => {
     const dest = getActionItemDestination(item({ source_type: "task", primary_entity_type: "task", primary_entity_id: "t-1" }));
-    expect(dest).toEqual({ href: "/dashboard/tasks/t-1", target: "tasks" });
+    expect(dest).toEqual({ href: "/tasks/t-1", target: "tasks" });
   });
 
   it("routes a transaction to Money", () => {
     const dest = getActionItemDestination(item({ source_type: "transaction", primary_entity_type: "transaction", primary_entity_id: "tx-1" }));
-    expect(dest).toEqual({ href: "/dashboard/money/tx-1", target: "money" });
+    expect(dest).toEqual({ href: "/finance/tx-1", target: "money" });
   });
 
   it("routes a subscription to Subscriptions", () => {
     const dest = getActionItemDestination(item({ source_type: "subscription", primary_entity_type: "subscription", primary_entity_id: "s-1" }));
-    expect(dest).toEqual({ href: "/dashboard/subscriptions/s-1", target: "subscriptions" });
+    expect(dest).toEqual({ href: "/subscriptions/s-1", target: "subscriptions" });
   });
 
   it("routes a document to Documents", () => {

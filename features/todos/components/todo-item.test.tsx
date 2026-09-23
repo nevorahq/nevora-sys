@@ -47,7 +47,7 @@ describe("TodoItem", () => {
       dict={baseDict}
     />);
 
-    expect(screen.getByRole("link", { name: /Task title/ }).getAttribute("href")).toBe("/dashboard/tasks/44444444-4444-4444-8444-444444444444");
+    expect(screen.getByRole("link", { name: /Task title/ }).getAttribute("href")).toBe("/tasks/44444444-4444-4444-8444-444444444444");
     expect(screen.queryByRole("button", { name: "Edit task" })).toBeNull();
   });
 

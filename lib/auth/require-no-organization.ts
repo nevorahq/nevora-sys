@@ -3,7 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "./require-user";
-import { ROUTES } from "@/shared/config/routes";
+import { ROUTES, type ProductEntryRoute } from "@/shared/config/routes";
 
 /**
  * The mirror of `requireOrg`: gate the onboarding surfaces
@@ -24,7 +24,7 @@ import { ROUTES } from "@/shared/config/routes";
  * Returns the authenticated user so callers keep their existing `requireUser()`
  * result without a second round-trip.
  */
-export async function requireNoOrganization() {
+export async function requireNoOrganization(destination: ProductEntryRoute = ROUTES.appHome) {
   const user = await requireUser();
   const supabase = await createClient();
 
@@ -45,7 +45,7 @@ export async function requireNoOrganization() {
   }
 
   if (data && data.length > 0) {
-    redirect(ROUTES.dashboard);
+    redirect(destination);
   }
 
   return user;

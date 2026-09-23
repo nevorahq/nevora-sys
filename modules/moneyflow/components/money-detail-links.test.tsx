@@ -109,7 +109,7 @@ describe("Money detail navigation", () => {
     );
 
     expect(screen.getByRole("link", { name: "Open account: USD Card" }).getAttribute("href"))
-      .toBe("/dashboard/money/accounts/11111111-1111-4111-8111-111111111111");
+      .toBe("/finance/accounts/11111111-1111-4111-8111-111111111111");
   });
 
   it("opens transaction details from the transaction card", () => {
@@ -149,7 +149,7 @@ describe("Money detail navigation", () => {
     );
 
     expect(screen.getByRole("link", { name: "Open transaction: Coffee" }).getAttribute("href"))
-      .toBe("/dashboard/money/22222222-2222-4222-8222-222222222222");
+      .toBe("/finance/22222222-2222-4222-8222-222222222222");
   });
 
   it("allows the account initial balance to be edited", () => {

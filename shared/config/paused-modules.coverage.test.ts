@@ -106,9 +106,8 @@ describe("paused modules: page + layout coverage", () => {
 describe("paused modules: public product surface", () => {
   it("does not appear in the sidebar navigation", () => {
     const sidebar = read("shared/ui/sidebar.tsx");
-    const navBlock = sidebar.slice(sidebar.indexOf("const navItems"), sidebar.indexOf("function isActive"));
-    expect(navBlock).not.toMatch(/^\s*\{\s*href:\s*ROUTES\.crm\b/m);
-    expect(navBlock).not.toMatch(/^\s*\{\s*href:\s*ROUTES\.booking\b/m);
+    expect(sidebar).not.toMatch(/^\s*\{\s*href:\s*ROUTES\.crm\b/m);
+    expect(sidebar).not.toMatch(/^\s*\{\s*href:\s*ROUTES\.booking\b/m);
   });
 
   it("does not appear in a public sitemap", () => {
