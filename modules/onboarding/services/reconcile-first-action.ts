@@ -302,20 +302,29 @@ async function findEntity(
         .select("id, title")
         .eq("organization_id", ctx.org.id)
         .eq("created_by", ctx.user.id)
-        // Creating a subscription auto-provisions a payment task. Without this
-        // filter that task would masquerade as "the user created a task".
-        .eq("task_context_type", "standard")
         .is("deleted_at", null)
         .gte("created_at", since)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!data) return null;
+        .limit(20);
+      const candidates = (data ?? []) as { id: string; title: string }[];
+      if (candidates.length === 0) return null;
+
+      // Creating a subscription auto-provisions a payment task, and a renewal
+      // decision can create a review or cancellation task. Nothing on the todo
+      // row marks them, so exclude them by id or they would masquerade as
+      // "the user created a task".
+      const generated = await findSubscriptionGeneratedTaskIds(
+        supabase,
+        ctx,
+        candidates.map((task) => task.id),
+      );
+      const task = candidates.find((candidate) => !generated.has(candidate.id));
+      if (!task) return null;
 
       return {
         kind: "task",
-        id: data.id as string,
-        title: data.title as string,
+        id: task.id,
+        title: task.title,
         linkCandidate: await findLinkCandidate(supabase, ctx),
       };
     }
@@ -323,6 +332,38 @@ async function findEntity(
 }
 
 /** The newest document in the org — the natural context for a bare task. */
+async function findSubscriptionGeneratedTaskIds(
+  supabase: SupabaseClient,
+  ctx: CurrentContext,
+  taskIds: string[],
+): Promise<Set<string>> {
+  const [cycles, reviews, cancellations] = await Promise.all([
+    supabase
+      .from("subscription_payment_cycles")
+      .select("task_id")
+      .eq("organization_id", ctx.org.id)
+      .in("task_id", taskIds),
+    supabase
+      .from("subscription_renewal_cases")
+      .select("review_task_id")
+      .eq("organization_id", ctx.org.id)
+      .in("review_task_id", taskIds),
+    supabase
+      .from("subscription_renewal_cases")
+      .select("cancellation_task_id")
+      .eq("organization_id", ctx.org.id)
+      .in("cancellation_task_id", taskIds),
+  ]);
+  const ids = [
+    ...((cycles.data ?? []) as { task_id: string | null }[]).map((row) => row.task_id),
+    ...((reviews.data ?? []) as { review_task_id: string | null }[]).map((row) => row.review_task_id),
+    ...((cancellations.data ?? []) as { cancellation_task_id: string | null }[]).map(
+      (row) => row.cancellation_task_id,
+    ),
+  ];
+  return new Set(ids.filter((id): id is string => typeof id === "string"));
+}
+
 async function findLinkCandidate(
   supabase: SupabaseClient,
   ctx: CurrentContext,
