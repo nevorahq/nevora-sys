@@ -20,7 +20,7 @@ export function FaqSection({ content }: { content: LandingContent["faq"] }) {
         {content.items.map((item) => (
           <details
             key={item.id}
-            className="group soft-card overflow-hidden [&_svg]:open:rotate-45"
+            className="nv-faq-item group soft-card overflow-hidden transition-shadow duration-300 open:shadow-neu-card [&_svg]:open:rotate-45"
           >
             <summary className="soft-focus flex cursor-pointer items-center justify-between gap-4 p-5 font-medium text-text-primary marker:content-none [&::-webkit-details-marker]:hidden">
               {item.q}

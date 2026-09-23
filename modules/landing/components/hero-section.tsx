@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { ShieldCheckIcon } from "lucide-react";
+import { ArrowRightIcon, ShieldCheckIcon } from "lucide-react";
 import { ROUTES } from "@/shared/config/routes";
 import type { LandingContent } from "../constants/landing-content";
 
-/** Hero — первый экран: что это, для кого, что делает ИИ, кто решает. */
+/** Hero — первый экран: три продуктовых контура и единая точка входа. */
 export function HeroSection({ content }: { content: LandingContent["hero"] }) {
   return (
     <section
@@ -36,17 +36,18 @@ export function HeroSection({ content }: { content: LandingContent["hero"] }) {
         style={{ animationDelay: "280ms" }}
       >
         <Link
-          href={ROUTES.register}
-          className="soft-focus inline-flex min-h-11 w-full items-center justify-center rounded-(--neu-radius-pill) bg-text-primary px-7 text-sm font-semibold text-text-inverse shadow-neu-control transition-shadow hover:shadow-neu-card active:shadow-neu-inset sm:w-auto"
+          href="#products"
+          className="soft-focus inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-(--neu-radius-pill) bg-text-primary px-7 text-sm font-semibold text-text-inverse shadow-neu-control transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-neu-card active:translate-y-0 active:shadow-neu-inset sm:w-auto"
         >
           {content.primaryCta}
+          <ArrowRightIcon size={16} strokeWidth={2} aria-hidden="true" />
         </Link>
-        <a
-          href="#pricing"
-          className="soft-focus inline-flex min-h-11 w-full items-center justify-center rounded-(--neu-radius-pill) border border-border-soft bg-surface px-7 text-sm font-semibold text-text-primary shadow-neu-control transition-shadow hover:shadow-neu-card active:shadow-neu-inset sm:w-auto"
+        <Link
+          href={ROUTES.register}
+          className="soft-focus inline-flex min-h-11 w-full items-center justify-center rounded-(--neu-radius-pill) border border-border-soft bg-surface px-7 text-sm font-semibold text-text-primary shadow-neu-control transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-neu-card active:translate-y-0 active:shadow-neu-inset sm:w-auto"
         >
           {content.secondaryCta}
-        </a>
+        </Link>
       </div>
 
       <p

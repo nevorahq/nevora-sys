@@ -1,11 +1,11 @@
-import { ArrowRightIcon, InboxIcon, SparklesIcon, CircleCheckIcon } from "lucide-react";
+import { ArrowRightIcon, LayoutGridIcon, LogInIcon, FocusIcon } from "lucide-react";
 import type { LandingContent } from "../constants/landing-content";
 
-const STEP_ICONS = [InboxIcon, SparklesIcon, CircleCheckIcon] as const;
+const STEP_ICONS = [LayoutGridIcon, LogInIcon, FocusIcon] as const;
 
 /**
- * Как работает Nevora — единый цикл «добавить → проверить → выполнить».
- * Служит визуальным якорем продукта: связная схема потока, а не набор карточек.
+ * Как работает продуктовый вход: выбрать → авторизоваться → работать в контексте.
+ * Служит визуальным якорем потока, а не просто набором карточек.
  * Горизонтальная на десктопе, вертикальная на мобильном.
  */
 export function HowItWorksSection({ content }: { content: LandingContent["how"] }) {
@@ -20,11 +20,11 @@ export function HowItWorksSection({ content }: { content: LandingContent["how"] 
 
       <ol className="mt-12 flex flex-col items-stretch gap-4 md:flex-row md:items-center md:gap-2">
         {content.steps.map((step, i) => {
-          const Icon = STEP_ICONS[i] ?? InboxIcon;
+          const Icon = STEP_ICONS[i] ?? LayoutGridIcon;
           return (
             <li key={step.title} className="flex flex-1 flex-col items-stretch gap-4 md:flex-row md:items-center">
               <div
-                className="nv-fade-up soft-card flex flex-1 flex-col p-6"
+                className="nv-hover-lift soft-card flex flex-1 flex-col p-6"
                 style={{ animationDelay: `${i * 90}ms` }}
               >
                 <div className="flex items-center gap-3">

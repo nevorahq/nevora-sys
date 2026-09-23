@@ -1,23 +1,20 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { MenuIcon, XIcon } from "lucide-react";
-import { ROUTES } from "@/shared/config/routes";
 import type { LandingContent } from "../constants/landing-content";
 
 interface LandingMobileNavProps {
   nav: LandingContent["nav"];
-  header: LandingContent["header"];
   menuLabel: string;
   closeLabel: string;
 }
 
 /**
- * Мобильное меню лендинга (< md). Полноценная навигация: anchor-ссылки + вход +
- * основной CTA. На десктопе скрыто — там обычный горизонтальный nav в хедере.
+ * Мобильное меню лендинга (< md): anchor-ссылки. Выбор приложения и запуск
+ * пробного периода вынесены в отдельные иконки хедера на всех размерах экрана.
  */
-export function LandingMobileNav({ nav, header, menuLabel, closeLabel }: LandingMobileNavProps) {
+export function LandingMobileNav({ nav, menuLabel, closeLabel }: LandingMobileNavProps) {
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -72,23 +69,6 @@ export function LandingMobileNav({ nav, header, menuLabel, closeLabel }: Landing
                 </a>
               ))}
             </nav>
-
-            <div className="mt-3 flex flex-col gap-2 border-t border-border-soft pt-3">
-              <Link
-                href={ROUTES.login}
-                onClick={() => setIsOpen(false)}
-                className="soft-focus inline-flex min-h-11 items-center justify-center rounded-(--neu-radius-pill) border border-border-soft bg-surface px-4 text-sm font-semibold text-text-primary shadow-neu-control"
-              >
-                {header.login}
-              </Link>
-              <Link
-                href={ROUTES.register}
-                onClick={() => setIsOpen(false)}
-                className="soft-focus inline-flex min-h-11 items-center justify-center rounded-(--neu-radius-pill) bg-text-primary px-4 text-sm font-semibold text-text-inverse shadow-neu-control"
-              >
-                {header.cta}
-              </Link>
-            </div>
           </div>
         </>
       )}

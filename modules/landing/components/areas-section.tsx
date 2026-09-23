@@ -1,10 +1,10 @@
 import {
-  HomeIcon,
-  CheckSquareIcon,
-  WalletIcon,
-  FileTextIcon,
-  InboxIcon,
+  FolderKanbanIcon,
+  ListTodoIcon,
+  Repeat2Icon,
+  TagIcon,
   UsersIcon,
+  WalletCardsIcon,
   type LucideIcon,
 } from "lucide-react";
 import type { AreaId, LandingContent } from "../constants/landing-content";
@@ -15,16 +15,16 @@ import type { AreaId, LandingContent } from "../constants/landing-content";
  * область добавили в контент, но забыли здесь.
  */
 const AREA_ICONS: Record<AreaId, LucideIcon> = {
-  actions: HomeIcon,
-  work: CheckSquareIcon,
-  money: WalletIcon,
-  documents: FileTextIcon,
-  inbox: InboxIcon,
+  actions: ListTodoIcon,
+  work: FolderKanbanIcon,
+  money: WalletCardsIcon,
+  documents: TagIcon,
+  inbox: Repeat2Icon,
   team: UsersIcon,
 };
 
 /**
- * Разделы продукта — те же шесть, что в основной навигации приложения. Один общий
+ * Реально доступные возможности трёх приложений и общего слоя аккаунта. Один
  * контейнер с внутренними разделителями вместо набора тяжёлых neu-карточек.
  */
 export function AreasSection({ content }: { content: LandingContent["areas"] }) {
@@ -41,9 +41,9 @@ export function AreasSection({ content }: { content: LandingContent["areas"] }) 
           колонок — без хрупких nth-child border-правил на каждом брейкпоинте. */}
       <ul className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-(--neu-radius-lg) border border-border-soft bg-border-soft shadow-neu-sm sm:grid-cols-2 lg:grid-cols-3">
         {content.items.map((item) => {
-          const Icon = AREA_ICONS[item.id as AreaId] ?? CheckSquareIcon;
+          const Icon = AREA_ICONS[item.id as AreaId] ?? ListTodoIcon;
           return (
-            <li key={item.id} className="flex flex-col bg-surface p-6">
+            <li key={item.id} className="nv-hover-lift flex flex-col bg-surface p-6">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-(--neu-radius-md) bg-surface-sunken text-text-primary shadow-neu-inset">
                 <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
               </span>

@@ -19,7 +19,7 @@ const localeHref: Record<PublicLocale, string> = {
 };
 
 /**
- * Языковое меню лендинга. Показывает АКТИВНЫЙ язык полным названием и, при выборе,
+ * Языковое меню лендинга. В хедере отображается компактной иконкой и, при выборе,
  * не только навигирует на локальный лендинг, но и ставит cookie публичной локали
  * (`setLocaleAction`) — чтобы переходы на login/register/legal сохраняли язык.
  */
@@ -67,12 +67,11 @@ export function LandingLanguageMenu({ locale }: LandingLanguageMenuProps) {
         disabled={isPending}
         onClick={() => setIsOpen((value) => !value)}
         className={cn(
-          "soft-focus inline-flex h-11 min-w-11 cursor-pointer items-center gap-1.5 rounded-(--neu-radius-pill) border border-border-soft bg-surface px-3 text-sm font-medium text-text-secondary shadow-neu-control transition-colors hover:text-text-primary disabled:opacity-60 sm:h-9",
+          "soft-icon-button h-11 w-11 disabled:opacity-60 sm:h-9 sm:w-9",
           isOpen && "border-border-strong text-text-primary",
         )}
       >
         <GlobeIcon size={16} strokeWidth={1.9} aria-hidden="true" />
-        <span>{PUBLIC_LOCALE_NAMES[locale]}</span>
       </button>
 
       {isOpen && (

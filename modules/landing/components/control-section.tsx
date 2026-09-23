@@ -1,9 +1,9 @@
-import { SparklesIcon, WalletIcon, LockIcon } from "lucide-react";
+import { LayoutGridIcon, LogInIcon, LockIcon } from "lucide-react";
 import type { LandingContent } from "../constants/landing-content";
 
-const POINT_ICONS = [SparklesIcon, WalletIcon, LockIcon] as const;
+const POINT_ICONS = [LayoutGridIcon, LogInIcon, LockIcon] as const;
 
-/** Контроль, безопасность и роль ИИ — почему решения остаются за пользователем. */
+/** Граница продуктовых интерфейсов и общая безопасная основа аккаунта. */
 export function ControlSection({ content }: { content: LandingContent["control"] }) {
   return (
     <section id="control" className="bg-surface-sunken/40 py-16 sm:py-24">
@@ -17,9 +17,9 @@ export function ControlSection({ content }: { content: LandingContent["control"]
 
         <div className="soft-card mt-12 divide-y divide-border-soft">
           {content.points.map((point, i) => {
-            const Icon = POINT_ICONS[i] ?? SparklesIcon;
+            const Icon = POINT_ICONS[i] ?? LayoutGridIcon;
             return (
-              <div key={point.title} className="flex items-start gap-4 p-6">
+              <div key={point.title} className="flex items-start gap-4 p-6 transition-colors duration-200 hover:bg-surface-sunken/50">
                 <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-(--neu-radius-md) bg-surface-sunken text-text-primary shadow-neu-inset">
                   <Icon size={20} strokeWidth={1.8} aria-hidden="true" />
                 </span>
