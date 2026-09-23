@@ -132,9 +132,9 @@ describe("landing content", () => {
   });
 
   it("points every nav anchor at a section that exists on the page", () => {
-    // Секции рендерят hero (#home), how (#how), areas (#areas), plans (#pricing),
+    // Секции рендерят hero (#home), product preview (#products), how (#how), plans (#pricing),
     // contact (#contact). Ссылка в никуда — тихий баг: клик просто ничего не делает.
-    const rendered = ["#home", "#how", "#areas", "#pricing", "#contact"];
+    const rendered = ["#home", "#products", "#how", "#pricing", "#contact"];
 
     for (const link of getLandingContent("en").nav) {
       expect(rendered, `nav anchor "${link.href}" has no section`).toContain(link.href);

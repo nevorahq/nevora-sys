@@ -228,6 +228,10 @@ body {
   }
 }
 
+[data-landing-page] section[id] {
+  scroll-margin-top: 5rem;
+}
+
 /* ── 5. SOFT UI COMPONENT CLASSES ──────────────────────────── */
 /*
    Usage guide:
@@ -384,6 +388,17 @@ body {
   }
 }
 
+@keyframes nv-preview-swap {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .nv-fade-up {
   opacity: 0;
   animation: nv-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -392,6 +407,41 @@ body {
 .nv-fade-in {
   opacity: 0;
   animation: nv-fade-in 0.9s ease both;
+}
+
+.nv-preview-swap {
+  animation: nv-preview-swap 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Progressive viewport reveal. The class is added by LandingMotion only after
+   hydration, so content remains visible when JavaScript is unavailable. */
+.nv-section-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 720ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.nv-section-reveal.nv-section-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.nv-faq-item::details-content {
+  block-size: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    block-size 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms ease,
+    content-visibility 300ms allow-discrete;
+}
+
+.nv-faq-item[open]::details-content {
+  block-size: auto;
+  opacity: 1;
 }
 
 /* Reusable hover lift for interactive cards. */
@@ -406,9 +456,21 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .nv-fade-up,
-  .nv-fade-in {
+  .nv-fade-in,
+  .nv-preview-swap {
     animation: none;
     opacity: 1;
+  }
+
+  .nv-section-reveal,
+  .nv-section-reveal.nv-section-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .nv-faq-item::details-content {
+    transition: none;
   }
 
   .nv-hover-lift {
@@ -418,5 +480,11 @@ body {
   .nv-hover-lift:hover {
     transform: none;
     box-shadow: var(--neu-shadow-soft-sm);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
   }
 }

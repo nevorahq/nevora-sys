@@ -1,5 +1,5 @@
 /**
- * Контент лендинга Nevora Business OS — локализованный (en / ru / ro).
+ * Контент продуктового лендинга Nevora — локализованный (en / ru / ro).
  *
  * Почему не в общих словарях shared/i18n: их тип `DeepString<typeof en>`
  * сводит листья к `string` и не поддерживает массивы — а лендинг состоит
@@ -26,8 +26,8 @@ export const LANDING_LOCALES = ["en", "ru", "ro"] as const;
 export type LandingLocale = PublicLocale;
 
 /**
- * Области продукта в порядке основной навигации приложения
- * (Home · Work · Money · Documents · Inbox + команда/доступ из Settings).
+ * Карточки текущих возможностей. Исторические id сохраняются как стабильные
+ * ключи локализации и тестов, а видимые названия соответствуют продуктам.
  * `id` — стабильный ключ: он связывает локализованный текст с иконкой в
  * `areas-section` и переживает перевод. Порядок и состав одинаковы во всех
  * локалях — это пинит `landing-content.test.ts`.
@@ -68,14 +68,14 @@ export type ProofId = (typeof PROOF_IDS)[number];
 
 const en = {
   meta: {
-    title: "Nevora Business OS — One workspace that tells you what needs action",
+    title: "Nevora — Tasks, Finance and Subscriptions as focused apps",
     description:
-      "Tasks, money, documents and subscriptions in one system. Your home screen is the queue of what needs a decision; Nevora suggests the next step and every important change stays under your control.",
+      "Three focused business apps with one Nevora account: manage tasks and projects, track finances, and keep recurring subscriptions under control.",
   },
   nav: [
     { label: "Home", href: "#home" },
     { label: "How it works", href: "#how" },
-    { label: "Areas", href: "#areas" },
+    { label: "Products", href: "#products" },
     { label: "Pricing", href: "#pricing" },
     { label: "Contact", href: "#contact" },
   ],
@@ -89,20 +89,20 @@ const en = {
     close: "Close menu",
   },
   hero: {
-    title: "One workspace that tells you what needs action.",
+    title: "Three focused apps. One Nevora account.",
     subtitle:
-      "Tasks, money, documents and subscriptions live in one system. Your home screen is the queue of what actually needs a decision — and an obligation stays visible until the work is really done.",
-    trust: "AI suggests. You review. Financial actions never run automatically.",
-    primaryCta: "Start a 14-day trial",
-    secondaryCta: "See pricing",
+      "Choose Tasks, Finance or Subscriptions. After sign-in, Nevora opens the selected product and keeps unrelated modules out of your navigation.",
+    trust: "One account · focused navigation · your selected product opens after sign-in.",
+    primaryCta: "Explore the apps",
+    secondaryCta: "Start a 14-day trial",
     microcopy: "Private beta · 14-day trial · 500 MB storage · no card · EN / RU / RO.",
-    audience: "Built for small and growing teams that want order without heavy software.",
+    audience: "For people and small teams who want focused tools without a heavy all-in-one interface.",
   },
   preview: {
-    title: "A look inside",
+    title: "Choose the workspace you need",
     subtitle:
-      "The Money workspace. Every obligation carries the same state label you meet everywhere else in the product.",
-    caption: "Illustrative preview — sample data, not a real account.",
+      "Switch between the three live product areas. Each one has its own routes, navigation and day-to-day workflow.",
+    caption: "Interactive product preview — sample data. Opening an app preserves your choice through sign-in.",
     rows: [
       { name: "Acme Studio — invoice", amount: "€1,200", state: "due" },
       { name: "Cloud storage — subscription", amount: "€15", state: "paid" },
@@ -111,61 +111,61 @@ const en = {
     ],
   },
   how: {
-    title: "Add, review, execute",
+    title: "Choose, sign in, stay focused",
     subtitle:
-      "One simple loop keeps work moving. You stay in control at every step — nothing important happens without you.",
+      "The product you choose on the landing page stays selected through login or registration.",
     steps: [
       {
         badge: "1",
-        title: "Add",
-        text: "Drop a task, a document, a note or a subscription into one place. No forms to learn, no lost context.",
+        title: "Choose an app",
+        text: "Start with Tasks, Finance or Subscriptions from the product menu or interactive preview.",
       },
       {
         badge: "2",
-        title: "Review",
-        text: "Nevora reads what you added and suggests the next step. You check the suggestion before anything is applied.",
+        title: "Sign in once",
+        text: "Log in or create an account. Nevora safely keeps the selected destination during authentication.",
       },
       {
         badge: "3",
-        title: "Execute",
-        text: "You confirm, and the action is recorded and connected. Payments and money changes happen only when you approve them.",
+        title: "Work in context",
+        text: "You land in the chosen app and see only its product navigation, while account settings remain shared.",
       },
     ],
   },
   areas: {
-    title: "Six sections. Nothing to learn.",
+    title: "What is available today",
     subtitle:
-      "This is the whole product — the same sections you see after signing in, in the same order.",
+      "The landing page now matches the routes and capabilities already available in the application.",
     items: [
       {
         id: "actions",
-        title: "Action Center",
-        text: "Your home screen is the queue of what needs a decision. Reading a notification never closes an obligation — it stays until the work is done.",
+        title: "Tasks",
+        text: "Create, prioritise and complete daily work in a dedicated task workspace.",
       },
       {
         id: "work",
-        title: "Work",
-        text: "Tasks and projects with owners and deadlines, connected to the document or the payment they came from.",
+        title: "Projects",
+        text: "Group tasks into projects and open dedicated project pages without leaving the Tasks app.",
       },
       {
         id: "money",
-        title: "Money",
-        text: "Transactions, financial tasks and subscriptions in one workspace. An amount becomes a fact only when you confirm the payment.",
+        title: "Accounts and transactions",
+        text: "Track balances, income, expenses and transfers inside the Finance app.",
       },
       {
         id: "documents",
-        title: "Documents",
-        text: "Upload an invoice or a receipt; Nevora reads it and proposes what it means. You decide whether it becomes an obligation or an expense.",
+        title: "Finance rules",
+        text: "Create explicit rules for repeatable transaction categorisation and keep manual control.",
       },
       {
         id: "inbox",
-        title: "Capture",
-        text: "Drop in text, a photo or a file from anywhere. It waits in the Inbox until you review it — nothing is filed behind your back.",
+        title: "Subscriptions",
+        text: "Keep recurring services, renewal dates and payment workflow in their own app.",
       },
       {
         id: "team",
-        title: "Team and access",
-        text: "Invite the people who need it, with roles. Your workspace is isolated: a member sees only what their role allows.",
+        title: "Shared account layer",
+        text: "Use one identity, one organisation and shared settings while product navigation remains separate.",
       },
     ],
   },
@@ -213,25 +213,25 @@ const en = {
     note: "Reaching “Paid” takes an explicit confirmation from you — and confirming the same obligation twice cannot pay it twice.",
   },
   control: {
-    title: "Control, security and the role of AI",
+    title: "Separate products, shared foundation",
     subtitle:
-      "Nevora is assistive by design. It helps you decide faster, but the decision is always yours.",
+      "The interface is split by product without forcing you to maintain three unrelated accounts.",
     points: [
       {
-        title: "AI suggests, you decide",
-        text: "Every AI output is a suggestion you review. Nothing is applied until you confirm it.",
+        title: "Focused product navigation",
+        text: "Tasks, Finance and Subscriptions expose only the routes needed for the selected workflow.",
       },
       {
-        title: "Confirm-first finance",
-        text: "Money changes are never automatic. A payment or expense is recorded only after you approve it.",
+        title: "Choice survives authentication",
+        text: "The selected product is carried safely through login, registration and onboarding.",
       },
       {
-        title: "Your data stays yours",
-        text: "During private beta your workspace is isolated and private. No hidden sharing, no surprises.",
+        title: "Safe shared access",
+        text: "Authentication, organisation access and settings stay centralised, with validated internal redirects.",
       },
     ],
     closing:
-      "Important obligations stay visible until they are resolved — not just until a notification is read.",
+      "You can move between products when you choose, without mixing their navigation by default.",
   },
   proof: {
     title: "How we prove it, not just say it",
@@ -330,11 +330,11 @@ const en = {
     betaNotice:
       "Nevora is in private beta: the free trial is open to everyone, and paid plans switch on once billing is enabled. No card is charged in the meantime.",
     note: {
-      lead: "Try Nevora Business OS for 14 days with up to 500 MB of storage.",
+      lead: "Try the current Nevora apps for 14 days with up to 500 MB of storage.",
       points: [
-        "AI you review",
-        "Finance you confirm",
-        "Decide freely after the trial",
+        "Tasks and projects",
+        "Accounts and transactions",
+        "Recurring subscriptions",
       ],
     },
     workspace:
@@ -366,8 +366,8 @@ const en = {
       },
       {
         id: "ai",
-        q: "What does the AI actually do?",
-        a: "It reads, extracts and suggests — a category, a task, a draft. It never posts money, marks anything paid, changes your plan or permissions, or deletes data on its own. Every accepted suggestion runs through your confirmation.",
+        q: "Will I see every module after sign-in?",
+        a: "No. Nevora opens the app you selected and shows that product’s navigation. You can deliberately switch to Tasks, Finance or Subscriptions from the app menu whenever you need another workspace.",
       },
       {
         id: "languages",
@@ -380,7 +380,7 @@ const en = {
     title: "Why Nevora exists",
     paragraphs: [
       "Many business tools become heavy too early — extra menus, unused features and limits that get in the way.",
-      "Nevora is being built in the other direction: a connected place for tasks, money, documents and subscriptions that you can understand without training, where the important decisions stay with you.",
+      "Nevora is being built in the other direction: focused apps for tasks, finances and subscriptions, connected by one account but separated enough to keep every workflow clear.",
     ],
   },
   contact: {
@@ -393,7 +393,7 @@ const en = {
     ],
   },
   footer: {
-    tagline: "A simple operating system for focused business work.",
+    tagline: "Focused business apps, connected by one account.",
     note: "Built for clarity, productivity and real daily use.",
     productHeading: "Product",
     legalHeading: "Legal",
@@ -408,14 +408,14 @@ export type LandingContent = typeof en;
 
 const ru: LandingContent = {
   meta: {
-    title: "Nevora Business OS — рабочее пространство, которое говорит, что требует действия",
+    title: "Nevora — Задачи, Финансы и Подписки как отдельные приложения",
     description:
-      "Задачи, финансы, документы и подписки в одной системе. Главный экран — очередь того, что требует решения; Nevora подсказывает следующий шаг, а важные изменения остаются под вашим контролем.",
+      "Три сфокусированных бизнес-приложения с одним аккаунтом Nevora: задачи и проекты, учёт финансов и контроль регулярных подписок.",
   },
   nav: [
     { label: "Главная", href: "#home" },
     { label: "Как это работает", href: "#how" },
-    { label: "Области", href: "#areas" },
+    { label: "Приложения", href: "#products" },
     { label: "Тарифы", href: "#pricing" },
     { label: "Контакты", href: "#contact" },
   ],
@@ -426,20 +426,20 @@ const ru: LandingContent = {
     close: "Закрыть меню",
   },
   hero: {
-    title: "Рабочее пространство, которое говорит, что требует действия.",
+    title: "Три отдельных приложения. Один аккаунт Nevora.",
     subtitle:
-      "Задачи, финансы, документы и подписки живут в одной системе. Главный экран — очередь того, что действительно требует решения, а обязательство остаётся видимым, пока работа не сделана.",
-    trust: "ИИ предлагает. Вы проверяете. Финансовые действия не выполняются автоматически.",
-    primaryCta: "Начать 14-дневный пробный период",
-    secondaryCta: "Смотреть тарифы",
+      "Выберите «Задачи», «Финансы» или «Подписки». После входа Nevora откроет выбранный продукт и скроет из навигации посторонние модули.",
+    trust: "Один аккаунт · сфокусированная навигация · выбранный продукт откроется после входа.",
+    primaryCta: "Посмотреть приложения",
+    secondaryCta: "Начать пробный период",
     microcopy: "Закрытая бета · пробный период 14 дней · 500 МБ · без карты · EN / RU / RO.",
-    audience: "Для малых и растущих команд, которым нужен порядок без тяжёлых программ.",
+    audience: "Для людей и небольших команд, которым нужны понятные инструменты без перегруженного интерфейса.",
   },
   preview: {
-    title: "Взгляд внутрь",
+    title: "Выберите нужное рабочее пространство",
     subtitle:
-      "Рабочее пространство «Финансы». Каждое обязательство несёт ту же подпись состояния, что и везде в продукте.",
-    caption: "Иллюстративное превью — примерные данные, не реальный аккаунт.",
+      "Переключайтесь между тремя доступными продуктами. У каждого — свои маршруты, навигация и рабочий сценарий.",
+    caption: "Интерактивное превью с примерными данными. Выбор приложения сохранится при входе.",
     rows: [
       { name: "Acme Studio — счёт", amount: "€1 200", state: "due" },
       { name: "Облачное хранилище — подписка", amount: "€15", state: "paid" },
@@ -448,61 +448,61 @@ const ru: LandingContent = {
     ],
   },
   how: {
-    title: "Добавьте, проверьте, выполните",
+    title: "Выберите, войдите, работайте без лишнего",
     subtitle:
-      "Один простой цикл держит работу в движении. Вы контролируете каждый шаг — ничего важного не происходит без вас.",
+      "Продукт, выбранный на лендинге, останется выбранным во время входа или регистрации.",
     steps: [
       {
         badge: "1",
-        title: "Добавьте",
-        text: "Внесите задачу, документ, заметку или подписку в одно место. Не нужно осваивать формы и терять контекст.",
+        title: "Выберите приложение",
+        text: "Начните с «Задач», «Финансов» или «Подписок» через меню или интерактивное превью.",
       },
       {
         badge: "2",
-        title: "Проверьте",
-        text: "Nevora читает добавленное и предлагает следующий шаг. Вы проверяете предложение до того, как что-либо применится.",
+        title: "Войдите один раз",
+        text: "Авторизуйтесь или создайте аккаунт. Nevora безопасно сохранит выбранный маршрут.",
       },
       {
         badge: "3",
-        title: "Выполните",
-        text: "Вы подтверждаете — и действие записывается и связывается. Платежи и изменения денег происходят только после вашего одобрения.",
+        title: "Работайте в контексте",
+        text: "Вы попадёте в выбранное приложение и увидите только его навигацию, а настройки аккаунта останутся общими.",
       },
     ],
   },
   areas: {
-    title: "Шесть разделов. Учиться нечему.",
+    title: "Что уже доступно",
     subtitle:
-      "Это весь продукт — те же разделы, что вы увидите после входа, и в том же порядке.",
+      "Лендинг теперь отражает реальные маршруты и возможности текущего приложения.",
     items: [
       {
         id: "actions",
-        title: "Центр действий",
-        text: "Главный экран — очередь того, что требует решения. Прочитанное уведомление ничего не закрывает: обязательство остаётся, пока работа не сделана.",
+        title: "Задачи",
+        text: "Создавайте, расставляйте приоритеты и завершайте ежедневную работу в отдельном пространстве.",
       },
       {
         id: "work",
-        title: "Работа",
-        text: "Задачи и проекты с ответственными и сроками, связанные с документом или платежом, из которого они возникли.",
+        title: "Проекты",
+        text: "Объединяйте задачи в проекты и открывайте отдельные страницы проектов внутри приложения «Задачи».",
       },
       {
         id: "money",
-        title: "Финансы",
-        text: "Транзакции, финансовые задачи и подписки в одном рабочем пространстве. Сумма становится фактом только после вашего подтверждения платежа.",
+        title: "Счета и транзакции",
+        text: "Контролируйте балансы, доходы, расходы и переводы внутри приложения «Финансы».",
       },
       {
         id: "documents",
-        title: "Документы",
-        text: "Загрузите счёт или чек — Nevora прочитает его и предложит, что это. Вы решаете, станет это обязательством или расходом.",
+        title: "Финансовые правила",
+        text: "Создавайте явные правила категоризации повторяющихся транзакций, сохраняя ручной контроль.",
       },
       {
         id: "inbox",
-        title: "Входящие",
-        text: "Добавляйте текст, фото или файл откуда угодно. Добавленное ждёт во входящих, пока вы его не проверите, — ничего не оформляется за вашей спиной.",
+        title: "Подписки",
+        text: "Храните регулярные сервисы, даты продления и статусы оплаты в отдельном приложении.",
       },
       {
         id: "team",
-        title: "Команда и доступ",
-        text: "Приглашайте тех, кому это нужно, и назначайте роли. Рабочее пространство изолировано: участник видит только то, что позволяет его роль.",
+        title: "Общий слой аккаунта",
+        text: "Одна учётная запись, одна организация и общие настройки при раздельной продуктовой навигации.",
       },
     ],
   },
@@ -550,25 +550,25 @@ const ru: LandingContent = {
     note: "Чтобы дойти до «Оплачено», нужно ваше явное подтверждение — а подтвердить одно обязательство дважды не значит оплатить его дважды.",
   },
   control: {
-    title: "Контроль, безопасность и роль ИИ",
+    title: "Отдельные продукты, общая основа",
     subtitle:
-      "Nevora по умолчанию помогает, а не решает за вас. Она ускоряет решения, но решение всегда за вами.",
+      "Интерфейс разделён по продуктам, но вам не придётся поддерживать три независимых аккаунта.",
     points: [
       {
-        title: "ИИ предлагает — вы решаете",
-        text: "Любой результат ИИ — это предложение, которое вы проверяете. Ничего не применяется, пока вы не подтвердите.",
+        title: "Сфокусированная навигация",
+        text: "«Задачи», «Финансы» и «Подписки» показывают только маршруты выбранного рабочего сценария.",
       },
       {
-        title: "Финансы только после подтверждения",
-        text: "Изменения денег никогда не автоматические. Платёж или расход записывается только после вашего одобрения.",
+        title: "Выбор сохраняется при входе",
+        text: "Выбранный продукт безопасно переносится через логин, регистрацию и онбординг.",
       },
       {
-        title: "Ваши данные остаются вашими",
-        text: "Во время закрытой беты рабочее пространство изолировано и приватно. Без скрытого доступа и сюрпризов.",
+        title: "Безопасный общий доступ",
+        text: "Авторизация, доступ к организации и настройки централизованы, а внутренние переходы проходят проверку.",
       },
     ],
     closing:
-      "Важные обязательства остаются видимыми до завершения — а не только до прочтения уведомления.",
+      "Переключаться между продуктами можно осознанно, не смешивая их навигацию по умолчанию.",
   },
   proof: {
     title: "Как мы это доказываем, а не просто заявляем",
@@ -668,11 +668,11 @@ const ru: LandingContent = {
     betaNotice:
       "Nevora в закрытой бете: пробный период открыт для всех, а платные тарифы включатся после подключения оплаты. Пока никакая карта не списывается.",
     note: {
-      lead: "Попробуйте Nevora Business OS 14 дней с хранилищем до 500 МБ.",
+      lead: "Попробуйте текущие приложения Nevora 14 дней с хранилищем до 500 МБ.",
       points: [
-        "ИИ, который вы проверяете",
-        "Финансы, которые вы подтверждаете",
-        "Свободный выбор после пробного периода",
+        "Задачи и проекты",
+        "Счета и транзакции",
+        "Регулярные подписки",
       ],
     },
     workspace:
@@ -704,8 +704,8 @@ const ru: LandingContent = {
       },
       {
         id: "ai",
-        q: "Что на самом деле делает ИИ?",
-        a: "Он читает, извлекает и предлагает — категорию, задачу, черновик. Он сам не проводит деньги, не отмечает оплату, не меняет тариф или права и не удаляет данные. Любое принятое предложение проходит через ваше подтверждение.",
+        q: "После входа я увижу все модули?",
+        a: "Нет. Nevora откроет выбранное приложение и покажет навигацию только этого продукта. При необходимости можно осознанно переключиться на «Задачи», «Финансы» или «Подписки» через меню приложений.",
       },
       {
         id: "languages",
@@ -718,7 +718,7 @@ const ru: LandingContent = {
     title: "Почему существует Nevora",
     paragraphs: [
       "Многие бизнес-инструменты становятся тяжёлыми слишком рано — лишние меню, неиспользуемые функции и ограничения, которые мешают.",
-      "Nevora строится в другом направлении: связанное место для задач, денег, документов и подписок, которое понятно без обучения и где важные решения остаются за вами.",
+      "Nevora строится в другом направлении: отдельные приложения для задач, финансов и подписок, связанные одним аккаунтом, но достаточно разделённые для ясной работы.",
     ],
   },
   contact: {
@@ -731,7 +731,7 @@ const ru: LandingContent = {
     ],
   },
   footer: {
-    tagline: "Простая операционная система для сфокусированной бизнес-работы.",
+    tagline: "Сфокусированные бизнес-приложения, связанные одним аккаунтом.",
     note: "Создано для ясности, продуктивности и реального ежедневного использования.",
     productHeading: "Продукт",
     legalHeading: "Правовое",
@@ -743,14 +743,14 @@ const ru: LandingContent = {
 
 const ro: LandingContent = {
   meta: {
-    title: "Nevora Business OS — un spațiu de lucru care îți spune ce necesită acțiune",
+    title: "Nevora — Sarcini, Finanțe și Abonamente ca aplicații separate",
     description:
-      "Sarcini, bani, documente și abonamente într-un singur sistem. Ecranul principal este coada a ceea ce necesită o decizie; Nevora sugerează pasul următor, iar modificările importante rămân sub controlul tău.",
+      "Trei aplicații de business concentrate, cu un singur cont Nevora: sarcini și proiecte, evidență financiară și controlul abonamentelor recurente.",
   },
   nav: [
     { label: "Acasă", href: "#home" },
     { label: "Cum funcționează", href: "#how" },
-    { label: "Domenii", href: "#areas" },
+    { label: "Aplicații", href: "#products" },
     { label: "Prețuri", href: "#pricing" },
     { label: "Contact", href: "#contact" },
   ],
@@ -761,20 +761,20 @@ const ro: LandingContent = {
     close: "Închide meniul",
   },
   hero: {
-    title: "Un spațiu de lucru care îți spune ce necesită acțiune.",
+    title: "Trei aplicații concentrate. Un singur cont Nevora.",
     subtitle:
-      "Sarcinile, banii, documentele și abonamentele stau într-un singur sistem. Ecranul principal este coada a ceea ce chiar necesită o decizie, iar o obligație rămâne vizibilă până când lucrul este făcut.",
-    trust: "IA propune. Tu verifici. Acțiunile financiare nu se execută automat.",
-    primaryCta: "Începe perioada de probă de 14 zile",
-    secondaryCta: "Vezi prețurile",
+      "Alege Sarcini, Finanțe sau Abonamente. După autentificare, Nevora deschide produsul ales și elimină modulele fără legătură din navigație.",
+    trust: "Un cont · navigație concentrată · produsul ales se deschide după autentificare.",
+    primaryCta: "Explorează aplicațiile",
+    secondaryCta: "Începe proba de 14 zile",
     microcopy: "Versiune beta privată · probă de 14 zile · 500 MB · fără card · EN / RU / RO.",
-    audience: "Pentru echipe mici și în creștere care vor ordine fără programe grele.",
+    audience: "Pentru persoane și echipe mici care vor instrumente clare, fără o interfață all-in-one greoaie.",
   },
   preview: {
-    title: "O privire înăuntru",
+    title: "Alege spațiul de lucru de care ai nevoie",
     subtitle:
-      "Spațiul de lucru Finanțe. Fiecare obligație poartă aceeași etichetă de stare pe care o întâlnești peste tot în produs.",
-    caption: "Previzualizare ilustrativă — date de exemplu, nu un cont real.",
+      "Comută între cele trei produse disponibile. Fiecare are propriile rute, propria navigație și propriul flux de lucru.",
+    caption: "Previzualizare interactivă cu date de exemplu. Alegerea aplicației se păstrează la autentificare.",
     rows: [
       { name: "Acme Studio — factură", amount: "€1.200", state: "due" },
       { name: "Stocare cloud — abonament", amount: "€15", state: "paid" },
@@ -783,61 +783,61 @@ const ro: LandingContent = {
     ],
   },
   how: {
-    title: "Adaugă, verifică, execută",
+    title: "Alege, autentifică-te, lucrează concentrat",
     subtitle:
-      "Un singur ciclu simplu ține munca în mișcare. Tu controlezi fiecare pas — nimic important nu se întâmplă fără tine.",
+      "Produsul ales pe landing rămâne selectat în timpul autentificării sau înregistrării.",
     steps: [
       {
         badge: "1",
-        title: "Adaugă",
-        text: "Pune o sarcină, un document, o notă sau un abonament într-un singur loc. Fără formulare de învățat, fără context pierdut.",
+        title: "Alege o aplicație",
+        text: "Începe cu Sarcini, Finanțe sau Abonamente din meniu sau din previzualizarea interactivă.",
       },
       {
         badge: "2",
-        title: "Verifică",
-        text: "Nevora citește ce ai adăugat și sugerează pasul următor. Verifici sugestia înainte ca ceva să fie aplicat.",
+        title: "Autentifică-te o dată",
+        text: "Intră în cont sau creează unul. Nevora păstrează în siguranță destinația selectată.",
       },
       {
         badge: "3",
-        title: "Execută",
-        text: "Confirmi, iar acțiunea este înregistrată și conectată. Plățile și modificările de bani au loc doar când le aprobi.",
+        title: "Lucrează în context",
+        text: "Ajungi în aplicația aleasă și vezi doar navigația ei, iar setările contului rămân comune.",
       },
     ],
   },
   areas: {
-    title: "Șase secțiuni. Nimic de învățat.",
+    title: "Ce este disponibil acum",
     subtitle:
-      "Acesta este tot produsul — aceleași secțiuni pe care le vezi după autentificare, în aceeași ordine.",
+      "Landingul reflectă acum rutele și funcționalitățile disponibile în aplicația curentă.",
     items: [
       {
         id: "actions",
-        title: "Centrul de acțiuni",
-        text: "Ecranul principal este coada a ceea ce necesită o decizie. O notificare citită nu închide nimic: obligația rămâne până când lucrul este făcut.",
+        title: "Sarcini",
+        text: "Creează, prioritizează și finalizează munca zilnică într-un spațiu dedicat.",
       },
       {
         id: "work",
-        title: "Lucru",
-        text: "Sarcini și proiecte cu responsabili și termene, conectate la documentul sau plata din care au apărut.",
+        title: "Proiecte",
+        text: "Grupează sarcinile în proiecte și deschide pagini dedicate în aplicația Sarcini.",
       },
       {
         id: "money",
-        title: "Finanțe",
-        text: "Tranzacții, sarcini financiare și abonamente într-un singur spațiu de lucru. O sumă devine fapt doar după ce confirmi plata.",
+        title: "Conturi și tranzacții",
+        text: "Urmărește solduri, venituri, cheltuieli și transferuri în aplicația Finanțe.",
       },
       {
         id: "documents",
-        title: "Documente",
-        text: "Încarcă o factură sau un bon — Nevora îl citește și propune ce înseamnă. Tu decizi dacă devine obligație sau cheltuială.",
+        title: "Reguli financiare",
+        text: "Creează reguli explicite pentru clasificarea tranzacțiilor repetate și păstrează controlul manual.",
       },
       {
         id: "inbox",
-        title: "Mesaje primite",
-        text: "Adaugă text, o fotografie sau un fișier de oriunde. Ce ai adăugat așteaptă până îl verifici — nimic nu se înregistrează pe la spatele tău.",
+        title: "Abonamente",
+        text: "Păstrează serviciile recurente, datele de reînnoire și starea plăților într-o aplicație separată.",
       },
       {
         id: "team",
-        title: "Echipă și acces",
-        text: "Invită oamenii care au nevoie și atribuie-le roluri. Spațiul tău de lucru este izolat: un membru vede doar ce îi permite rolul.",
+        title: "Nivel comun de cont",
+        text: "O identitate, o organizație și setări comune, cu navigația produselor separată.",
       },
     ],
   },
@@ -885,25 +885,25 @@ const ro: LandingContent = {
     note: "Pentru a ajunge la „Plătit” e nevoie de confirmarea ta explicită — iar confirmarea aceleiași obligații de două ori nu o plătește de două ori.",
   },
   control: {
-    title: "Control, securitate și rolul IA",
+    title: "Produse separate, fundație comună",
     subtitle:
-      "Nevora este, prin proiectare, un asistent. Te ajută să decizi mai repede, dar decizia rămâne mereu a ta.",
+      "Interfața este separată pe produse fără să te oblige să întreții trei conturi independente.",
     points: [
       {
-        title: "IA propune — tu decizi",
-        text: "Fiecare rezultat al IA este o sugestie pe care o verifici. Nimic nu se aplică până nu confirmi.",
+        title: "Navigație concentrată",
+        text: "Sarcini, Finanțe și Abonamente afișează doar rutele necesare fluxului selectat.",
       },
       {
-        title: "Finanțe doar după confirmare",
-        text: "Modificările de bani nu sunt niciodată automate. O plată sau o cheltuială se înregistrează doar după ce o aprobi.",
+        title: "Alegerea trece prin autentificare",
+        text: "Produsul ales este transmis în siguranță prin login, înregistrare și onboarding.",
       },
       {
-        title: "Datele tale rămân ale tale",
-        text: "În versiunea beta privată spațiul de lucru este izolat și privat. Fără partajare ascunsă, fără surprize.",
+        title: "Acces comun sigur",
+        text: "Autentificarea, accesul la organizație și setările sunt centralizate, cu redirectări interne validate.",
       },
     ],
     closing:
-      "Obligațiile importante rămân vizibile până sunt rezolvate — nu doar până este citită o notificare.",
+      "Poți comuta intenționat între produse fără a le amesteca navigația în mod implicit.",
   },
   proof: {
     title: "Cum dovedim, nu doar spunem",
@@ -1003,11 +1003,11 @@ const ro: LandingContent = {
     betaNotice:
       "Nevora este în versiune beta privată: proba gratuită este deschisă tuturor, iar planurile plătite se activează după pornirea facturării. Până atunci niciun card nu este debitat.",
     note: {
-      lead: "Încearcă Nevora Business OS timp de 14 zile cu până la 500 MB de stocare.",
+      lead: "Încearcă aplicațiile Nevora actuale timp de 14 zile, cu până la 500 MB de stocare.",
       points: [
-        "IA pe care o verifici",
-        "Finanțe pe care le confirmi",
-        "Alegere liberă după probă",
+        "Sarcini și proiecte",
+        "Conturi și tranzacții",
+        "Abonamente recurente",
       ],
     },
     workspace:
@@ -1039,8 +1039,8 @@ const ro: LandingContent = {
       },
       {
         id: "ai",
-        q: "Ce face de fapt IA?",
-        a: "Citește, extrage și sugerează — o categorie, o sarcină, o ciornă. Nu înregistrează singură bani, nu marchează plăți, nu îți schimbă planul sau drepturile și nu șterge date. Fiecare sugestie acceptată trece prin confirmarea ta.",
+        q: "Voi vedea toate modulele după autentificare?",
+        a: "Nu. Nevora deschide aplicația aleasă și afișează navigația acelui produs. Poți comuta intenționat la Sarcini, Finanțe sau Abonamente din meniul de aplicații când ai nevoie.",
       },
       {
         id: "languages",
@@ -1053,7 +1053,7 @@ const ro: LandingContent = {
     title: "De ce există Nevora",
     paragraphs: [
       "Multe instrumente de business devin grele prea devreme — meniuri în plus, funcții nefolosite și limite care încurcă.",
-      "Nevora se construiește în direcția opusă: un loc conectat pentru sarcini, bani, documente și abonamente, pe care îl înțelegi fără training, unde deciziile importante rămân la tine.",
+      "Nevora se construiește în direcția opusă: aplicații separate pentru sarcini, finanțe și abonamente, conectate printr-un singur cont, dar suficient de separate pentru un flux clar.",
     ],
   },
   contact: {
@@ -1066,7 +1066,7 @@ const ro: LandingContent = {
     ],
   },
   footer: {
-    tagline: "Un sistem operațional simplu pentru lucru de business concentrat.",
+    tagline: "Aplicații de business concentrate, conectate printr-un singur cont.",
     note: "Construit pentru claritate, productivitate și utilizare zilnică reală.",
     productHeading: "Produs",
     legalHeading: "Legal",
