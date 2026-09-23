@@ -112,12 +112,9 @@ export async function getTask(
       id, organization_id, workspace_id, created_by, updated_by,
       title, description, status, priority, due_date, recurrence, recurrence_source_id, position,
       is_completed, created_at, updated_at, deleted_at,
-      task_context_type, financial_due_date, reminder_offset_days, amount, currency,
-      provider_name, financial_source_type, financial_source_id, source_document_id,
-      financial_transaction_id, financial_status, financial_confidence, financial_paid_at, financial_skipped_at,
       task_assignees (id, task_id, user_id, assigned_by, created_at),
       task_comments (id, task_id, organization_id, user_id, content, edited_at, deleted_at, created_at, updated_at),
-      task_relations (id, task_id, related_task_id, relation_type, created_by, created_at)
+      task_relations!task_relations_task_id_fkey (id, task_id, related_task_id, relation_type, created_by, created_at)
     `)
     .eq("id", taskId)
     .eq("organization_id", organizationId)

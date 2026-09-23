@@ -123,7 +123,7 @@ function makeSupabase(tables: Record<string, Row[]>) {
         }
       });
 
-    const apply = () => {
+    const apply = (single: boolean) => {
       const rows = tables[table] ?? [];
       let matched = rows.filter(matches);
 
@@ -136,6 +136,7 @@ function makeSupabase(tables: Record<string, Row[]>) {
       }
 
       const hit = matched[0];
+      if (op === "select" && !single) return { data: matched.map((row) => ({ ...row })), error: null };
       if (op === "select") return { data: hit ? { ...hit } : null, error: null };
 
       // UPDATE: only a row that still satisfies every filter is written.
@@ -144,9 +145,10 @@ function makeSupabase(tables: Record<string, Row[]>) {
       return { data: wantsRow ? { ...hit } : null, error: null };
     };
 
-    builder.maybeSingle = vi.fn(() => Promise.resolve(apply()));
+    builder.maybeSingle = vi.fn(() => Promise.resolve(apply(true)));
+    // Awaiting a SELECT without .maybeSingle() yields a list, as PostgREST does.
     (builder as { then: unknown }).then = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) =>
-      Promise.resolve(apply()).then(res, rej);
+      Promise.resolve(apply(false)).then(res, rej);
 
     return builder;
   });
@@ -252,7 +254,9 @@ describe("reconcileFirstAction", () => {
     const supabase = makeSupabase({
       onboarding_progress: [{ ...progress }],
       // createSubscriptionAction provisions this one; it is not what the user did.
-      todos: [{ id: "todo-pay", title: "Pay Figma", organization_id: "org-1", created_by: "user-1", task_context_type: "subscription_payment", deleted_at: null, created_at: AFTER }],
+      todos: [{ id: "todo-pay", title: "Pay Figma", organization_id: "org-1", created_by: "user-1", deleted_at: null, created_at: AFTER }],
+      subscription_payment_cycles: [{ organization_id: "org-1", task_id: "todo-pay" }],
+      subscription_renewal_cases: [],
       documents: [],
     });
 
@@ -265,8 +269,29 @@ describe("reconcileFirstAction", () => {
     const progress = progressRow({ selected_first_action: "create_task" });
     const supabase = makeSupabase({
       onboarding_progress: [{ ...progress }],
-      todos: [{ id: "todo-1", title: "Read the lease", organization_id: "org-1", created_by: "user-1", task_context_type: "standard", deleted_at: null, created_at: AFTER }],
+      todos: [{ id: "todo-1", title: "Read the lease", organization_id: "org-1", created_by: "user-1", deleted_at: null, created_at: AFTER }],
+      subscription_payment_cycles: [],
+      subscription_renewal_cases: [],
       documents: [doc({ created_at: BEFORE })],
+    });
+
+    await reconcileFirstAction(supabase, ctx, progress);
+
+    expect(createSourcedPlannerEntry).toHaveBeenCalledTimes(1);
+    expect(createSourcedPlannerEntry.mock.calls[0][2]).toMatchObject({ entity: { kind: "task", id: "todo-1" } });
+  });
+
+  it("skips a newer renewal review task and picks the user's own task behind it", async () => {
+    const progress = progressRow({ selected_first_action: "create_task" });
+    const supabase = makeSupabase({
+      onboarding_progress: [{ ...progress }],
+      todos: [
+        { id: "todo-review", title: "Review Figma renewal", organization_id: "org-1", created_by: "user-1", deleted_at: null, created_at: "2026-07-08T10:06:00.000Z" },
+        { id: "todo-1", title: "Read the lease", organization_id: "org-1", created_by: "user-1", deleted_at: null, created_at: AFTER },
+      ],
+      subscription_payment_cycles: [],
+      subscription_renewal_cases: [{ organization_id: "org-1", review_task_id: "todo-review", cancellation_task_id: null }],
+      documents: [],
     });
 
     await reconcileFirstAction(supabase, ctx, progress);
