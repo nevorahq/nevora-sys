@@ -25,6 +25,7 @@ interface RelationSearchDialogProps {
   triggerVariant?: "primary" | "secondary" | "ghost";
   triggerLabel?: string;
   t: Dictionary["relations"];
+  allowedTargetTypes?: readonly EntityKind[];
 }
 
 /**
@@ -42,12 +43,15 @@ export function RelationSearchDialog({
   triggerVariant = "secondary",
   triggerLabel,
   t,
+  allowedTargetTypes = RELATION_ENTITY_KINDS,
 }: RelationSearchDialogProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const [targetType, setTargetType] = useState<EntityKind>(
-    sourceEntityType === "document" ? "task" : "document",
-  );
+  const initialTargetType =
+    allowedTargetTypes.find((kind) => kind !== sourceEntityType) ??
+    allowedTargetTypes[0] ??
+    sourceEntityType;
+  const [targetType, setTargetType] = useState<EntityKind>(initialTargetType);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<RelationCandidate[]>([]);
   const [selected, setSelected] = useState<RelationCandidate | null>(null);
@@ -147,7 +151,7 @@ export function RelationSearchDialog({
             label={t.entityType}
             value={targetType}
             onChange={(e) => selectTargetType(e.target.value as EntityKind)}
-            options={RELATION_ENTITY_KINDS.map((kind) => ({
+            options={allowedTargetTypes.map((kind) => ({
               value: kind,
               label: t.kinds[kind],
             }))}

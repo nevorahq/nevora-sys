@@ -67,6 +67,6 @@ describe("FirstActionCta", () => {
     render(<FirstActionCta action="create_task" label="Create a task" />);
     await userEvent.click(screen.getByRole("button"));
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/dashboard/tasks"));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/tasks"));
   });
 });

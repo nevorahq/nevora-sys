@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { seedDefaultMoneyAccount } from "@/modules/moneyflow/server";
 import { getOnboardingSchema } from "../schemas/onboarding.schema";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
-import { ROUTES } from "@/shared/config/routes";
+import { resolveProductEntryRoute, ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 
 /**
@@ -34,6 +34,8 @@ export async function createOrganizationAction(
 ): Promise<ActionResult> {
   const { dict } = await getDictionary();
   const schema = getOnboardingSchema(dict.onboarding.errors);
+  const destination =
+    resolveProductEntryRoute(formData.get("next")?.toString()) ?? ROUTES.appHome;
 
   // 1. Authentication
   const user = await requireUser();
@@ -114,7 +116,7 @@ export async function createOrganizationAction(
 
   // redirect() бросает исключение — должен быть вне try/catch
   if (shouldRedirect) {
-    redirect(ROUTES.dashboard);
+    redirect(destination);
   }
 
   return {};

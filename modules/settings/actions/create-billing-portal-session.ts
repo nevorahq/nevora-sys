@@ -5,6 +5,7 @@ import { requireAppAccess, accessErrorToActionResult } from "@/lib/security";
 import { emitDomainEvent } from "@/lib/events";
 import { getPaddleConfig } from "@/modules/billing/config/paddle-env";
 import { billingProvider } from "@/modules/billing/services/billing-provider";
+import { ROUTES } from "@/shared/config/routes";
 import type { SettingsActionState } from "../types/settings.types";
 
 async function getBillingReturnUrl() {
@@ -13,7 +14,7 @@ async function getBillingReturnUrl() {
     headerStore.get("origin") ??
     process.env.NEXT_PUBLIC_APP_URL ??
     "http://localhost:3000";
-  return `${origin}/dashboard/settings/billing`;
+  return `${origin}${ROUTES.settingsBilling}`;
 }
 
 export async function createBillingPortalSession(): Promise<SettingsActionState & { portalUrl?: string }> {

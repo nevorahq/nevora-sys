@@ -3,16 +3,17 @@ import { ShieldCheckIcon } from "lucide-react";
 import { ROUTES } from "@/shared/config/routes";
 
 export function DeveloperAccessBadge() {
+  const label = "Developer Access · Unlimited product limits";
+
   return (
     <Link
       href={ROUTES.billing}
       data-testid="developer-access-badge"
-      title="Developer Access · Unlimited product limits"
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700 transition-colors hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/60 dark:text-violet-200 dark:hover:bg-violet-900/70"
+      aria-label={label}
+      title={label}
+      className="soft-focus inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-transparent bg-transparent text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
     >
-      <ShieldCheckIcon size={13} aria-hidden="true" />
-      <span>Developer</span>
-      <span className="hidden text-violet-500 sm:inline dark:text-violet-400">· Unlimited</span>
+      <ShieldCheckIcon size={18} strokeWidth={1.75} aria-hidden="true" />
     </Link>
   );
 }

@@ -22,6 +22,7 @@ export const ROUTES = {
   privacyTypo: "/privasy",
   login: "/login",
   register: "/register",
+  authCallback: "/auth/callback",
 
   // Onboarding — создание организации после регистрации
   onboarding: "/onboarding",
@@ -51,27 +52,27 @@ export const ROUTES = {
    * here, not at each redirect site. (`home` is the PUBLIC root `/`; this is
    * the signed-in landing.)
    */
-  appHome: "/dashboard/tasks",
-  tasks: "/dashboard/tasks",
-  projects: "/dashboard/tasks/projects",
+  appHome: "/tasks",
+  tasks: "/tasks",
+  projects: "/tasks/projects",
   crm: "/dashboard/crm",
-  money: "/dashboard/money",
-  subscriptions: "/dashboard/subscriptions",
+  money: "/finance",
+  subscriptions: "/subscriptions",
   documents:  "/dashboard/documents",
   documentsNew: "/dashboard/documents/new",
   analytics:  "/dashboard/analytics",
   ai:         "/dashboard/ai",
-  settings:          "/dashboard/settings",
-  settingsProfile:   "/dashboard/settings/profile",
-  settingsNotifications: "/dashboard/settings/notifications",
-  settingsWorkspace: "/dashboard/settings/workspace",
-  settingsMembers:   "/dashboard/settings/members",
-  settingsBilling:   "/dashboard/settings/billing",
-  settingsPlans:     "/dashboard/settings/plans",
-  settingsDeveloper: "/dashboard/settings/developer",
+  settings:          "/settings",
+  settingsProfile:   "/settings/profile",
+  settingsNotifications: "/settings/notifications",
+  settingsWorkspace: "/settings/workspace",
+  settingsMembers:   "/settings/members",
+  settingsBilling:   "/settings/billing",
+  settingsPlans:     "/settings/plans",
+  settingsDeveloper: "/settings/developer",
   // Compatibility aliases for existing domain modules and links.
-  billing:            "/dashboard/settings/billing",
-  members:            "/dashboard/settings/members",
+  billing:            "/settings/billing",
+  members:            "/settings/members",
 
   // Booking — internal dashboard
   booking:              "/dashboard/booking",
@@ -83,6 +84,63 @@ export const ROUTES = {
   // Ops — health check для load balancer / monitoring (без сессии).
   health: "/api/health",
 } as const;
+
+/** Разрешённые точки входа из публичного меню приложений. */
+export const PRODUCT_ENTRY_ROUTES = [
+  ROUTES.tasks,
+  ROUTES.money,
+  ROUTES.subscriptions,
+] as const;
+
+export type ProductEntryRoute = (typeof PRODUCT_ENTRY_ROUTES)[number];
+
+export const PRODUCT_IDS = ["tasks", "finance", "subscriptions"] as const;
+
+export type ProductId = (typeof PRODUCT_IDS)[number];
+
+export const PRODUCT_ENTRY_ROUTE_BY_ID: Record<ProductId, ProductEntryRoute> = {
+  tasks: ROUTES.tasks,
+  finance: ROUTES.money,
+  subscriptions: ROUTES.subscriptions,
+};
+
+/**
+ * Возвращает только известный продуктовый маршрут. Точная сверка не позволяет
+ * превратить параметр `next` в открытый редирект на произвольный адрес.
+ */
+export function resolveProductEntryRoute(
+  value: string | null | undefined,
+): ProductEntryRoute | null {
+  return PRODUCT_ENTRY_ROUTES.find((route) => route === value) ?? null;
+}
+
+/** Определяет продукт по корневому или вложенному URL этого продукта. */
+export function productIdFromPathname(pathname: string): ProductId | null {
+  for (const productId of PRODUCT_IDS) {
+    const root = PRODUCT_ENTRY_ROUTE_BY_ID[productId];
+    if (pathname === root || pathname.startsWith(`${root}/`)) return productId;
+  }
+  return null;
+}
+
+/** Корневая точка входа продукта для произвольного вложенного URL. */
+export function productEntryRouteFromPathname(pathname: string): ProductEntryRoute | null {
+  const productId = productIdFromPathname(pathname);
+  return productId ? PRODUCT_ENTRY_ROUTE_BY_ID[productId] : null;
+}
+
+/** URL onboarding, сохраняющий выбранный продукт. */
+export function onboardingUrl(destination: ProductEntryRoute): string {
+  return `${ROUTES.onboarding}?next=${encodeURIComponent(destination)}`;
+}
+
+/** URL auth-страницы, сохраняющий выбранный продукт. */
+export function authUrl(
+  route: typeof ROUTES.login | typeof ROUTES.register,
+  destination: ProductEntryRoute,
+): string {
+  return `${route}?next=${encodeURIComponent(destination)}`;
+}
 
 /** URL детальной страницы проекта. */
 export function projectDetailUrl(projectId: string) {
@@ -118,6 +176,7 @@ export const PUBLIC_ROUTES = [
   ROUTES.privacyTypo,
   ROUTES.login,
   ROUTES.register,
+  ROUTES.authCallback,
   ROUTES.health,
 ] as const;
 

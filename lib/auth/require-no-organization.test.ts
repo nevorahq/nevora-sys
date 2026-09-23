@@ -62,9 +62,10 @@ describe("onboarding routes are closed to users who already have an organization
     expect(code, `${route} must actually call the guard`).toMatch(/requireNoOrganization\s*\(/);
   });
 
-  it("the guard redirects to the dashboard rather than rendering the form", () => {
+  it("the guard redirects to the selected product rather than rendering the form", () => {
     const guard = readCode(join(ROOT, "lib/auth/require-no-organization.ts"));
-    expect(guard).toContain("redirect(ROUTES.dashboard)");
+    expect(guard).toContain("redirect(destination)");
+    expect(guard).toContain("destination: ProductEntryRoute = ROUTES.appHome");
     expect(guard).toMatch(/\.eq\("status", "active"\)/);
   });
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireOrg } from "@/lib/auth/require-org";
 import { createClient } from "@/lib/supabase/server";
+import { ROUTES } from "@/shared/config/routes";
 import type { NotificationPreferences } from "@/modules/notifications/types";
 import { notificationPreferencesSchema } from "../schemas/notification-preferences.schema";
 
@@ -38,6 +39,6 @@ export async function updateNotificationPreferences(input: unknown): Promise<Not
   }, { onConflict: "organization_id,user_id" });
 
   if (error) return { ok: false, error: "Could not save notification settings. Please try again." };
-  revalidatePath("/dashboard/settings/notifications");
+  revalidatePath(ROUTES.settingsNotifications);
   return { ok: true, preferences: value };
 }

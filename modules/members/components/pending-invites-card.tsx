@@ -15,10 +15,15 @@ interface PendingInvitesCardProps {
   /** После успешного accept — перейти в /dashboard (используется на онбординге,
    * где у пользователя иначе нет активной организации). */
   redirectOnAccept?: boolean;
+  redirectTo?: string;
 }
 
 /** Карточка pending-приглашений. Ничего не рендерит, если приглашений нет. */
-export function PendingInvitesCard({ invites, redirectOnAccept = false }: PendingInvitesCardProps) {
+export function PendingInvitesCard({
+  invites,
+  redirectOnAccept = false,
+  redirectTo = ROUTES.appHome,
+}: PendingInvitesCardProps) {
   if (invites.length === 0) return null;
 
   return (
@@ -29,7 +34,12 @@ export function PendingInvitesCard({ invites, redirectOnAccept = false }: Pendin
       </p>
       <ul className="space-y-2">
         {invites.map((invite) => (
-          <PendingInviteRow key={invite.organizationId} invite={invite} redirectOnAccept={redirectOnAccept} />
+          <PendingInviteRow
+            key={invite.organizationId}
+            invite={invite}
+            redirectOnAccept={redirectOnAccept}
+            redirectTo={redirectTo}
+          />
         ))}
       </ul>
     </div>
@@ -39,9 +49,11 @@ export function PendingInvitesCard({ invites, redirectOnAccept = false }: Pendin
 function PendingInviteRow({
   invite,
   redirectOnAccept,
+  redirectTo,
 }: {
   invite: PendingInvite;
   redirectOnAccept: boolean;
+  redirectTo: string;
 }) {
   const router = useRouter();
   const [acceptState, acceptFormAction, acceptPending] = useActionState<ActionResult, FormData>(
@@ -59,11 +71,11 @@ function PendingInviteRow({
   // pending → не-pending без ошибки как признак завершённого запроса.
   useEffect(() => {
     if (wasAccepting.current && !acceptPending && !acceptState.error) {
-      if (redirectOnAccept) router.push(ROUTES.appHome);
+      if (redirectOnAccept) router.push(redirectTo);
       else router.refresh();
     }
     wasAccepting.current = acceptPending;
-  }, [acceptPending, acceptState.error, redirectOnAccept, router]);
+  }, [acceptPending, acceptState.error, redirectOnAccept, redirectTo, router]);
 
   useEffect(() => {
     if (wasDeclining.current && !declinePending && !declineState.error) {

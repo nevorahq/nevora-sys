@@ -1,8 +1,10 @@
 import { getDictionary } from "@/shared/i18n/get-dictionary";
+import { cookies } from "next/headers";
 import { Sidebar } from "@/shared/ui/sidebar";
 import { LanguageSwitcher } from "@/shared/ui/language-switcher";
 import { ThemeToggle } from "@/shared/ui/theme-toggle";
 import { Notifications } from "@/shared/ui/notifications";
+import { HeaderActions } from "@/shared/ui/header-actions";
 import { LogoutButton } from "@/features/auth/components/logout-button";
 import { requireUser } from "@/lib/auth/require-user";
 import { requireOrg } from "@/lib/auth/require-org";
@@ -18,6 +20,7 @@ import { AccountDeletionBanner } from "@/modules/settings/components/AccountDele
 import { NotificationProvider } from "@/modules/notifications/components/notification-provider";
 import { getNotificationCounters } from "@/modules/notifications/queries/get-notification-counters";
 import { getUnreadNotifications } from "@/modules/notifications/queries/get-user-notifications";
+import { parseProductContext, PRODUCT_CONTEXT_COOKIE } from "@/modules/products/product-context";
 
 /**
  * Dashboard Layout — обёртка для ВСЕХ защищённых страниц.
@@ -44,11 +47,16 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [user, context, { dict, locale }] = await Promise.all([
+  const [user, context, { dict, locale }, cookieStore] = await Promise.all([
     requireUser(),
     requireOrg(),
     getDictionary(),
+    cookies(),
   ]);
+  // This cookie is path-scoped to /dashboard/documents, so product navigation
+  // is restored only on the shared Documents surface and cannot leak to other
+  // dashboard routes.
+  const product = parseProductContext(cookieStore.get(PRODUCT_CONTEXT_COOKIE)?.value);
   const [trial, limits, accessState, userOrganizations, notificationPreferences, initialNotificationCounters, initialNotifications, pendingDeletion] = await Promise.all([
     getTrialState(context.org.id),
     resolveAccountLimits(user.id, context.org.id),
@@ -76,25 +84,25 @@ export default async function DashboardLayout({
       <NotificationProvider key={`${context.org.id}:${user.id}`} organizationId={context.org.id} userId={user.id} initialPreferences={notificationPreferences} initialCounters={initialNotificationCounters} initialNotifications={initialNotifications}>
         <div className="flex min-h-dvh">
           {/* Sidebar — навигация платформы (sticky, 100dvh, неподвижный) */}
-          <Sidebar dict={dict} />
+          <Sidebar dict={dict} product={product} />
 
           {/* Main content area */}
           <div className="flex flex-1 flex-col min-w-0">
             {/* Header — user info, controls (прилипает к верху при скролле) */}
-            <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border-soft bg-background px-6 py-3.5">
+            <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border-soft bg-background px-4 py-3.5 sm:px-6">
               <div className="flex min-w-0 items-center gap-2">
                 <OrganizationSwitcher currentOrganizationId={context.org.id} organizations={userOrganizations} t={dict.organizationSwitcher} />
-                <p className="truncate text-sm text-text-muted">
+                <p className="hidden truncate text-sm text-text-muted sm:block">
                   {user.email?.split("@")[0]}
                 </p>
                 {limits.unlimitedAccess && <DeveloperAccessBadge />}
               </div>
-              <div className="flex items-center gap-2">
+              <HeaderActions label={dict.nav.actions}>
                 <Notifications dict={dict} />
-                <LanguageSwitcher locale={locale} />
+                <LanguageSwitcher locale={locale} iconOnly />
                 <ThemeToggle />
                 <LogoutButton label={dict.nav.logout} />
-              </div>
+              </HeaderActions>
             </header>
 
             {/* Page content */}

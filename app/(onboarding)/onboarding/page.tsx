@@ -5,6 +5,7 @@ import { currencyForCountry } from "@/shared/config/currencies";
 import { requireNoOrganization } from "@/lib/auth/require-no-organization";
 import { PendingInvitesCard, getPendingInvites } from "@/modules/members";
 import { getTrialEligibilityForCurrentUser, isTrialAlreadyUsed } from "@/modules/billing";
+import { resolveProductEntryRoute, ROUTES } from "@/shared/config/routes";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -25,10 +26,20 @@ export const metadata: Metadata = {
  * и подставляется в форму по умолчанию. Это лишь подсказка — пользователь
  * подтверждает или меняет значение перед созданием организации.
  */
-export default async function OnboardingPage() {
+interface OnboardingPageProps {
+  searchParams: Promise<{ next?: string | string[] }>;
+}
+
+export default async function OnboardingPage({ searchParams }: OnboardingPageProps) {
+  const params = await searchParams;
+  const requestedDestination = Array.isArray(params.next) ? params.next[0] : params.next;
+  const destination = resolveProductEntryRoute(requestedDestination) ?? ROUTES.appHome;
   // A user who already has an organization is sent to the dashboard — creating
   // a second one produces a trial-less, read-only org (see requireNoOrganization).
-  const [{ dict }] = await Promise.all([getDictionary(), requireNoOrganization()]);
+  const [{ dict }] = await Promise.all([
+    getDictionary(),
+    requireNoOrganization(destination),
+  ]);
   const [pendingInvites, trialEligibility] = await Promise.all([
     getPendingInvites(),
     // Trial Identity Hardening (089): UX-подсказка. Не security boundary —
@@ -49,7 +60,11 @@ export default async function OnboardingPage() {
   return (
     <div className="w-full max-w-md space-y-4">
       {pendingInvites.length > 0 && (
-        <PendingInvitesCard invites={pendingInvites} redirectOnAccept />
+        <PendingInvitesCard
+          invites={pendingInvites}
+          redirectOnAccept
+          redirectTo={destination}
+        />
       )}
       {isTrialAlreadyUsed(trialEligibility) && (
         <div className="rounded-xl border border-border-soft bg-surface-muted p-4 text-sm">
@@ -60,7 +75,11 @@ export default async function OnboardingPage() {
           </p>
         </div>
       )}
-      <OnboardingForm dict={dict} detectedCurrency={detectedCurrency} />
+      <OnboardingForm
+        dict={dict}
+        detectedCurrency={detectedCurrency}
+        destination={destination}
+      />
     </div>
   );
 }

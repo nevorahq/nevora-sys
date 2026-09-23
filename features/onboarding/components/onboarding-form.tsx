@@ -13,11 +13,13 @@ import {
 } from "@/shared/config/currencies";
 import type { ActionResult } from "@/lib/validators/common";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
+import type { ProductEntryRoute } from "@/shared/config/routes";
 
 interface OnboardingFormProps {
   dict: Dictionary;
   /** Валюта по умолчанию, определённая по стране запроса. Редактируемая. */
   detectedCurrency: Currency;
+  destination: ProductEntryRoute;
 }
 
 const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map((code) => ({
@@ -38,7 +40,7 @@ const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map((code) => ({
  * useActionState: стандартный паттерн для Server Actions в App Router.
  * isPending: показывает spinner, блокирует повторную отправку.
  */
-export function OnboardingForm({ dict, detectedCurrency }: OnboardingFormProps) {
+export function OnboardingForm({ dict, detectedCurrency, destination }: OnboardingFormProps) {
   const t = dict.onboarding;
   const nameInputId = useId();
   const slugInputId = useId();
@@ -92,6 +94,7 @@ export function OnboardingForm({ dict, detectedCurrency }: OnboardingFormProps) 
       )}
 
       <form action={formAction} className="space-y-4">
+        <input type="hidden" name="next" value={destination} />
         {/* Organization name */}
         <Input
           ref={nameRef}

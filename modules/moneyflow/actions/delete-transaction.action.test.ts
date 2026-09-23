@@ -102,7 +102,7 @@ describe("deleteTransactionAction", () => {
       aggregateId: TRANSACTION_ID,
       payload: { amount: 42.5, type: "expense" },
     });
-    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/money");
+    expect(revalidatePath).toHaveBeenCalledWith("/finance");
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
     // Purges the deleted transaction's Action Center + notification footprint.
     expect(rpc).toHaveBeenCalledWith("purge_transaction_from_action_center", {

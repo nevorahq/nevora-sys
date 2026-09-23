@@ -1,18 +1,32 @@
 import { RegisterForm } from "@/features/auth/components/register-form";
+import { resolveProductEntryRoute, ROUTES } from "@/shared/config/routes";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/shared/ui/language-switcher";
+import { ProductEntryMenu } from "@/shared/ui/product-entry-menu";
 import { ThemeToggle } from "@/shared/ui/theme-toggle";
 
-export default async function RegisterPage() {
+interface RegisterPageProps {
+  searchParams: Promise<{ next?: string | string[] }>;
+}
+
+export default async function RegisterPage({ searchParams }: RegisterPageProps) {
   const { dict, locale } = await getDictionary();
+  const params = await searchParams;
+  const requestedDestination = Array.isArray(params.next) ? params.next[0] : params.next;
+  const destination = resolveProductEntryRoute(requestedDestination) ?? ROUTES.appHome;
 
   return (
     <main className="relative flex flex-1 items-center justify-center p-4">
       <div className="absolute top-4 right-4 flex items-center gap-2">
-        <LanguageSwitcher locale={locale} />
-        <ThemeToggle />
+        <ProductEntryMenu
+          locale={locale}
+          authRoute={ROUTES.register}
+          currentDestination={destination}
+        />
+        <LanguageSwitcher locale={locale} iconOnly />
+        <ThemeToggle className="h-11 w-11 sm:h-9 sm:w-9" />
       </div>
-      <RegisterForm dict={dict} />
+      <RegisterForm dict={dict} destination={destination} />
     </main>
   );
 }

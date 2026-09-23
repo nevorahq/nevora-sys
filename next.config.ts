@@ -38,6 +38,28 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@nevora/financial-state", "@nevora/finance-contracts", "@nevora/finance-api", "@nevora/finance-runtime", "@nevora/subscriptions-contracts", "@nevora/subscriptions-api", "@nevora/subscriptions-runtime", "@nevora/tasks-api", "@nevora/tasks-contracts", "@nevora/tasks-runtime"],
+  redirects: async () => [
+    {
+      source: "/dashboard/tasks/:path*",
+      destination: "/tasks/:path*",
+      permanent: true,
+    },
+    {
+      source: "/dashboard/money/:path*",
+      destination: "/finance/:path*",
+      permanent: true,
+    },
+    {
+      source: "/dashboard/subscriptions/:path*",
+      destination: "/subscriptions/:path*",
+      permanent: true,
+    },
+    {
+      source: "/dashboard/settings/:path*",
+      destination: "/settings/:path*",
+      permanent: true,
+    },
+  ],
   headers: async () => [
     {
       // Применяем headers ко ВСЕМ роутам

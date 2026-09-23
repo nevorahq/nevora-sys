@@ -48,7 +48,7 @@ function makeForm(): FormData {
   formData.set("amount", "19.99");
   formData.set("currency", "USD");
   formData.set("billing_cycle", "monthly");
-  formData.set("next_billing_date", "2026-07-15");
+  formData.set("next_billing_date", "2099-07-15");
   formData.set("category", "cloud");
   formData.set("url", "https://example.com");
   formData.set("note", "Team plan");
@@ -128,21 +128,21 @@ describe("createSubscriptionAction", () => {
       expect.objectContaining({ eventName: "money.transaction.created" }),
     );
 
-    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/subscriptions");
+    expect(revalidatePath).toHaveBeenCalledWith("/subscriptions");
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
-    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/tasks");
-    expect(revalidatePath).not.toHaveBeenCalledWith("/dashboard/money");
+    expect(revalidatePath).toHaveBeenCalledWith("/tasks");
+    expect(revalidatePath).not.toHaveBeenCalledWith("/finance");
 
     // The first cycle and its task are provisioned automatically. The task due
     // date is exactly the subscription's next renewal date.
     expect(provisionSubscriptionPaymentCycle).toHaveBeenCalledTimes(1);
     expect(provisionSubscriptionPaymentCycle).toHaveBeenCalledWith(
       expect.objectContaining({
-        dueDate: "2026-07-15",
+        dueDate: "2099-07-15",
         subscription: expect.objectContaining({
           id: SUBSCRIPTION_ID,
           name: "Nevora Cloud",
-          next_billing_date: "2026-07-15",
+          next_billing_date: "2099-07-15",
           auto_task_enabled: true,
         }),
       }),

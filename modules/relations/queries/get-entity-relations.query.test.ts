@@ -107,7 +107,7 @@ describe("fetchEntityRelations", () => {
         type: "subscription",
         id: SUBSCRIPTION_ID,
         title: "Cloud plan",
-        href: `/dashboard/subscriptions/${SUBSCRIPTION_ID}`,
+        href: `/subscriptions/${SUBSCRIPTION_ID}`,
       },
     });
     // Reverse navigation must never read or write the Money ledger.

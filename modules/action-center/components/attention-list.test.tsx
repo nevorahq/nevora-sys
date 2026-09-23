@@ -40,8 +40,8 @@ describe("AttentionList — read-only", () => {
       />,
     );
     const hrefs = screen.getAllByRole("link").map((el) => el.getAttribute("href"));
-    expect(hrefs).toContain("/dashboard/tasks/task-9");
-    expect(hrefs).toContain("/dashboard/money/tx-9");
+    expect(hrefs).toContain("/tasks/task-9");
+    expect(hrefs).toContain("/finance/tx-9");
   });
 
   it("renders a deleted/unknown source as text with no link", () => {

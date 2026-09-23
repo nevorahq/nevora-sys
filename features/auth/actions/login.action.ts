@@ -2,8 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { hasActiveOrganization } from "@/lib/auth/require-no-organization";
 import { getAuthSchemas } from "../schemas/auth.schema";
-import { ROUTES } from "@/shared/config/routes";
+import {
+  onboardingUrl,
+  resolveProductEntryRoute,
+  ROUTES,
+} from "@/shared/config/routes";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import type { ActionResult } from "@/lib/validators/common";
 
@@ -13,6 +18,8 @@ export async function loginAction(
 ): Promise<ActionResult> {
   const { dict } = await getDictionary();
   const { loginSchema } = getAuthSchemas(dict.auth.errors);
+  const destination =
+    resolveProductEntryRoute(formData.get("next")?.toString()) ?? ROUTES.appHome;
 
   const rawData = {
     email: formData.get("email") as string,
@@ -30,12 +37,12 @@ export async function loginAction(
     return { fieldErrors };
   }
 
-  let shouldRedirect = false;
+  let redirectDestination: string | null = null;
 
   try {
     const supabase = await createClient();
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: parsed.data.email,
       password: parsed.data.password,
     });
@@ -44,14 +51,15 @@ export async function loginAction(
       return { error: dict.auth.errors.invalidCredentials };
     }
 
-    shouldRedirect = true;
+    const hasOrganization = await hasActiveOrganization(data.user.id);
+    redirectDestination = hasOrganization ? destination : onboardingUrl(destination);
   } catch (err) {
     console.error("Login error:", err);
     return { error: dict.auth.errors.serverError };
   }
 
-  if (shouldRedirect) {
-    redirect(ROUTES.appHome);
+  if (redirectDestination) {
+    redirect(redirectDestination);
   }
 
   return {};

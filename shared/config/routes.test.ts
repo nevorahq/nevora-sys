@@ -1,12 +1,18 @@
 import { existsSync, readdirSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import {
+  authUrl,
   isFinanceServiceTransportRequest,
   isMachineRoute,
   isPublicRoute,
   isSubscriptionsServiceTransportRequest,
   isTasksServiceTransportRequest,
   MACHINE_ROUTES,
+  onboardingUrl,
+  PRODUCT_ENTRY_ROUTES,
+  productEntryRouteFromPathname,
+  productIdFromPathname,
+  resolveProductEntryRoute,
   ROUTES,
 } from "./routes";
 
@@ -16,6 +22,40 @@ import {
  * (monitoring/load balancer не должен получать redirect на /login).
  */
 describe("isPublicRoute", () => {
+  it("разрешает next только для трёх продуктовых точек входа", () => {
+    expect(PRODUCT_ENTRY_ROUTES).toEqual([
+      ROUTES.tasks,
+      ROUTES.money,
+      ROUTES.subscriptions,
+    ]);
+    expect(resolveProductEntryRoute(ROUTES.money)).toBe(ROUTES.money);
+    expect(resolveProductEntryRoute(ROUTES.settings)).toBeNull();
+    expect(resolveProductEntryRoute("https://example.com")).toBeNull();
+  });
+
+  it("использует короткие канонические URL продуктов", () => {
+    expect(ROUTES.tasks).toBe("/tasks");
+    expect(ROUTES.money).toBe("/finance");
+    expect(ROUTES.subscriptions).toBe("/subscriptions");
+    expect(ROUTES.appHome).toBe(ROUTES.tasks);
+  });
+
+  it("определяет продукт по вложенному URL, но не принимает соседний префикс", () => {
+    expect(productIdFromPathname("/tasks/projects/123")).toBe("tasks");
+    expect(productIdFromPathname("/finance/accounts/123")).toBe("finance");
+    expect(productEntryRouteFromPathname("/subscriptions/123")).toBe(
+      ROUTES.subscriptions,
+    );
+    expect(productIdFromPathname("/tasks-old")).toBeNull();
+  });
+
+  it("строит auth и onboarding URL только из разрешённого destination", () => {
+    expect(authUrl(ROUTES.login, ROUTES.money)).toBe("/login?next=%2Ffinance");
+    expect(onboardingUrl(ROUTES.subscriptions)).toBe(
+      "/onboarding?next=%2Fsubscriptions",
+    );
+  });
+
   it("health endpoint доступен без сессии (точное совпадение)", () => {
     expect(isPublicRoute("/api/health")).toBe(true);
   });
@@ -159,10 +199,11 @@ describe("isPublicRoute", () => {
   });
 
   it("Settings owns profile, workspace, members, and billing routes", () => {
-    expect(ROUTES.settingsProfile).toBe("/dashboard/settings/profile");
-    expect(ROUTES.settingsWorkspace).toBe("/dashboard/settings/workspace");
-    expect(ROUTES.settingsMembers).toBe("/dashboard/settings/members");
-    expect(ROUTES.settingsBilling).toBe("/dashboard/settings/billing");
+    expect(ROUTES.settings).toBe("/settings");
+    expect(ROUTES.settingsProfile).toBe("/settings/profile");
+    expect(ROUTES.settingsWorkspace).toBe("/settings/workspace");
+    expect(ROUTES.settingsMembers).toBe("/settings/members");
+    expect(ROUTES.settingsBilling).toBe("/settings/billing");
     expect(ROUTES.members).toBe(ROUTES.settingsMembers);
     expect(ROUTES.billing).toBe(ROUTES.settingsBilling);
   });
