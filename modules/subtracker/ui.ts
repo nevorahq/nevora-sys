@@ -8,3 +8,4 @@ export type { SubscriptionPaymentTaskPanelProps } from "./components/subscriptio
 export { SubscriptionPaymentWorkflowPanel } from "./components/subscription-payment-workflow-panel";
 export type { SubscriptionPaymentWorkflowPanelProps } from "./components/subscription-payment-workflow-panel";
 export { SubscriptionSuggestionPanel } from "./components/subscription-suggestion-panel";
+export { GmailInvoicePanel } from "./components/gmail-invoice-panel";

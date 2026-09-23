@@ -169,6 +169,8 @@ export interface DomainEventPayloadMap {
   "task.removed_from_project": { task_id: string; project_id: string; title: string };
   "task.created_from_subscription": Record<string, unknown>;
 
+  "subscription.invoice.linked": Record<string, unknown>;
+
   "client.created": { name: string; email?: string | null };
   "client.updated": Record<string, unknown>;
   "client.deleted": { name: string };
