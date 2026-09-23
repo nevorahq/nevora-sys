@@ -5,8 +5,6 @@ export { SubCreateButton } from "./components/sub-create-button";
 export { SubEmptyState } from "./components/sub-empty-state";
 export { SubscriptionPaymentTaskPanel } from "./components/subscription-payment-task-panel";
 export type { SubscriptionPaymentTaskPanelProps } from "./components/subscription-payment-task-panel";
-export { SubscriptionPaymentWorkflowPanel } from "./components/subscription-payment-workflow-panel";
-export type { SubscriptionPaymentWorkflowPanelProps } from "./components/subscription-payment-workflow-panel";
 export { SubscriptionSuggestionPanel } from "./components/subscription-suggestion-panel";
 export { GmailInvoicePanel } from "./components/gmail-invoice-panel";
 export { RenewalInbox } from "./components/renewal-inbox";

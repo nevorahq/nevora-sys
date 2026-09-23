@@ -114,7 +114,7 @@ automation engine, and a billing/usage-limit layer with atomic reservations.
 | Documents | Obligation suggestion | Turn extracted doc into a financial task | Partial | `components/document-obligation-suggestion.tsx`, migration `079` | Depends on financial-task view (orphan) |
 | Subscriptions | Create/edit/delete | Manage recurring subscriptions | Ready | `modules/subtracker/actions/*` | Usage-limit gated |
 | Subscriptions | Renew | Renew subscription | Ready | `actions/renew-subscription.action.ts` | |
-| Subscriptions | Payment workflow | Cycles, mark-as-paid, skip, due-date change | Ready | `components/subscription-payment-workflow-panel.tsx`, `services/mark-subscription-payment-as-paid.ts`, migration `078` | On subscription detail page |
+| Subscriptions | Payment workflow | Cycles, mark-as-paid, skip, due-date change | Partial | `services/mark-subscription-payment-as-paid.ts`, migration `078` | Actions remain in `modules/subtracker/actions.ts`; the standalone workflow panel was removed as unused (2026-09-23) and is no longer on the detail page |
 | Subscriptions | Attach document | Attach a doc on create | Ready | `app/api/subscriptions/[subscriptionId]/document/route.ts` | doc_type=other, money-safe |
 | Subscriptions | Upcoming renewals | See renewal alerts | Ready | `queries/get-upcoming-renewals.ts`, dashboard + bell | |
 | Action Center | Feed + execute | Execute/snooze/dismiss/resolve/assign action items | Partial | `modules/action-center/components/action-center-page.tsx`, `actions/*`, migration `048` | Not in sidebar; via bell only |

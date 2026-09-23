@@ -8,6 +8,7 @@ import { formatMoney } from "@/shared/utils/format-money";
 import { AccountEditForm } from "./account-edit-form";
 import { TransferForm } from "./transfer-form";
 import { Modal } from "@/shared/ui/modal";
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 import { cn } from "@/shared/utils/cn";
 import { ROUTES } from "@/shared/config/routes";
 import type { AccountWithBalance } from "../queries/get-accounts-with-balances";
@@ -76,16 +77,25 @@ function AccountItem({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
+  const [isConfirmingDeactivate, setIsConfirmingDeactivate] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isDeactivating, startDeactivate] = useTransition();
   const t = dict.money.accounts;
 
+  function closeDeactivateConfirmation() {
+    setActionError(null);
+    setIsConfirmingDeactivate(false);
+  }
+
   function handleDeactivate() {
-    if (!confirm(t.deactivateConfirm)) return;
     setActionError(null);
     startDeactivate(async () => {
       const result = await deactivateAccountAction(account.id);
-      if (result.error) setActionError(result.error);
+      if (result.error) {
+        setActionError(result.error);
+        return;
+      }
+      setIsConfirmingDeactivate(false);
     });
   }
 
@@ -151,7 +161,7 @@ function AccountItem({
         {/* Deactivate button */}
         <button
           type="button"
-          onClick={handleDeactivate}
+          onClick={() => setIsConfirmingDeactivate(true)}
           className="soft-icon-button h-8 w-8 text-text-muted hover:text-danger"
           aria-label={t.deactivateButton}
         >
@@ -159,11 +169,19 @@ function AccountItem({
         </button>
       </div>
 
-      {actionError && (
-        <p role="alert" className="px-4 text-sm text-danger">
-          {actionError}
-        </p>
-      )}
+      <ConfirmDialog
+        isOpen={isConfirmingDeactivate}
+        onCancel={closeDeactivateConfirmation}
+        onConfirm={handleDeactivate}
+        title={t.deactivateConfirmTitle}
+        description={t.deactivateConfirmDescription.replace("{name}", account.name)}
+        confirmLabel={t.deactivateButton}
+        pendingLabel={t.deactivating}
+        cancelLabel={dict.common.cancel}
+        closeLabel={dict.common.close}
+        isPending={isDeactivating}
+        error={actionError}
+      />
 
       {/* Edit Modal */}
       <Modal

@@ -7,10 +7,13 @@ import { updateMemberRole } from "../actions/update-member-role";
 import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/components/access-state";
 import type { SettingsMember } from "../types/settings.types";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 
-export function MembersTable({ members, currentUserId, canManage, t }: { members: SettingsMember[]; currentUserId: string; canManage: boolean; t: Dictionary["settings"]["members"] }) {
+export function MembersTable({ members, currentUserId, canManage, t, common }: { members: SettingsMember[]; currentUserId: string; canManage: boolean; t: Dictionary["settings"]["members"]; common: Dictionary["common"] }) {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<SettingsMember | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const writeGate = useAccessGate("write");
 
   function formatLastActive(value: string | null) {
@@ -36,12 +39,24 @@ export function MembersTable({ members, currentUserId, canManage, t }: { members
     });
   }
 
-  function remove(member: SettingsMember) {
-    if (!window.confirm(t.removeConfirm.replace("{name}", member.name || member.email || t.thisMember))) return;
+  function closeRemoveConfirmation() {
+    setRemoveError(null);
+    setMemberToRemove(null);
+  }
+
+  function confirmRemove() {
+    if (!memberToRemove) return;
+    const memberId = memberToRemove.id;
     setMessage(null);
+    setRemoveError(null);
     startTransition(async () => {
-      const result = await removeMember(member.id);
-      setMessage(result.error ?? result.success ?? null);
+      const result = await removeMember(memberId);
+      if (result.error) {
+        setRemoveError(result.error);
+        return;
+      }
+      setMemberToRemove(null);
+      setMessage(result.success ?? null);
     });
   }
 
@@ -80,7 +95,7 @@ export function MembersTable({ members, currentUserId, canManage, t }: { members
                   <td className="px-4 py-3 text-right">
                     {canManage && !isSelf && member.role !== "owner" ? (
                       <RestrictedActionTooltip message={writeGate.blocked ? writeGate.message : t.remove}>
-                        <button type="button" onClick={() => remove(member)} disabled={pending || writeGate.blocked} className="inline-flex items-center gap-1 text-xs font-medium text-danger hover:underline disabled:cursor-not-allowed disabled:opacity-50"><Trash2Icon size={13} /> {t.remove}</button>
+                        <button type="button" onClick={() => setMemberToRemove(member)} disabled={pending || writeGate.blocked} className="inline-flex items-center gap-1 text-xs font-medium text-danger hover:underline disabled:cursor-not-allowed disabled:opacity-50"><Trash2Icon size={13} /> {t.remove}</button>
                       </RestrictedActionTooltip>
                     ) : (
                       <MoreHorizontalIcon size={16} className="ml-auto text-text-muted" />
@@ -92,6 +107,20 @@ export function MembersTable({ members, currentUserId, canManage, t }: { members
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        isOpen={memberToRemove !== null}
+        onCancel={closeRemoveConfirmation}
+        onConfirm={confirmRemove}
+        title={t.removeConfirm.replace("{name}", memberToRemove?.name || memberToRemove?.email || t.thisMember)}
+        description={t.removeConfirmDescription}
+        confirmLabel={t.remove}
+        pendingLabel={t.removing}
+        cancelLabel={common.cancel}
+        closeLabel={common.close}
+        isPending={pending}
+        error={removeError}
+      />
     </div>
   );
 }

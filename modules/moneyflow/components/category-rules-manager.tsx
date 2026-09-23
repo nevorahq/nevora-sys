@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 import type { CategoryRule } from "../queries/get-category-rules";
 import { createCategoryRuleAction } from "../actions/create-category-rule.action";
 import {
@@ -14,6 +15,7 @@ interface CategoryRulesManagerProps {
   rules: CategoryRule[];
   categories: Array<{ id: string; name: string }>;
   labels: Dictionary["money"]["rules"];
+  common: Dictionary["common"];
   /** Only owner/admin may create or manage organization-wide rules. */
   canManageOrgRules: boolean;
   currentUserId: string;
@@ -28,6 +30,7 @@ export function CategoryRulesManager({
   rules,
   categories,
   labels,
+  common,
   canManageOrgRules,
   currentUserId,
 }: CategoryRulesManagerProps) {
@@ -38,22 +41,58 @@ export function CategoryRulesManager({
   const [categoryId, setCategoryId] = useState("");
   const [scope, setScope] = useState<"private" | "organization">("private");
   const [priority, setPriority] = useState(100);
+  const [confirming, setConfirming] = useState<
+    { kind: "create-org" } | { kind: "delete"; rule: CategoryRule } | null
+  >(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  function closeConfirmation() {
+    setConfirmError(null);
+    setConfirming(null);
+  }
 
   function submitCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     // Org-wide rules affect every member's future transactions — confirm first.
-    if (scope === "organization" && !window.confirm(labels.orgConfirm)) return;
+    if (scope === "organization") {
+      setConfirming({ kind: "create-org" });
+      return;
+    }
     setError(null);
     startTransition(async () => {
-      const result = await createCategoryRuleAction({ merchant, categoryId, scope, priority });
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
+      const result = await createRule();
+      if (result.error) setError(result.error);
+    });
+  }
+
+  async function createRule() {
+    const result = await createCategoryRuleAction({ merchant, categoryId, scope, priority });
+    if (!result.error) {
       setMerchant("");
       setCategoryId("");
       setScope("private");
       setPriority(100);
+    }
+    return result;
+  }
+
+  function runConfirmed() {
+    if (!confirming) return;
+    const target = confirming;
+    setConfirmError(null);
+    setError(null);
+    if (target.kind === "delete") setBusyId(target.rule.id);
+    startTransition(async () => {
+      const result =
+        target.kind === "delete"
+          ? await deleteCategoryRuleAction({ ruleId: target.rule.id })
+          : await createRule();
+      setBusyId(null);
+      if (result.error) {
+        setConfirmError(result.error);
+        return;
+      }
+      setConfirming(null);
     });
   }
 
@@ -227,10 +266,7 @@ export function CategoryRulesManager({
                         type="button"
                         disabled={busy}
                         aria-label={labels.delete}
-                        onClick={() =>
-                          window.confirm(labels.deleteConfirm) &&
-                          run(rule.id, () => deleteCategoryRuleAction({ ruleId: rule.id }))
-                        }
+                        onClick={() => setConfirming({ kind: "delete", rule })}
                         className="inline-flex min-h-9 items-center rounded-lg bg-accent-pink-soft px-3 text-xs font-semibold text-accent-pink disabled:opacity-50"
                       >
                         <Trash2Icon size={13} />
@@ -243,6 +279,25 @@ export function CategoryRulesManager({
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirming !== null}
+        onCancel={closeConfirmation}
+        onConfirm={runConfirmed}
+        title={confirming?.kind === "delete" ? labels.deleteConfirm : labels.orgConfirmTitle}
+        description={
+          confirming?.kind === "delete"
+            ? labels.deleteConfirmDescription.replace("{merchant}", confirming.rule.normalized_merchant)
+            : labels.orgConfirm
+        }
+        confirmLabel={confirming?.kind === "delete" ? labels.delete : labels.create}
+        pendingLabel={confirming?.kind === "delete" ? labels.deleting : labels.creating}
+        cancelLabel={common.cancel}
+        closeLabel={common.close}
+        isPending={pending}
+        error={confirmError}
+        tone={confirming?.kind === "delete" ? "danger" : "default"}
+      />
     </div>
   );
 }

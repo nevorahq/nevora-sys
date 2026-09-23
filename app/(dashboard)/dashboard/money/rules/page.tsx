@@ -40,6 +40,7 @@ export default async function MoneyRulesPage() {
         rules={rules}
         categories={categories.map((category) => ({ id: category.id, name: category.name }))}
         labels={dict.money.rules}
+        common={dict.common}
         canManageOrgRules={isAdmin(ctx)}
         currentUserId={ctx.user.id}
       />

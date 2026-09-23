@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { MoneyAccountsList } from "./money-accounts-list";
 import { MoneyRecentTransactions } from "./money-recent-transactions";
 import { AccountEditForm } from "./account-edit-form";
 import { CreateAccountForm } from "./create-account-form";
+import { deactivateAccountAction } from "../actions/deactivate-account.action";
 
 vi.mock("../actions/deactivate-account.action", () => ({
   deactivateAccountAction: vi.fn(),
@@ -35,13 +36,15 @@ vi.mock("../actions/resolve-transfer-rate.action", () => ({
 }));
 
 const dict = {
-  common: { close: "Close", loading: "Loading" },
+  common: { close: "Close", cancel: "Cancel", loading: "Loading" },
   money: {
     accounts: {
       title: "Accounts",
       editButton: "Edit account",
       deactivateButton: "Deactivate account",
-      deactivateConfirm: "Deactivate?",
+      deactivateConfirmTitle: "Deactivate account?",
+      deactivateConfirmDescription: "{name} will be hidden.",
+      deactivating: "Deactivating",
       nameLabel: "Name",
       namePlaceholder: "Name",
       typeLabel: "Type",
@@ -86,6 +89,15 @@ const dict = {
   },
 } as never;
 
+beforeAll(() => {
+  HTMLDialogElement.prototype.showModal = function showModal() {
+    this.setAttribute("open", "");
+  };
+  HTMLDialogElement.prototype.close = function close() {
+    this.removeAttribute("open");
+  };
+});
+
 afterEach(cleanup);
 
 describe("Money detail navigation", () => {
@@ -110,6 +122,38 @@ describe("Money detail navigation", () => {
 
     expect(screen.getByRole("link", { name: "Open account: USD Card" }).getAttribute("href"))
       .toBe("/finance/accounts/11111111-1111-4111-8111-111111111111");
+  });
+
+  it("asks for deactivation in an in-app dialog instead of window.confirm", async () => {
+    const nativeConfirm = vi.spyOn(window, "confirm");
+    vi.mocked(deactivateAccountAction).mockResolvedValue({});
+    render(
+      <MoneyAccountsList
+        dict={dict}
+        accounts={[{
+          id: "11111111-1111-4111-8111-111111111111",
+          user_id: "user-1",
+          name: "USD Card",
+          type: "card",
+          initial_balance: 100,
+          balance: 100,
+          currency: "USD",
+          is_active: true,
+          created_at: "2026-01-01",
+          updated_at: "2026-01-01",
+        }]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Deactivate account" }));
+    expect(screen.getByText("USD Card will be hidden.")).toBeTruthy();
+    expect(deactivateAccountAction).not.toHaveBeenCalled();
+
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(dialog.querySelector("button.bg-danger") as HTMLButtonElement);
+    await waitFor(() => expect(dialog.hasAttribute("open")).toBe(false));
+    expect(deactivateAccountAction).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111");
+    expect(nativeConfirm).not.toHaveBeenCalled();
   });
 
   it("opens transaction details from the transaction card", () => {

@@ -24,7 +24,7 @@ export default async function ProfileSettingsPage() {
   return (
     <>
       <SettingsHeader title={t.header.profileTitle} description={t.header.profileDescription} />
-      <ProfileForm profile={profile} t={t} />
+      <ProfileForm profile={profile} t={t} common={dict.common} />
       <div className="mt-8">
         <DeleteAccountSection
           email={profile.email}

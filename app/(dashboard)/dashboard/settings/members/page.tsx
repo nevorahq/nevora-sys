@@ -43,7 +43,7 @@ export default async function MembersPage() {
         </div>
       )}
       <div className="mb-4 text-sm text-text-secondary">{seatCount} {seatLabel}</div>
-      <MembersTable members={members} currentUserId={context.user.id} canManage={canManage} t={t.members} />
+      <MembersTable members={members} currentUserId={context.user.id} canManage={canManage} t={t.members} common={dict.common} />
     </>
   );
 }
