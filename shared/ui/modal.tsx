@@ -24,10 +24,12 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   closeLabel?: string;
+  /** `sm` fits short confirmations; `md` (default) fits forms. */
+  size?: "sm" | "md";
   children: React.ReactNode;
 }
 
-export function Modal({ isOpen, onClose, title, closeLabel = "Close", children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, closeLabel = "Close", size = "md", children }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -67,7 +69,8 @@ export function Modal({ isOpen, onClose, title, closeLabel = "Close", children }
       className={cn(
         // Reset browser dialog styles
         "fixed inset-0 m-auto p-0 border-none bg-transparent",
-        "max-h-[90vh] max-w-2xl w-[calc(100%-2rem)]",
+        "max-h-[90vh] w-[calc(100%-2rem)]",
+        size === "sm" ? "max-w-md" : "max-w-2xl",
         // Backdrop
         "backdrop:bg-black/40 backdrop:backdrop-blur-sm",
         // Animation

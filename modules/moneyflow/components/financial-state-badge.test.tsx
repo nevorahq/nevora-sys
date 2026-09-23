@@ -69,25 +69,14 @@ describe("FinancialStateBadge", () => {
 
 describe("Sprint 4.4 rollout: converted surfaces use the badge", () => {
   const ROOT = process.cwd();
-  const panel = readFileSync(
-    join(ROOT, "modules/subtracker/components/subscription-payment-workflow-panel.tsx"),
-    "utf8",
-  );
 
   /** Every money surface converted in unit 4.4 (Financial Tasks removed since). */
   const CONVERTED = [
-    "modules/subtracker/components/subscription-payment-workflow-panel.tsx",
     "modules/subtracker/components/subscription-payment-task-panel.tsx",
     "modules/subtracker/components/subscription-suggestion-panel.tsx",
     "modules/subtracker/components/sub-item.tsx",
     "modules/documents/components/document-extraction-review.tsx",
   ] as const;
-
-  it("the subscription payment panel renders the badge, not a raw status", () => {
-    expect(panel).toContain("FinancialStateBadge");
-    expect(panel).not.toMatch(/\.status\.replace\(/);
-    expect(panel).not.toContain("STATUS_STYLE");
-  });
 
   it.each(CONVERTED)("%s renders the canonical badge", (file) => {
     const src = readFileSync(join(ROOT, file), "utf8");

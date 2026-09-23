@@ -11,13 +11,13 @@ import { Button } from "@/shared/ui/button";
 
 const TIMEZONES = ["UTC", "Europe/Chisinau", "Europe/Bucharest", "Europe/London", "America/New_York", "Asia/Dubai"];
 
-export function ProfileForm({ profile, t }: { profile: ProfileSettings; t: Dictionary["settings"] }) {
+export function ProfileForm({ profile, t, common }: { profile: ProfileSettings; t: Dictionary["settings"]; common: Dictionary["common"] }) {
   const [state, action, pending] = useActionState<SettingsActionState, FormData>(updateProfile, {});
   const initials = profile.fullName.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "?";
 
   return (
     <div className="soft-card space-y-6 p-5 sm:p-6">
-      <AvatarUploader avatarUrl={profile.avatarUrl} initials={initials} />
+      <AvatarUploader avatarUrl={profile.avatarUrl} initials={initials} t={t.profile.avatar} common={common} />
 
       <form action={action} className="space-y-6">
         <div className="grid gap-5 sm:grid-cols-2">
