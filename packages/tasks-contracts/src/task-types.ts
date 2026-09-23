@@ -24,6 +24,10 @@ export interface Task {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  /** Denormalized by the task_smart_list view; present on list reads only. */
+  project_name?: string | null;
+  project_color?: string | null;
+  project_status?: string | null;
 }
 
 export interface TaskAssignee {

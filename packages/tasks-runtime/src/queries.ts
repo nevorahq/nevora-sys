@@ -11,7 +11,7 @@ import type { TasksListInput } from "@nevora/tasks-api";
 export const TASK_LIST_VIEW = "task_smart_list" as const;
 
 const TASK_VIEW_COLUMNS =
-  "id, organization_id, workspace_id, project_id, created_by, updated_by, title, description, status, priority, due_date, recurrence, recurrence_source_id, position, is_completed, created_at, updated_at, deleted_at, priority_weight, is_closed, sort_overdue";
+  "id, organization_id, workspace_id, project_id, created_by, updated_by, title, description, status, priority, due_date, recurrence, recurrence_source_id, position, is_completed, created_at, updated_at, deleted_at, priority_weight, is_closed, sort_overdue, project_name, project_color, project_status";
 
 interface Orderable {
   order(

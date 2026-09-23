@@ -160,3 +160,16 @@ describe("Tasks transport selection", () => {
     expect(() => resolveTasksShadowReadPercent("101")).toThrow("between 0 and 100");
   });
 });
+
+describe("in-process list scope", () => {
+  it("binds the workspace by default and lifts it for organization scope", async () => {
+    getTasks.mockResolvedValue([]);
+    const application = createInProcessTasksApplication({ supabase, currentContext });
+
+    await application.listTasks({ sort: "smart_default" });
+    await application.listTasks({ sort: "smart_default", scope: "organization" });
+
+    expect(getTasks).toHaveBeenNthCalledWith(1, "org-1", { sort: "smart_default", workspaceId: "workspace-1" }, supabase);
+    expect(getTasks).toHaveBeenNthCalledWith(2, "org-1", { sort: "smart_default", workspaceId: undefined }, supabase);
+  });
+});

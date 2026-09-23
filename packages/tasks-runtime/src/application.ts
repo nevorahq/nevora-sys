@@ -22,10 +22,17 @@ export function createTasksRuntimeApplication(
   const { supabase, context, effects } = dependencies;
   return {
     context,
+    // Organization-scoped, matching the in-process adapter: a task link must
+    // open regardless of which workspace the task lives in.
     getTask: (taskId) =>
-      getTask(supabase, context.organizationId, context.workspaceId, taskId),
+      getTask(supabase, context.organizationId, undefined, taskId),
     listTasks: (input = {}) =>
-      listTasks(supabase, context.organizationId, context.workspaceId, input),
+      listTasks(
+        supabase,
+        context.organizationId,
+        input.scope === "organization" ? undefined : context.workspaceId,
+        input,
+      ),
     createStandardTask: (input) =>
       createStandardTask(supabase, context, effects, input),
     createGeneratedTask: (input) => createGeneratedTask(supabase, context, input),

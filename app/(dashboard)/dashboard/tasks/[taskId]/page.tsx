@@ -5,7 +5,7 @@ import { requireOrg } from "@/lib/auth/require-org";
 import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
 import { TASK_PRIORITY_LABELS, type TaskPriority, type TaskStatus } from "@nevora/tasks-contracts";
-import { getTaskById } from "@/modules/tasks/server";
+import { getTasksApplication } from "@/platform/tasks/server";
 import { getTaskActivityView } from "@/modules/tasks/server";
 import { TaskAssigneesManager, type TaskAssigneeView } from "@/modules/tasks/ui";
 import { TaskActivity } from "@/modules/tasks/ui";
@@ -45,11 +45,12 @@ export default async function TaskPreviewPage({
   const { taskId } = await params;
   const ctx = await requireOrg();
   const { org, user } = ctx;
-  const task = await getTaskById(org.id, taskId);
+  const supabase = await createClient();
+  const tasks = await getTasksApplication({ supabase, currentContext: ctx });
+  const task = await tasks.getTask(taskId);
   if (!task) notFound();
   const { dict } = await getDictionary();
 
-  const supabase = await createClient();
   const profileIds = [...new Set([task.created_by, ...task.assignees.map((assignee) => assignee.user_id)].filter((id): id is string => Boolean(id)))];
   const [{ data: profiles }, { data: document }, members, activity] = await Promise.all([
     profileIds.length ? supabase.from("profiles").select("id, display_name").in("id", profileIds) : Promise.resolve({ data: [] as Array<{ id: string; display_name: string | null }> }),

@@ -55,10 +55,10 @@ export function createInProcessTasksApplication(
   return {
     context,
     getTask: (taskId) => getTaskById(context.organizationId, taskId, supabase),
-    listTasks: (input = {}) =>
+    listTasks: ({ scope, ...input } = {}) =>
       getTasks(
         context.organizationId,
-        { ...input, workspaceId: context.workspaceId },
+        { ...input, workspaceId: scope === "organization" ? undefined : context.workspaceId },
         supabase,
       ),
     createStandardTask: (input) => createStandardTask(supabase, currentContext, input),
