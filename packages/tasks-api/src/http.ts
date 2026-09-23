@@ -13,6 +13,7 @@ export const TASKS_HTTP_TRANSPORT_HEADER = "x-nevora-tasks-transport" as const;
 export const TASKS_HTTP_TRANSPORT_VERSION = "tasks-v1" as const;
 
 const listInput = z.object({
+  scope: z.enum(["workspace", "organization"]).optional(),
   projectId: uuid.optional(),
   assigneeId: uuid.optional(),
   status: z.union([z.enum(TASK_STATUSES), z.array(z.enum(TASK_STATUSES)).min(1)]).optional(),

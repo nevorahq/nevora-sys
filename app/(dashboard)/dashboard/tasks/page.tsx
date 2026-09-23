@@ -1,5 +1,7 @@
 import { requireOrg } from "@/lib/auth/require-org";
-import { getTodosQuery } from "@/features/todos/queries/get-todos.query";
+import { createClient } from "@/lib/supabase/server";
+import { getTasksApplication } from "@/platform/tasks/server";
+import { taskToTodo } from "@/features/todos/lib/task-to-todo";
 import { getProjects } from "@/modules/tasks/server";
 import { TodoCreateButton } from "@/features/todos/components/todo-create-button";
 import { TodoList } from "@/features/todos/components/todo-list";
@@ -16,9 +18,13 @@ export default async function TasksPage({
   const { sort: rawSort } = await searchParams;
   const sort = parseTaskSort(rawSort);
 
-  const { org } = await requireOrg();
+  const ctx = await requireOrg();
+  const { org } = ctx;
+  // Reads go through the Tasks transport seam so TASKS_TRANSPORT (shadow,
+  // http-read, http) covers the Tasks page itself, not only cross-product calls.
+  const tasks = await getTasksApplication({ supabase: await createClient(), currentContext: ctx });
   const [todos, projects, { dict }] = await Promise.all([
-    getTodosQuery(org.id, { sort }),
+    tasks.listTasks({ sort, scope: "organization" }).then((rows) => rows.map(taskToTodo)),
     getProjects(org.id, { status: ["active", "paused"] }),
     getDictionary(),
   ]);

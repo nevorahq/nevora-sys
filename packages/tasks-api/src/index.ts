@@ -21,6 +21,12 @@ export interface TasksRequestContext {
 }
 
 export interface TasksListInput {
+  /**
+   * `workspace` (default) limits the list to the bound workspace;
+   * `organization` lists every workspace of the bound organization, which is
+   * what the Tasks pages show.
+   */
+  scope?: "workspace" | "organization";
   projectId?: string;
   assigneeId?: string;
   status?: TaskStatus | TaskStatus[];

@@ -102,3 +102,34 @@ describe("getTask detail read", () => {
     expect(selected).toContain("task_relations!task_relations_task_id_fkey");
   });
 });
+
+describe("runtime application read scope", () => {
+  function recordingClient() {
+    const calls: Array<[string, unknown]> = [];
+    const chain: Record<string, unknown> = {};
+    for (const method of ["select", "eq", "is", "in", "order", "limit", "range"]) {
+      chain[method] = vi.fn((...args: unknown[]) => {
+        calls.push([method, args]);
+        return chain;
+      });
+    }
+    chain.single = vi.fn(async () => ({ data: null, error: null }));
+    chain.maybeSingle = vi.fn(async () => ({ data: null, error: null }));
+    (chain as { then: unknown }).then = (resolve: (value: unknown) => unknown) =>
+      Promise.resolve({ data: [], error: null }).then(resolve);
+    return { supabase: { from: vi.fn(() => chain) } as unknown as SupabaseClient, calls };
+  }
+  const workspaceFilter = (calls: Array<[string, unknown]>) =>
+    calls.some(([method, args]) => method === "eq" && (args as unknown[])[0] === "workspace_id");
+
+  it("filters by the bound workspace unless organization scope is requested", async () => {
+    const scoped = recordingClient();
+    await createTasksRuntimeApplication({ supabase: scoped.supabase, context, effects }).listTasks();
+    expect(workspaceFilter(scoped.calls)).toBe(true);
+
+    const orgWide = recordingClient();
+    await createTasksRuntimeApplication({ supabase: orgWide.supabase, context, effects })
+      .listTasks({ scope: "organization" });
+    expect(workspaceFilter(orgWide.calls)).toBe(false);
+  });
+});
