@@ -5,8 +5,12 @@ import type { CurrentContext } from "@/lib/context/current-context";
 import { requireAppAccess, redactFilenameForEvent } from "@/lib/security";
 import { createClient } from "@/lib/supabase/server";
 import {
+  assertPlanLimit,
+  canUseFeatureForOrganization,
   featureGateService,
+  releaseDocumentsUsageForService,
   releaseOrganizationUsage,
+  reserveDocumentsUsageForService,
   reserveOrganizationUsage,
   usageService,
 } from "@/modules/billing";
@@ -75,6 +79,15 @@ export interface DocumentUploadServiceParams {
    * and its symbology are stored; extraction re-parses it. Omit when none.
    */
   captureCode?: { raw: string; format: string | null } | null;
+  /**
+   * A verified machine caller with no session (the channel webhook) acting for
+   * `ctx.user` through a service-role `supabase`. The same plan gates run
+   * against that client, the documents.count slot is reserved through the
+   * service-only RPC (migration 122), and extraction is only enqueued — the
+   * caller runs it (and reports on it) itself; the extraction sweep is the
+   * safety net if it never does.
+   */
+  serviceIdentity?: boolean;
 }
 
 function hasWritePermission(ctx: CurrentContext): boolean {
@@ -157,15 +170,25 @@ export async function createDocumentWithAttachments(
 
   // Billing: block + reserve BEFORE any storage write, so a quota denial leaves
   // no partial records behind.
+  // Returns the documents.count slot when no document ends up holding it.
+  const releaseDocumentSlot = () =>
+    params.serviceIdentity
+      ? releaseDocumentsUsageForService(supabase, ctx.org.id, ctx.user.id)
+      : releaseOrganizationUsage(ctx.org.id, "documents.count", 1);
+  const totalBytes = files.reduce((total, file) => total + file.size, 0);
   try {
-    const blocked = await featureGateService.getBlockedReason(ctx.workspace.id, "storage.files.upload");
-    if (blocked) throw new Error(blocked.message);
-    await usageService.assertWithinLimit(
-      ctx.workspace.id,
-      "storage_used_bytes",
-      files.reduce((total, file) => total + file.size, 0),
-    );
-    await reserveOrganizationUsage(ctx.org.id, "documents.count", 1);
+    if (params.serviceIdentity) {
+      if (!(await canUseFeatureForOrganization(ctx.org.id, "storage.files.upload", supabase))) {
+        throw new Error("Uploading files is not included in your current plan.");
+      }
+      await assertPlanLimit(ctx.org.id, "storage.bytes", totalBytes, supabase);
+      await reserveDocumentsUsageForService(supabase, ctx.org.id, ctx.user.id);
+    } else {
+      const blocked = await featureGateService.getBlockedReason(ctx.workspace.id, "storage.files.upload");
+      if (blocked) throw new Error(blocked.message);
+      await usageService.assertWithinLimit(ctx.workspace.id, "storage_used_bytes", totalBytes);
+      await reserveOrganizationUsage(ctx.org.id, "documents.count", 1);
+    }
   } catch (error) {
     return {
       ok: false,
@@ -205,7 +228,7 @@ export async function createDocumentWithAttachments(
     // A unique-violation on inbox_capture_id means a concurrent retry won the
     // race — resolve and return that Document instead of erroring.
     if (documentError?.code === "23505" && inboxCaptureId) {
-      await releaseOrganizationUsage(ctx.org.id, "documents.count", 1);
+      await releaseDocumentSlot();
       const existing = await resolveExistingCapture(supabase, ctx, inboxCaptureId);
       if (existing) {
         return {
@@ -219,7 +242,7 @@ export async function createDocumentWithAttachments(
       }
     }
     console.error("documents upload: document creation failed", documentError);
-    await releaseOrganizationUsage(ctx.org.id, "documents.count", 1);
+    await releaseDocumentSlot();
     return { ok: false, status: 500, error: "We could not create the document. Please try again." };
   }
 
@@ -316,7 +339,8 @@ export async function createDocumentWithAttachments(
     if (enqueued.ok) {
       extractionQueued = true;
       extractionId = enqueued.extractionId;
-      after(async () => {
+      // A service caller runs the extraction itself (see `serviceIdentity`).
+      if (!params.serviceIdentity) after(async () => {
         try {
           const bgSupabase = await createClient();
           const bgCtx = await requireAppAccess({ permission: "data.write", intent: "write" });

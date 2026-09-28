@@ -36,6 +36,13 @@ export interface CaptureInboxDocumentInput {
   title: string;
   /** QR/barcode scanned alongside the photo (Scan mode); a hint for extraction. */
   captureCode?: { raw: string; format: string | null } | null;
+  /**
+   * A channel capture (ADR 002): `supabase` is the service-role client acting
+   * for the linked user. Plan gates and the documents.count slot go through the
+   * service path, the capture carries its channel + message key, and the caller
+   * runs the extraction it gets back.
+   */
+  channel?: { name: "telegram" | "slack" | "email"; messageKey: string } | null;
 }
 
 export type CaptureInboxDocumentResult =
@@ -43,6 +50,8 @@ export type CaptureInboxDocumentResult =
   | {
       ok: true;
       documentId: string;
+      /** The queued extraction job; null when none was queued (or on a reuse). */
+      extractionId: string | null;
       /** Null only when the Document stored but planner linking failed (recoverable). */
       entryId: string | null;
       reused: boolean;
@@ -77,6 +86,7 @@ export async function captureInboxDocument(
     source: "inbox",
     queueExtraction: true,
     captureCode: input.captureCode ?? null,
+    serviceIdentity: Boolean(input.channel),
   });
 
   if (!upload.ok) {
@@ -100,6 +110,7 @@ export async function captureInboxDocument(
     entryType: input.entryType,
     // Extraction is running (or has been queued); the card reflects live state.
     status: upload.extractionQueued ? "processing" : "suggested",
+    channel: input.channel ?? null,
   });
 
   if (!entryResult.ok) {
@@ -108,13 +119,20 @@ export async function captureInboxDocument(
     return {
       ok: true,
       documentId: upload.documentId,
+      extractionId: upload.extractionId,
       entryId: null,
       reused: upload.reused,
       warning: "saved_not_linked",
     };
   }
 
-  return { ok: true, documentId: upload.documentId, entryId: entryResult.entry.id, reused: upload.reused };
+  return {
+    ok: true,
+    documentId: upload.documentId,
+    extractionId: upload.extractionId,
+    entryId: entryResult.entry.id,
+    reused: upload.reused,
+  };
 }
 
 /**

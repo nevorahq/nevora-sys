@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { after, NextResponse } from "next/server";
 import { getServiceRoleClient } from "@/lib/supabase/service-role";
 import { logger } from "@/lib/observability/logger";
-import { getTelegramConfig, sendTelegramMessage } from "@/modules/channels/telegram/telegram-api";
+import { downloadTelegramFile, getTelegramConfig, sendTelegramMessage } from "@/modules/channels/telegram/telegram-api";
 import { handleTelegramUpdate } from "@/modules/channels/telegram/handle-telegram-update";
 import { telegramUpdateSchema } from "@/modules/channels/telegram/telegram-update";
 
@@ -57,6 +57,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const result = await handleTelegramUpdate(parsed.data, {
       supabase,
       send: (chatId, text) => sendTelegramMessage(config.token, chatId, text),
+      download: (fileId, maxBytes) => downloadTelegramFile(config.token, fileId, maxBytes),
       appUrl: (process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin).replace(/\/$/, ""),
     });
     if (result.after) {

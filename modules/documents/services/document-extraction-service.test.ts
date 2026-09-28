@@ -5,8 +5,8 @@ const createActionItemForDocument = vi.fn();
 const createDocumentSuggestionWithClassification = vi.fn();
 const normalizeFinancialDocument = vi.fn();
 const routeExtraction = vi.fn();
-const getBlockedReason = vi.fn();
-const assertWithinLimit = vi.fn();
+const canUseFeatureForOrganization = vi.fn();
+const assertPlanLimit = vi.fn();
 const findDocumentCapture = vi.fn();
 const proposeTasksFromDocumentCapture = vi.fn();
 
@@ -22,10 +22,7 @@ vi.mock("@/modules/review/services/financial-suggestion.service", () => ({
   createDocumentSuggestionWithClassification,
 }));
 vi.mock("@/modules/ai/services/normalize-financial-document", () => ({ normalizeFinancialDocument }));
-vi.mock("@/modules/billing", () => ({
-  featureGateService: { getBlockedReason },
-  usageService: { assertWithinLimit },
-}));
+vi.mock("@/modules/billing", () => ({ canUseFeatureForOrganization, assertPlanLimit }));
 vi.mock("./document-extraction-router", () => ({ routeExtraction }));
 
 const { runDocumentExtraction } = await import("./document-extraction-service");
@@ -119,8 +116,8 @@ beforeEach(() => {
     ok: true,
     data: { suggestion: { id: "sug-1" } },
   });
-  getBlockedReason.mockResolvedValue(null);
-  assertWithinLimit.mockResolvedValue(undefined);
+  canUseFeatureForOrganization.mockResolvedValue(true);
+  assertPlanLimit.mockResolvedValue(undefined);
   routeExtraction.mockResolvedValue({
     ok: true,
     provider: "pdf_parse",
@@ -266,15 +263,14 @@ describe("runDocumentExtraction — persistence failures", () => {
 // proves it actually stops the costly work.
 describe("runDocumentExtraction — plan enforcement runs before any OCR", () => {
   it("refuses when documents.process is not in the plan, and never routes extraction", async () => {
-    getBlockedReason.mockResolvedValue({
-      featureKey: "documents.process",
-      title: "Process documents is not included in your current plan",
-      message: "Choose a higher plan to unlock this workflow for your workspace.",
-      cta: "Upgrade",
-    });
+    canUseFeatureForOrganization.mockResolvedValue(false);
     const supabase = makeSupabase(infra());
 
     const result = await runDocumentExtraction(supabase, ctx, DOC_ID, EXT_ID);
+
+    // The gate reads through the caller's client, so it also holds for the
+    // sessionless callers (the extraction sweep, a channel webhook).
+    expect(canUseFeatureForOrganization).toHaveBeenCalledWith(ORG_ID, "documents.process", supabase);
 
     expect(result.ok).toBe(false);
     expect(result.errorCode).toBe("usage_limit_exceeded");
@@ -283,15 +279,16 @@ describe("runDocumentExtraction — plan enforcement runs before any OCR", () =>
     // The costly step never ran, and the usage counter was never consulted once the
     // feature gate said no.
     expect(routeExtraction).not.toHaveBeenCalled();
-    expect(assertWithinLimit).not.toHaveBeenCalled();
+    expect(assertPlanLimit).not.toHaveBeenCalled();
   });
 
   it("refuses when the monthly processing quota is exhausted, and never routes extraction", async () => {
-    assertWithinLimit.mockRejectedValue(new Error("Document processing limit reached."));
+    assertPlanLimit.mockRejectedValue(new Error("Document processing limit reached."));
     const supabase = makeSupabase(infra());
 
     const result = await runDocumentExtraction(supabase, ctx, DOC_ID, EXT_ID);
 
+    expect(assertPlanLimit).toHaveBeenCalledWith(ORG_ID, "documents_processed.monthly", 1, supabase);
     expect(result.ok).toBe(false);
     expect(result.errorCode).toBe("usage_limit_exceeded");
     expect(result.status).toBe("needs_review");

@@ -10,6 +10,10 @@ const getBlockedReason = vi.fn(async () => null as { message: string } | null);
 const assertWithinLimit = vi.fn(async () => undefined);
 const reserveOrganizationUsage = vi.fn(async () => undefined);
 const releaseOrganizationUsage = vi.fn(async () => undefined);
+const canUseFeatureForOrganization = vi.fn(async () => true);
+const assertPlanLimit = vi.fn(async () => undefined);
+const reserveDocumentsUsageForService = vi.fn(async () => 1);
+const releaseDocumentsUsageForService = vi.fn(async () => 0);
 const emitDomainEvent = vi.fn(async () => undefined);
 const emitAuditLog = vi.fn(async () => undefined);
 const enqueueDocumentExtraction = vi.fn(async () => ({ ok: false, reason: "no_attachment", message: "" }));
@@ -26,6 +30,10 @@ vi.mock("@/modules/billing", () => ({
   usageService: { assertWithinLimit },
   reserveOrganizationUsage,
   releaseOrganizationUsage,
+  canUseFeatureForOrganization,
+  assertPlanLimit,
+  reserveDocumentsUsageForService,
+  releaseDocumentsUsageForService,
 }));
 vi.mock("@/lib/events", () => ({ emitDomainEvent, emitAuditLog }));
 vi.mock("@/lib/observability/report-error", () => ({
@@ -187,3 +195,67 @@ describe("createDocumentWithAttachments", () => {
     expect(enqueueDocumentExtraction).toHaveBeenCalledTimes(1);
   });
 });
+
+// A channel webhook stores a file for a linked user with no session: the same
+// gates run against its service-role client, the slot goes through the
+// service-only RPC (migration 122), and the caller runs the extraction.
+describe("createDocumentWithAttachments — service identity (channel capture)", () => {
+  beforeEach(() => {
+    canUseFeatureForOrganization.mockResolvedValue(true);
+    assertPlanLimit.mockResolvedValue(undefined);
+    reserveDocumentsUsageForService.mockResolvedValue(1);
+  });
+
+  it("gates and reserves through the service path, never the session path", async () => {
+    const { client } = makeSupabase({ documentInsert: { id: DOC_ID } });
+    enqueueDocumentExtraction.mockResolvedValueOnce({ ok: true, extractionId: "ex-1" } as never);
+
+    const result = await createDocumentWithAttachments(client, ctxWith(["data.write"]), {
+      input: baseInput,
+      files: [pngFile()],
+      inboxCaptureId: "22222222-2222-4222-8222-222222222222",
+      source: "inbox",
+      queueExtraction: true,
+      serviceIdentity: true,
+    });
+
+    expect(result).toMatchObject({ ok: true, documentId: DOC_ID, extractionQueued: true, extractionId: "ex-1" });
+    expect(canUseFeatureForOrganization).toHaveBeenCalledWith("org-1", "storage.files.upload", client);
+    expect(assertPlanLimit).toHaveBeenCalledWith("org-1", "storage.bytes", 3, client);
+    expect(reserveDocumentsUsageForService).toHaveBeenCalledWith(client, "org-1", "user-1");
+    expect(getBlockedReason).not.toHaveBeenCalled();
+    expect(reserveOrganizationUsage).not.toHaveBeenCalled();
+    // The caller runs the extraction; nothing is scheduled on a session.
+    expect(after).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the plan does not include uploads, before reserving", async () => {
+    canUseFeatureForOrganization.mockResolvedValue(false);
+    const { client, calls } = makeSupabase({ documentInsert: { id: DOC_ID } });
+
+    const result = await createDocumentWithAttachments(client, ctxWith(["data.write"]), {
+      input: baseInput,
+      files: [pngFile()],
+      serviceIdentity: true,
+    });
+
+    expect(result).toMatchObject({ ok: false, status: 403 });
+    expect(reserveDocumentsUsageForService).not.toHaveBeenCalled();
+    expect(calls.docInsert).toBe(0);
+  });
+
+  it("returns the slot through the service RPC when the document insert fails", async () => {
+    const { client } = makeSupabase({ documentInsert: null, documentInsertError: { code: "XX000" } });
+
+    const result = await createDocumentWithAttachments(client, ctxWith(["data.write"]), {
+      input: baseInput,
+      files: [pngFile()],
+      serviceIdentity: true,
+    });
+
+    expect(result).toMatchObject({ ok: false, status: 500 });
+    expect(releaseDocumentsUsageForService).toHaveBeenCalledWith(client, "org-1", "user-1");
+    expect(releaseOrganizationUsage).not.toHaveBeenCalled();
+  });
+});
+

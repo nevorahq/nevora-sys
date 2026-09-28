@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasMedia, parseTelegramCommand, telegramUpdateSchema } from "./telegram-update";
+import { hasMedia, parseTelegramCommand, pickAttachment, telegramUpdateSchema } from "./telegram-update";
 
 describe("parseTelegramCommand", () => {
   it.each([
@@ -44,9 +44,38 @@ describe("telegramUpdateSchema", () => {
 describe("hasMedia", () => {
   const base = { message_id: 1, chat: { id: 1, type: "private" } };
   it("detects photos, files and voice", () => {
-    expect(hasMedia({ ...base, photo: [{}] })).toBe(true);
-    expect(hasMedia({ ...base, document: {} })).toBe(true);
+    expect(hasMedia({ ...base, photo: [{ file_id: "p" }] })).toBe(true);
+    expect(hasMedia({ ...base, document: { file_id: "d" } })).toBe(true);
     expect(hasMedia({ ...base, voice: {} })).toBe(true);
     expect(hasMedia({ ...base, text: "hi" })).toBe(false);
   });
 });
+
+describe("pickAttachment", () => {
+  const base = { message_id: 9, chat: { id: 1, type: "private" } };
+  it("takes the largest size of a photo", () => {
+    expect(pickAttachment({ ...base, photo: [{ file_id: "s", file_size: 10 }, { file_id: "l", file_size: 99 }] })).toEqual({
+      fileId: "l",
+      fileName: "telegram-photo-9.jpg",
+      mimeType: "image/jpeg",
+      size: 99,
+      kind: "photo",
+    });
+  });
+
+  it("keeps a document's own name and type, with a fallback name", () => {
+    expect(pickAttachment({ ...base, document: { file_id: "d", file_name: "invoice.pdf", mime_type: "application/pdf" } })).toMatchObject({
+      fileId: "d",
+      fileName: "invoice.pdf",
+      mimeType: "application/pdf",
+      kind: "document",
+    });
+    expect(pickAttachment({ ...base, document: { file_id: "d" } })?.fileName).toBe("telegram-file-9");
+  });
+
+  it("ignores text and voice", () => {
+    expect(pickAttachment({ ...base, text: "hi" })).toBeNull();
+    expect(pickAttachment({ ...base, voice: {} })).toBeNull();
+  });
+});
+

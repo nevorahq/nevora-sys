@@ -166,12 +166,28 @@ copy is in the dictionaries (en/ru/ro), in the user's app language. Setup:
 `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_BOT_USERNAME`, then
 `node scripts/telegram-set-webhook.mjs <origin>`.
 
+*Photos and documents done 2026-09-28, migration 122.* A photo (largest size)
+or a document sent to the bot is downloaded (capped at the Documents 10 MB
+limit, checked against Telegram's reported size before downloading) and stored
+through the same Documents upload service as an Inbox capture, with a
+`serviceIdentity` option: the plan gates run against the service-role client
+(`canUseFeatureForOrganization`, `assertPlanLimit` now take an optional
+client), and the documents.count slot goes through
+`reserve_/release_documents_usage_for_service` — service-role only, re-checking
+active membership, writability and the plan limit inside PostgreSQL, like 114
+for Tasks. The caption becomes the capture note; the capture id is derived from
+org + channel + message, so a redelivery reuses the stored Document. The
+extraction runs after the acknowledgement and the bot reports what came out:
+an expense draft ("Receipt read: <merchant> — <amount>"), task drafts, a
+document kept for review, or an unreadable file. Voice, video and audio are
+declined.
+
+The same change moved `runDocumentExtraction`'s plan gates from the session to
+the caller's client. The extraction sweep calls it without a session, so a job
+it recovered would have failed its plan gate as `usage_limit_exceeded` (not
+seen in production data on 2026-09-28: the sweep had not recovered a job yet).
+
 Deliberately not yet:
-- **Photos and documents from Telegram** are answered with a pointer to the
-  Inbox. The document path reserves storage and document quota through
-  session-bound RPCs (`reserve_organization_usage`, the feature gates); a
-  webhook has no session. It needs service-identity variants, the way
-  migration 114 did it for the Tasks service, before media can be captured.
 - **Domain events** for channel captures are not recorded: `emitDomainEvent`
   resolves the organization from the session (`requireOrg`) and logs instead.
   The capture, suggestions and AI metering are unaffected.

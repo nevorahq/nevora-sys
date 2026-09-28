@@ -9,6 +9,9 @@ const mocks = vi.hoisted(() => ({
   resolve: vi.fn(),
   capture: vi.fn(),
   process: vi.fn(),
+  captureFile: vi.fn(),
+  processFile: vi.fn(),
+  download: vi.fn(),
 }));
 vi.mock("../services/link-codes", () => ({
   consumeLinkCode: mocks.consume,
@@ -19,6 +22,8 @@ vi.mock("../services/channel-context", () => ({ resolveChannelContext: mocks.res
 vi.mock("../services/channel-intake", () => ({
   captureChannelText: mocks.capture,
   processChannelCapture: mocks.process,
+  captureChannelFile: mocks.captureFile,
+  processChannelFileCapture: mocks.processFile,
 }));
 
 import { handleTelegramUpdate, localeFromLanguageCode } from "./handle-telegram-update";
@@ -61,6 +66,7 @@ const deps = (language: string | null = "ru") => ({
     sent.push(text);
     return true;
   },
+  download: mocks.download,
   appUrl: "https://app.nevora.test",
 });
 
@@ -177,11 +183,11 @@ describe("handleTelegramUpdate — capture", () => {
     expect(mocks.capture).not.toHaveBeenCalled();
   });
 
-  it("does not capture media yet and points to the Inbox", async () => {
-    const result = await handleTelegramUpdate(update(undefined, { photo: [{}], caption: "receipt" }), deps("en"));
+  it("refuses voice, video and audio without downloading anything", async () => {
+    const result = await handleTelegramUpdate(update(undefined, { voice: {} }), deps("en"));
     expect(result.action).toBe("media_not_supported");
-    expect(sent[0]).toContain("https://app.nevora.test/dashboard/inbox?tab=review");
-    expect(mocks.capture).not.toHaveBeenCalled();
+    expect(sent[0]).toContain("Voice messages");
+    expect(mocks.download).not.toHaveBeenCalled();
   });
 
   it("answers /help and unknown commands instead of capturing them", async () => {
@@ -208,3 +214,83 @@ describe("localeFromLanguageCode", () => {
     expect(localeFromLanguageCode(code)).toBe(locale);
   });
 });
+
+describe("handleTelegramUpdate — photos and documents", () => {
+  const photo = { photo: [{ file_id: "small", file_size: 1_000 }, { file_id: "large", file_size: 90_000 }], caption: " Обед с клиентом " };
+
+  beforeEach(() => {
+    mocks.find.mockResolvedValue(integration);
+    mocks.resolve.mockResolvedValue({ ok: true, ctx });
+    mocks.download.mockResolvedValue({ ok: true, bytes: new Uint8Array([1, 2, 3]).buffer });
+  });
+
+  it("stores the largest photo with its caption before acknowledging, then reads it and reports the receipt", async () => {
+    mocks.captureFile.mockResolvedValue({ ok: true, documentId: "d1", entryId: "e1", extractionId: "x1", reused: false });
+    mocks.processFile.mockResolvedValue({ kind: "receipt", vendor: "Linella", amount: 245.5, currency: "MDL" });
+
+    const result = await handleTelegramUpdate(update(undefined, photo), deps("ru"));
+
+    expect(result.action).toBe("captured");
+    expect(mocks.download).toHaveBeenCalledWith("large", 10 * 1024 * 1024);
+    const stored = mocks.captureFile.mock.calls[0][2];
+    expect(stored).toMatchObject({ channel: "telegram", messageKey: "42:55", note: "Обед с клиентом", kind: "photo" });
+    expect(stored.file).toBeInstanceOf(File);
+    expect(stored.file.type).toBe("image/jpeg");
+    // Nothing is read or sent until after the acknowledgement.
+    expect(mocks.processFile).not.toHaveBeenCalled();
+    expect(sent).toEqual([]);
+
+    await result.after!();
+    expect(mocks.processFile).toHaveBeenCalledWith(expect.anything(), ctx, { documentId: "d1", entryId: "e1", extractionId: "x1" });
+    expect(sent[0]).toMatch(/^Чек распознан: Linella — 245,50\sMDL\. Проверьте и сохраните в Финансы в Nevora: https:\/\/app\.nevora\.test\/dashboard\/inbox\?tab=review$/);
+  });
+
+  it("reports task drafts found in a document", async () => {
+    mocks.captureFile.mockResolvedValue({ ok: true, documentId: "d1", entryId: "e1", extractionId: "x1", reused: false });
+    mocks.processFile.mockResolvedValue({ kind: "tasks", count: 3 });
+    const result = await handleTelegramUpdate(
+      update(undefined, { document: { file_id: "f1", file_name: "brief.pdf", mime_type: "application/pdf", file_size: 5_000 } }),
+      deps("en"),
+    );
+    expect(mocks.captureFile.mock.calls[0][2]).toMatchObject({ kind: "document" });
+    expect(mocks.captureFile.mock.calls[0][2].file.name).toBe("brief.pdf");
+    await result.after!();
+    expect(sent[0]).toBe("Added to your Inbox. Tasks found: 3. Confirm them in Nevora: https://app.nevora.test/dashboard/inbox?tab=review");
+  });
+
+  it("refuses a file over the limit from its reported size, without downloading it", async () => {
+    const result = await handleTelegramUpdate(update(undefined, { document: { file_id: "big", file_size: 50 * 1024 * 1024 } }), deps("en"));
+    expect(result.action).toBe("media_too_large");
+    expect(sent[0]).toContain("10 MB");
+    expect(mocks.download).not.toHaveBeenCalled();
+  });
+
+  it("throws on a failed download, so Telegram redelivers", async () => {
+    mocks.download.mockResolvedValue({ ok: false, reason: "failed" });
+    await expect(handleTelegramUpdate(update(undefined, photo), deps())).rejects.toThrow();
+    expect(mocks.captureFile).not.toHaveBeenCalled();
+  });
+
+  it("explains a rejected file type and a reached plan limit", async () => {
+    mocks.captureFile.mockResolvedValueOnce({ ok: false, code: "invalid_file" });
+    expect((await handleTelegramUpdate(update(undefined, photo), deps("en"))).action).toBe("media_rejected");
+    expect(sent[0]).toContain("can't be added");
+
+    mocks.captureFile.mockResolvedValueOnce({ ok: false, code: "plan_limit" });
+    await handleTelegramUpdate(update(undefined, photo), deps("en"));
+    expect(sent[1]).toContain("limit has been reached");
+  });
+
+  it("stays silent on a redelivered file", async () => {
+    mocks.captureFile.mockResolvedValue({ ok: true, documentId: "d1", entryId: "e1", extractionId: null, reused: true });
+    expect(await handleTelegramUpdate(update(undefined, photo), deps())).toEqual({ action: "duplicate" });
+    expect(sent).toEqual([]);
+  });
+
+  it("does not download for a sender whose organization is read-only", async () => {
+    mocks.resolve.mockResolvedValue({ ok: false, reason: "read_only" });
+    expect((await handleTelegramUpdate(update(undefined, photo), deps())).action).toBe("context_denied");
+    expect(mocks.download).not.toHaveBeenCalled();
+  });
+});
+

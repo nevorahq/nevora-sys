@@ -1,8 +1,11 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { processPlannerEntry } from "@/modules/planner/services/process-planner-entry";
+import { captureInboxDocument } from "@/modules/planner/services/capture-inbox-document";
+import { generateCaptureTitle } from "@/modules/planner/utils/generate-capture-title";
+import { runDocumentExtraction } from "@/modules/documents/services/document-extraction-service";
 import { PLANNER_RAW_TEXT_MAX_LENGTH } from "@/modules/planner/schemas/planner-entry.schema";
 import { PLANNER_ENTRY_COLUMNS, type PlannerEntry, type PlannerSuggestion } from "@/modules/planner/types/planner.types";
 import type { Channel } from "../types";
@@ -77,4 +80,98 @@ export async function processChannelCapture(
   entry: PlannerEntry,
 ): Promise<{ status: PlannerEntry["status"]; suggestions: PlannerSuggestion[] }> {
   return processPlannerEntry(supabase, ctx, entry);
+}
+
+// ── Files (photos, documents) ────────────────────────────────────────────────
+
+export type CaptureChannelFileResult =
+  | { ok: true; documentId: string; entryId: string | null; extractionId: string | null; reused: boolean }
+  | { ok: false; code: "forbidden" | "invalid_file" | "plan_limit" | "failed" };
+
+/**
+ * Store a file sent to a channel exactly like an Inbox photo/document upload —
+ * the same Documents service (validation, quota, storage, rollback), the same
+ * capture entry — with the service identity and the channel attribution. A
+ * redelivery maps to the same deterministic capture id, so it reuses the stored
+ * Document instead of creating a second one.
+ */
+export async function captureChannelFile(
+  supabase: SupabaseClient,
+  ctx: CurrentContext,
+  input: { channel: Channel; messageKey: string; file: File; note: string | null; kind: "photo" | "document" },
+): Promise<CaptureChannelFileResult> {
+  const result = await captureInboxDocument(supabase, ctx, {
+    files: [input.file],
+    captureId: channelCaptureId(ctx.org.id, input.channel, input.messageKey),
+    note: input.note,
+    entryType: input.kind,
+    title: generateCaptureTitle({ filename: input.file.name, entryType: input.kind }),
+    channel: { name: input.channel, messageKey: input.messageKey },
+  });
+  if (!result.ok) return { ok: false, code: result.code };
+  return {
+    ok: true,
+    documentId: result.documentId,
+    entryId: result.entryId,
+    extractionId: result.extractionId,
+    reused: result.reused,
+  };
+}
+
+/** What reading a channel file produced, for the channel's reply. */
+export type ChannelFileOutcome =
+  | { kind: "receipt"; vendor: string | null; amount: number | null; currency: string | null }
+  | { kind: "tasks"; count: number }
+  | { kind: "saved" }
+  | { kind: "failed" };
+
+/**
+ * Run the queued extraction (the same pipeline an Inbox upload runs) and say
+ * what came out: an expense draft, task drafts, or a document kept for review.
+ */
+export async function processChannelFileCapture(
+  supabase: SupabaseClient,
+  ctx: CurrentContext,
+  capture: { documentId: string; entryId: string | null; extractionId: string },
+): Promise<ChannelFileOutcome> {
+  const run = await runDocumentExtraction(supabase, ctx, capture.documentId, capture.extractionId);
+
+  if (run.suggestionId) {
+    const { data } = await supabase
+      .from("financial_suggestions")
+      .select("vendor_name, amount, currency")
+      .eq("id", run.suggestionId)
+      .eq("organization_id", ctx.org.id)
+      .maybeSingle();
+    const draft = data as { vendor_name: string | null; amount: number | string | null; currency: string | null } | null;
+    return {
+      kind: "receipt",
+      vendor: draft?.vendor_name ?? null,
+      amount: draft?.amount == null ? null : Number(draft.amount),
+      currency: draft?.currency ?? null,
+    };
+  }
+
+  if (capture.entryId) {
+    const { count } = await supabase
+      .from("planner_suggestions")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", ctx.org.id)
+      .eq("planner_entry_id", capture.entryId)
+      .eq("status", "pending");
+    if (count) return { kind: "tasks", count };
+  }
+
+  return run.status === "failed" ? { kind: "failed" } : { kind: "saved" };
+}
+
+/**
+ * A stable capture id per org + channel message, shaped as a UUID for the
+ * migration-105 `inbox_capture_id` column: a redelivered message reuses it.
+ */
+export function channelCaptureId(organizationId: string, channel: Channel, messageKey: string): string {
+  const hex = createHash("sha256").update(`${organizationId}:${channel}:${messageKey}`).digest("hex");
+  // Version nibble 5 (name-based) and the RFC 4122 variant bits.
+  const variant = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }

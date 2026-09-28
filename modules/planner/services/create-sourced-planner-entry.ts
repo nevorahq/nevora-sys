@@ -47,6 +47,11 @@ export interface CreateSourcedPlannerEntryInput {
    * extraction pipeline pass 'processing'.
    */
   status?: PlannerEntry["status"];
+  /**
+   * The external channel the capture arrived from (ADR 002) and its message
+   * key; unique per org + channel (migration 121). Omitted for in-app captures.
+   */
+  channel?: { name: "telegram" | "slack" | "email"; messageKey: string } | null;
 }
 
 export type CreateSourcedPlannerEntryResult =
@@ -87,6 +92,7 @@ export async function createSourcedPlannerEntry(
       source: ENTRY_SOURCE[entity.kind],
       status: input.status ?? "suggested",
       [sourceColumn]: entity.id,
+      ...(input.channel ? { channel: input.channel.name, channel_message_key: input.channel.messageKey } : {}),
     })
     .select(PLANNER_ENTRY_COLUMNS)
     .single();
