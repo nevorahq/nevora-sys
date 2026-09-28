@@ -3,14 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CheckSquareIcon, WalletIcon,
+  HomeIcon, InboxIcon, CheckSquareIcon, WalletIcon,
   FileTextIcon, FolderKanbanIcon, SettingsIcon,
   RepeatIcon,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
-import { ROUTES, type ProductId } from "@/shared/config/routes";
+import { ROUTES } from "@/shared/config/routes";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
-import { productContextCookie } from "@/modules/products/product-context";
 
 /**
  * Sidebar Navigation — responsive.
@@ -39,33 +38,24 @@ interface NavItem {
 
 interface SidebarProps {
   dict: Dictionary;
-  /** Если задан — sidebar показывает только навигацию выбранного продукта. */
-  product?: ProductId;
 }
 
-export function Sidebar({ dict, product }: SidebarProps) {
+export function Sidebar({ dict }: SidebarProps) {
   const pathname = usePathname();
 
-  const productNavigation: Record<ProductId, NavItem[]> = {
-    tasks: [
-      { href: ROUTES.tasks, label: dict.nav.tasks, icon: CheckSquareIcon },
-      { href: ROUTES.projects, label: dict.projects.back, icon: FolderKanbanIcon },
-    ],
-    finance: [
-      { href: ROUTES.money, label: dict.nav.money, icon: WalletIcon },
-    ],
-    subscriptions: [
-      { href: ROUTES.subscriptions, label: dict.nav.subscriptions, icon: RepeatIcon },
-      { href: ROUTES.documents, label: dict.nav.documents, icon: FileTextIcon },
-    ],
-  };
-  const platformNavigation: NavItem[] = [
+  // One app, one navigation: every module sits side by side in one workspace.
+  const navItems: NavItem[] = [
+    { href: ROUTES.dashboard, label: dict.nav.home, icon: HomeIcon },
+    { href: ROUTES.inbox, label: dict.nav.inbox, icon: InboxIcon },
+    { href: ROUTES.tasks, label: dict.nav.tasks, icon: CheckSquareIcon },
+    { href: ROUTES.projects, label: dict.projects.back, icon: FolderKanbanIcon },
+    { href: ROUTES.money, label: dict.nav.money, icon: WalletIcon },
+    { href: ROUTES.subscriptions, label: dict.nav.subscriptions, icon: RepeatIcon },
     { href: ROUTES.documents, label: dict.nav.documents, icon: FileTextIcon },
     { href: ROUTES.settings, label: dict.nav.settings, icon: SettingsIcon },
   ];
-  const navItems = product
-    ? [...productNavigation[product], { href: ROUTES.settings, label: dict.nav.settings, icon: SettingsIcon }]
-    : platformNavigation;
+  // Longest matching prefix wins, so /tasks/projects lights Projects, not Tasks,
+  // and /dashboard/inbox lights Inbox, not Home.
   const activeHref = navItems
     .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
@@ -108,19 +98,11 @@ export function Sidebar({ dict, product }: SidebarProps) {
           {navItems.map((item) => {
             const active = item.href === activeHref;
             const Icon = item.icon;
-            const sharedContextPath = item.href === ROUTES.settings
-              ? ROUTES.settings
-              : item.href === ROUTES.documents
-                ? ROUTES.documents
-                : null;
 
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  onClick={sharedContextPath
-                    ? () => { document.cookie = productContextCookie(product, sharedContextPath); }
-                    : undefined}
                   // title — нативный tooltip, показывает label при hover на mobile
                   title={item.label}
                   className={cn(

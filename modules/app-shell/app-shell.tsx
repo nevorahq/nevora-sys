@@ -25,19 +25,13 @@ import { AccountDeletionBanner } from "@/modules/settings/components/AccountDele
 import { NotificationProvider } from "@/modules/notifications/components/notification-provider";
 import { getNotificationCounters } from "@/modules/notifications/queries/get-notification-counters";
 import { getUnreadNotifications } from "@/modules/notifications/queries/get-user-notifications";
-import type { ProductId } from "@/shared/config/routes";
-
-interface ProductShellProps {
-  children: React.ReactNode;
-  /** Omit for a platform-level protected surface such as Settings. */
-  product?: ProductId;
-}
 
 /**
- * Общая защищённая оболочка самостоятельного продукта. Она сохраняет системные
- * функции аккаунта, но получает product-scoped Sidebar без соседних модулей.
+ * The one protected app shell: every module (Home, Inbox, Tasks, Finance,
+ * Subscriptions, Documents, Settings) renders inside it with the same sidebar,
+ * so switching modules is plain navigation within one workspace.
  */
-export async function ProductShell({ children, product }: ProductShellProps) {
+export async function AppShell({ children }: { children: React.ReactNode }) {
   const [user, context, { dict, locale }] = await Promise.all([
     requireUser(),
     requireOrg(),
@@ -69,7 +63,7 @@ export async function ProductShell({ children, product }: ProductShellProps) {
   return (
     <AccessStateProvider accessState={accessState} copy={accessCopy}>
       <NotificationProvider
-        key={`${context.org.id}:${user.id}:${product ?? "platform"}`}
+        key={`${context.org.id}:${user.id}`}
         organizationId={context.org.id}
         userId={user.id}
         initialPreferences={notificationPreferences}
@@ -77,7 +71,7 @@ export async function ProductShell({ children, product }: ProductShellProps) {
         initialNotifications={initialNotifications}
       >
         <div className="flex min-h-dvh">
-          <Sidebar dict={dict} product={product} />
+          <Sidebar dict={dict} />
 
           <div className="flex min-w-0 flex-1 flex-col">
             <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border-soft bg-background px-4 py-3.5 sm:px-6">

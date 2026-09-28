@@ -22,8 +22,9 @@ import {
  * (monitoring/load balancer не должен получать redirect на /login).
  */
 describe("isPublicRoute", () => {
-  it("разрешает next только для трёх продуктовых точек входа", () => {
+  it("разрешает next только для Главной и корней модулей", () => {
     expect(PRODUCT_ENTRY_ROUTES).toEqual([
+      ROUTES.dashboard,
       ROUTES.tasks,
       ROUTES.money,
       ROUTES.subscriptions,
@@ -37,7 +38,7 @@ describe("isPublicRoute", () => {
     expect(ROUTES.tasks).toBe("/tasks");
     expect(ROUTES.money).toBe("/finance");
     expect(ROUTES.subscriptions).toBe("/subscriptions");
-    expect(ROUTES.appHome).toBe(ROUTES.tasks);
+    expect(ROUTES.appHome).toBe(ROUTES.dashboard);
   });
 
   it("определяет продукт по вложенному URL, но не принимает соседний префикс", () => {

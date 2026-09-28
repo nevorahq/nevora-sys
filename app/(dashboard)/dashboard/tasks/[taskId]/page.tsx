@@ -35,12 +35,10 @@ const STATUS_STYLES: Record<TaskStatus, string> = {
 
 interface TaskPreviewPageProps {
   params: PageProps<"/dashboard/tasks/[taskId]">["params"];
-  productIsolated?: boolean;
 }
 
 export default async function TaskPreviewPage({
   params,
-  productIsolated = false,
 }: TaskPreviewPageProps) {
   const { taskId } = await params;
   const ctx = await requireOrg();
@@ -65,12 +63,8 @@ export default async function TaskPreviewPage({
   const canEditTask = canDo(ctx, "data.write");
 
   // Subscription payment task? Surface the specialized Mark-as-paid panel.
-  const subscriptionsApp = productIsolated
-    ? null
-    : await getSubscriptionsApplication({ supabase, currentContext: ctx });
-  const paymentCycle = subscriptionsApp
-    ? await subscriptionsApp.getPaymentCycleByTaskId(task.id)
-    : null;
+  const subscriptionsApp = await getSubscriptionsApplication({ supabase, currentContext: ctx });
+  const paymentCycle = await subscriptionsApp.getPaymentCycleByTaskId(task.id);
   const paymentSubscription = paymentCycle
     ? await supabase
         .from("subscriptions")
@@ -121,7 +115,7 @@ export default async function TaskPreviewPage({
             />
           )}
           {document && <section className="soft-card p-5 sm:p-6"><div className="flex items-center gap-2"><FileTextIcon size={18} className="text-text-secondary" /><h2 className="text-base font-semibold text-text-primary">Document</h2></div><Link href={`${ROUTES.documents}/${document.id}`} className="mt-3 block text-sm font-medium text-text-secondary underline hover:text-text-primary">{document.title}</Link></section>}
-          <UniversalRelationViewer entityType="task" entityId={task.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.tasks}/${task.id}`} allowedKinds={productIsolated ? ["task", "document"] : undefined} />
+          <UniversalRelationViewer entityType="task" entityId={task.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.tasks}/${task.id}`} />
           <TaskActivity taskId={task.id} initialItems={activity.items} initialHasMore={activity.hasMore} createdAt={task.created_at} updatedAt={task.updated_at} error={activity.error} dict={dict} />
         </main>
         <aside className="space-y-4">

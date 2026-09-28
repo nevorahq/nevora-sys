@@ -4,7 +4,6 @@ import { ROUTES } from "@/shared/config/routes";
 import type { PublicLocale } from "@/shared/i18n/constants";
 import { ThemeToggle } from "@/shared/ui/theme-toggle";
 import { BRAND, type LandingContent } from "../constants/landing-content";
-import { LandingAppMenu } from "./landing-app-menu";
 import { LandingLanguageMenu } from "./landing-language-menu";
 import { LandingMobileNav } from "./landing-mobile-nav";
 
@@ -46,7 +45,6 @@ export function LandingHeader({ nav, header, locale }: LandingHeaderProps) {
         </nav>
 
         <div className="flex items-center justify-end gap-1.5 sm:gap-2">
-          <LandingAppMenu locale={locale} />
           <LandingLanguageMenu locale={locale} />
           <ThemeToggle className="h-11 w-11 sm:h-9 sm:w-9" />
           <Link
