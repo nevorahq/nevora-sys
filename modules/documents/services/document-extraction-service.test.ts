@@ -298,3 +298,49 @@ describe("runDocumentExtraction — plan enforcement runs before any OCR", () =>
     expect(routeExtraction).not.toHaveBeenCalled();
   });
 });
+
+// Inbox Scan mode: a QR code scanned with the photo is handed to the model and
+// its header values win over what the model read.
+describe("runDocumentExtraction — scanned code", () => {
+  const withCode = (raw: string | null) => {
+    const base = infra();
+    return (table: string, op: string, kind: string) =>
+      table === "documents"
+        ? { data: { id: DOC_ID, title: "Scan", doc_type: "unknown", capture_code: raw ? { raw, format: "qr_code" } : null }, error: null }
+        : base(table, op, kind);
+  };
+
+  it("passes the code to the model and lets its amount win, flagging the mismatch", async () => {
+    normalizeFinancialDocument.mockResolvedValue({ ok: true, raw: {}, extracted: structuredClone(extracted) });
+    const epc = "BCD\n002\n1\nSCT\n\nAcme GmbH\nDE89370400440532013000\nEUR100.00";
+
+    await runDocumentExtraction(makeSupabase(withCode(epc)), ctx, DOC_ID, EXT_ID);
+
+    const hint = normalizeFinancialDocument.mock.calls[0][1]?.hint as string;
+    expect(hint).toContain("kind: epc_payment");
+    expect(hint).toContain("amount: 100");
+    expect(createDocumentSuggestionWithClassification).toHaveBeenCalledWith(
+      expect.anything(),
+      ctx,
+      expect.objectContaining({
+        amount: 100,
+        metadata: expect.objectContaining({
+          capture_code_kind: "epc_payment",
+          code_mismatches: ["amount"],
+          needs_field_review: true,
+        }),
+      }),
+    );
+  });
+
+  it("extracts as before when the capture carries no code", async () => {
+    normalizeFinancialDocument.mockResolvedValue({ ok: true, raw: {}, extracted: structuredClone(extracted) });
+
+    await runDocumentExtraction(makeSupabase(withCode(null)), ctx, DOC_ID, EXT_ID);
+
+    expect(normalizeFinancialDocument.mock.calls[0][1]).toEqual({ hint: null });
+    const metadata = createDocumentSuggestionWithClassification.mock.calls[0][2].metadata;
+    expect(metadata).not.toHaveProperty("capture_code_kind");
+    expect(createDocumentSuggestionWithClassification.mock.calls[0][2].amount).toBe(99.5);
+  });
+});

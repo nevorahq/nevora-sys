@@ -118,7 +118,8 @@ export function ExtractionReviewActions({
         categoryId: selectedCategory,
         expenseContextId: selectedContext,
         rememberChoice,
-        merchantName,
+        // The confirm schema names it vendorName; an unknown key is dropped.
+        vendorName: merchantName,
         amount: Number(amount),
         transactionDate,
         currency: initialCurrency ?? requiredCurrency ?? "EUR",

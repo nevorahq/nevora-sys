@@ -8,6 +8,7 @@ import { getInboxDashboardData } from "../queries/get-inbox-dashboard-data";
 import { getInboxDocumentReviews } from "../queries/get-inbox-document-reviews";
 import { reconcileInboxDocumentCaptures } from "../services/capture-inbox-document";
 import { InboxCaptureComposer } from "./inbox-capture-composer";
+import { ReceiptReviewLauncher } from "./receipt-review-launcher";
 import { InboxTabs } from "./inbox-tabs";
 import { PlannerEntryList } from "./planner-entry-list";
 import { PlannerSuggestionCard } from "./planner-suggestion-card";
@@ -79,7 +80,8 @@ export async function InboxPage({ initialTab = "inbox", focusSuggestionId = null
           extraction produced an expense draft is confirmed here, reusing the
           Documents review UI + review Server Actions (money-safe, no duplication). */}
       {documentReviews.map(({ documentId, state }) => (
-        <div key={documentId} id={`document-${documentId}`} className="scroll-mt-24">
+        <div key={documentId} id={`document-${documentId}`} className="flex scroll-mt-24 flex-col gap-2">
+          {canConfirmFinancial && <ReceiptReviewLauncher documentId={documentId} t={dict.receipt} locale={locale} />}
           <DocumentExtractionReview documentId={documentId} state={state} canConfirm={canConfirmFinancial} t={fullDict.documents} stateLabels={fullDict.money.states} locale={locale} />
         </div>
       ))}
@@ -96,7 +98,7 @@ export async function InboxPage({ initialTab = "inbox", focusSuggestionId = null
         <h1 className="text-xl font-semibold text-text-primary">{dict.title}</h1>
       </header>
 
-      <InboxCaptureComposer dict={dict} orgName={ctx.org.name} />
+      <InboxCaptureComposer dict={dict} orgName={ctx.org.name} locale={locale} />
 
       <FirstActionWizard state={wizard} dict={fullDict.firstRun} />
 
