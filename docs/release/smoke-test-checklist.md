@@ -28,8 +28,8 @@ org owned by a different user (for isolation checks).
 ## 2. Action Center — read-only attention & routing
 
 - [ ] ⚑ `/dashboard` renders the **read-only Action Center** (heading "Action
-      Center", read-only subtitle, Refresh, summary cards, Attention list,
-      Activity Log). It is not a metrics roll-up.
+      Center", read-only subtitle, Refresh, summary cards, Attention list). It
+      is not a metrics roll-up and shows no Activity Log (removed 2026-09-28).
 - [ ] ⚑ The Action Center has **no** business mutations: no checkboxes, no bulk
       toolbar / Make inactive, no Resolve / Dismiss / Snooze / Assign / Restore /
       Execute / Confirm / Reject / Cancel / Delete, and no mutating detail drawer.
