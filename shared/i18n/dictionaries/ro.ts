@@ -71,7 +71,6 @@ export const ro: Dictionary = {
   },
   inbox: {
     title: "Mesaje primite",
-    subtitle: "Notează un gând, o obligație sau un semnal — IA sugerează, tu decizi.",
     capturePlaceholder: "Scrie orice: o sarcină, o factură de plată, un memento…",
     captureButton: "Adaugă",
     capturing: "Se salvează…",

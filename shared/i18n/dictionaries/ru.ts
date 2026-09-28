@@ -62,7 +62,6 @@ export const ru: Dictionary = {
   },
   inbox: {
     title: "Входящие",
-    subtitle: "Зафиксируйте мысль, обязательство или сигнал — ИИ предложит, вы решаете.",
     capturePlaceholder: "Напишите что угодно: задачу, счёт к оплате, напоминание…",
     captureButton: "Добавить",
     capturing: "Сохраняем…",

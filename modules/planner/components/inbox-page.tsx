@@ -98,7 +98,6 @@ export async function InboxPage({ initialTab = "inbox", focusSuggestionId = null
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <header>
         <h1 className="text-xl font-semibold text-text-primary">{dict.title}</h1>
-        <p className="mt-1 text-sm text-text-secondary">{dict.subtitle}</p>
       </header>
 
       <InboxCaptureComposer dict={dict} orgName={ctx.org.name} />

@@ -76,7 +76,6 @@ export const en = {
   },
   inbox: {
     title: "Capture",
-    subtitle: "Capture a thought, obligation or signal — AI suggests, you decide.",
     capturePlaceholder: "Type anything: a task, a bill to pay, a reminder…",
     captureButton: "Capture",
     capturing: "Capturing…",
