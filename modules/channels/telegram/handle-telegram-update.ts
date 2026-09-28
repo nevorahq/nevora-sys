@@ -5,15 +5,25 @@ import { getDictionaryFor } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 import { PLANNER_RAW_TEXT_MAX_LENGTH } from "@/modules/planner/schemas/planner-entry.schema";
 import { resolveChannelContext } from "../services/channel-context";
-import { captureChannelText, processChannelCapture } from "../services/channel-intake";
+import { DOCUMENT_MAX_FILE_SIZE_BYTES } from "@/modules/documents/constants/document.constants";
+import {
+  captureChannelFile,
+  captureChannelText,
+  processChannelCapture,
+  processChannelFileCapture,
+  type ChannelFileOutcome,
+} from "../services/channel-intake";
 import { consumeLinkCode, findActiveIntegration, revokeIntegrationByExternal } from "../services/link-codes";
 import type { ChannelIntegration } from "../types";
-import { hasMedia, parseTelegramCommand, type TelegramUpdate } from "./telegram-update";
+import { hasMedia, parseTelegramCommand, pickAttachment, type TelegramUpdate } from "./telegram-update";
+import type { TelegramDownload } from "./telegram-api";
 
 export interface TelegramHandlerDeps {
   /** Service-role client: a webhook has no user session. */
   supabase: SupabaseClient;
   send: (chatId: string, text: string) => Promise<boolean>;
+  /** Fetch a file the user sent (Bot API getFile + download), capped at `maxBytes`. */
+  download: (fileId: string, maxBytes: number) => Promise<TelegramDownload>;
   /** Public app origin, for the Inbox link in replies. */
   appUrl: string;
 }
@@ -28,6 +38,8 @@ export interface TelegramHandleResult {
     | "not_linked"
     | "help"
     | "media_not_supported"
+    | "media_too_large"
+    | "media_rejected"
     | "context_denied"
     | "too_long"
     | "captured"
@@ -102,11 +114,12 @@ export async function handleTelegramUpdate(
   const locale = await userLocale(deps.supabase, integration, senderLocale);
   const inboxUrl = `${deps.appUrl}${ROUTES.inbox}?tab=review`;
 
-  if (hasMedia(message)) {
-    await reply(locale, (bot) => bot.mediaNotYet.replace("{url}", inboxUrl));
+  const attachment = pickAttachment(message);
+  if (hasMedia(message) && !attachment) {
+    await reply(locale, (bot) => bot.mediaUnsupported);
     return { action: "media_not_supported" };
   }
-  if (!text || command) {
+  if (!attachment && (!text || command)) {
     await reply(locale, (bot) => bot.help);
     return { action: "help" };
   }
@@ -119,10 +132,63 @@ export async function handleTelegramUpdate(
     return { action: "context_denied" };
   }
   const ctx = context.ctx;
+  const messageKey = `${chatId}:${message.message_id}`;
+
+  if (attachment) {
+    const tooLarge = () => reply(locale, (bot) => bot.mediaTooLarge.replace("{max}", String(DOCUMENT_MAX_FILE_SIZE_BYTES / (1024 * 1024))));
+    if (attachment.size != null && attachment.size > DOCUMENT_MAX_FILE_SIZE_BYTES) {
+      await tooLarge();
+      return { action: "media_too_large" };
+    }
+    const downloaded = await deps.download(attachment.fileId, DOCUMENT_MAX_FILE_SIZE_BYTES);
+    if (!downloaded.ok) {
+      if (downloaded.reason === "too_large") {
+        await tooLarge();
+        return { action: "media_too_large" };
+      }
+      // Transient: answer 500 so Telegram redelivers the message.
+      throw new Error("Telegram file could not be downloaded.");
+    }
+
+    const file = new File([downloaded.bytes], attachment.fileName, attachment.mimeType ? { type: attachment.mimeType } : {});
+    const stored = await captureChannelFile(deps.supabase, ctx, {
+      channel: "telegram",
+      messageKey,
+      file,
+      note: message.caption?.trim() || null,
+      kind: attachment.kind,
+    });
+    if (!stored.ok) {
+      if (stored.code === "failed") throw new Error("Telegram file capture could not be stored.");
+      await reply(locale, (bot) =>
+        stored.code === "invalid_file" ? bot.mediaInvalid : stored.code === "plan_limit" ? bot.planLimit : bot.forbidden,
+      );
+      return { action: "media_rejected" };
+    }
+    // A redelivery of a stored file: the first delivery reads it and replies.
+    if (stored.reused) return { action: "duplicate" };
+    const extractionId = stored.extractionId;
+    if (!extractionId) {
+      await reply(locale, (bot) => bot.mediaSaved.replace("{url}", inboxUrl));
+      return { action: "captured" };
+    }
+
+    return {
+      action: "captured",
+      after: async () => {
+        const outcome = await processChannelFileCapture(deps.supabase, ctx, {
+          documentId: stored.documentId,
+          entryId: stored.entryId,
+          extractionId,
+        });
+        await reply(locale, (bot) => fileOutcomeText(bot, outcome, locale, inboxUrl));
+      },
+    };
+  }
 
   const captured = await captureChannelText(deps.supabase, ctx, {
     channel: "telegram",
-    messageKey: `${chatId}:${message.message_id}`,
+    messageKey,
     text,
   });
   if (!captured.ok) {
@@ -159,6 +225,33 @@ export async function handleTelegramUpdate(
 }
 
 type BotCopy = ReturnType<typeof getDictionaryFor>["channels"]["telegram"]["bot"];
+
+const INTL_LOCALE: Record<Locale, string> = { en: "en-US", ru: "ru-RU", ro: "ro-RO" };
+
+function fileOutcomeText(bot: BotCopy, outcome: ChannelFileOutcome, locale: Locale, inboxUrl: string): string {
+  switch (outcome.kind) {
+    case "receipt":
+      return bot.mediaReceipt
+        .replace("{vendor}", outcome.vendor?.trim() || bot.unknownVendor)
+        .replace("{amount}", formatAmount(outcome.amount, outcome.currency, locale))
+        .replace("{url}", inboxUrl);
+    case "tasks":
+      return bot.mediaTasks.replace("{count}", String(outcome.count)).replace("{url}", inboxUrl);
+    case "failed":
+      return bot.mediaFailed.replace("{url}", inboxUrl);
+    default:
+      return bot.mediaSaved.replace("{url}", inboxUrl);
+  }
+}
+
+function formatAmount(amount: number | null, currency: string | null, locale: Locale): string {
+  if (amount == null) return "—";
+  try {
+    return new Intl.NumberFormat(INTL_LOCALE[locale], { style: "currency", currency: currency ?? "EUR" }).format(amount);
+  } catch {
+    return `${amount.toFixed(2)} ${currency ?? ""}`.trim();
+  }
+}
 
 function botCopy(locale: Locale): BotCopy {
   return getDictionaryFor(locale).channels.telegram.bot;

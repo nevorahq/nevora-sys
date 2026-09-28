@@ -49,3 +49,46 @@ export async function sendTelegramMessage(token: string, chatId: string, text: s
     return false;
   }
 }
+
+export type TelegramDownload =
+  | { ok: true; bytes: ArrayBuffer }
+  | { ok: false; reason: "too_large" | "failed" };
+
+/**
+ * Download a file the user sent to the bot (getFile → file endpoint). `maxBytes`
+ * is checked against the size Telegram reports and again against the bytes, so
+ * an oversized file is never buffered whole.
+ */
+export async function downloadTelegramFile(token: string, fileId: string, maxBytes: number): Promise<TelegramDownload> {
+  try {
+    const meta = await fetch(`${API_BASE}/bot${token}/getFile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file_id: fileId }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    const body = (await meta.json().catch(() => null)) as
+      | { ok?: boolean; result?: { file_path?: string; file_size?: number } }
+      | null;
+    const filePath = body?.result?.file_path;
+    if (!meta.ok || !body?.ok || !filePath) {
+      logger.warn("telegram.get_file.failed", { status: meta.status });
+      return { ok: false, reason: "failed" };
+    }
+    if ((body.result?.file_size ?? 0) > maxBytes) return { ok: false, reason: "too_large" };
+
+    const file = await fetch(`${API_BASE}/file/bot${token}/${filePath}`, { signal: AbortSignal.timeout(TIMEOUT_MS * 2) });
+    if (!file.ok) {
+      logger.warn("telegram.download.failed", { status: file.status });
+      return { ok: false, reason: "failed" };
+    }
+    const declared = Number(file.headers.get("content-length") ?? 0);
+    if (declared > maxBytes) return { ok: false, reason: "too_large" };
+    const bytes = await file.arrayBuffer();
+    if (bytes.byteLength > maxBytes) return { ok: false, reason: "too_large" };
+    return { ok: true, bytes };
+  } catch (error) {
+    logger.warn("telegram.download.threw", { error: error instanceof Error ? error.message : String(error) });
+    return { ok: false, reason: "failed" };
+  }
+}

@@ -6,7 +6,7 @@ import { logger } from "@/lib/observability/logger";
 import { createActionItemForDocument } from "@/modules/action-center/services/create-action-item-for-document";
 import { createDocumentSuggestionWithClassification } from "@/modules/review/services/financial-suggestion.service";
 import { normalizeFinancialDocument } from "@/modules/ai/services/normalize-financial-document";
-import { featureGateService, usageService } from "@/modules/billing";
+import { assertPlanLimit, canUseFeatureForOrganization } from "@/modules/billing";
 import { markDocumentPlannerEntry } from "@/modules/planner/services/mark-document-planner-entry";
 import {
   findDocumentCapture,
@@ -153,10 +153,15 @@ export async function runDocumentExtraction(
     return fail(supabase, ctx, { documentId, extractionId, code: "no_attachment", message: "Document not found." });
   }
 
+  // Plan gates through the caller's client, not the request session: the same
+  // checks for a signed-in upload, and they also hold for the sessionless
+  // callers (the extraction sweep, a channel webhook), which a session-bound
+  // check silently failed closed for.
   try {
-    const blocked = await featureGateService.getBlockedReason(ctx.workspace.id, "documents.process");
-    if (blocked) throw new Error(blocked.message);
-    await usageService.assertWithinLimit(ctx.workspace.id, "documents_processed_monthly", 1);
+    if (!(await canUseFeatureForOrganization(ctx.org.id, "documents.process", supabase))) {
+      throw new Error("Document processing is not included in your current plan.");
+    }
+    await assertPlanLimit(ctx.org.id, "documents_processed.monthly", 1, supabase);
   } catch (error) {
     return fail(supabase, ctx, {
       documentId,

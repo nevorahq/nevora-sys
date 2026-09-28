@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import {
   commercialFeatureKeySchema,
@@ -22,6 +23,8 @@ async function organizationIdForWorkspace(workspaceId: string): Promise<string |
 export async function canUseFeatureForOrganization(
   organizationId: string,
   featureKey: CommercialFeatureKey,
+  /** Service-role client for a sessionless caller; default is the session. */
+  client?: SupabaseClient,
 ): Promise<boolean> {
   const parsed = commercialFeatureKeySchema.safeParse(featureKey);
   if (!parsed.success) return false;
@@ -29,6 +32,7 @@ export async function canUseFeatureForOrganization(
   const entitlement = await getPlanEntitlement(
     organizationId,
     featureKeyToEntitlementKey[parsed.data],
+    client,
   );
   return entitlement?.value === true;
 }

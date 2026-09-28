@@ -31,14 +31,23 @@ export interface UsageValue {
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
+/*
+ * The read-side plan checks below take an optional `client`. Omitted, they use
+ * the request's session client — every existing caller. A verified machine
+ * caller acting for a user without a session (the channel webhook, the
+ * extraction sweep) passes its service-role client instead; the checks and
+ * their results are identical, only the connection differs.
+ */
+
 function planCode(plan: Pick<Plan, "slug" | "code">): string {
   return plan.code ?? plan.slug;
 }
 
 export async function getOrganizationSubscription(
   organizationId: string,
+  client?: Supabase,
 ): Promise<SubscriptionWithPlan | null> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
 
   const { data, error } = await supabase
     .from("billing_subscriptions")
@@ -65,19 +74,20 @@ export async function getOrganizationSubscription(
   return data as unknown as SubscriptionWithPlan | null;
 }
 
-export async function getOrganizationPlan(organizationId: string): Promise<Plan | null> {
-  const subscription = await getOrganizationSubscription(organizationId);
+export async function getOrganizationPlan(organizationId: string, client?: Supabase): Promise<Plan | null> {
+  const subscription = await getOrganizationSubscription(organizationId, client);
   return subscription?.plan ?? null;
 }
 
 export async function getPlanEntitlement(
   organizationId: string,
   key: BillingEntitlementKey,
+  client?: Supabase,
 ): Promise<{ key: BillingEntitlementKey; value: unknown; planCode: string } | null> {
-  const plan = await getOrganizationPlan(organizationId);
+  const plan = await getOrganizationPlan(organizationId, client);
   if (!plan) return null;
 
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data } = await supabase
     .from("plan_entitlements")
     .select("key, value")
@@ -96,12 +106,13 @@ export async function getPlanEntitlement(
 export async function getPlanLimit(
   organizationId: string,
   key: BillingLimitKey,
+  client?: Supabase,
 ): Promise<PlanLimit | null> {
-  const plan = await getOrganizationPlan(organizationId);
+  const plan = await getOrganizationPlan(organizationId, client);
   if (!plan) return null;
 
   const period = defaultPeriodForLimit(key);
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data } = await supabase
     .from("plan_limits")
     .select("value, period")
@@ -147,10 +158,11 @@ async function countRows(
 async function usagePeriodWindowForOrganization(
   organizationId: string,
   period: LimitPeriod,
+  client?: Supabase,
 ): Promise<{ start: Date | null; end: Date | null }> {
   if (period !== "monthly") return currentPeriodWindow(period);
 
-  const subscription = await getOrganizationSubscription(organizationId);
+  const subscription = await getOrganizationSubscription(organizationId, client);
   const start = subscription?.current_period_start
     ? new Date(subscription.current_period_start)
     : null;
@@ -176,8 +188,9 @@ async function usagePeriodWindowForOrganization(
 export async function getUsage(
   organizationId: string,
   key: BillingLimitKey,
+  client?: Supabase,
 ): Promise<UsageValue> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
 
   if (key === "members.count") {
     const { count } = await supabase
@@ -235,7 +248,7 @@ export async function getUsage(
   }
 
   if (key === "documents_processed.monthly") {
-    const window = await usagePeriodWindowForOrganization(organizationId, "monthly");
+    const window = await usagePeriodWindowForOrganization(organizationId, "monthly", client);
     let query = supabase
       .from("ai_requests")
       .select("id", { count: "exact", head: true })
@@ -249,7 +262,7 @@ export async function getUsage(
   }
 
   if (key === "ai_suggestions.monthly") {
-    const window = await usagePeriodWindowForOrganization(organizationId, "monthly");
+    const window = await usagePeriodWindowForOrganization(organizationId, "monthly", client);
     let query = supabase
       .from("ai_requests")
       .select("id", { count: "exact", head: true })
@@ -263,7 +276,7 @@ export async function getUsage(
   }
 
   if (key === "ai_requests.monthly") {
-    const window = await usagePeriodWindowForOrganization(organizationId, "monthly");
+    const window = await usagePeriodWindowForOrganization(organizationId, "monthly", client);
     let query = supabase
       .from("ai_requests")
       .select("id", { count: "exact", head: true })
@@ -275,7 +288,7 @@ export async function getUsage(
   }
 
   if (key === "automation_runs.monthly") {
-    const window = await usagePeriodWindowForOrganization(organizationId, "monthly");
+    const window = await usagePeriodWindowForOrganization(organizationId, "monthly", client);
     let query = supabase
       .from("automation_audit_logs")
       .select("id", { count: "exact", head: true })
@@ -321,16 +334,17 @@ export async function assertPlanLimit(
   organizationId: string,
   key: BillingLimitKey,
   incrementBy = 1,
+  client?: Supabase,
 ): Promise<void> {
   const [limit, usage] = await Promise.all([
-    getPlanLimit(organizationId, key),
-    getUsage(organizationId, key),
+    getPlanLimit(organizationId, key, client),
+    getUsage(organizationId, key, client),
   ]);
 
   if (!limit || limit.value === null) return;
 
   if (usage.value + incrementBy > limit.value) {
-    await emitLimitReachedEvent(organizationId, {
+    await emitLimitReachedEvent(organizationId, client, {
       key,
       currentUsage: usage.value,
       limit: limit.value,
@@ -348,10 +362,11 @@ export async function assertPlanLimit(
 
 async function emitLimitReachedEvent(
   organizationId: string,
+  client: Supabase | undefined,
   payload: { key: string; currentUsage: number; limit: number | null; planCode: string },
 ): Promise<void> {
   try {
-    const supabase = await createClient();
+    const supabase = client ?? (await createClient());
     await supabase.rpc("emit_domain_event", {
       p_organization_id: organizationId,
       p_event_name: "limit_reached",
@@ -463,6 +478,53 @@ export async function reserveOrganizationUsage(
     throw new Error(error.message);
   }
 
+  return Number(data ?? 0);
+}
+
+/**
+ * documents.count reservation for a verified service actor with no session (a
+ * channel webhook storing a photo for a linked user). Migration 122: the RPC is
+ * service-role only and re-checks membership, writability and the plan limit.
+ */
+export async function reserveDocumentsUsageForService(
+  client: Supabase,
+  organizationId: string,
+  actorId: string,
+): Promise<number> {
+  const { data, error } = await client.rpc("reserve_documents_usage_for_service", {
+    p_organization_id: organizationId,
+    p_actor_id: actorId,
+    p_increment: 1,
+  });
+  if (error) {
+    if (error.message.includes("plan_limit_exceeded")) {
+      logger.warn("billing.reserve.denied", { organizationId, key: "documents.count", reason: "plan_limit_exceeded", actor: "service" });
+      throw new Error(limitReachedMessage("documents.count", error));
+    }
+    if (error.message.includes("subscription_not_writable")) {
+      logger.warn("billing.reserve.denied", { organizationId, key: "documents.count", reason: "subscription_not_writable", actor: "service" });
+      throw new Error("Your trial or subscription no longer allows write actions. Reads remain available.");
+    }
+    logger.error("billing.reserve.failed", { organizationId, key: "documents.count", actor: "service", error: error.message });
+    throw new Error(error.message);
+  }
+  return Number(data ?? 0);
+}
+
+export async function releaseDocumentsUsageForService(
+  client: Supabase,
+  organizationId: string,
+  actorId: string,
+): Promise<number> {
+  const { data, error } = await client.rpc("release_documents_usage_for_service", {
+    p_organization_id: organizationId,
+    p_actor_id: actorId,
+    p_decrement: 1,
+  });
+  if (error) {
+    logger.error("billing.release.failed", { organizationId, key: "documents.count", actor: "service", error: error.message });
+    throw new Error(error.message);
+  }
   return Number(data ?? 0);
 }
 

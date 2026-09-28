@@ -13,15 +13,30 @@ const telegramUserSchema = z.object({
   language_code: z.string().max(16).optional(),
 });
 
+const telegramPhotoSizeSchema = z.object({
+  file_id: z.string().max(512),
+  file_size: z.number().int().optional(),
+  width: z.number().int().optional(),
+  height: z.number().int().optional(),
+});
+
+const telegramDocumentSchema = z.object({
+  file_id: z.string().max(512),
+  file_name: z.string().max(512).optional(),
+  mime_type: z.string().max(255).optional(),
+  file_size: z.number().int().optional(),
+});
+
 const telegramMessageSchema = z.object({
   message_id: z.number().int(),
   chat: z.object({ id: z.number().int(), type: z.string() }),
   from: telegramUserSchema.optional(),
   text: z.string().optional(),
   caption: z.string().optional(),
-  // Presence flags only — media is not captured yet (see ADR 002 step 2).
-  photo: z.array(z.unknown()).optional(),
-  document: z.unknown().optional(),
+  // Telegram sends each photo in several sizes, smallest first.
+  photo: z.array(telegramPhotoSizeSchema).optional(),
+  document: telegramDocumentSchema.optional(),
+  // Presence flags only — not captured.
   voice: z.unknown().optional(),
   video: z.unknown().optional(),
   audio: z.unknown().optional(),
@@ -60,6 +75,29 @@ export function parseTelegramCommand(text: string): TelegramCommand | null {
     default:
       return { kind: "unknown" };
   }
+}
+
+export type TelegramAttachment = { fileId: string; fileName: string; mimeType: string | null; size: number | null; kind: "photo" | "document" };
+
+/**
+ * The file a message carries that the Inbox can read: the largest size of a
+ * photo, or a document. Null for text, voice, video and audio.
+ */
+export function pickAttachment(message: TelegramMessage): TelegramAttachment | null {
+  const photo = message.photo?.at(-1);
+  if (photo) {
+    return { fileId: photo.file_id, fileName: `telegram-photo-${message.message_id}.jpg`, mimeType: "image/jpeg", size: photo.file_size ?? null, kind: "photo" };
+  }
+  if (message.document) {
+    return {
+      fileId: message.document.file_id,
+      fileName: message.document.file_name?.trim() || `telegram-file-${message.message_id}`,
+      mimeType: message.document.mime_type ?? null,
+      size: message.document.file_size ?? null,
+      kind: "document",
+    };
+  }
+  return null;
 }
 
 /** Whether the message carries something other than text (photo, file, voice…). */

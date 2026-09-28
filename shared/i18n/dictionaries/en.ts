@@ -1799,7 +1799,18 @@ export const en = {
         capturedNoDraft: "Added to your Inbox. Review it in Nevora: {url}",
         /** {max} is the character limit. */
         tooLong: "That's too long — keep it under {max} characters.",
-        mediaNotYet: "For now I only accept text. Add photos and documents in the Nevora Inbox: {url}",
+        /** {vendor}, {amount} (formatted), {url} the Review tab. */
+        mediaReceipt: "Receipt read: {vendor} — {amount}. Check and save it to Finance in Nevora: {url}",
+        /** {count} is the number of task drafts found. */
+        mediaTasks: "Added to your Inbox. Tasks found: {count}. Confirm them in Nevora: {url}",
+        mediaSaved: "Saved to Documents and added to your Inbox for review: {url}",
+        mediaFailed: "I couldn't read this file. It's saved in Documents — review it in Nevora: {url}",
+        mediaUnsupported: "I can read photos, PDFs and images. Voice messages, video and audio aren't supported.",
+        /** {max} is the size limit in MB. */
+        mediaTooLarge: "This file is too large — send one up to {max} MB.",
+        mediaInvalid: "This file type can't be added. Send a photo, a PDF or an image.",
+        planLimit: "Your plan's limit has been reached, so the file wasn't saved.",
+        unknownVendor: "unknown merchant",
         notMember: "You're no longer a member of this organization. Connect again from Nevora.",
         readOnly: "Your organization is read-only right now (the trial or subscription has ended), so I can't add anything.",
         forbidden: "Your role can't add to the Inbox.",

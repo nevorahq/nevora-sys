@@ -123,6 +123,8 @@ export {
   incrementUsage,
   reserveOrganizationUsage,
   releaseOrganizationUsage,
+  reserveDocumentsUsageForService,
+  releaseDocumentsUsageForService,
   decrementUsage,
   recalculateOrganizationUsage,
   assertSubscriptionWritable,
