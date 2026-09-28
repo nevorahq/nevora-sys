@@ -70,6 +70,11 @@ export interface DocumentUploadServiceParams {
    * When omitted, defaults to `isFinancialDocumentType(input.doc_type)`.
    */
   queueExtraction?: boolean;
+  /**
+   * QR/barcode scanned with an Inbox capture (migration 120). Only the payload
+   * and its symbology are stored; extraction re-parses it. Omit when none.
+   */
+  captureCode?: { raw: string; format: string | null } | null;
 }
 
 function hasWritePermission(ctx: CurrentContext): boolean {
@@ -178,12 +183,23 @@ export async function createDocumentWithAttachments(
   // Only reference the migration-105 column on the Inbox path (which requires the
   // migration anyway). The Documents dashboard form never sends a token, so it
   // stays compatible even in the window before 105 is applied.
-  const insertRow = inboxCaptureId ? { ...record, inbox_capture_id: inboxCaptureId } : record;
-  const { data: document, error: documentError } = await supabase
+  // Same rule for the migration-120 column: only a scan capture references it.
+  const captureRow = inboxCaptureId ? { ...record, inbox_capture_id: inboxCaptureId } : record;
+  const insertRow = params.captureCode ? { ...captureRow, capture_code: params.captureCode } : captureRow;
+  let { data: document, error: documentError } = await supabase
     .from("documents")
     .insert(insertRow)
     .select("id")
     .single();
+  // Before migration 120 the column is unknown (PGRST204). The code is only a
+  // hint — keep the user's photo and store it without the code.
+  if (documentError?.code === "PGRST204" && params.captureCode) {
+    ({ data: document, error: documentError } = await supabase
+      .from("documents")
+      .insert(captureRow)
+      .select("id")
+      .single());
+  }
 
   if (documentError || !document) {
     // A unique-violation on inbox_capture_id means a concurrent retry won the

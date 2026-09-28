@@ -19,6 +19,12 @@ import {
   type ExtractedFinancialDocument,
 } from "../schemas/extracted-financial-document.schema";
 import type { ExtractionErrorCode } from "../types/document-extraction.types";
+import {
+  describeCodeForModel,
+  readStoredCodeHint,
+  reconcileWithCode,
+  type ReceiptCodeHint,
+} from "../utils/parse-receipt-code";
 import { actionItemTitle } from "@/modules/action-center/utils/action-item-title";
 
 const STORAGE_BUCKET = "documents";
@@ -220,8 +226,14 @@ export async function runDocumentExtraction(
   }
   const aiRequestId = aiRequest.id as string;
 
+  // A code scanned with the capture (Scan mode) is a hint the model reads and a
+  // check its header must pass.
+  const codeHint = await loadCaptureCode(supabase, ctx, documentId);
+
   // Normalize to the strict schema.
-  const normalized = await normalizeFinancialDocument(route.normalization);
+  const normalized = await normalizeFinancialDocument(route.normalization, {
+    hint: codeHint ? describeCodeForModel(codeHint) : null,
+  });
   if (!normalized.ok) {
     await markAiRequest(supabase, aiRequestId, "failed");
     return fail(supabase, ctx, {
@@ -236,6 +248,7 @@ export async function runDocumentExtraction(
   await markAiRequest(supabase, aiRequestId, "completed");
 
   const extracted = normalized.extracted;
+  const codeMismatches = applyCaptureCode(extracted, codeHint);
 
   // Persist normalized header + line items. A header failure is fatal: never
   // mark the run completed on top of unsaved financial data.
@@ -324,8 +337,9 @@ export async function runDocumentExtraction(
       itemNames: extracted.items.map((item) => item.name),
       aiCategoryHints: extracted.items.map((item) => item.category),
       metadata: {
-        needs_field_review: decision.requiresFieldReview,
+        needs_field_review: decision.requiresFieldReview || codeMismatches.length > 0,
         decision_reason: decision.reason,
+        ...(codeHint ? { capture_code_kind: codeHint.kind, code_mismatches: codeMismatches } : {}),
       },
     });
 
@@ -389,6 +403,43 @@ export async function enqueueAndRunDocumentExtraction(
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * The QR/barcode stored with a Scan capture, re-parsed. Read on its own so a
+ * database without migration 120 (no `capture_code` column) still extracts.
+ */
+async function loadCaptureCode(
+  supabase: SupabaseClient,
+  ctx: CurrentContext,
+  documentId: string,
+): Promise<ReceiptCodeHint | null> {
+  const { data, error } = await supabase
+    .from("documents")
+    .select("capture_code")
+    .eq("id", documentId)
+    .eq("organization_id", ctx.org.id)
+    .maybeSingle();
+  if (error) return null;
+  return readStoredCodeHint((data as { capture_code?: unknown } | null)?.capture_code);
+}
+
+/**
+ * Put the code's header values over the model's (the issuer printed them) and
+ * return where the two disagreed. Mutates `extracted` in place, before persist.
+ */
+function applyCaptureCode(extracted: ExtractedFinancialDocument, hint: ReceiptCodeHint | null) {
+  if (!hint) return [];
+  const reconciled = reconcileWithCode(hint, {
+    amount: extracted.transaction.total,
+    currency: extracted.transaction.currency,
+    date: normalizeDate(extracted.transaction.date),
+  });
+  extracted.transaction.total = reconciled.amount;
+  if (reconciled.currency) extracted.transaction.currency = reconciled.currency;
+  extracted.transaction.date = reconciled.date;
+  if (!extracted.merchant.name && hint.payeeName) extracted.merchant.name = hint.payeeName;
+  return reconciled.mismatches;
+}
 
 /** Force jobs that have been in-flight too long to a terminal 'failed' state. */
 async function reapStaleExtractions(

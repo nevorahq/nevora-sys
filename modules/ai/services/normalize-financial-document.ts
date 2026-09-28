@@ -136,8 +136,13 @@ const TOOL_INPUT_SCHEMA = {
 
 const TOOL_NAME = "record_financial_document";
 
-function buildUserContent(input: NormalizationInput): Anthropic.MessageParam["content"] {
-  const instruction = { type: "text" as const, text: "Extract the financial data from this document." };
+function buildUserContent(input: NormalizationInput, hint: string | null): Anthropic.MessageParam["content"] {
+  const instruction = {
+    type: "text" as const,
+    text: hint
+      ? `Extract the financial data from this document.\n\n${hint}`
+      : "Extract the financial data from this document.",
+  };
 
   if (input.kind === "text") {
     return [
@@ -166,6 +171,8 @@ function buildUserContent(input: NormalizationInput): Anthropic.MessageParam["co
 
 export async function normalizeFinancialDocument(
   input: NormalizationInput,
+  /** Extra context for the model, e.g. a QR code scanned from the same receipt. */
+  options: { hint?: string | null } = {},
 ): Promise<NormalizationResult> {
   // Pseudo-provider for local testing without Anthropic credits. Server-env
   // flag only; never reachable from client input or on by default.
@@ -190,7 +197,7 @@ export async function normalizeFinancialDocument(
         },
       ],
       tool_choice: { type: "tool", name: TOOL_NAME },
-      messages: [{ role: "user", content: buildUserContent(input) }],
+      messages: [{ role: "user", content: buildUserContent(input, options.hint ?? null) }],
     });
 
     const toolUse = message.content.find(

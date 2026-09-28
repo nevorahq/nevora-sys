@@ -7,6 +7,7 @@ import { reportError } from "@/lib/observability/report-error";
 import { ROUTES } from "@/shared/config/routes";
 import { captureInboxDocument } from "@/modules/planner/services/capture-inbox-document";
 import { generateCaptureTitle } from "@/modules/planner/utils/generate-capture-title";
+import { parseReceiptCode, RECEIPT_CODE_MAX_LENGTH } from "@/modules/documents/utils/parse-receipt-code";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
@@ -16,6 +17,9 @@ const captureFormSchema = z.object({
   captureId: z.string().uuid("A capture id is required."),
   entryType: z.enum(["photo", "document"]),
   note: z.string().trim().max(5_000, "Note must be 5,000 characters or fewer.").optional().default(""),
+  // Scan mode: the decoded QR/barcode and the scanner's symbology name.
+  code: z.string().max(RECEIPT_CODE_MAX_LENGTH * 2).optional().default(""),
+  codeFormat: z.string().trim().max(40).optional().default(""),
 });
 
 /**
@@ -57,6 +61,8 @@ export async function POST(request: Request) {
       captureId: formData.get("captureId"),
       entryType: formData.get("entryType") || "document",
       note: formData.get("note") || "",
+      code: formData.get("code") || "",
+      codeFormat: formData.get("codeFormat") || "",
     });
     if (!parsed.success) {
       return NextResponse.json({ error: errors.invalid }, { status: 400 });
@@ -67,6 +73,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: errors.noFiles }, { status: 400 });
     }
 
+    // Parsed here only to normalize it; the stored payload is re-parsed on read.
+    const code = parseReceiptCode(parsed.data.code, parsed.data.codeFormat || null);
+
     const title = generateCaptureTitle({ filename: files[0]?.name, entryType: parsed.data.entryType });
 
     const supabase = await createClient();
@@ -76,6 +85,7 @@ export async function POST(request: Request) {
       note: parsed.data.note,
       entryType: parsed.data.entryType,
       title,
+      captureCode: code ? { raw: code.raw, format: code.format } : null,
     });
 
     if (!result.ok) {

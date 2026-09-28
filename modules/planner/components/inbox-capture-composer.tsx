@@ -3,20 +3,26 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CameraIcon, FileTextIcon, TypeIcon, Trash2Icon } from "lucide-react";
+import { CameraIcon, FileTextIcon, ScanLineIcon, TypeIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/utils/cn";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
+import type { Locale } from "@/shared/i18n/constants";
 import { useDocumentFiles } from "@/modules/documents/hooks/use-document-files";
 import { DocumentFileUpload } from "@/modules/documents/components/document-file-upload";
+import { ReceiptReviewDialog } from "@/modules/documents/components/receipt-review-dialog";
+import type { DetectedCode } from "@/modules/documents/utils/barcode-reader";
 import { CaptureInput } from "./capture-input";
+import { ReceiptScanner } from "./receipt-scanner";
 
-type Mode = "text" | "photo" | "document";
+type Mode = "text" | "photo" | "scan" | "document";
+type BinaryMode = Exclude<Mode, "text">;
 
 interface InboxCaptureComposerProps {
   dict: Dictionary["inbox"];
   /** Organization name shown in the "saved to Documents" disclosure. */
   orgName: string;
+  locale: Locale;
 }
 
 /**
@@ -31,12 +37,13 @@ interface InboxCaptureComposerProps {
  * Money is never touched here: a capture may produce a reviewable draft, but only
  * an explicit confirmation posts a transaction.
  */
-export function InboxCaptureComposer({ dict, orgName }: InboxCaptureComposerProps) {
+export function InboxCaptureComposer({ dict, orgName, locale }: InboxCaptureComposerProps) {
   const [mode, setMode] = useState<Mode>("text");
 
   const modes: { id: Mode; label: string; icon: typeof TypeIcon }[] = [
     { id: "text", label: dict.composer.modeText, icon: TypeIcon },
     { id: "photo", label: dict.composer.modePhoto, icon: CameraIcon },
+    { id: "scan", label: dict.composer.modeScan, icon: ScanLineIcon },
     { id: "document", label: dict.composer.modeDocument, icon: FileTextIcon },
   ];
 
@@ -67,8 +74,7 @@ export function InboxCaptureComposer({ dict, orgName }: InboxCaptureComposerProp
       <div className={mode === "text" ? "block" : "hidden"}>
         <CaptureInput dict={dict} />
       </div>
-      {mode === "photo" && <BinaryCapture key="photo" mode="photo" dict={dict} orgName={orgName} />}
-      {mode === "document" && <BinaryCapture key="document" mode="document" dict={dict} orgName={orgName} />}
+      {mode !== "text" && <BinaryCapture key={mode} mode={mode} dict={dict} orgName={orgName} locale={locale} />}
     </div>
   );
 }
@@ -79,13 +85,19 @@ function BinaryCapture({
   mode,
   dict,
   orgName,
+  locale,
 }: {
-  mode: "photo" | "document";
+  mode: BinaryMode;
   dict: Dictionary["inbox"];
   orgName: string;
+  locale: Locale;
 }) {
   const router = useRouter();
   const { files, error: fileError, addFiles, removeFile, clearFiles } = useDocumentFiles();
+  // Scan mode: the QR/barcode read off the receipt, sent with its photo.
+  const [code, setCode] = useState<DetectedCode | null>(null);
+  // The just-captured Document whose receipt preview is open.
+  const [reviewDocumentId, setReviewDocumentId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -108,13 +120,22 @@ function BinaryCapture({
 
     const formData = new FormData();
     formData.set("captureId", captureIdRef.current);
-    formData.set("entryType", mode);
+    // A scan is a photo capture that also carries the code it read.
+    formData.set("entryType", mode === "document" ? "document" : "photo");
     formData.set("note", note);
+    if (mode === "scan" && code) {
+      formData.set("code", code.raw);
+      formData.set("codeFormat", code.format);
+    }
     for (const file of files) formData.append("files", file);
 
     try {
       const response = await fetch("/api/inbox/capture", { method: "POST", body: formData });
-      const data = (await response.json().catch(() => ({}))) as { error?: string; warning?: string | null };
+      const data = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        warning?: string | null;
+        documentId?: string;
+      };
       if (!response.ok) {
         // Keep captureIdRef so a Retry reuses the same idempotent capture.
         setSubmitError(data.error || dict.composer.captureError);
@@ -123,10 +144,13 @@ function BinaryCapture({
       }
       captureIdRef.current = null;
       clearFiles();
+      setCode(null);
       setNote("");
       setWarning(data.warning ?? null);
       setStatus("done");
       router.refresh();
+      // Preview the extracted receipt right away; it stays in Review if closed.
+      if (data.documentId) setReviewDocumentId(data.documentId);
     } catch {
       setSubmitError(dict.composer.captureError);
       setStatus("error");
@@ -137,6 +161,28 @@ function BinaryCapture({
     <div className="soft-card flex flex-col gap-3 p-4">
       {mode === "photo" ? (
         <PhotoPicker dict={dict} files={files} error={fileError} onAddFiles={addFiles} onClear={clearFiles} />
+      ) : mode === "scan" ? (
+        <>
+          <ReceiptScanner
+            dict={dict.composer}
+            file={files[0] ?? null}
+            code={code}
+            onCapture={(file, found) => {
+              clearFiles();
+              addFiles([file]);
+              setCode(found);
+            }}
+            onClear={() => {
+              clearFiles();
+              setCode(null);
+            }}
+          />
+          {fileError && (
+            <p role="alert" className="text-xs font-medium text-danger">
+              {fileError}
+            </p>
+          )}
+        </>
       ) : (
         <DocumentFileUpload
           files={files}
@@ -194,6 +240,13 @@ function BinaryCapture({
           </Button>
         </div>
       </div>
+
+      <ReceiptReviewDialog
+        documentId={reviewDocumentId}
+        onClose={() => setReviewDocumentId(null)}
+        t={dict.receipt}
+        locale={locale}
+      />
     </div>
   );
 }

@@ -197,7 +197,7 @@ describe("ExtractionReviewActions inline account creation", () => {
         categoryId: "22222222-2222-4222-8222-222222222222",
         expenseContextId: "44444444-4444-4444-8444-444444444444",
         rememberChoice: true,
-        merchantName: "Bolt SRL",
+        vendorName: "Bolt SRL",
         amount: 50,
         transactionDate: "2026-06-28",
         currency: "EUR",

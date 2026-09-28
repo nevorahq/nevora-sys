@@ -95,6 +95,6 @@ export const config = {
     // Исключаем статику, метадата-иконки (favicon/icon/apple-icon/manifest)
     // и любые файлы-картинки — иначе proxy редиректит их на /login и иконки
     // ломаются на публичных страницах (например, /login).
-    "/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|manifest.webmanifest|sitemap.xml|robots.txt|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|webmanifest)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|manifest.webmanifest|sitemap.xml|robots.txt|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|webmanifest|wasm)$).*)",
   ],
 };
