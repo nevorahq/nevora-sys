@@ -87,8 +87,18 @@ export type PlannerSuggestionStatus = (typeof PLANNER_SUGGESTION_STATUSES)[numbe
 export const PLANNER_SUGGESTION_OPEN_STATUSES = ["pending", "edited"] as const satisfies readonly PlannerSuggestionStatus[];
 
 /**
- * Suggestion types that carry money semantics. On accept they route to the
- * money-safe financial-task service and can NEVER post a transaction.
+ * Types intent detection may propose from a raw capture (ADR 002, step 0.1).
+ * routeAccept also executes link_entities and create_action_item, but those come
+ * from entity-seeded drafts: raw text carries no entity ids, and an action item
+ * lands in the read-only Action Center instead of Tasks.
+ */
+export const DETECTABLE_SUGGESTION_TYPES = ["create_task"] as const satisfies readonly PlannerSuggestionType[];
+export type DetectableSuggestionType = (typeof DETECTABLE_SUGGESTION_TYPES)[number];
+
+/**
+ * Retired financial suggestion types (the Financial Tasks concept). Still in the
+ * migration-080 CHECK dictionary for legacy rows; routeAccept refuses them and
+ * detection no longer proposes them.
  */
 export const FINANCIAL_SUGGESTION_TYPES: readonly PlannerSuggestionType[] = [
   "create_financial_task",

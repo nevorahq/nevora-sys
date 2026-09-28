@@ -8,9 +8,16 @@ import { createDocumentSuggestionWithClassification } from "@/modules/review/ser
 import { normalizeFinancialDocument } from "@/modules/ai/services/normalize-financial-document";
 import { featureGateService, usageService } from "@/modules/billing";
 import { markDocumentPlannerEntry } from "@/modules/planner/services/mark-document-planner-entry";
+import {
+  findDocumentCapture,
+  proposeTasksFromDocumentCapture,
+} from "@/modules/planner/services/propose-tasks-from-document-capture";
 import { routeExtraction } from "./document-extraction-router";
 import { evaluateExtraction } from "./confidence-rules";
-import type { ExtractedFinancialDocument } from "../schemas/extracted-financial-document.schema";
+import {
+  VISIBLE_TEXT_MAX_LENGTH,
+  type ExtractedFinancialDocument,
+} from "../schemas/extracted-financial-document.schema";
 import type { ExtractionErrorCode } from "../types/document-extraction.types";
 import { actionItemTitle } from "@/modules/action-center/utils/action-item-title";
 
@@ -247,7 +254,27 @@ export async function runDocumentExtraction(
   // Confidence gate + terminal status update (compensated on failure). If line
   // items couldn't be saved, force a human review even for a high-confidence doc.
   const decision = evaluateExtraction(extracted);
-  const extractionStatus = persisted.itemsComplete ? decision.extractionStatus : "needs_review";
+
+  // Work route (ADR 002, step 0.3): a non-financial document captured in the
+  // Inbox (a note, a whiteboard, a contract) becomes task drafts on its capture,
+  // instead of an expense draft or a generic "review this document". Proposed
+  // before the terminal status write so the capture shows as ready, not as
+  // needing review; a retried run finds the drafts and does not add more.
+  let taskDrafts = 0;
+  if (extracted.documentType === "unknown") {
+    const capture = await findDocumentCapture(supabase, ctx, documentId);
+    const documentText = (route.rawText ?? extracted.visibleText ?? "").slice(0, VISIBLE_TEXT_MAX_LENGTH);
+    if (capture && documentText.trim()) {
+      taskDrafts = await proposeTasksFromDocumentCapture(supabase, ctx, capture, documentText);
+    }
+  }
+  const workRoute = taskDrafts > 0;
+
+  const extractionStatus = workRoute
+    ? "completed"
+    : persisted.itemsComplete
+      ? decision.extractionStatus
+      : "needs_review";
   const { error: statusError } = await supabase
     .from("document_extractions")
     .update({
@@ -277,7 +304,10 @@ export async function runDocumentExtraction(
 
   let suggestionId: string | null = null;
 
-  if (decision.createTransaction) {
+  if (workRoute) {
+    // The task drafts are the review; Tasks and Money do not bridge, so a work
+    // document never also becomes an expense draft.
+  } else if (decision.createTransaction) {
     const suggestion = await createDocumentSuggestionWithClassification(supabase, ctx, {
       documentId,
       extractionId,
@@ -335,6 +365,7 @@ export async function runDocumentExtraction(
     status: extractionStatus,
     provider: route.provider,
     suggestionId: suggestionId ?? null,
+    taskDrafts,
   });
   return { ok: true, extractionId, status: extractionStatus, transactionId: null, suggestionId };
 }
