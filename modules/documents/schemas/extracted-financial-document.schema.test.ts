@@ -31,6 +31,36 @@ describe("ExtractedFinancialDocumentSchema", () => {
     }
   });
 
+  it("reads an omitted line value as null instead of failing the extraction", () => {
+    const menu = { ...VALID, documentType: "unknown", items: [{ name: "Soup", totalPrice: 45 }] };
+    const parsed = ExtractedFinancialDocumentSchema.safeParse(menu);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.items[0]).toEqual({
+        name: "Soup",
+        quantity: null,
+        unitPrice: null,
+        totalPrice: 45,
+        taxRate: null,
+        category: null,
+      });
+    }
+  });
+
+  it("defaults a null currency, as a non-financial document may send", () => {
+    const note = { ...VALID, documentType: "unknown", transaction: { ...VALID.transaction, currency: null } };
+    const parsed = ExtractedFinancialDocumentSchema.safeParse(note);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.transaction.currency).toBe("EUR");
+  });
+
+  it("keeps a trimmed, capped transcription and reads a missing one as null", () => {
+    const withText = ExtractedFinancialDocumentSchema.parse({ ...VALID, visibleText: `  ${"a".repeat(5000)}  ` });
+    expect(withText.visibleText).toHaveLength(4000);
+    expect(ExtractedFinancialDocumentSchema.parse(VALID).visibleText).toBeNull();
+    expect(ExtractedFinancialDocumentSchema.parse({ ...VALID, visibleText: "   " }).visibleText).toBeNull();
+  });
+
   it("rejects confidence outside 0..1", () => {
     const bad = { ...VALID, confidence: { ...VALID.confidence, overall: 1.4 } };
     expect(ExtractedFinancialDocumentSchema.safeParse(bad).success).toBe(false);

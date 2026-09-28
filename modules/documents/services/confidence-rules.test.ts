@@ -14,6 +14,7 @@ function makeExtraction(overrides: {
 }): ExtractedFinancialDocument {
   return {
     documentType: "receipt",
+    visibleText: null,
     merchant: { name: "Figma", taxId: null, address: null },
     transaction: {
       date: "2026-06-01",

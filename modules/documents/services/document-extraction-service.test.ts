@@ -7,8 +7,14 @@ const normalizeFinancialDocument = vi.fn();
 const routeExtraction = vi.fn();
 const getBlockedReason = vi.fn();
 const assertWithinLimit = vi.fn();
+const findDocumentCapture = vi.fn();
+const proposeTasksFromDocumentCapture = vi.fn();
 
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
+vi.mock("@/modules/planner/services/propose-tasks-from-document-capture", () => ({
+  findDocumentCapture,
+  proposeTasksFromDocumentCapture,
+}));
 vi.mock("@/modules/action-center/services/create-action-item-for-document", () => ({
   createActionItemForDocument,
 }));
@@ -122,6 +128,86 @@ beforeEach(() => {
     normalization: { kind: "text", text: "raw" },
   });
   normalizeFinancialDocument.mockResolvedValue({ ok: true, raw: {}, extracted });
+  findDocumentCapture.mockResolvedValue(null);
+  proposeTasksFromDocumentCapture.mockResolvedValue(0);
+});
+
+// ADR 002, step 0.3: a non-financial document captured in the Inbox becomes task
+// drafts on its capture — never an expense draft, and no generic review item.
+describe("runDocumentExtraction — work route for captured non-financial documents", () => {
+  const capture = { id: "entry-1", source_document_id: DOC_ID };
+  const note = {
+    ...extracted,
+    documentType: "unknown",
+    visibleText: "Sign the lease by Friday. Call the notary.",
+    transaction: { ...extracted.transaction, total: null, subtotal: null, tax: null },
+    items: [],
+    confidence: { overall: 0.9 },
+  };
+
+  it("turns a captured note into task drafts, ready for review, with no expense draft", async () => {
+    normalizeFinancialDocument.mockResolvedValue({ ok: true, raw: {}, extracted: note });
+    findDocumentCapture.mockResolvedValue(capture);
+    proposeTasksFromDocumentCapture.mockResolvedValue(2);
+
+    const result = await runDocumentExtraction(makeSupabase(infra()), ctx, DOC_ID, EXT_ID);
+
+    expect(result.status).toBe("completed");
+    expect(proposeTasksFromDocumentCapture).toHaveBeenCalledWith(expect.anything(), ctx, capture, "raw");
+    expect(createDocumentSuggestionWithClassification).not.toHaveBeenCalled();
+    expect(createActionItemForDocument).not.toHaveBeenCalled();
+  });
+
+  it("reads an image's text from the transcription, since an image has no text layer", async () => {
+    routeExtraction.mockResolvedValue({
+      ok: true,
+      provider: "anthropic_vision",
+      rawText: null,
+      normalization: { kind: "image", base64: "x", mediaType: "image/png" },
+    });
+    normalizeFinancialDocument.mockResolvedValue({ ok: true, raw: {}, extracted: note });
+    findDocumentCapture.mockResolvedValue(capture);
+    proposeTasksFromDocumentCapture.mockResolvedValue(1);
+
+    await runDocumentExtraction(makeSupabase(infra()), ctx, DOC_ID, EXT_ID);
+
+    expect(proposeTasksFromDocumentCapture).toHaveBeenCalledWith(
+      expect.anything(),
+      ctx,
+      capture,
+      "Sign the lease by Friday. Call the notary.",
+    );
+  });
+
+  it("falls back to a document review when the note asks for no action", async () => {
+    normalizeFinancialDocument.mockResolvedValue({ ok: true, raw: {}, extracted: note });
+    findDocumentCapture.mockResolvedValue(capture);
+    proposeTasksFromDocumentCapture.mockResolvedValue(0);
+
+    const result = await runDocumentExtraction(makeSupabase(infra()), ctx, DOC_ID, EXT_ID);
+
+    expect(result.status).toBe("needs_review");
+    expect(createActionItemForDocument).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves a plain upload (no Inbox capture) on the existing route", async () => {
+    normalizeFinancialDocument.mockResolvedValue({ ok: true, raw: {}, extracted: note });
+
+    await runDocumentExtraction(makeSupabase(infra()), ctx, DOC_ID, EXT_ID);
+
+    expect(proposeTasksFromDocumentCapture).not.toHaveBeenCalled();
+    expect(createActionItemForDocument).toHaveBeenCalledTimes(1);
+  });
+
+  it("never looks for task work in a financial document", async () => {
+    findDocumentCapture.mockResolvedValue(capture);
+
+    const result = await runDocumentExtraction(makeSupabase(infra()), ctx, DOC_ID, EXT_ID);
+
+    expect(findDocumentCapture).not.toHaveBeenCalled();
+    expect(proposeTasksFromDocumentCapture).not.toHaveBeenCalled();
+    expect(result.suggestionId).toBe("sug-1");
+  });
 });
 
 describe("runDocumentExtraction — persistence failures", () => {

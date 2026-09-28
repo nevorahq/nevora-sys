@@ -1,6 +1,7 @@
 import "server-only";
 import {
   ExtractedFinancialDocumentSchema,
+  VISIBLE_TEXT_MAX_LENGTH,
   type ExtractedFinancialDocument,
 } from "@/modules/documents/schemas/extracted-financial-document.schema";
 import type { NormalizationInput, NormalizationResult } from "./normalize-financial-document";
@@ -85,6 +86,7 @@ export function mockNormalizeFinancialDocument(input: NormalizationInput): Norma
 
   const candidate: ExtractedFinancialDocument = {
     documentType: "receipt",
+    visibleText: text.trim() ? text.trim().slice(0, VISIBLE_TEXT_MAX_LENGTH) : null,
     merchant: { name: merchant, taxId: null, address: null },
     transaction: {
       date: new Date().toISOString().slice(0, 10),
