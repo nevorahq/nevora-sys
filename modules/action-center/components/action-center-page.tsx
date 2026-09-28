@@ -1,6 +1,7 @@
 import { requireOrg } from "@/lib/auth/require-org";
 import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
+import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { getAttentionView } from "../queries/get-attention-view";
 import { parseAttentionFilter } from "../services/attention-filter";
 import { syncActionItems } from "../services/action-item-generator";
@@ -25,14 +26,11 @@ import { MarkActionsSeen } from "./mark-actions-seen";
  * the list share one contract (services/attention-filter.ts).
  */
 export async function ActionCenterPage({ filter }: { filter?: string }) {
-  const ctx = await requireOrg();
+  const [ctx, { dict, locale }] = await Promise.all([requireOrg(), getDictionary()]);
+  const t = dict.actionCenter;
 
   if (!canDo(ctx, "action_center.view")) {
-    return (
-      <div className="soft-card p-6 text-sm text-text-muted">
-        You don&apos;t have access to the Action Center.
-      </div>
-    );
+    return <div className="soft-card p-6 text-sm text-text-muted">{t.noAccess}</div>;
   }
 
   const supabase = await createClient();
@@ -53,11 +51,11 @@ export async function ActionCenterPage({ filter }: { filter?: string }) {
     <div className="space-y-6">
       {/* Records the visit (action_center_seen), which the activation funnel reads. */}
       <MarkActionsSeen />
-      <ActionCenterHeader />
+      <ActionCenterHeader title={t.title} refreshLabel={t.refresh} />
 
       {/* Summary cards are accessible filters over the read-only Attention list. */}
-      <ActionSummaryStrip counts={view.counts} active={view.filter} />
-      <AttentionList items={view.items} />
+      <ActionSummaryStrip counts={view.counts} active={view.filter} labels={t.filters} />
+      <AttentionList items={view.items} t={t} locale={locale} />
     </div>
   );
 }

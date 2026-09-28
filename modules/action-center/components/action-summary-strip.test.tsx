@@ -3,6 +3,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AttentionCounts } from "../queries/get-attention-view";
+import { en } from "@/shared/i18n/dictionaries/en";
+import { ro } from "@/shared/i18n/dictionaries/ro";
 
 const pushMock = vi.fn();
 
@@ -30,7 +32,7 @@ afterEach(() => {
 
 describe("ActionSummaryStrip — filter cards", () => {
   it("renders all six cards as accessible buttons showing their counts", () => {
-    render(<ActionSummaryStrip counts={counts} active="needs_attention" />);
+    render(<ActionSummaryStrip labels={en.actionCenter.filters} counts={counts} active="needs_attention" />);
     const buttons = screen.getAllByRole("button");
     expect(buttons).toHaveLength(6);
     expect(screen.getByText("Overdue")).toBeDefined();
@@ -38,7 +40,7 @@ describe("ActionSummaryStrip — filter cards", () => {
   });
 
   it("marks the active card with aria-pressed and leaves the rest unpressed", () => {
-    render(<ActionSummaryStrip counts={counts} active="overdue" />);
+    render(<ActionSummaryStrip labels={en.actionCenter.filters} counts={counts} active="overdue" />);
     const overdue = screen.getByRole("button", { name: /Overdue/ });
     const dueToday = screen.getByRole("button", { name: /Due Today/ });
     expect(overdue.getAttribute("aria-pressed")).toBe("true");
@@ -46,14 +48,20 @@ describe("ActionSummaryStrip — filter cards", () => {
   });
 
   it("navigates to ?filter=<key> when a non-default card is clicked", () => {
-    render(<ActionSummaryStrip counts={counts} active="needs_attention" />);
+    render(<ActionSummaryStrip labels={en.actionCenter.filters} counts={counts} active="needs_attention" />);
     fireEvent.click(screen.getByRole("button", { name: /Overdue/ }));
     expect(pushMock).toHaveBeenCalledWith("/dashboard?filter=overdue", { scroll: false });
   });
 
   it("clears the filter param when the default card is clicked", () => {
-    render(<ActionSummaryStrip counts={counts} active="overdue" />);
+    render(<ActionSummaryStrip labels={en.actionCenter.filters} counts={counts} active="overdue" />);
     fireEvent.click(screen.getByRole("button", { name: /Needs Attention/ }));
     expect(pushMock).toHaveBeenCalledWith("/dashboard", { scroll: false });
+  });
+
+  it("labels the cards in the viewer's language", () => {
+    render(<ActionSummaryStrip labels={ro.actionCenter.filters} counts={counts} active="needs_attention" />);
+    expect(screen.getByRole("button", { name: /Restante/ })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Necesită atenție/ })).toBeDefined();
   });
 });

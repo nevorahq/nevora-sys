@@ -9,19 +9,21 @@ import {
   type AttentionFilterKey,
 } from "../services/attention-filter";
 import type { AttentionCounts } from "../queries/get-attention-view";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
-const CARDS: { key: AttentionFilterKey; label: string; icon: LucideIcon; tone: string }[] = [
-  { key: "needs_attention", label: "Needs Attention", icon: ListChecksIcon, tone: "text-accent-blue" },
-  { key: "due_today", label: "Due Today", icon: CalendarClockIcon, tone: "text-accent-yellow" },
-  { key: "upcoming", label: "Upcoming", icon: CalendarDaysIcon, tone: "text-accent-green" },
-  { key: "overdue", label: "Overdue", icon: AlertTriangleIcon, tone: "text-danger" },
-  { key: "snoozed", label: "Snoozed", icon: Clock3Icon, tone: "text-accent-lilac" },
-  { key: "recently_resolved", label: "Recently Resolved", icon: RotateCcwIcon, tone: "text-text-muted" },
+const CARDS: { key: AttentionFilterKey; icon: LucideIcon; tone: string }[] = [
+  { key: "needs_attention", icon: ListChecksIcon, tone: "text-accent-blue" },
+  { key: "due_today", icon: CalendarClockIcon, tone: "text-accent-yellow" },
+  { key: "upcoming", icon: CalendarDaysIcon, tone: "text-accent-green" },
+  { key: "overdue", icon: AlertTriangleIcon, tone: "text-danger" },
+  { key: "snoozed", icon: Clock3Icon, tone: "text-accent-lilac" },
+  { key: "recently_resolved", icon: RotateCcwIcon, tone: "text-text-muted" },
 ];
 
 interface ActionSummaryStripProps {
   counts: AttentionCounts;
   active: AttentionFilterKey;
+  labels: Dictionary["actionCenter"]["filters"];
 }
 
 /**
@@ -31,7 +33,7 @@ interface ActionSummaryStripProps {
  * action_items set — so the number on the card and the list below always use the
  * same conditions. `aria-pressed` exposes the active filter to assistive tech.
  */
-export function ActionSummaryStrip({ counts, active }: ActionSummaryStripProps) {
+export function ActionSummaryStrip({ counts, active, labels }: ActionSummaryStripProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -49,7 +51,7 @@ export function ActionSummaryStrip({ counts, active }: ActionSummaryStripProps) 
 
   return (
     <div className={cn("grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6", pending && "opacity-70")}>
-      {CARDS.map(({ key, label, icon: Icon, tone }) => {
+      {CARDS.map(({ key, icon: Icon, tone }) => {
         const isActive = active === key;
         return (
           <button
@@ -67,7 +69,7 @@ export function ActionSummaryStrip({ counts, active }: ActionSummaryStripProps) 
             </span>
             <div className="min-w-0">
               <p className="text-xl font-semibold tabular-nums text-text-primary">{counts[key]}</p>
-              <p className="truncate text-xs text-text-muted">{label}</p>
+              <p className="truncate text-xs text-text-muted">{labels[key]}</p>
             </div>
           </button>
         );

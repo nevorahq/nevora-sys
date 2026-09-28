@@ -8,18 +8,10 @@ const STYLES: Record<ActionItemPriority, string> = {
   info: "bg-surface-sunken text-text-muted",
 };
 
-const LABELS: Record<ActionItemPriority, string> = {
-  critical: "Critical",
-  high: "High",
-  medium: "Medium",
-  low: "Low",
-  info: "Info",
-};
-
-export function ActionPriorityBadge({ priority }: { priority: ActionItemPriority }) {
+export function ActionPriorityBadge({ priority, label }: { priority: ActionItemPriority; label: string }) {
   return (
     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STYLES[priority]}`}>
-      {LABELS[priority]}
+      {label}
     </span>
   );
 }

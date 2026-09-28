@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { publishActionItemEvent } from "./action-event-publisher";
 import type { ActionItem } from "../types/action-item.types";
+import { actionItemTitle } from "../utils/action-item-title";
 
 type TaskDeletionInput = {
   taskId: string;
@@ -90,7 +91,7 @@ export async function recordTaskDeletionInActionCenter(
     .insert({
       organization_id: ctx.org.id,
       workspace_id: ctx.workspace.id,
-      title: `Deleted task: ${input.title}`.slice(0, 200),
+      title: actionItemTitle("deletedTask", input.title),
       description: "Task was deleted from the Tasks dashboard.",
       type: "follow_up_required",
       status: "resolved",
