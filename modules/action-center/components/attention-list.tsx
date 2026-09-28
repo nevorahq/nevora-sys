@@ -60,7 +60,7 @@ function AttentionRow({ item, t, locale }: { item: AttentionItem; t: ActionCente
       <span>{t.types[item.type]}</span>
       <span className="text-text-tertiary">{t.statuses[item.status]}</span>
       {due && (
-        <span className={`inline-flex items-center gap-1 ${due.overdue ? "text-accent-pink" : ""}`}>
+        <span className={`inline-flex items-center gap-1 ${due.overdue ? "font-medium text-danger" : ""}`}>
           <ClockIcon size={12} /> {due.label}
         </span>
       )}

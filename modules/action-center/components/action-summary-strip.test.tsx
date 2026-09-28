@@ -64,4 +64,11 @@ describe("ActionSummaryStrip — filter cards", () => {
     expect(screen.getByRole("button", { name: /Restante/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /Necesită atenție/ })).toBeDefined();
   });
+
+  it("names each card by its label and count, since the label is hidden on mobile", () => {
+    render(<ActionSummaryStrip labels={en.actionCenter.filters} counts={counts} active="needs_attention" />);
+    expect(screen.getByRole("button", { name: "Overdue: 6" })).toBeDefined();
+    expect(screen.getByText("Overdue").className).toContain("hidden");
+    expect(screen.getByText("Overdue").className).toContain("md:line-clamp-2");
+  });
 });
