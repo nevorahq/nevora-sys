@@ -49,14 +49,16 @@ export function InboxCaptureComposer({ dict, orgName }: InboxCaptureComposerProp
             type="button"
             role="tab"
             aria-selected={mode === id}
+            // On mobile the tab is icon-only, so the label must carry the name.
+            aria-label={label}
             onClick={() => setMode(id)}
             className={cn(
               "flex flex-1 items-center justify-center gap-2 rounded-(--neu-radius-sm) px-3 py-2 text-sm font-medium transition-all",
               mode === id ? "bg-surface text-text-primary shadow-neu" : "text-text-secondary hover:text-text-primary",
             )}
           >
-            <Icon size={16} strokeWidth={1.75} aria-hidden />
-            {label}
+            <Icon size={18} strokeWidth={1.75} aria-hidden className="shrink-0" />
+            <span className="hidden whitespace-nowrap md:inline">{label}</span>
           </button>
         ))}
       </div>
