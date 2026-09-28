@@ -220,7 +220,6 @@ export const ro: Dictionary = {
     failed: "Nu s-a putut procesa — verifică manual.",
     createdEntity: "Creat",
     financialFields: {
-      needsDateHint: "Adaugă o dată de plată înainte de a accepta această sarcină financiară.",
       paymentDate: "Data plății",
       amount: "Sumă",
       currency: "Monedă",

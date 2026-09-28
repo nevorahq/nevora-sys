@@ -210,6 +210,37 @@ describe("acceptPlannerSuggestion", () => {
     expect(row.claimed_at).toBeNull();
   });
 
+  it.each(["create_financial_task", "create_money_reminder", "create_subscription_reminder"])(
+    "accepts a retired %s draft as a plain task carrying its date and amount",
+    async (suggestion_type) => {
+      const store = new Map([
+        [
+          "sug-1",
+          baseSuggestion({
+            suggestion_type,
+            title: "Expense: Products + Rubber + Linella",
+            status: "edited",
+            proposed_payload: { amount: 1070, currency: "MDL", financialDueDate: "2026-09-27", providerName: "Linella" },
+          }),
+        ],
+      ]);
+
+      const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+
+      expect(result).toEqual({ ok: true, entityType: "task", entityId: "task-1", created: true });
+      expect(createStandardTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Expense: Products + Rubber + Linella",
+          description: "Linella · 1070 MDL",
+          dueDate: "2026-09-27",
+          priority: "medium",
+          sourceSuggestionId: "sug-1",
+        }),
+      );
+      expect(store.get("sug-1")!.status).toBe("accepted");
+    },
+  );
+
   it("creates exactly one entity when two confirms race (security requirement #3)", async () => {
     const store = new Map([["sug-1", baseSuggestion()]]);
     const supabase = makeSupabase(store);

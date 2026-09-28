@@ -33,32 +33,18 @@ function readFinancialPayload(payload: Record<string, unknown>): FinancialPayloa
 }
 
 /**
- * Today in the viewer's local timezone as YYYY-MM-DD. The obligation is a date,
- * not a datetime, so no time component — it seeds the payment-date field as a sane
- * editable default when the capture didn't imply one.
- */
-function todayLocalISO(): string {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 10);
-}
-
-/**
  * Accept / Edit / Reject controls for a pending suggestion. Each is a Server
  * Action; Accept routes to the existing module service, so no client-side
  * business logic lives here.
  *
- * Financial suggestions (payment/reminder types) require a payment date before
- * they can be accepted — the AI leaves it out when the raw capture doesn't imply
- * one. The edit form therefore exposes the financial fields so the user can supply
- * the date (and amount/currency/provider) the accept schema needs; without them
- * the only escape from a dateless financial draft would be Reject.
+ * Retired financial drafts (payment/reminder types) are accepted as a plain task
+ * whose due date is the payment date, so the date is optional. The edit form
+ * still exposes the date, amount, currency and payee, which the task carries.
  */
 export function SuggestionReviewActions({ suggestion, dict }: SuggestionReviewActionsProps) {
   const [editing, setEditing] = useState(false);
   const isFinancial = isFinancialSuggestionType(suggestion.suggestion_type);
   const financial = readFinancialPayload(suggestion.proposed_payload ?? {});
-  const needsDate = isFinancial && !financial.financialDueDate;
 
   const [acceptState, acceptAction, acceptPending] = useActionState<ActionResult, FormData>(
     acceptPlannerSuggestionAction,
@@ -105,12 +91,6 @@ export function SuggestionReviewActions({ suggestion, dict }: SuggestionReviewAc
         </p>
       )}
 
-      {needsDate && !editing && (
-        <p className="mb-2 rounded-(--neu-radius-sm) bg-accent-yellow/20 px-2 py-1 text-[11px] font-medium text-text-primary">
-          {dict.financialFields.needsDateHint}
-        </p>
-      )}
-
       {editing ? (
         <form action={editAction} className="flex flex-col gap-2">
           <input type="hidden" name="suggestionId" value={suggestion.id} />
@@ -129,8 +109,7 @@ export function SuggestionReviewActions({ suggestion, dict }: SuggestionReviewAc
                 type="date"
                 name="financialDueDate"
                 label={dict.financialFields.paymentDate}
-                defaultValue={financial.financialDueDate ?? todayLocalISO()}
-                required
+                defaultValue={financial.financialDueDate ?? ""}
               />
               <Input
                 id="financial-amount"
@@ -170,21 +149,12 @@ export function SuggestionReviewActions({ suggestion, dict }: SuggestionReviewAc
         </form>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {needsDate ? (
-            // Accept would fail the date requirement — send the user to the editor,
-            // where the payment date is already pre-filled with today, instead of
-            // firing a server call that only returns an error.
-            <Button type="button" variant="primary" onClick={() => setEditing(true)}>
+          <form action={acceptAction}>
+            <input type="hidden" name="suggestionId" value={suggestion.id} />
+            <Button type="submit" isLoading={acceptPending} variant="primary">
               {dict.accept}
             </Button>
-          ) : (
-            <form action={acceptAction}>
-              <input type="hidden" name="suggestionId" value={suggestion.id} />
-              <Button type="submit" isLoading={acceptPending} variant="primary">
-                {dict.accept}
-              </Button>
-            </form>
-          )}
+          </form>
           <Button type="button" variant="secondary" onClick={() => setEditing(true)}>
             {dict.edit}
           </Button>

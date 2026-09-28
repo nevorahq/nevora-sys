@@ -99,16 +99,14 @@ describe("explainDraft — money safety", () => {
     "create_subscription_reminder",
   ];
 
-  // Financial Tasks were removed: Tasks/Money/Subscriptions no longer bridge,
-  // so these types are still flagged money-safe (they were always about a
-  // planned obligation, never a transaction) but create nothing — the accept
-  // path refuses them, same as create_document/assign_project/create_project.
-  it.each(financialTypes)("%s is flagged money-safe but unsupported (creates nothing)", (suggestion_type) => {
+  // Financial Tasks were removed and Tasks/Money do not bridge, so a draft of a
+  // retired financial type is accepted as a plain task — never a transaction.
+  it.each(financialTypes)("%s is money-safe and accepted as a plain task", (suggestion_type) => {
     const result = explainDraft(suggestion({ suggestion_type }), entry());
 
     expect(result.moneySafe).toBe(true);
-    expect(result.unsupported).toBe(true);
-    expect(result.effects).toEqual([]);
+    expect(result.unsupported).toBe(false);
+    expect(result.effects).toEqual([{ kind: "create", entityType: "task" }]);
   });
 
   it("does not flag a non-financial draft as money-related", () => {

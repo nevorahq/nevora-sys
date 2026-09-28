@@ -59,11 +59,6 @@ function suggestion(
 }
 
 describe("SuggestionReviewActions — financial capture", () => {
-  it("warns that a dateless financial suggestion needs a payment date", () => {
-    render(<SuggestionReviewActions suggestion={suggestion("create_financial_task", { amount: 300 })} dict={dict} />);
-    expect(screen.getByText(dict.financialFields.needsDateHint)).toBeDefined();
-  });
-
   it("exposes a payment-date field in the edit form for a financial suggestion", () => {
     render(<SuggestionReviewActions suggestion={suggestion("create_financial_task", { amount: 300 })} dict={dict} />);
     fireEvent.click(screen.getByRole("button", { name: dict.edit }));
@@ -71,21 +66,15 @@ describe("SuggestionReviewActions — financial capture", () => {
     expect(screen.getByLabelText(dict.financialFields.amount)).toBeDefined();
   });
 
-  it("routes Accept to the editor (pre-filled with today) when the date is missing", () => {
+  it("accepts a dateless financial draft directly — it becomes a task without a due date", async () => {
     render(<SuggestionReviewActions suggestion={suggestion("create_financial_task", { amount: 300 })} dict={dict} />);
     fireEvent.click(screen.getByRole("button", { name: dict.accept }));
 
-    // The accept action must not fire — there is no date to accept yet.
-    expect(acceptMock).not.toHaveBeenCalled();
-    const dateInput = screen.getByLabelText(dict.financialFields.paymentDate) as HTMLInputElement;
-    const today = new Date();
-    const expected = new Date(today.getTime() - today.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
-    expect(dateInput.value).toBe(expected);
+    await waitFor(() => expect(acceptMock).toHaveBeenCalledTimes(1));
   });
 
   it("does not show financial fields for a non-financial suggestion", () => {
     render(<SuggestionReviewActions suggestion={suggestion("create_task")} dict={dict} />);
-    expect(screen.queryByText(dict.financialFields.needsDateHint)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: dict.edit }));
     expect(screen.queryByLabelText(dict.financialFields.paymentDate)).toBeNull();
   });

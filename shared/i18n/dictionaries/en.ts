@@ -238,7 +238,6 @@ export const en = {
      * let the user supply what the AI could not infer from the raw capture.
      */
     financialFields: {
-      needsDateHint: "Add a payment date before accepting this financial task.",
       paymentDate: "Payment date",
       amount: "Amount",
       currency: "Currency",

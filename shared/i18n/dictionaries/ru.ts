@@ -211,7 +211,6 @@ export const ru: Dictionary = {
     failed: "Не удалось обработать — проверьте вручную.",
     createdEntity: "Создано",
     financialFields: {
-      needsDateHint: "Укажите дату платежа, чтобы принять эту финансовую задачу.",
       paymentDate: "Дата платежа",
       amount: "Сумма",
       currency: "Валюта",
