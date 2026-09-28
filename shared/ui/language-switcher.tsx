@@ -6,9 +6,11 @@ import { CheckIcon, GlobeIcon } from "lucide-react";
 import { setLocaleAction } from "@/shared/i18n/set-locale.action";
 import { LOCALES, PUBLIC_LOCALE_NAMES, type Locale } from "@/shared/i18n/constants";
 import { cn } from "@/shared/utils/cn";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface LanguageSwitcherProps {
   locale: Locale;
+  labels: Dictionary["controls"];
   className?: string;
   iconOnly?: boolean;
 }
@@ -21,6 +23,7 @@ interface LanguageSwitcherProps {
  */
 export function LanguageSwitcher({
   locale,
+  labels,
   className,
   iconOnly = false,
 }: LanguageSwitcherProps) {
@@ -60,8 +63,8 @@ export function LanguageSwitcher({
         type="button"
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        aria-label={`Language: ${PUBLIC_LOCALE_NAMES[locale]}`}
-        title={`Language: ${PUBLIC_LOCALE_NAMES[locale]}`}
+        aria-label={labels.languageCurrent.replace("{name}", PUBLIC_LOCALE_NAMES[locale])}
+        title={labels.languageCurrent.replace("{name}", PUBLIC_LOCALE_NAMES[locale])}
         disabled={isPending}
         onClick={() => setIsOpen((value) => !value)}
         className={cn(
@@ -78,7 +81,7 @@ export function LanguageSwitcher({
       {isOpen && (
         <ul
           role="menu"
-          aria-label="Language"
+          aria-label={labels.language}
           className="absolute right-0 top-[calc(100%+0.5rem)] z-50 flex min-w-36 flex-col overflow-hidden rounded-(--neu-radius-md) border border-border-soft bg-surface-elevated p-1 shadow-neu-card"
         >
           {LOCALES.map((item) => {

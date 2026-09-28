@@ -17,14 +17,14 @@ export default async function OnboardingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { locale } = await getDictionary();
+  const { dict, locale } = await getDictionary();
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background">
       {/* Minimal header */}
       <header className="absolute top-0 right-0 flex items-center gap-2 p-4">
-        <LanguageSwitcher locale={locale} iconOnly />
-        <ThemeToggle />
+        <LanguageSwitcher locale={locale} labels={dict.controls} iconOnly />
+        <ThemeToggle labels={dict.controls} />
       </header>
 
       {/* Centered content */}

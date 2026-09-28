@@ -74,6 +74,20 @@ export const en = {
       actionsBody: "New work shows up here as it needs review. Capture something to get started.",
     },
   },
+  errorBoundary: {
+    title: "Something went wrong",
+    body: "An unexpected error occurred. Please try again.",
+    reference: "Reference:",
+    retry: "Try again",
+  },
+  controls: {
+    language: "Language",
+    /** {name} is the current language's own name, e.g. "Русский". */
+    languageCurrent: "Language: {name}",
+    themeToDark: "Switch to dark mode",
+    themeToLight: "Switch to light mode",
+    developerAccess: "Developer Access · Unlimited product limits",
+  },
   actionCenter: {
     title: "Action Center",
     refresh: "Refresh",

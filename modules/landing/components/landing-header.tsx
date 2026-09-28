@@ -3,6 +3,7 @@ import { TimerIcon } from "lucide-react";
 import { ROUTES } from "@/shared/config/routes";
 import type { PublicLocale } from "@/shared/i18n/constants";
 import { ThemeToggle } from "@/shared/ui/theme-toggle";
+import { getDictionaryFor } from "@/shared/i18n/get-dictionary";
 import { BRAND, type LandingContent } from "../constants/landing-content";
 import { LandingLanguageMenu } from "./landing-language-menu";
 import { LandingMobileNav } from "./landing-mobile-nav";
@@ -19,6 +20,8 @@ interface LandingHeaderProps {
  * Бренд виден на всех размерах; на мобильных полноценное выпадающее меню.
  */
 export function LandingHeader({ nav, header, locale }: LandingHeaderProps) {
+  const { controls } = getDictionaryFor(locale);
+
   return (
     <header className="sticky top-0 z-50 border-b border-border-soft bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
@@ -45,8 +48,8 @@ export function LandingHeader({ nav, header, locale }: LandingHeaderProps) {
         </nav>
 
         <div className="flex items-center justify-end gap-1.5 sm:gap-2">
-          <LandingLanguageMenu locale={locale} />
-          <ThemeToggle className="h-11 w-11 sm:h-9 sm:w-9" />
+          <LandingLanguageMenu locale={locale} labels={controls} />
+          <ThemeToggle labels={controls} className="h-11 w-11 sm:h-9 sm:w-9" />
           <Link
             href={ROUTES.register}
             aria-label={header.cta}

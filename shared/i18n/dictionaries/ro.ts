@@ -69,6 +69,19 @@ export const ro: Dictionary = {
       actionsBody: "Munca nouă apare aici pe măsură ce are nevoie de verificare. Adaugă ceva pentru a începe.",
     },
   },
+  errorBoundary: {
+    title: "Ceva nu a mers bine",
+    body: "A apărut o eroare neașteptată. Încearcă din nou.",
+    reference: "Referință:",
+    retry: "Încearcă din nou",
+  },
+  controls: {
+    language: "Limbă",
+    languageCurrent: "Limbă: {name}",
+    themeToDark: "Activează tema întunecată",
+    themeToLight: "Activează tema luminoasă",
+    developerAccess: "Acces dezvoltator · Fără limite de plan",
+  },
   actionCenter: {
     title: "Centrul de acțiuni",
     refresh: "Actualizează",

@@ -2,8 +2,7 @@ import Link from "next/link";
 import { ShieldCheckIcon } from "lucide-react";
 import { ROUTES } from "@/shared/config/routes";
 
-export function DeveloperAccessBadge() {
-  const label = "Developer Access · Unlimited product limits";
+export function DeveloperAccessBadge({ label }: { label: string }) {
 
   return (
     <Link

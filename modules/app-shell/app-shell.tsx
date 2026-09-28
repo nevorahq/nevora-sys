@@ -1,5 +1,6 @@
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { Sidebar } from "@/shared/ui/sidebar";
+import { ErrorCopyProvider } from "@/shared/ui/error-copy";
 import { LanguageSwitcher } from "@/shared/ui/language-switcher";
 import { ThemeToggle } from "@/shared/ui/theme-toggle";
 import { Notifications } from "@/shared/ui/notifications";
@@ -62,52 +63,54 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <AccessStateProvider accessState={accessState} copy={accessCopy}>
-      <NotificationProvider
-        key={`${context.org.id}:${user.id}`}
-        organizationId={context.org.id}
-        userId={user.id}
-        initialPreferences={notificationPreferences}
-        initialCounters={initialNotificationCounters}
-        initialNotifications={initialNotifications}
-      >
-        <div className="flex min-h-dvh">
-          <Sidebar dict={dict} />
+      <ErrorCopyProvider copy={dict.errorBoundary}>
+        <NotificationProvider
+          key={`${context.org.id}:${user.id}`}
+          organizationId={context.org.id}
+          userId={user.id}
+          initialPreferences={notificationPreferences}
+          initialCounters={initialNotificationCounters}
+          initialNotifications={initialNotifications}
+        >
+          <div className="flex min-h-dvh">
+            <Sidebar dict={dict} />
 
-          <div className="flex min-w-0 flex-1 flex-col">
-            <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border-soft bg-background px-4 py-3.5 sm:px-6">
-              <div className="flex min-w-0 items-center gap-2">
-                <OrganizationSwitcher
-                  currentOrganizationId={context.org.id}
-                  organizations={userOrganizations}
-                  t={dict.organizationSwitcher}
-                />
-                <p className="hidden truncate text-sm text-text-muted sm:block">
-                  {user.email?.split("@")[0]}
-                </p>
-                {limits.unlimitedAccess && <DeveloperAccessBadge />}
-              </div>
-              <HeaderActions label={dict.nav.actions}>
-                <Notifications dict={dict} />
-                <LanguageSwitcher locale={locale} iconOnly />
-                <ThemeToggle />
-                <LogoutButton label={dict.nav.logout} />
-              </HeaderActions>
-            </header>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border-soft bg-background px-4 py-3.5 sm:px-6">
+                <div className="flex min-w-0 items-center gap-2">
+                  <OrganizationSwitcher
+                    currentOrganizationId={context.org.id}
+                    organizations={userOrganizations}
+                    t={dict.organizationSwitcher}
+                  />
+                  <p className="hidden truncate text-sm text-text-muted sm:block">
+                    {user.email?.split("@")[0]}
+                  </p>
+                  {limits.unlimitedAccess && <DeveloperAccessBadge label={dict.controls.developerAccess} />}
+                </div>
+                <HeaderActions label={dict.nav.actions}>
+                  <Notifications dict={dict} />
+                  <LanguageSwitcher locale={locale} labels={dict.controls} iconOnly />
+                  <ThemeToggle labels={dict.controls} />
+                  <LogoutButton label={dict.nav.logout} />
+                </HeaderActions>
+              </header>
 
-            <main className="flex-1 p-4 sm:p-6 md:p-8">
-              {!limits.unlimitedAccess && <TrialBanner trial={trial} />}
-              <ReadOnlyModeBanner />
-              {pendingDeletion && (
-                <AccountDeletionBanner
-                  purgeAfter={pendingDeletion.purgeAfter}
-                  t={dict.settings.accountBanner}
-                />
-              )}
-              {children}
-            </main>
+              <main className="flex-1 p-4 sm:p-6 md:p-8">
+                {!limits.unlimitedAccess && <TrialBanner trial={trial} />}
+                <ReadOnlyModeBanner />
+                {pendingDeletion && (
+                  <AccountDeletionBanner
+                    purgeAfter={pendingDeletion.purgeAfter}
+                    t={dict.settings.accountBanner}
+                  />
+                )}
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
-      </NotificationProvider>
+        </NotificationProvider>
+      </ErrorCopyProvider>
     </AccessStateProvider>
   );
 }

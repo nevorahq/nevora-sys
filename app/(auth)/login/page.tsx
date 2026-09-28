@@ -17,8 +17,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="relative flex flex-1 items-center justify-center p-4">
       <div className="absolute top-4 right-4 flex items-center gap-2">
-        <LanguageSwitcher locale={locale} iconOnly />
-        <ThemeToggle className="h-11 w-11 sm:h-9 sm:w-9" />
+        <LanguageSwitcher locale={locale} labels={dict.controls} iconOnly />
+        <ThemeToggle labels={dict.controls} className="h-11 w-11 sm:h-9 sm:w-9" />
       </div>
       <LoginForm dict={dict} destination={destination} />
     </main>

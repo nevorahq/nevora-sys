@@ -60,6 +60,19 @@ export const ru: Dictionary = {
       actionsBody: "Всё разобрано. Начните что-нибудь — Nevora подготовит следующий шаг.",
     },
   },
+  errorBoundary: {
+    title: "Что-то пошло не так",
+    body: "Произошла непредвиденная ошибка. Попробуйте ещё раз.",
+    reference: "Код ошибки:",
+    retry: "Попробовать снова",
+  },
+  controls: {
+    language: "Язык",
+    languageCurrent: "Язык: {name}",
+    themeToDark: "Включить тёмную тему",
+    themeToLight: "Включить светлую тему",
+    developerAccess: "Доступ разработчика · Лимиты тарифа сняты",
+  },
   actionCenter: {
     title: "Центр действий",
     refresh: "Обновить",
