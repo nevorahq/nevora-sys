@@ -1,5 +1,7 @@
 "use client";
 
+import { useErrorCopy } from "@/shared/ui/error-copy";
+
 /**
  * Error Boundary для /dashboard.
  *
@@ -22,6 +24,8 @@ export default function DashboardError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const copy = useErrorCopy();
+
   return (
     <main className="flex flex-1 flex-col items-center justify-center p-8">
       <div className="soft-card p-8 text-center max-w-md">
@@ -30,22 +34,18 @@ export default function DashboardError({
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
           </svg>
         </div>
-        <h2 className="text-lg font-semibold text-text-primary">
-          Something went wrong
-        </h2>
-        <p className="mt-2 text-sm text-text-muted">
-          An unexpected error occurred. Please try again.
-        </p>
+        <h2 className="text-lg font-semibold text-text-primary">{copy.title}</h2>
+        <p className="mt-2 text-sm text-text-muted">{copy.body}</p>
         {error.digest ? (
           <p className="mt-2 text-xs text-text-muted/70">
-            Reference: <code>{error.digest}</code>
+            {copy.reference} <code>{error.digest}</code>
           </p>
         ) : null}
         <button
           onClick={reset}
           className="mt-6 inline-flex items-center justify-center rounded-(--neu-radius-pill) bg-text-primary px-6 py-2.5 text-sm font-semibold text-text-inverse shadow-neu-control hover:shadow-neu-card active:shadow-neu-inset active:scale-[0.98] transition-all"
         >
-          Try again
+          {copy.retry}
         </button>
       </div>
     </main>

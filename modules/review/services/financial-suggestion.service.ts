@@ -20,6 +20,7 @@ import type {
   SuggestionActionResult,
 } from "../types/financial-suggestion.types";
 import { FINANCIAL_SUGGESTION_COLUMNS } from "../types/financial-suggestion.types";
+import { actionItemTitle, type ActionItemTitleKey } from "@/modules/action-center/utils/action-item-title";
 
 export async function createDocumentFinancialSuggestionRecord(
   supabase: SupabaseClient,
@@ -773,8 +774,8 @@ async function ensureSuggestionActionItem(
   const actionType = actionTypeForSuggestion(suggestion);
   const title =
     suggestion.source_type === "document"
-      ? `Invoice detected from ${vendor} - ${amountLabel}`
-      : `${subscriptionTaskLabel(suggestion.suggestion_type)}: ${vendor}`;
+      ? actionItemTitle("invoiceDetected", `${vendor} - ${amountLabel}`)
+      : actionItemTitle(subscriptionTaskTitleKey(suggestion.suggestion_type), vendor);
 
   await createActionItemForDocument(supabase, ctx, {
     type: actionType,
@@ -1085,6 +1086,26 @@ function actionTypeForSuggestion(suggestion: FinancialSuggestion) {
   }
   if (suggestion.suggestion_type === "cancel_subscription") return "approval_required" as const;
   return "renewal_required" as const;
+}
+
+/** Action item title template per subscription suggestion; mirrors subscriptionTaskLabel. */
+function subscriptionTaskTitleKey(type: string): ActionItemTitleKey {
+  switch (type) {
+    case "review_subscription":
+      return "reviewSubscription";
+    case "pay_subscription":
+      return "paySubscription";
+    case "request_invoice":
+      return "requestInvoice";
+    case "cancel_subscription":
+      return "cancelSubscription";
+    case "update_payment_method":
+      return "updatePaymentMethod";
+    case "check_price_change":
+      return "checkPriceChange";
+    default:
+      return "reviewGeneric";
+  }
 }
 
 function subscriptionTaskLabel(type: string): string {

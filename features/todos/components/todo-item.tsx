@@ -8,6 +8,7 @@ import { RestrictedActionTooltip, useAccessGate } from "@/modules/billing/compon
 import { TaskStatusBadge } from "./task-status-badge";
 import { getDueStatus, type DueStatus } from "../lib/due-status";
 import { cn } from "@/shared/utils/cn";
+import { PriorityBadge } from "@/shared/ui/priority-badge";
 import { formatDate } from "@/shared/utils/format-date";
 import type { Todo } from "@/entities/todo/model";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
@@ -28,12 +29,6 @@ export function TodoItem({ todo, dict }: TodoItemProps) {
   // Heightened-attention marker: overdue / due today / due soon (≤3 days).
   const dueStatus = getDueStatus(todo.due_date, todo.status);
   const isOverdue = dueStatus.level === "overdue";
-
-  const priorityStyles = {
-    low: "bg-accent-green-soft text-accent-green",
-    medium: "bg-accent-yellow-soft text-accent-yellow",
-    high: "bg-accent-pink-soft text-accent-pink",
-  } as const;
 
   function handleDelete() {
     if (blocked) return;
@@ -90,9 +85,7 @@ export function TodoItem({ todo, dict }: TodoItemProps) {
         )}
 
         {/* Priority badge */}
-        <span className={cn("soft-badge", priorityStyles[todo.priority])}>
-          {dict.todos.priorities[todo.priority]}
-        </span>
+        <PriorityBadge priority={todo.priority} label={dict.todos.priorities[todo.priority]} />
 
         {/* Due-date attention marker (overdue / today / soon), else plain date */}
         {dueStatus.level !== "none" ? (
@@ -106,13 +99,13 @@ export function TodoItem({ todo, dict }: TodoItemProps) {
         )}
 
         {/* Delete button */}
-        <RestrictedActionTooltip message={blocked ? message : "Delete"}>
+        <RestrictedActionTooltip message={blocked ? message : dict.todos.item.delete}>
           <button
             type="button"
             onClick={handleDelete}
             disabled={blocked}
             className="soft-icon-button h-8 w-8 text-text-muted hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label={blocked ? `Delete. ${message}` : "Delete"}
+            aria-label={blocked ? `${dict.todos.item.delete}. ${message}` : dict.todos.item.delete}
           >
             <Trash2Icon size={15} strokeWidth={1.75} />
           </button>
@@ -134,18 +127,20 @@ function DueBadge({ dueStatus, dict }: { dueStatus: DueStatus; dict: Dictionary 
 
   const Icon = overdue ? AlertTriangleIcon : ClockIcon;
 
+  // Mobile: an icon in a tinted circle. Desktop: the icon with the label in
+  // strong text, on a tint dark enough to read (yellow-on-yellow was not).
   return (
     <span
       className={cn(
-        "soft-badge inline-flex shrink-0 items-center gap-1 whitespace-nowrap",
-        overdue ? "bg-danger-soft text-danger" : "bg-accent-yellow-soft text-accent-yellow",
-        overdue && "h-6 w-6 justify-center p-0",
+        "soft-badge shrink-0 justify-center gap-1 whitespace-nowrap font-semibold",
+        "h-6 w-6 p-0 md:h-auto md:w-auto md:px-2.5 md:py-0.5",
+        overdue ? "bg-danger-soft text-danger" : "bg-accent-yellow-soft text-text-primary",
       )}
       aria-label={overdue ? t.ariaOverdue : t.ariaSoon}
-      title={overdue ? label : undefined}
+      title={label}
     >
-      <Icon size={12} strokeWidth={2} aria-hidden="true" />
-      {!overdue && label}
+      <Icon size={12} strokeWidth={2.25} aria-hidden="true" />
+      <span className="sr-only md:not-sr-only">{label}</span>
     </span>
   );
 }

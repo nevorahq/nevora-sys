@@ -2,7 +2,6 @@ import { RegisterForm } from "@/features/auth/components/register-form";
 import { resolveProductEntryRoute, ROUTES } from "@/shared/config/routes";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/shared/ui/language-switcher";
-import { ProductEntryMenu } from "@/shared/ui/product-entry-menu";
 import { ThemeToggle } from "@/shared/ui/theme-toggle";
 
 interface RegisterPageProps {
@@ -18,13 +17,8 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
   return (
     <main className="relative flex flex-1 items-center justify-center p-4">
       <div className="absolute top-4 right-4 flex items-center gap-2">
-        <ProductEntryMenu
-          locale={locale}
-          authRoute={ROUTES.register}
-          currentDestination={destination}
-        />
-        <LanguageSwitcher locale={locale} iconOnly />
-        <ThemeToggle className="h-11 w-11 sm:h-9 sm:w-9" />
+        <LanguageSwitcher locale={locale} labels={dict.controls} iconOnly />
+        <ThemeToggle labels={dict.controls} className="h-11 w-11 sm:h-9 sm:w-9" />
       </div>
       <RegisterForm dict={dict} destination={destination} />
     </main>

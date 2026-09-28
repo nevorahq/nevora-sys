@@ -10,8 +10,8 @@ export const en = {
   nav: {
     logout: "Sign Out",
     dashboard: "Dashboard",
-    /** Primary nav label for /dashboard — the Action Center IS Home (Sprint 3). */
-    home: "Home",
+    /** Primary nav label for /dashboard — the Action Center, first in the sidebar. */
+    actionCenter: "Action Center",
     /** Secondary metrics roll-up at /dashboard/overview. */
     overview: "Overview",
     /** Nav label for /dashboard/inbox — the universal capture + triage surface. */
@@ -74,9 +74,142 @@ export const en = {
       actionsBody: "New work shows up here as it needs review. Capture something to get started.",
     },
   },
+  errorBoundary: {
+    title: "Something went wrong",
+    body: "An unexpected error occurred. Please try again.",
+    reference: "Reference:",
+    retry: "Try again",
+  },
+  controls: {
+    language: "Language",
+    /** {name} is the current language's own name, e.g. "Русский". */
+    languageCurrent: "Language: {name}",
+    themeToDark: "Switch to dark mode",
+    themeToLight: "Switch to light mode",
+    developerAccess: "Developer Access · Unlimited product limits",
+  },
+  actionCenter: {
+    title: "Action Center",
+    refresh: "Refresh",
+    noAccess: "You don't have access to the Action Center.",
+    empty: "Nothing in this view.",
+    filters: {
+      needs_attention: "Needs Attention",
+      due_today: "Due Today",
+      upcoming: "Upcoming",
+      overdue: "Overdue",
+      snoozed: "Snoozed",
+      recently_resolved: "Recently Resolved",
+    },
+    statuses: {
+      open: "Open",
+      in_progress: "In progress",
+      snoozed: "Snoozed",
+      resolved: "Resolved",
+      dismissed: "Dismissed",
+      cancelled: "Cancelled",
+      failed: "Failed",
+    },
+    priorities: {
+      critical: "Critical",
+      high: "High",
+      medium: "Medium",
+      low: "Low",
+      info: "Info",
+    },
+    types: {
+      approval_required: "Approval required",
+      due_soon: "Due soon",
+      overdue: "Overdue",
+      missing_information: "Missing information",
+      missing_relation: "Missing link",
+      draft_review: "Draft review",
+      ai_suggestion: "AI suggestion",
+      risk_detected: "Risk detected",
+      payment_required: "Payment required",
+      renewal_required: "Renewal",
+      assignment_required: "Needs assignee",
+      document_review: "Document review",
+      follow_up_required: "Follow-up",
+    },
+    sources: {
+      task: "Task",
+      document: "Document",
+      transaction: "Money",
+      subscription: "Subscription",
+      crm: "CRM",
+      automation: "Automation",
+      ai: "AI",
+      system: "System",
+    },
+    destinations: {
+      inbox_review: "Open review",
+      tasks: "Open in Tasks",
+      money: "Open in Money",
+      subscriptions: "Open in Subscriptions",
+      documents: "Open in Documents",
+      none: "Source unavailable",
+    },
+    /**
+     * Item titles. The English templates are ALSO the stored format: generators
+     * build titles from them, and the screen matches a stored title back to its
+     * template to render it in the viewer's language. Change them only together
+     * with a data backfill, or old items stop translating.
+     */
+    titles: {
+      overdueTask: "Overdue task: {name}",
+      taskDueSoon: "Task due soon: {name}",
+      taskNeedsAssignee: "Task needs an assignee: {name}",
+      deletedTask: "Deleted task: {name}",
+      subscriptionRenewsSoon: "Subscription renews soon: {name}",
+      subscriptionNoContract: "Subscription has no contract: {name}",
+      subscriptionPossiblyUnused: "Review possibly unused subscription: {name}",
+      confirmTransactionDraft: "Confirm transaction draft: {name}",
+      transactionNoDocument: "Transaction has no document: {name}",
+      documentNeedsReview: "Document needs review: {name}",
+      documentExtractionFailed: "Document extraction failed",
+      reviewDocumentExtraction: "Review document extraction: {name}",
+      reviewDocumentExtractionPlain: "Review document extraction",
+      invoiceDetected: "Invoice detected from {name}",
+      reviewSubscription: "Review subscription: {name}",
+      paySubscription: "Pay subscription: {name}",
+      requestInvoice: "Request invoice: {name}",
+      cancelSubscription: "Cancel subscription: {name}",
+      updatePaymentMethod: "Update payment method: {name}",
+      checkPriceChange: "Check price change: {name}",
+      reviewGeneric: "Review: {name}",
+      captureNeedsReview: "Capture needs review",
+      reviewCapture: "Review capture: {name}",
+      suggestedAction: "Suggested action: {name}",
+      dealNeedsActivity: "Deal needs next activity: {name}",
+    },
+  },
   inbox: {
+    errors: {
+      forbidden: "You don't have permission to do this.",
+      notFound: "This item no longer exists.",
+      notOpen: "This suggestion was already handled.",
+      busy: "This suggestion is already being processed.",
+      invalid: "Some details are invalid. Edit the suggestion and try again.",
+      unsupported: "This suggestion can't be accepted. Edit it into a task.",
+      partial: "Accepted, but the Inbox didn't update. Refresh the page.",
+      taskFailed: "The task couldn't be created. Your plan limit may have been reached.",
+      empty: "Write something to add.",
+      /** {max} is the character limit. */
+      tooLong: "Keep it under {max} characters.",
+      acceptFailed: "Couldn't accept the suggestion. Try again.",
+      rejectFailed: "Couldn't reject the suggestion. Try again.",
+      editFailed: "Couldn't save the changes. Try again.",
+      captureFailed: "Couldn't add it. Try again.",
+      updateFailed: "Couldn't update the entry. Try again.",
+      deleteFailed: "Couldn't delete the entry. Try again.",
+      noFiles: "Attach at least one file.",
+      invalidFile: "This file can't be added. Check its type and size.",
+      planLimit: "Your plan limit has been reached.",
+      savedNotLinked: "Your file was saved to Documents, but it isn't in your Inbox yet. It will appear shortly.",
+      noAccess: "You don't have access to the Inbox.",
+    },
     title: "Capture",
-    subtitle: "Capture a thought, obligation or signal — AI suggests, you decide.",
     capturePlaceholder: "Type anything: a task, a bill to pay, a reminder…",
     captureButton: "Capture",
     capturing: "Capturing…",
@@ -105,7 +238,6 @@ export const en = {
      * let the user supply what the AI could not infer from the raw capture.
      */
     financialFields: {
-      needsDateHint: "Add a payment date before accepting this financial task.",
       paymentDate: "Payment date",
       amount: "Amount",
       currency: "Currency",
@@ -360,6 +492,7 @@ export const en = {
       filtered: "No tasks match your filters",
     },
     item: {
+      delete: "Delete",
       deleteConfirm: "Delete this task?",
     },
     assignees: {
@@ -1150,7 +1283,35 @@ export const en = {
       qty: "Qty",
       draftSuggestion: "Draft expense suggestion",
       possibleDuplicate: "Possible duplicate of an existing transaction.",
+      /** Common extracted payment methods; any other value is shown as read. */
+      paymentMethods: {
+        card: "Card",
+        cash: "Cash",
+        bank_transfer: "Bank transfer",
+      },
       suggestedBy: "Suggested by",
+      /** Who proposed the category, after "Suggested by". */
+      methods: {
+        user_rule: "your saved rule",
+        history: "your history",
+        subscription: "the linked subscription",
+        system_rule: "built-in rules",
+        ai: "AI",
+        manual: "you",
+        unclassified: "no clear signal",
+        suggestion: "the suggestion",
+      },
+      /** Why that category was proposed, per method. */
+      reasons: {
+        user_rule: "Matched a saved merchant rule.",
+        history: "Based on how you categorized this merchant before.",
+        subscription: "Based on the linked subscription.",
+        system_rule: "Matched built-in category signals. Review the suggested context.",
+        ai: "Used the AI category hint from the document. Review before confirming.",
+        manual: "Set manually.",
+        unclassified: "No strong merchant signal was found. Review the fallback category and context.",
+        suggestion: "Review before confirming.",
+      },
       categoryConfidence: "{pct}% category confidence",
       errUnsupported: "This file type can't be read automatically. Supported: PDF, PNG, JPG, JPEG, WEBP.",
       errLimit: "You've reached your extraction limit. Upgrade your plan or wait for the next reset.",

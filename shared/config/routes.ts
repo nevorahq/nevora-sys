@@ -47,12 +47,11 @@ export const ROUTES = {
   /**
    * Post-auth landing screen ("home"). Single source of truth for where a
    * signed-in user lands (login / register / invite-accept / already-authed on
-   * /login). Home (Action Center) and Inbox were removed from the primary nav
-   * as cross-product surfaces, so Tasks is the day-to-day entry point. Change
-   * here, not at each redirect site. (`home` is the PUBLIC root `/`; this is
-   * the signed-in landing.)
+   * /login) when no module was requested. Home (the Action Center) is the first
+   * item of the one app sidebar. Change here, not at each redirect site.
+   * (`home` is the PUBLIC root `/`; this is the signed-in landing.)
    */
-  appHome: "/tasks",
+  appHome: "/dashboard",
   tasks: "/tasks",
   projects: "/tasks/projects",
   crm: "/dashboard/crm",
@@ -85,8 +84,12 @@ export const ROUTES = {
   health: "/api/health",
 } as const;
 
-/** Разрешённые точки входа из публичного меню приложений. */
+/**
+ * Allowed post-auth `next` destinations: Home and each module's root, so a
+ * signed-out deep link returns the user to the module they opened.
+ */
 export const PRODUCT_ENTRY_ROUTES = [
+  ROUTES.dashboard,
   ROUTES.tasks,
   ROUTES.money,
   ROUTES.subscriptions,

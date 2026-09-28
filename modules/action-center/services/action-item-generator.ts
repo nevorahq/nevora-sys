@@ -10,6 +10,7 @@ import type {
   ActionItemType,
   ActionSourceType,
 } from "../types/action-item.types";
+import { actionItemTitle } from "../utils/action-item-title";
 
 /**
  * Action Item Generator (Phase 3 §14).
@@ -299,13 +300,13 @@ async function detectTasks(supabase: SupabaseClient, orgId: string, out: Candida
     const dueAt = due ? `${due}T00:00:00.000Z` : undefined;
 
     if (due && due < today) {
-      out.push({ title: `Overdue task: ${title}`, type: "overdue", sourceType: "task", sourceId: id, primaryEntityType: "task", primaryEntityId: id, dueAt });
+      out.push({ title: actionItemTitle("overdueTask", title), type: "overdue", sourceType: "task", sourceId: id, primaryEntityType: "task", primaryEntityId: id, dueAt });
     } else if (due && due <= soon) {
-      out.push({ title: `Task due soon: ${title}`, type: "due_soon", sourceType: "task", sourceId: id, primaryEntityType: "task", primaryEntityId: id, dueAt });
+      out.push({ title: actionItemTitle("taskDueSoon", title), type: "due_soon", sourceType: "task", sourceId: id, primaryEntityType: "task", primaryEntityId: id, dueAt });
     }
 
     if (!assignedTaskIds.has(id)) {
-      out.push({ title: `Task needs an assignee: ${title}`, type: "assignment_required", sourceType: "task", sourceId: id, primaryEntityType: "task", primaryEntityId: id });
+      out.push({ title: actionItemTitle("taskNeedsAssignee", title), type: "assignment_required", sourceType: "task", sourceId: id, primaryEntityType: "task", primaryEntityId: id });
     }
   }
 }
@@ -351,17 +352,17 @@ async function detectSubscriptions(supabase: SupabaseClient, orgId: string, out:
     const amount = typeof s.amount === "number" ? s.amount : Number(s.amount) || 0;
 
     if (next && next >= today && next <= soon) {
-      out.push({ title: `Subscription renews soon: ${name}`, type: "renewal_required", sourceType: "subscription", sourceId: id, primaryEntityType: "subscription", primaryEntityId: id, dueAt: `${next}T00:00:00.000Z`, financialImpact: amount });
+      out.push({ title: actionItemTitle("subscriptionRenewsSoon", name), type: "renewal_required", sourceType: "subscription", sourceId: id, primaryEntityType: "subscription", primaryEntityId: id, dueAt: `${next}T00:00:00.000Z`, financialImpact: amount });
     }
 
     if (!hasContract.has(id)) {
-      out.push({ title: `Subscription has no contract: ${name}`, type: "missing_relation", sourceType: "subscription", sourceId: id, primaryEntityType: "subscription", primaryEntityId: id, missingRelation: true, financialImpact: amount });
+      out.push({ title: actionItemTitle("subscriptionNoContract", name), type: "missing_relation", sourceType: "subscription", sourceId: id, primaryEntityType: "subscription", primaryEntityId: id, missingRelation: true, financialImpact: amount });
     }
 
     // AI suggestion: возможно неиспользуемая подписка (нет недавних оплат).
     if (!hasPayment.has(id) && amount > 0) {
       out.push({
-        title: `Review possibly unused subscription: ${name}`,
+        title: actionItemTitle("subscriptionPossiblyUnused", name),
         description: `No linked payments found for ${name}. Consider reviewing usage before the next renewal.`,
         type: "ai_suggestion",
         sourceType: "ai",
@@ -409,10 +410,10 @@ async function detectTransactions(supabase: SupabaseClient, orgId: string, out: 
     const amount = typeof t.amount === "number" ? t.amount : Number(t.amount) || 0;
 
     if (t.status === "planned") {
-      out.push({ title: `Confirm transaction draft: ${title}`, type: "draft_review", sourceType: "transaction", sourceId: id, primaryEntityType: "transaction", primaryEntityId: id, financialImpact: amount });
+      out.push({ title: actionItemTitle("confirmTransactionDraft", title), type: "draft_review", sourceType: "transaction", sourceId: id, primaryEntityType: "transaction", primaryEntityId: id, financialImpact: amount });
     }
     if (!hasDocument.has(id)) {
-      out.push({ title: `Transaction has no document: ${title}`, type: "missing_relation", sourceType: "transaction", sourceId: id, primaryEntityType: "transaction", primaryEntityId: id, missingRelation: true, financialImpact: amount });
+      out.push({ title: actionItemTitle("transactionNoDocument", title), type: "missing_relation", sourceType: "transaction", sourceId: id, primaryEntityType: "transaction", primaryEntityId: id, missingRelation: true, financialImpact: amount });
     }
   }
 }
@@ -455,7 +456,7 @@ async function detectDocuments(supabase: SupabaseClient, orgId: string, out: Can
   for (const d of docs) {
     const id = d.id as string;
     if (decidedDocs.has(id)) continue;
-    out.push({ title: `Document needs review: ${(d.title as string) || "Document"}`, type: "document_review", sourceType: "document", sourceId: id, primaryEntityType: "document", primaryEntityId: id });
+    out.push({ title: actionItemTitle("documentNeedsReview", (d.title as string) || "Document"), type: "document_review", sourceType: "document", sourceId: id, primaryEntityType: "document", primaryEntityId: id });
   }
 }
 
@@ -489,7 +490,7 @@ async function detectFailedExtractions(supabase: SupabaseClient, orgId: string, 
   for (const [docId, latest] of latestByDoc) {
     if (latest.status !== "failed") continue;
     out.push({
-      title: "Document extraction failed",
+      title: actionItemTitle("documentExtractionFailed"),
       description: latest.error ?? "We couldn't read this document. Open it to retry the extraction.",
       type: "risk_detected",
       sourceType: "document",
@@ -527,7 +528,7 @@ async function detectDeals(supabase: SupabaseClient, orgId: string, out: Candida
     if (!dealsWithUpcoming.has(id)) {
       const close = d.expected_close_date as string | null;
       out.push({
-        title: `Deal needs next activity: ${(d.title as string) || "Deal"}`,
+        title: actionItemTitle("dealNeedsActivity", (d.title as string) || "Deal"),
         type: "follow_up_required",
         sourceType: "crm",
         sourceId: id,

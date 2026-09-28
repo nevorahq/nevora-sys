@@ -3,5 +3,5 @@ import TransactionDetailPage from "@/app/(dashboard)/dashboard/money/[transactio
 export default function FinanceProductDetailPage({
   params,
 }: PageProps<"/finance/[transactionId]">) {
-  return <TransactionDetailPage params={params} productIsolated />;
+  return <TransactionDetailPage params={params} />;
 }

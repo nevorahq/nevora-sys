@@ -29,15 +29,11 @@ interface InboxPageProps {
  */
 export async function InboxPage({ initialTab = "inbox", focusSuggestionId = null }: InboxPageProps = {}) {
   const ctx = await requireOrg();
-  const { dict: fullDict } = await getDictionary();
+  const { dict: fullDict, locale } = await getDictionary();
   const dict = fullDict.inbox;
 
   if (!canDo(ctx, "planner.entry.read")) {
-    return (
-      <div className="soft-card p-6 text-sm text-text-muted">
-        You don&apos;t have access to the Inbox.
-      </div>
-    );
+    return <div className="soft-card p-6 text-sm text-text-muted">{dict.errors.noAccess}</div>;
   }
 
   const supabase = await createClient();
@@ -84,7 +80,7 @@ export async function InboxPage({ initialTab = "inbox", focusSuggestionId = null
           Documents review UI + review Server Actions (money-safe, no duplication). */}
       {documentReviews.map(({ documentId, state }) => (
         <div key={documentId} id={`document-${documentId}`} className="scroll-mt-24">
-          <DocumentExtractionReview documentId={documentId} state={state} canConfirm={canConfirmFinancial} t={fullDict.documents} stateLabels={fullDict.money.states} />
+          <DocumentExtractionReview documentId={documentId} state={state} canConfirm={canConfirmFinancial} t={fullDict.documents} stateLabels={fullDict.money.states} locale={locale} />
         </div>
       ))}
     </div>
@@ -98,7 +94,6 @@ export async function InboxPage({ initialTab = "inbox", focusSuggestionId = null
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <header>
         <h1 className="text-xl font-semibold text-text-primary">{dict.title}</h1>
-        <p className="mt-1 text-sm text-text-secondary">{dict.subtitle}</p>
       </header>
 
       <InboxCaptureComposer dict={dict} orgName={ctx.org.name} />

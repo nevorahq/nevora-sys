@@ -18,6 +18,8 @@ import {
   type PlannerSuggestionStatus,
 } from "../types/planner.types";
 import { resolvePlannerActionItems } from "./resolve-planner-action-item";
+import { retiredFinancialDraftToTaskPayload } from "../utils/retired-financial-draft";
+import type { PlannerErrorCode } from "../types/planner.types";
 
 type OpenStatus = (typeof PLANNER_SUGGESTION_OPEN_STATUSES)[number];
 
@@ -50,7 +52,7 @@ async function releaseClaim(
 
 export type AcceptResult =
   | { ok: true; entityType: string; entityId: string; created: boolean }
-  | { ok: false; error: string };
+  | { ok: false; error: string; code: PlannerErrorCode };
 
 /**
  * Accept a suggestion → create the real Business OS entity through the EXISTING
@@ -91,7 +93,7 @@ export async function acceptPlannerSuggestion(
   suggestionId: string,
 ): Promise<AcceptResult> {
   if (!canDo(ctx, "planner.suggestion.accept")) {
-    return { ok: false, error: "Forbidden" };
+    return { ok: false, error: "Forbidden", code: "forbidden" };
   }
 
   // 1. Load (RLS already scopes to the org; the extra eq is defense in depth).
@@ -104,11 +106,11 @@ export async function acceptPlannerSuggestion(
     .eq("organization_id", ctx.org.id)
     .maybeSingle();
 
-  if (error || !data) return { ok: false, error: "Suggestion not found" };
+  if (error || !data) return { ok: false, error: "Suggestion not found", code: "not_found" };
   const previous = data as PlannerSuggestion;
 
   if (!isOpenStatus(previous.status)) {
-    return { ok: false, error: `Suggestion is already ${previous.status}` };
+    return { ok: false, error: `Suggestion is already ${previous.status}`, code: "not_open" };
   }
 
   // 2. Claim it. `.in("status", OPEN)` makes this a compare-and-swap: the loser of
@@ -125,12 +127,12 @@ export async function acceptPlannerSuggestion(
 
   if (claimError) {
     console.error("[acceptPlannerSuggestion] claim failed:", claimError.message);
-    return { ok: false, error: "Failed to accept suggestion" };
+    return { ok: false, error: "Failed to accept suggestion", code: "failed" };
   }
   if (!claimedRow) {
     // Someone else claimed it between the read and the CAS, or it left the open
     // set entirely. Either way this caller must not create a second entity.
-    return { ok: false, error: "This suggestion is already being processed" };
+    return { ok: false, error: "This suggestion is already being processed", code: "busy" };
   }
 
   // Use the claimed row: it is the freshest copy (a concurrent edit may have
@@ -167,7 +169,7 @@ export async function acceptPlannerSuggestion(
       { suggestionId: suggestion.id, entityType: outcome.entityType, entityId: outcome.entityId },
       recordError.message,
     );
-    return { ok: false, error: "Accepted, but the suggestion could not be updated" };
+    return { ok: false, error: "Accepted, but the suggestion could not be updated", code: "partial" };
   }
 
   // 4b. Flip to the terminal status and drop the claim.
@@ -275,6 +277,37 @@ async function findActiveEntityLink(
   return data.id as string;
 }
 
+/** Create the Tasks-module task a draft describes, exactly once per suggestion. */
+async function acceptAsTask(
+  ctx: CurrentContext,
+  tasks: Awaited<ReturnType<typeof getTasksApplication>>,
+  suggestion: PlannerSuggestion,
+  taskPayload: Record<string, unknown>,
+): Promise<AcceptResult> {
+  if (!canDo(ctx, "data.write")) return { ok: false, error: "Forbidden", code: "forbidden" };
+  const parsed = createTaskPayloadSchema.safeParse(taskPayload);
+  if (!parsed.success) return { ok: false, error: "Invalid task payload", code: "invalid" };
+  // Task priority tops out at 'high'; map 'urgent' down.
+  const priority = parsed.data.priority === "urgent" ? "high" : parsed.data.priority;
+  const res = await tasks.createStandardTask({
+    title: parsed.data.title,
+    description: parsed.data.description,
+    priority,
+    dueDate: parsed.data.dueDate ?? null,
+    // Exactly-once key (099). A retry after a crashed confirm resolves to the
+    // task this suggestion already created instead of a second one.
+    sourceSuggestionId: suggestion.id,
+  });
+  if (!res.ok) return { ok: false, error: res.error, code: "task_failed" };
+  // Phase B / B3: the draft told the user "a link will be created". Draw it.
+  // Skipped on the dedup path: the link was already drawn by the first confirm,
+  // and drawSuggestedLink would only log a duplicate-link error.
+  if (res.created) {
+    await drawSuggestedLink(ctx, parsed.data.linkTo, "task", res.taskId);
+  }
+  return { ok: true, entityType: "task", entityId: res.taskId, created: res.created };
+}
+
 async function routeAccept(
   supabase: SupabaseClient,
   ctx: CurrentContext,
@@ -284,35 +317,21 @@ async function routeAccept(
   const tasks = await getTasksApplication({ supabase, currentContext: ctx });
 
   switch (suggestion.suggestion_type) {
-    case "create_task": {
-      if (!canDo(ctx, "data.write")) return { ok: false, error: "Forbidden" };
-      const parsed = createTaskPayloadSchema.safeParse({ title: suggestion.title, ...payload });
-      if (!parsed.success) return { ok: false, error: "Invalid task payload" };
-      // Task priority tops out at 'high'; map 'urgent' down.
-      const priority = parsed.data.priority === "urgent" ? "high" : parsed.data.priority;
-      const res = await tasks.createStandardTask({
-        title: parsed.data.title,
-        description: parsed.data.description,
-        priority,
-        dueDate: parsed.data.dueDate ?? null,
-        // Exactly-once key (099). A retry after a crashed confirm resolves to the
-        // task this suggestion already created instead of a second one.
-        sourceSuggestionId: suggestion.id,
-      });
-      if (!res.ok) return { ok: false, error: res.error };
-      // Phase B / B3: the draft told the user "a link will be created". Draw it.
-      // Skipped on the dedup path: the link was already drawn by the first confirm,
-      // and drawSuggestedLink would only log a duplicate-link error.
-      if (res.created) {
-        await drawSuggestedLink(ctx, parsed.data.linkTo, "task", res.taskId);
-      }
-      return { ok: true, entityType: "task", entityId: res.taskId, created: res.created };
-    }
+    case "create_task":
+      return acceptAsTask(ctx, tasks, suggestion, { title: suggestion.title, ...payload });
+
+    // Retired Financial Tasks types. Tasks and Money no longer bridge, so the
+    // draft is accepted as the plain task it describes rather than refused —
+    // otherwise an old or model-proposed payment draft is a dead end.
+    case "create_financial_task":
+    case "create_money_reminder":
+    case "create_subscription_reminder":
+      return acceptAsTask(ctx, tasks, suggestion, retiredFinancialDraftToTaskPayload(suggestion));
 
     case "link_entities": {
-      if (!canDo(ctx, "entity_link.create")) return { ok: false, error: "Forbidden" };
+      if (!canDo(ctx, "entity_link.create")) return { ok: false, error: "Forbidden", code: "forbidden" };
       const parsed = linkEntitiesPayloadSchema.safeParse(payload);
-      if (!parsed.success) return { ok: false, error: "Invalid link payload" };
+      if (!parsed.success) return { ok: false, error: "Invalid link payload", code: "invalid" };
       const res = await createEntityLink({
         sourceType: parsed.data.sourceType,
         sourceId: parsed.data.sourceId,
@@ -339,13 +358,13 @@ async function routeAccept(
       if (existing) {
         return { ok: true, entityType: "entity_link", entityId: existing, created: false };
       }
-      return { ok: false, error: res.error };
+      return { ok: false, error: res.error, code: "failed" };
     }
 
     case "create_action_item": {
-      if (!canDo(ctx, "data.write")) return { ok: false, error: "Forbidden" };
+      if (!canDo(ctx, "data.write")) return { ok: false, error: "Forbidden", code: "forbidden" };
       const parsed = createActionItemPayloadSchema.safeParse({ title: suggestion.title, ...payload });
-      if (!parsed.success) return { ok: false, error: "Invalid action item payload" };
+      if (!parsed.success) return { ok: false, error: "Invalid action item payload", code: "invalid" };
       const res = await createActionItemForDocument(supabase, ctx, {
         // A distinct type from the review item ('ai_suggestion'/'missing_information')
         // keeps the (org, type, source_type, source_id) dedup key unique while
@@ -358,24 +377,19 @@ async function routeAccept(
         primaryEntityType: "planner_suggestion",
         primaryEntityId: suggestion.id,
       });
-      if (!res.ok || !res.actionItemId) return { ok: false, error: "Failed to create action item" };
+      if (!res.ok || !res.actionItemId) return { ok: false, error: "Failed to create action item", code: "failed" };
       return { ok: true, entityType: "action_item", entityId: res.actionItemId, created: true };
     }
 
     // Not part of the MVP surface — accept safely refuses instead of guessing.
-    // create_financial_task/create_money_reminder/create_subscription_reminder
-    // routed to the now-removed Financial Tasks concept; Tasks/Money/Subscriptions
-    // no longer bridge, so these fall back to manual entry too.
     case "create_document":
     case "assign_project":
     case "create_project":
-    case "create_financial_task":
-    case "create_money_reminder":
-    case "create_subscription_reminder":
     default:
       return {
         ok: false,
         error: "This suggestion type isn't supported yet — edit it into a task or reminder.",
+        code: "unsupported",
       };
   }
 }

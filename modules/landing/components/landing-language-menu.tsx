@@ -7,9 +7,11 @@ import { ROUTES } from "@/shared/config/routes";
 import { setLocaleAction } from "@/shared/i18n/set-locale.action";
 import { PUBLIC_LOCALES, PUBLIC_LOCALE_NAMES, type PublicLocale } from "@/shared/i18n/constants";
 import { cn } from "@/shared/utils/cn";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 interface LandingLanguageMenuProps {
   locale: PublicLocale;
+  labels: Dictionary["controls"];
 }
 
 const localeHref: Record<PublicLocale, string> = {
@@ -23,7 +25,7 @@ const localeHref: Record<PublicLocale, string> = {
  * не только навигирует на локальный лендинг, но и ставит cookie публичной локали
  * (`setLocaleAction`) — чтобы переходы на login/register/legal сохраняли язык.
  */
-export function LandingLanguageMenu({ locale }: LandingLanguageMenuProps) {
+export function LandingLanguageMenu({ locale, labels }: LandingLanguageMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -63,7 +65,7 @@ export function LandingLanguageMenu({ locale }: LandingLanguageMenuProps) {
         type="button"
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        aria-label={`Language: ${PUBLIC_LOCALE_NAMES[locale]}`}
+        aria-label={labels.languageCurrent.replace("{name}", PUBLIC_LOCALE_NAMES[locale])}
         disabled={isPending}
         onClick={() => setIsOpen((value) => !value)}
         className={cn(
@@ -77,7 +79,7 @@ export function LandingLanguageMenu({ locale }: LandingLanguageMenuProps) {
       {isOpen && (
         <ul
           role="menu"
-          aria-label="Language"
+          aria-label={labels.language}
           className="absolute right-0 top-[calc(100%+0.5rem)] z-50 flex min-w-40 flex-col overflow-hidden rounded-(--neu-radius-md) border border-border-soft bg-surface-elevated p-1 shadow-neu-card"
         >
           {PUBLIC_LOCALES.map((item) => {

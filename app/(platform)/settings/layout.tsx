@@ -1,14 +1,10 @@
-import { cookies } from "next/headers";
-import { ProductShell } from "@/modules/products/components/product-shell";
-import { parseProductContext, PRODUCT_CONTEXT_COOKIE } from "@/modules/products/product-context";
+import { AppShell } from "@/modules/app-shell/app-shell";
 import SettingsSectionLayout from "@/app/(dashboard)/dashboard/settings/layout";
 
-export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
-  const product = parseProductContext((await cookies()).get(PRODUCT_CONTEXT_COOKIE)?.value);
-
+export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ProductShell product={product}>
+    <AppShell>
       <SettingsSectionLayout>{children}</SettingsSectionLayout>
-    </ProductShell>
+    </AppShell>
   );
 }

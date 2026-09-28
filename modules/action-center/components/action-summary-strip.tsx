@@ -9,19 +9,21 @@ import {
   type AttentionFilterKey,
 } from "../services/attention-filter";
 import type { AttentionCounts } from "../queries/get-attention-view";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
-const CARDS: { key: AttentionFilterKey; label: string; icon: LucideIcon; tone: string }[] = [
-  { key: "needs_attention", label: "Needs Attention", icon: ListChecksIcon, tone: "text-accent-blue" },
-  { key: "due_today", label: "Due Today", icon: CalendarClockIcon, tone: "text-accent-yellow" },
-  { key: "upcoming", label: "Upcoming", icon: CalendarDaysIcon, tone: "text-accent-green" },
-  { key: "overdue", label: "Overdue", icon: AlertTriangleIcon, tone: "text-danger" },
-  { key: "snoozed", label: "Snoozed", icon: Clock3Icon, tone: "text-accent-lilac" },
-  { key: "recently_resolved", label: "Recently Resolved", icon: RotateCcwIcon, tone: "text-text-muted" },
+const CARDS: { key: AttentionFilterKey; icon: LucideIcon; tone: string }[] = [
+  { key: "needs_attention", icon: ListChecksIcon, tone: "text-info" },
+  { key: "due_today", icon: CalendarClockIcon, tone: "text-accent-yellow" },
+  { key: "upcoming", icon: CalendarDaysIcon, tone: "text-accent-green" },
+  { key: "overdue", icon: AlertTriangleIcon, tone: "text-danger" },
+  { key: "snoozed", icon: Clock3Icon, tone: "text-accent-lilac" },
+  { key: "recently_resolved", icon: RotateCcwIcon, tone: "text-text-muted" },
 ];
 
 interface ActionSummaryStripProps {
   counts: AttentionCounts;
   active: AttentionFilterKey;
+  labels: Dictionary["actionCenter"]["filters"];
 }
 
 /**
@@ -31,7 +33,7 @@ interface ActionSummaryStripProps {
  * action_items set — so the number on the card and the list below always use the
  * same conditions. `aria-pressed` exposes the active filter to assistive tech.
  */
-export function ActionSummaryStrip({ counts, active }: ActionSummaryStripProps) {
+export function ActionSummaryStrip({ counts, active, labels }: ActionSummaryStripProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -48,27 +50,52 @@ export function ActionSummaryStrip({ counts, active }: ActionSummaryStripProps) 
   }
 
   return (
-    <div className={cn("grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6", pending && "opacity-70")}>
-      {CARDS.map(({ key, label, icon: Icon, tone }) => {
+    <div className={cn("grid grid-cols-3 gap-2 md:gap-3 xl:grid-cols-6", pending && "opacity-70")}>
+      {CARDS.map(({ key, icon: Icon, tone }) => {
         const isActive = active === key;
         return (
           <button
             key={key}
             type="button"
             aria-pressed={isActive}
+            // The label is hidden on mobile, so the name must not depend on it.
+            aria-label={`${labels[key]}: ${counts[key]}`}
             onClick={() => selectFilter(key)}
             className={cn(
-              "soft-card-sm flex items-center gap-3 p-4 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/50",
-              isActive ? "ring-2 ring-accent-blue/60" : "hover:bg-surface",
+              "group soft-card-sm flex flex-col items-center gap-1.5 p-3 text-center",
+              "md:cursor-pointer md:items-stretch md:gap-2 md:p-4 md:text-left",
+              // Analog feel: the card lifts under the pointer, presses in on click,
+              // and the selected filter stays pressed in.
+              "transition-[transform,box-shadow,background-color] duration-200 ease-out motion-reduce:transition-none",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-info/60",
+              isActive
+                ? "bg-surface-sunken shadow-neu-inset ring-1 ring-info/40"
+                : "active:translate-y-0 active:shadow-neu-inset md:hover:-translate-y-1 md:hover:shadow-neu-card motion-reduce:md:hover:translate-y-0",
             )}
           >
-            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-(--neu-radius-md) bg-surface-sunken", tone)}>
-              <Icon size={18} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xl font-semibold tabular-nums text-text-primary">{counts[key]}</p>
-              <p className="truncate text-xs text-text-muted">{label}</p>
+            <div aria-hidden="true" className="flex flex-col items-center gap-1.5 md:flex-row md:gap-3">
+              <span
+                className={cn(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-(--neu-radius-md) md:h-9 md:w-9",
+                  "transition-transform duration-200 ease-out md:group-hover:scale-110 motion-reduce:transform-none",
+                  isActive ? "bg-surface" : "bg-surface-sunken",
+                  tone,
+                )}
+              >
+                <Icon size={18} />
+              </span>
+              <p className="text-lg font-semibold tabular-nums text-text-primary md:text-xl">{counts[key]}</p>
             </div>
+            {/* Under the count, full card width: long words ("Просрочено") fit. */}
+            <p
+              aria-hidden="true"
+              className={cn(
+                "hidden text-xs leading-tight transition-colors md:line-clamp-2",
+                isActive ? "text-text-secondary" : "text-text-muted md:group-hover:text-text-secondary",
+              )}
+            >
+              {labels[key]}
+            </p>
           </button>
         );
       })}

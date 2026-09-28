@@ -210,6 +210,37 @@ describe("acceptPlannerSuggestion", () => {
     expect(row.claimed_at).toBeNull();
   });
 
+  it.each(["create_financial_task", "create_money_reminder", "create_subscription_reminder"])(
+    "accepts a retired %s draft as a plain task carrying its date and amount",
+    async (suggestion_type) => {
+      const store = new Map([
+        [
+          "sug-1",
+          baseSuggestion({
+            suggestion_type,
+            title: "Expense: Products + Rubber + Linella",
+            status: "edited",
+            proposed_payload: { amount: 1070, currency: "MDL", financialDueDate: "2026-09-27", providerName: "Linella" },
+          }),
+        ],
+      ]);
+
+      const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+
+      expect(result).toEqual({ ok: true, entityType: "task", entityId: "task-1", created: true });
+      expect(createStandardTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Expense: Products + Rubber + Linella",
+          description: "Linella · 1070 MDL",
+          dueDate: "2026-09-27",
+          priority: "medium",
+          sourceSuggestionId: "sug-1",
+        }),
+      );
+      expect(store.get("sug-1")!.status).toBe("accepted");
+    },
+  );
+
   it("creates exactly one entity when two confirms race (security requirement #3)", async () => {
     const store = new Map([["sug-1", baseSuggestion()]]);
     const supabase = makeSupabase(store);
@@ -235,7 +266,7 @@ describe("acceptPlannerSuggestion", () => {
 
     const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
 
-    expect(result).toEqual({ ok: false, error: "Suggestion is already accepted" });
+    expect(result).toEqual({ ok: false, error: "Suggestion is already accepted", code: "not_open" });
     expect(createStandardTask).not.toHaveBeenCalled();
   });
 
@@ -245,7 +276,7 @@ describe("acceptPlannerSuggestion", () => {
 
     const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
 
-    expect(result).toEqual({ ok: false, error: "Task limit reached" });
+    expect(result).toEqual({ ok: false, error: "Task limit reached", code: "task_failed" });
     const row = store.get("sug-1")!;
     // Reverted to the status it was claimed from — still reviewable.
     expect(row.status).toBe("edited");
@@ -275,7 +306,7 @@ describe("acceptPlannerSuggestion", () => {
 
     const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
 
-    expect(result).toEqual({ ok: false, error: "Forbidden" });
+    expect(result).toEqual({ ok: false, error: "Forbidden", code: "forbidden" });
     expect(store.get("sug-1")!.status).toBe("pending");
   });
 });
@@ -431,7 +462,7 @@ describe("acceptPlannerSuggestion — exactly-once across a retried confirm", ()
     // No existing link to fall back on.
     const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
 
-    expect(result).toEqual({ ok: false, error: "unverifiable entity" });
+    expect(result).toEqual({ ok: false, error: "unverifiable entity", code: "failed" });
     // Claim released so the user can retry once the underlying problem is fixed.
     expect(store.get("sug-1")!.status).toBe("pending");
   });
@@ -441,7 +472,7 @@ describe("acceptPlannerSuggestion — exactly-once across a retried confirm", ()
 
     const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
 
-    expect(result).toEqual({ ok: false, error: "Suggestion is already accepted" });
+    expect(result).toEqual({ ok: false, error: "Suggestion is already accepted", code: "not_open" });
     expect(createStandardTask).not.toHaveBeenCalled();
   });
 
@@ -450,7 +481,7 @@ describe("acceptPlannerSuggestion — exactly-once across a retried confirm", ()
 
     const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
 
-    expect(result).toEqual({ ok: false, error: "Suggestion is already rejected" });
+    expect(result).toEqual({ ok: false, error: "Suggestion is already rejected", code: "not_open" });
     expect(createStandardTask).not.toHaveBeenCalled();
   });
 
@@ -459,7 +490,7 @@ describe("acceptPlannerSuggestion — exactly-once across a retried confirm", ()
 
     const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
 
-    expect(result).toEqual({ ok: false, error: "Suggestion not found" });
+    expect(result).toEqual({ ok: false, error: "Suggestion not found", code: "not_found" });
     expect(createStandardTask).not.toHaveBeenCalled();
   });
 

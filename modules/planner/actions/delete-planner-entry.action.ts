@@ -8,21 +8,23 @@ import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 import { deletePlannerEntrySchema } from "../schemas/planner-entry.schema";
 import { resolvePlannerActionItems } from "../services/resolve-planner-action-item";
+import { getInboxErrors } from "./inbox-errors";
 
 export async function deletePlannerEntryAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
   const ctx = await requireOrg();
+  const errors = await getInboxErrors();
 
   if (!canDo(ctx, "planner.entry.delete")) {
-    return { error: "You don't have permission to delete inbox entries" };
+    return { error: errors.forbidden };
   }
 
   const parsed = deletePlannerEntrySchema.safeParse({
     entryId: formData.get("entryId"),
   });
-  if (!parsed.success) return { error: "Invalid inbox entry" };
+  if (!parsed.success) return { error: errors.invalid };
 
   const supabase = await createClient();
   const { data: suggestions } = await supabase
@@ -40,7 +42,7 @@ export async function deletePlannerEntryAction(
 
   if (error) {
     console.error("[deletePlannerEntryAction] archive failed:", error.message);
-    return { error: "Failed to delete inbox entry" };
+    return { error: errors.deleteFailed };
   }
 
   await resolvePlannerActionItems(supabase, ctx, [

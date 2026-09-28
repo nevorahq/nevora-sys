@@ -7,15 +7,17 @@ import { canDo } from "@/lib/context/current-context";
 import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 import { updatePlannerEntrySchema } from "../schemas/planner-entry.schema";
+import { getInboxErrors, rawTextFieldErrors } from "./inbox-errors";
 
 export async function updatePlannerEntryAction(
   _prevState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
   const ctx = await requireOrg();
+  const errors = await getInboxErrors();
 
   if (!canDo(ctx, "planner.entry.update")) {
-    return { error: "You don't have permission to edit inbox entries" };
+    return { error: errors.forbidden };
   }
 
   const parsed = updatePlannerEntrySchema.safeParse({
@@ -23,7 +25,7 @@ export async function updatePlannerEntryAction(
     rawText: formData.get("rawText"),
   });
   if (!parsed.success) {
-    return { error: "Invalid inbox entry", fieldErrors: parsed.error.flatten().fieldErrors };
+    return { fieldErrors: rawTextFieldErrors(errors, parsed.error.issues) };
   }
 
   const supabase = await createClient();
@@ -39,7 +41,7 @@ export async function updatePlannerEntryAction(
 
   if (error) {
     console.error("[updatePlannerEntryAction] update failed:", error.message);
-    return { error: "Failed to update inbox entry" };
+    return { error: errors.updateFailed };
   }
 
   revalidatePath(ROUTES.inbox);

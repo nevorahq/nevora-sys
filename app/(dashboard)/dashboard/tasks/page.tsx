@@ -5,7 +5,6 @@ import { taskToTodo } from "@/features/todos/lib/task-to-todo";
 import { getProjects } from "@/modules/tasks/server";
 import { TodoCreateButton } from "@/features/todos/components/todo-create-button";
 import { TodoList } from "@/features/todos/components/todo-list";
-import { TasksSubnav } from "@/features/todos/components/tasks-subnav";
 import { TaskSortSelect } from "@/features/todos/components/task-sort-select";
 import { parseTaskSort } from "@nevora/tasks-contracts";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
@@ -39,8 +38,7 @@ export default async function TasksPage({
         <TodoCreateButton dict={dict} projects={projectOptions} />
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <TasksSubnav />
+      <div className="mt-5 flex sm:justify-end">
         <TaskSortSelect current={sort} />
       </div>
 

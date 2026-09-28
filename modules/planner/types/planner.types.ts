@@ -212,3 +212,21 @@ export interface InboxDashboardData {
     pending: number;
   };
 }
+
+// ── Failure codes (localized by the Server Actions via dict.inbox.errors) ────
+
+/**
+ * Why a planner service call failed. Services keep an English `error` for logs
+ * and tests; the Server Action turns the code into the viewer's language.
+ */
+export type PlannerErrorCode =
+  | "forbidden"
+  | "not_found"
+  | "not_open"
+  | "busy"
+  | "invalid"
+  | "unsupported"
+  | "failed"
+  | "partial"
+  | "empty"
+  | "task_failed";

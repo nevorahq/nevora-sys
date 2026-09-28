@@ -16,7 +16,7 @@ import { DocumentDetailActions } from "@/modules/documents/components/document-d
 
 export default async function DocumentPreviewPage({ params }: PageProps<"/dashboard/documents/[documentId]">) {
   const { documentId } = await params;
-  const [ctx, { dict }] = await Promise.all([requireOrg(), getDictionary()]);
+  const [ctx, { dict, locale }] = await Promise.all([requireOrg(), getDictionary()]);
   const { org } = ctx;
   const t = dict.documents;
   const document = await getDocumentById(org.id, documentId);
@@ -43,7 +43,7 @@ export default async function DocumentPreviewPage({ params }: PageProps<"/dashbo
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
       <main className="space-y-6">
         {isFinancial && extractionState && (
-          <DocumentExtractionReview documentId={document.id} state={extractionState} canConfirm={canDo(ctx, "data.write")} t={t} stateLabels={dict.money.states} />
+          <DocumentExtractionReview documentId={document.id} state={extractionState} canConfirm={canDo(ctx, "data.write")} t={t} stateLabels={dict.money.states} locale={locale} />
         )}
         <section className="soft-card p-5 sm:p-6"><div className="mb-3 flex items-center gap-2 text-text-secondary"><FileTextIcon size={18} /><h2 className="font-semibold">{t.detail.notesField}</h2></div><p className="whitespace-pre-wrap text-sm leading-6 text-text-primary">{document.content || t.detail.noNotes}</p></section>
         <section><h2 className="mb-3 text-base font-semibold text-text-primary">{t.form.attachments}</h2>{attachments.length ? <div className="grid gap-4 lg:grid-cols-2">{attachments.map((attachment) => <DocumentPreviewCard key={attachment.id} attachment={attachment} />)}</div> : <div className="soft-card-sm p-5 text-sm text-text-muted">{t.detail.noFiles}</div>}</section>

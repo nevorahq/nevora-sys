@@ -19,6 +19,7 @@ import {
   type ExtractedFinancialDocument,
 } from "../schemas/extracted-financial-document.schema";
 import type { ExtractionErrorCode } from "../types/document-extraction.types";
+import { actionItemTitle } from "@/modules/action-center/utils/action-item-title";
 
 const STORAGE_BUCKET = "documents";
 
@@ -512,7 +513,7 @@ async function openDocumentReview(
 ): Promise<void> {
   await createActionItemForDocument(supabase, ctx, {
     type: "document_review",
-    title: `Review document extraction: ${params.title}`,
+    title: actionItemTitle("reviewDocumentExtraction", params.title),
     description: params.reason,
     sourceType: "document",
     sourceId: params.documentId,
@@ -576,7 +577,7 @@ async function fail(
   // Surface to the user via Action Center (best-effort).
   await createActionItemForDocument(supabase, ctx, {
     type: "document_review",
-    title: "Review document extraction",
+    title: actionItemTitle("reviewDocumentExtractionPlain"),
     description: params.message,
     sourceType: "document",
     sourceId: params.documentId,

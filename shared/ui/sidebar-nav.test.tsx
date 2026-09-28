@@ -2,89 +2,66 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { en } from "@/shared/i18n/dictionaries/en";
-import { parseProductContext } from "@/modules/products/product-context";
 
 let pathname = "/tasks";
 vi.mock("next/navigation", () => ({ usePathname: () => pathname }));
 
 import { Sidebar } from "./sidebar";
 
-afterEach(() => {
-  cleanup();
-  document.cookie = "nevora_product_context=; Path=/; Max-Age=0";
-  document.cookie = "nevora_product_context=; Path=/settings; Max-Age=0";
-  document.cookie = "nevora_product_context=; Path=/dashboard/documents; Max-Age=0";
-  window.history.replaceState({}, "", "/");
-});
+afterEach(cleanup);
+
+const ALL_MODULES = [
+  "/dashboard",
+  "/dashboard/inbox",
+  "/tasks",
+  "/tasks/projects",
+  "/finance",
+  "/subscriptions",
+  "/dashboard/documents",
+  "/settings",
+];
 
 function visibleLinks() {
   return screen.getAllByRole("link").map((link) => link.getAttribute("href"));
 }
 
-describe("product-scoped sidebar", () => {
-  it("Tasks показывает Tasks, Projects и общие Settings", () => {
-    pathname = "/tasks";
-    render(<Sidebar dict={en} product="tasks" />);
-    expect(visibleLinks()).toEqual(["/tasks", "/tasks/projects", "/settings"]);
-  });
+function activeLink() {
+  return screen
+    .getAllByRole("link")
+    .find((link) => link.className.includes("shadow-neu-inset"))
+    ?.getAttribute("href");
+}
 
-  it("Finance не показывает Tasks и Subscriptions", () => {
-    pathname = "/finance";
-    render(<Sidebar dict={en} product="finance" />);
-    expect(visibleLinks()).toEqual(["/finance", "/settings"]);
-    expect(screen.queryByText(en.nav.tasks)).toBeNull();
-    expect(screen.queryByText(en.nav.subscriptions)).toBeNull();
-  });
+describe("one app sidebar", () => {
+  it.each(["/dashboard", "/tasks", "/finance", "/subscriptions", "/settings/profile"])(
+    "shows every module, Action Center first, on %s",
+    (path) => {
+      pathname = path;
+      render(<Sidebar dict={en} />);
+      expect(visibleLinks()).toEqual(ALL_MODULES);
+    },
+  );
 
-  it("Subscriptions постоянно показывает Documents и Settings, но не другие продукты", () => {
-    pathname = "/subscriptions";
-    render(<Sidebar dict={en} product="subscriptions" />);
-    expect(visibleLinks()).toEqual(["/subscriptions", "/dashboard/documents", "/settings"]);
-    expect(screen.queryByText(en.nav.tasks)).toBeNull();
-    expect(screen.queryByText(en.nav.money)).toBeNull();
-  });
-
-  it("переход из Subscriptions в Settings сохраняет product-контекст", async () => {
-    pathname = "/subscriptions";
-    render(<Sidebar dict={en} product="subscriptions" />);
-
-    await userEvent.click(screen.getByRole("link", { name: en.nav.settings }));
-    window.history.replaceState({}, "", "/settings/profile");
-
-    expect(document.cookie).toContain("nevora_product_context=subscriptions");
-  });
-
-  it("переход из Subscriptions в Documents сохраняет product-контекст", async () => {
-    pathname = "/subscriptions";
-    render(<Sidebar dict={en} product="subscriptions" />);
-
-    await userEvent.click(screen.getByRole("link", { name: en.nav.documents }));
-    window.history.replaceState({}, "", "/dashboard/documents");
-
-    expect(document.cookie).toContain("nevora_product_context=subscriptions");
-  });
-
-  it("Settings восстанавливает тот же набор навигации для Subscriptions", () => {
-    pathname = "/settings/profile";
-    const product = parseProductContext("subscriptions");
-    render(<Sidebar dict={en} product={product} />);
-
-    expect(visibleLinks()).toEqual(["/subscriptions", "/dashboard/documents", "/settings"]);
-  });
-
-  it("Documents восстанавливает тот же набор навигации для Subscriptions", () => {
-    pathname = "/dashboard/documents";
-    const product = parseProductContext("subscriptions");
-    render(<Sidebar dict={en} product={product} />);
-
-    expect(visibleLinks()).toEqual(["/subscriptions", "/dashboard/documents", "/settings"]);
-  });
-
-  it("платформенная оболочка содержит только общие Documents и Settings", () => {
-    pathname = "/settings";
+  it.each([
+    ["/dashboard", "/dashboard"],
+    ["/dashboard/inbox", "/dashboard/inbox"],
+    ["/tasks/123", "/tasks"],
+    ["/tasks/projects/9", "/tasks/projects"],
+    ["/finance/accounts", "/finance"],
+    ["/subscriptions/42", "/subscriptions"],
+    ["/dashboard/documents/7", "/dashboard/documents"],
+    ["/settings/billing", "/settings"],
+  ])("highlights the most specific module for %s", (path, expected) => {
+    pathname = path;
     render(<Sidebar dict={en} />);
-    expect(visibleLinks()).toEqual(["/dashboard/documents", "/settings"]);
+    expect(activeLink()).toBe(expected);
+  });
+
+  it("labels the Action Center and Inbox from the dictionary", () => {
+    pathname = "/dashboard";
+    render(<Sidebar dict={en} />);
+    expect(screen.getByRole("link", { name: en.nav.actionCenter }).getAttribute("href")).toBe("/dashboard");
+    expect(screen.getByRole("link", { name: en.nav.inbox }).getAttribute("href")).toBe("/dashboard/inbox");
   });
 });

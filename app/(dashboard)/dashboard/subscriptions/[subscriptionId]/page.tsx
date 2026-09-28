@@ -12,12 +12,10 @@ import { ROUTES } from "@/shared/config/routes";
 
 interface SubscriptionDetailPageProps {
   params: PageProps<"/dashboard/subscriptions/[subscriptionId]">["params"];
-  productIsolated?: boolean;
 }
 
 export default async function SubscriptionDetailPage({
   params,
-  productIsolated = false,
 }: SubscriptionDetailPageProps) {
   const { subscriptionId } = await params;
   const ctx = await requireOrg();
@@ -78,7 +76,7 @@ export default async function SubscriptionDetailPage({
           />
           <div id="gmail-invoices"><GmailInvoicePanel subscriptionId={sub.id} canWrite={canWrite} /></div>
           {sub.note && <section className="soft-card p-5 sm:p-6"><h2 className="text-base font-semibold text-text-primary">Notes</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-primary">{sub.note}</p></section>}
-          <UniversalRelationViewer entityType="subscription" entityId={sub.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.subscriptions}/${sub.id}`} allowedKinds={productIsolated ? ["subscription", "document"] : undefined} />
+          <UniversalRelationViewer entityType="subscription" entityId={sub.id} allowCreate={canDo(ctx, "entity_link.create")} allowDelete={canDo(ctx, "entity_link.delete")} revalidate={`${ROUTES.subscriptions}/${sub.id}`} />
         </main>
         <aside className="space-y-4">
           <section className="soft-card-sm space-y-4 p-4">

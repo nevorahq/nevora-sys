@@ -1,6 +1,7 @@
 import type { CreateActionItemInput } from "@/modules/action-center/services/create-action-item-for-document";
 import type { PlannerSuggestion, PlannerEntry } from "../types/planner.types";
 import { confidenceBand } from "../types/planner.types";
+import { actionItemTitle } from "@/modules/action-center/utils/action-item-title";
 
 /**
  * Map a planner signal into an Action Center item so the Inbox feeds the single
@@ -21,9 +22,7 @@ export function mapSuggestionToReviewActionItem(
   const needsReview = band !== "ready";
   return {
     type: needsReview ? "missing_information" : "ai_suggestion",
-    title: needsReview
-      ? `Review capture: ${suggestion.title}`
-      : `Suggested action: ${suggestion.title}`,
+    title: actionItemTitle(needsReview ? "reviewCapture" : "suggestedAction", suggestion.title),
     description:
       suggestion.description ??
       "Open Capture to accept, edit or reject this AI suggestion.",
@@ -49,7 +48,7 @@ export function mapEntryToMissingInfoActionItem(
 ): CreateActionItemInput {
   return {
     type: "missing_information",
-    title: `Capture needs review`,
+    title: actionItemTitle("captureNeedsReview"),
     description: reason,
     sourceType: "ai",
     sourceId: entry.id,

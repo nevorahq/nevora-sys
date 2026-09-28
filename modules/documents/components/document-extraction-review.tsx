@@ -4,6 +4,7 @@ import { ExtractionReviewActions } from "./extraction-review-actions";
 import { ExtractionStatusPoller } from "./extraction-status-poller";
 import { FinancialStateBadge } from "@nevora/financial-state/ui";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
+import type { Locale } from "@/shared/i18n/constants";
 
 type DocsDict = Dictionary["documents"];
 
@@ -18,6 +19,7 @@ export function DocumentExtractionReview({
   canConfirm,
   t,
   stateLabels,
+  locale,
 }: {
   documentId: string;
   state: DocumentExtractionState;
@@ -25,8 +27,10 @@ export function DocumentExtractionReview({
   t: DocsDict;
   /** Canonical financial-state labels (`dict.money.states`) for the draft badge. */
   stateLabels: Dictionary["money"]["states"];
+  locale: Locale;
 }) {
   const x = t.extraction;
+  const formatMoney = (amount: number | null, currency: string | null) => formatAmount(amount, currency, locale);
   const { extraction, financialData, items, financialSuggestion, accounts, categories, contexts, classification } = state;
 
   // Currency picker inputs: a planned draft must post onto a same-currency
@@ -73,13 +77,13 @@ export function DocumentExtractionReview({
       )}
       {status === "failed" && (
         <Banner tone="danger" icon={<AlertTriangleIcon size={16} />}>
-          {friendlyError(extraction.error_code, extraction.error_message, x)}
+          {friendlyError(extraction.error_code, x)}
         </Banner>
       )}
       {status === "needs_review" && (
         <Banner tone="warning" icon={<AlertTriangleIcon size={16} />}>
           {extraction.error_message ?? extraction.error_code
-            ? friendlyError(extraction.error_code, extraction.error_message, x)
+            ? friendlyError(extraction.error_code, x)
             : x.needsReviewDefault}
         </Banner>
       )}
@@ -92,7 +96,7 @@ export function DocumentExtractionReview({
           <Field label={x.total} value={formatMoney(financialData.total_amount, financialData.currency)} emphasis />
           <Field label={x.tax} value={formatMoney(financialData.tax_amount, financialData.currency)} />
           <Field label={x.subtotal} value={formatMoney(financialData.subtotal_amount, financialData.currency)} />
-          <Field label={x.paymentMethod} value={financialData.payment_method ?? "—"} />
+          <Field label={x.paymentMethod} value={paymentMethodLabel(financialData.payment_method, x)} />
         </div>
       )}
 
@@ -148,12 +152,12 @@ export function DocumentExtractionReview({
           {classification && (
             <div className="mt-3 border-t border-border pt-3 text-xs text-text-muted">
               <p>
-                {x.suggestedBy} <span className="font-medium text-text-secondary">{classification.method.replaceAll("_", " ")}</span>
+                {x.suggestedBy} <span className="font-medium text-text-secondary">{x.methods[classificationKey(classification.method, x)]}</span>
                 {classification.category_confidence != null
                   ? ` · ${x.categoryConfidence.replace("{pct}", String(Math.round(classification.category_confidence * 100)))}`
                   : ""}
               </p>
-              <p className="mt-1">{classification.reason}</p>
+              <p className="mt-1">{x.reasons[classificationKey(classification.method, x)]}</p>
             </div>
           )}
         </div>
@@ -220,21 +224,48 @@ function confidenceTone(pct: number): string {
   return "bg-danger-soft text-danger";
 }
 
-function formatMoney(amount: number | null, currency: string | null): string {
+const INTL_LOCALE: Record<Locale, string> = { en: "en-US", ru: "ru-RU", ro: "ro-RO" };
+
+/**
+ * The stored classification method as a dictionary key. The stored reason is
+ * English server text, so the screen shows the dictionary reason for the method.
+ */
+function classificationKey(method: string, x: DocsDict["extraction"]): keyof DocsDict["extraction"]["methods"] {
+  return Object.hasOwn(x.methods, method) ? (method as keyof DocsDict["extraction"]["methods"]) : "suggestion";
+}
+
+const PAYMENT_METHOD_ALIASES: Record<string, keyof DocsDict["extraction"]["paymentMethods"]> = {
+  card: "card",
+  credit_card: "card",
+  debit_card: "card",
+  cash: "cash",
+  bank_transfer: "bank_transfer",
+  transfer: "bank_transfer",
+  wire_transfer: "bank_transfer",
+};
+
+/** The model writes the payment method in English; translate the usual ones. */
+function paymentMethodLabel(raw: string | null, x: DocsDict["extraction"]): string {
+  if (!raw?.trim()) return "—";
+  const key = PAYMENT_METHOD_ALIASES[raw.trim().toLowerCase().replace(/[\s-]+/g, "_")];
+  return key ? x.paymentMethods[key] : raw;
+}
+
+function formatAmount(amount: number | null, currency: string | null, locale: Locale): string {
   if (amount == null) return "—";
   try {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: currency ?? "EUR" }).format(amount);
+    return new Intl.NumberFormat(INTL_LOCALE[locale], { style: "currency", currency: currency ?? "EUR" }).format(amount);
   } catch {
     return `${amount.toFixed(2)} ${currency ?? ""}`.trim();
   }
 }
 
-function friendlyError(code: string | null, message: string | null, x: DocsDict["extraction"]): string {
+function friendlyError(code: string | null, x: DocsDict["extraction"]): string {
   switch (code) {
     case "unsupported_file_type":
       return x.errUnsupported;
     case "usage_limit_exceeded":
-      return message ?? x.errLimit;
+      return x.errLimit;
     case "ocr_failed":
     case "pdf_parse_failed":
       return x.errRead;
@@ -242,6 +273,6 @@ function friendlyError(code: string | null, message: string | null, x: DocsDict[
     case "schema_validation_failed":
       return x.errUnderstand;
     default:
-      return message ?? x.errDefault;
+      return x.errDefault;
   }
 }

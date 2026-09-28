@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ClipboardCheckIcon, InboxIcon, type LucideIcon } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import type { InboxTab } from "../types/planner.types";
@@ -31,9 +32,9 @@ export function InboxTabs({
 }: InboxTabsProps) {
   const [tab, setTab] = useState<InboxTab>(initialTab);
 
-  const tabs: { id: InboxTab; label: string; badge?: number }[] = [
-    { id: "inbox", label: dict.tabInbox },
-    { id: "review", label: dict.tabReview, badge: pendingCount || undefined },
+  const tabs: { id: InboxTab; label: string; icon: LucideIcon; badge?: number }[] = [
+    { id: "inbox", label: dict.tabInbox, icon: InboxIcon },
+    { id: "review", label: dict.tabReview, icon: ClipboardCheckIcon, badge: pendingCount || undefined },
   ];
 
   // Deep link: once the Review tab is visible, bring the targeted suggestion into
@@ -67,6 +68,8 @@ export function InboxTabs({
           <button
             key={t.id}
             type="button"
+            // On mobile the tab is icon-only, so the label must carry the name.
+            aria-label={t.badge ? `${t.label} (${t.badge})` : t.label}
             onClick={() => selectTab(t.id)}
             className={cn(
               "flex flex-1 items-center justify-center gap-2 rounded-(--neu-radius-sm) px-3 py-2 text-sm font-medium transition-all",
@@ -75,9 +78,10 @@ export function InboxTabs({
                 : "text-text-secondary hover:text-text-primary",
             )}
           >
-            {t.label}
+            <t.icon size={18} strokeWidth={1.75} aria-hidden className="shrink-0" />
+            <span className="hidden whitespace-nowrap md:inline">{t.label}</span>
             {t.badge ? (
-              <span className="rounded-full bg-accent-yellow px-1.5 text-[10px] font-bold text-text-primary">
+              <span aria-hidden className="rounded-full bg-accent-yellow px-1.5 text-[10px] font-bold text-text-primary">
                 {t.badge}
               </span>
             ) : null}

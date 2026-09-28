@@ -92,8 +92,9 @@ The six summary cards are accessible **filter buttons** over the read-only
 Attention list: selecting one writes `?filter=<key>` to the URL, and the card
 count and the filtered list share one predicate contract
 (`services/attention-filter.ts`), so a card's number always matches its list.
-`action_items` remain the "what needs attention" projection; `domain_events` (the
-Activity Log) remain the separate "what happened" history — never mixed.
+`action_items` remain the "what needs attention" projection; `domain_events` remain
+the separate "what happened" history — never mixed. The Action Center no longer
+renders that history as an Activity Log (removed 2026-09-28).
 
 Capture-derived review lives in the **Inbox**, not the Action Center: planner
 suggestions (text/photo/document) via `SuggestionReviewActions`, and a captured
