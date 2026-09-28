@@ -53,6 +53,15 @@ const ROLE_PERMISSIONS: Record<OrgRole, string[]> = {
 };
 
 /**
+ * The permission set a role carries. Exported so a context rebuilt without a
+ * session (a channel webhook acting for a linked user) gets exactly the RBAC a
+ * signed-in request would — never a hand-picked subset.
+ */
+export function permissionsForRole(role: string): Set<string> {
+  return new Set<string>(ROLE_PERMISSIONS[role as OrgRole] ?? []);
+}
+
+/**
  * Требовать активный org + workspace контекст — или redirect.
  *
  * Обёрнут в React cache() — дедупликация в рамках одного render pass.
@@ -157,7 +166,7 @@ export const requireOrg = cache(async (): Promise<CurrentContext> => {
   };
 
   // ── 2. Permissions ────────────────────────────────────────────────────
-  const permissions = new Set<string>(ROLE_PERMISSIONS[roleName] ?? []);
+  const permissions = permissionsForRole(roleName);
 
   // ── 3. Workspace ──────────────────────────────────────────────────────
   const { data: wsData } = await supabase

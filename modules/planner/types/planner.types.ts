@@ -11,7 +11,7 @@
 export const PLANNER_ENTRY_TYPES = ["text", "file", "photo", "link", "voice", "document"] as const;
 export type PlannerEntryType = (typeof PLANNER_ENTRY_TYPES)[number];
 
-export const PLANNER_ENTRY_SOURCES = ["manual", "document", "subscription", "money", "task", "system"] as const;
+export const PLANNER_ENTRY_SOURCES = ["manual", "document", "subscription", "money", "task", "system", "channel"] as const;
 export type PlannerEntrySource = (typeof PLANNER_ENTRY_SOURCES)[number];
 
 export const PLANNER_ENTRY_STATUSES = [

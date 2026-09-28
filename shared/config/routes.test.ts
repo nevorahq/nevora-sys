@@ -119,6 +119,14 @@ describe("isPublicRoute", () => {
     expect(existsSync("app/api/billing/webhook/route.ts")).toBe(true);
   });
 
+  it("пропускает webhook Telegram: без этого бот получал бы 302 на /login", () => {
+    // Хендлер сам сверяет секрет, который Telegram присылает в заголовке.
+    expect(isMachineRoute("/api/channels/telegram/webhook")).toBe(true);
+    expect(isPublicRoute("/api/channels/telegram/webhook")).toBe(false);
+    expect(isMachineRoute("/api/channels/telegram")).toBe(false);
+    expect(existsSync("app/api/channels/telegram/webhook/route.ts")).toBe(true);
+  });
+
   it("сверяет только точное совпадение — префикс не открывает соседей", () => {
     expect(isMachineRoute("/api/cron")).toBe(false);
     expect(isMachineRoute("/api/cron/")).toBe(false);

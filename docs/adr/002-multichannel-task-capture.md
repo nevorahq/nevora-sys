@@ -137,10 +137,46 @@ external id).
   sent without a quantity or price (a menu, a price list) and failed the whole
   extraction; missing line values now read as null.
 
-**Step 1 — `channel_integrations` + shared intake function** (migration 119),
-with the dedupe key and the `MACHINE_ROUTES` entries.
+**Step 1 — `channel_integrations` + shared intake function.** *Done
+2026-09-28, migration 121* (119 went to 0.2a).
+- `channel_integrations` (external account ↔ user, one-to-one while active),
+  `channel_link_codes` (one-time, SHA-256-hashed, 15-minute codes a user issues
+  for themselves in Settings → Integrations), and `planner_entries.channel` +
+  `channel_message_key` with a unique index per org + channel: a redelivered
+  message is one capture. New source value `channel`. Explicit least-privilege
+  grants: users read their own rows, may only flip their integration to
+  `revoked` (column-level UPDATE) and issue codes for themselves; linking and
+  code consumption are service-role only. Verified by
+  `supabase/tests/121_channel_intake_verification.sql`.
+- `modules/channels`: `resolveChannelContext` rebuilds the linked user's
+  context without a session — active membership, the role's RBAC set
+  (`permissionsForRole`, the same map `requireOrg` uses), capture permission,
+  and `is_organization_writable`. `captureChannelText` is the durable write;
+  `processChannelCapture` is the existing `processPlannerEntry` (same metered
+  AI detection, same Review tab, same confirm-first accept into Tasks).
 
-**Step 2 — Telegram.** **Step 3 — Slack.** **Step 4 — Email forwarding.**
+**Step 2 — Telegram.** *Text done 2026-09-28.* Bot API webhook at
+`/api/channels/telegram/webhook` (in `MACHINE_ROUTES`), authenticated by the
+secret token Telegram echoes, fail-closed (503 unconfigured, 401 wrong secret).
+Private chats only. `/start <code>` links, `/stop` unlinks, `/help`; any other
+text is captured. The capture is stored before answering 200, so a failure
+answers 500 and Telegram redelivers; the AI step and the reply ("Added to your
+Inbox: <task>" + a deep link to the Review card) run after the response. Bot
+copy is in the dictionaries (en/ru/ro), in the user's app language. Setup:
+`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_BOT_USERNAME`, then
+`node scripts/telegram-set-webhook.mjs <origin>`.
+
+Deliberately not yet:
+- **Photos and documents from Telegram** are answered with a pointer to the
+  Inbox. The document path reserves storage and document quota through
+  session-bound RPCs (`reserve_organization_usage`, the feature gates); a
+  webhook has no session. It needs service-identity variants, the way
+  migration 114 did it for the Tasks service, before media can be captured.
+- **Domain events** for channel captures are not recorded: `emitDomainEvent`
+  resolves the organization from the session (`requireOrg`) and logs instead.
+  The capture, suggestions and AI metering are unaffected.
+
+**Step 3 — Slack.** **Step 4 — Email forwarding.**
 
 Each step keeps `typecheck`, `lint`, `test` and `build` green and is smoked
 live before the next starts.
