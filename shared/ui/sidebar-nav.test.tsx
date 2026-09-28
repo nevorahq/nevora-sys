@@ -35,7 +35,7 @@ function activeLink() {
 
 describe("one app sidebar", () => {
   it.each(["/dashboard", "/tasks", "/finance", "/subscriptions", "/settings/profile"])(
-    "shows every module, Home first, on %s",
+    "shows every module, Action Center first, on %s",
     (path) => {
       pathname = path;
       render(<Sidebar dict={en} />);
@@ -58,10 +58,10 @@ describe("one app sidebar", () => {
     expect(activeLink()).toBe(expected);
   });
 
-  it("labels Home and Inbox from the dictionary", () => {
+  it("labels the Action Center and Inbox from the dictionary", () => {
     pathname = "/dashboard";
     render(<Sidebar dict={en} />);
-    expect(screen.getByRole("link", { name: en.nav.home }).getAttribute("href")).toBe("/dashboard");
+    expect(screen.getByRole("link", { name: en.nav.actionCenter }).getAttribute("href")).toBe("/dashboard");
     expect(screen.getByRole("link", { name: en.nav.inbox }).getAttribute("href")).toBe("/dashboard/inbox");
   });
 });

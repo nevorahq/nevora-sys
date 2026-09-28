@@ -21,7 +21,7 @@ export const ro: Dictionary = {
   nav: {
     logout: "Deconectare",
     dashboard: "Tablou de bord",
-    home: "Acasă",
+    actionCenter: "Centrul de acțiuni",
     overview: "Prezentare generală",
     inbox: "Mesaje primite",
     actions: "Acțiuni",

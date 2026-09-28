@@ -45,7 +45,7 @@ export function Sidebar({ dict }: SidebarProps) {
 
   // One app, one navigation: every module sits side by side in one workspace.
   const navItems: NavItem[] = [
-    { href: ROUTES.dashboard, label: dict.nav.home, icon: HomeIcon },
+    { href: ROUTES.dashboard, label: dict.nav.actionCenter, icon: HomeIcon },
     { href: ROUTES.inbox, label: dict.nav.inbox, icon: InboxIcon },
     { href: ROUTES.tasks, label: dict.nav.tasks, icon: CheckSquareIcon },
     { href: ROUTES.projects, label: dict.projects.back, icon: FolderKanbanIcon },
@@ -55,7 +55,7 @@ export function Sidebar({ dict }: SidebarProps) {
     { href: ROUTES.settings, label: dict.nav.settings, icon: SettingsIcon },
   ];
   // Longest matching prefix wins, so /tasks/projects lights Projects, not Tasks,
-  // and /dashboard/inbox lights Inbox, not Home.
+  // and /dashboard/inbox lights Inbox, not the Action Center.
   const activeHref = navItems
     .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;

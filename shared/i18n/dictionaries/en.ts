@@ -10,8 +10,8 @@ export const en = {
   nav: {
     logout: "Sign Out",
     dashboard: "Dashboard",
-    /** Primary nav label for /dashboard — the Action Center IS Home (Sprint 3). */
-    home: "Home",
+    /** Primary nav label for /dashboard — the Action Center, first in the sidebar. */
+    actionCenter: "Action Center",
     /** Secondary metrics roll-up at /dashboard/overview. */
     overview: "Overview",
     /** Nav label for /dashboard/inbox — the universal capture + triage surface. */
