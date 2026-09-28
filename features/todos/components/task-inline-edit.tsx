@@ -134,6 +134,11 @@ export function TaskInlineEditProvider({
 
 export function TaskEditModeButton() {
   const { enabled, activeField, savingField, toggleEnabled, dict } = useTaskInlineEdit();
+  const label = savingField
+    ? dict.todos.inlineEdit.saving
+    : enabled
+      ? dict.todos.inlineEdit.done
+      : dict.todos.inlineEdit.edit;
   const handledOnPointerDown = useRef(false);
   return (
     <button
@@ -156,14 +161,18 @@ export function TaskEditModeButton() {
       }}
       disabled={savingField !== null}
       aria-pressed={enabled}
+      // Icon-only on mobile, so the current label is the accessible name.
+      aria-label={label}
+      title={label}
       className={cn(
-        "inline-flex items-center gap-2 rounded-(--neu-radius-pill) px-3 py-2 text-sm font-medium transition-colors",
+        "inline-flex items-center justify-center gap-2 rounded-(--neu-radius-pill) text-sm font-medium transition-colors",
+        "h-9 w-9 p-0 md:h-auto md:w-auto md:px-3 md:py-2",
         enabled ? "bg-text-primary text-text-inverse" : "soft-control text-text-secondary hover:text-text-primary",
         savingField && "opacity-50",
       )}
     >
-      {enabled ? <CheckIcon size={15} /> : <PencilIcon size={15} />}
-      {savingField ? dict.todos.inlineEdit.saving : enabled ? dict.todos.inlineEdit.done : dict.todos.inlineEdit.edit}
+      {enabled ? <CheckIcon size={15} aria-hidden /> : <PencilIcon size={15} aria-hidden />}
+      <span className="hidden whitespace-nowrap md:inline">{label}</span>
     </button>
   );
 }
