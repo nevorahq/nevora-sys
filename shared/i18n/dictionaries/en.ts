@@ -1470,6 +1470,7 @@ export const en = {
       ariaLabel: "Settings navigation",
       profile: "Profile",
       notifications: "Notifications",
+      integrations: "Integrations",
       workspace: "Workspace",
       members: "Members",
       billing: "Billing",
@@ -1492,6 +1493,8 @@ export const en = {
       profileDescription: "Manage your personal details and regional preferences.",
       notificationsTitle: "Notifications",
       notificationsDescription: "Choose when Nevora may get your attention, without losing anything from Action Center.",
+      integrationsTitle: "Integrations",
+      integrationsDescription: "Send tasks to your Inbox from the apps you already use.",
       workspaceTitle: "Workspace",
       workspaceDescription: "Configure the organization defaults shared by your team.",
       membersTitle: "Members",
@@ -1777,6 +1780,52 @@ export const en = {
     emptyInsightsSub: "Click “Insights” to analyze your business metrics with Claude.",
     dismiss: "Dismiss",
     blockedTitle: "AI limited",
+  },
+  /** External channels feeding the Capture Inbox (ADR 002). Bot copy is plain text. */
+  channels: {
+    telegram: {
+      bot: {
+        welcome: "Hi! I'm the Nevora bot. Send me a task, a reminder or anything to do — it goes to your Nevora Inbox for review.\n\nFirst, connect your account: in Nevora open Settings → Integrations → Telegram and send me the code.",
+        /** {org} is the organization name. */
+        linked: "Connected to {org}. Send me anything to do and I'll add it to your Inbox.",
+        invalidCode: "This code is invalid or has expired. Get a new one in Nevora: Settings → Integrations.",
+        linkFailed: "Couldn't connect right now. Try again in a minute.",
+        notLinked: "This Telegram account isn't connected to Nevora yet. In Nevora open Settings → Integrations → Telegram and send me the code.",
+        help: "Send me text — a task, a reminder, a note. I'll add it to your Nevora Inbox and AI will suggest a task; you confirm it in Nevora.\n\n/stop — disconnect this account",
+        stopped: "Disconnected. I won't accept messages from this account anymore.",
+        notConnected: "This account isn't connected to Nevora.",
+        /** {title} is the suggested task, {url} the Inbox review link. */
+        captured: "Added to your Inbox: “{title}”. Confirm it in Nevora: {url}",
+        capturedNoDraft: "Added to your Inbox. Review it in Nevora: {url}",
+        /** {max} is the character limit. */
+        tooLong: "That's too long — keep it under {max} characters.",
+        mediaNotYet: "For now I only accept text. Add photos and documents in the Nevora Inbox: {url}",
+        notMember: "You're no longer a member of this organization. Connect again from Nevora.",
+        readOnly: "Your organization is read-only right now (the trial or subscription has ended), so I can't add anything.",
+        forbidden: "Your role can't add to the Inbox.",
+        failed: "Something went wrong and the message wasn't saved. Try again.",
+      },
+      settings: {
+        title: "Telegram",
+        description: "Send a message to the Nevora bot — it lands in your Inbox and AI suggests a task for you to confirm.",
+        connect: "Connect Telegram",
+        codeIntro: "Open the bot and press Start, or send it this code:",
+        /** {bot} is the bot's @username. */
+        openBot: "Open @{bot}",
+        /** {minutes} is the code lifetime. */
+        codeExpires: "The code works once and expires in {minutes} minutes.",
+        newCode: "Get a new code",
+        /** {name} is the Telegram @username or id. */
+        connectedAs: "Connected as {name}",
+        disconnect: "Disconnect",
+        notConfigured: "Telegram isn't set up on this server yet.",
+        comingSoon: "Slack and email forwarding are coming next.",
+        errors: {
+          failed: "Couldn't create a code. Try again.",
+          disconnectFailed: "Couldn't disconnect. Try again.",
+        },
+      },
+    },
   },
 } as const;
 

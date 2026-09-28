@@ -64,6 +64,7 @@ export const ROUTES = {
   settings:          "/settings",
   settingsProfile:   "/settings/profile",
   settingsNotifications: "/settings/notifications",
+  settingsIntegrations: "/settings/integrations",
   settingsWorkspace: "/settings/workspace",
   settingsMembers:   "/settings/members",
   settingsBilling:   "/settings/billing",
@@ -237,6 +238,8 @@ export const MACHINE_ROUTES = [
   "/api/internal/activation-funnel",
   "/api/internal/job-health",
   "/api/billing/webhook",
+  // Telegram Bot API webhook — verifies the secret token Telegram echoes (ADR 002).
+  "/api/channels/telegram/webhook",
 ] as const;
 
 export function isMachineRoute(pathname: string): boolean {

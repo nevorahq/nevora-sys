@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BellRingIcon, Code2Icon, CreditCardIcon, Layers3Icon, UserRoundIcon, UsersRoundIcon, Building2Icon } from "lucide-react";
+import { BellRingIcon, Code2Icon, CreditCardIcon, Layers3Icon, PlugIcon, UserRoundIcon, UsersRoundIcon, Building2Icon } from "lucide-react";
 import { ROUTES } from "@/shared/config/routes";
 import { cn } from "@/shared/utils/cn";
 
@@ -10,6 +10,7 @@ interface SidebarLabels {
   ariaLabel: string;
   profile: string;
   notifications: string;
+  integrations: string;
   workspace: string;
   members: string;
   billing: string;
@@ -32,6 +33,7 @@ interface SidebarLabels {
 const ITEMS = [
   { href: ROUTES.settingsProfile, key: "profile", icon: UserRoundIcon, admin: false, group: "main" },
   { href: ROUTES.settingsNotifications, key: "notifications", icon: BellRingIcon, admin: false, group: "main" },
+  { href: ROUTES.settingsIntegrations, key: "integrations", icon: PlugIcon, admin: false, group: "main" },
   { href: ROUTES.settingsWorkspace, key: "workspace", icon: Building2Icon, admin: true, group: "main" },
   { href: ROUTES.settingsMembers, key: "members", icon: UsersRoundIcon, admin: true, group: "main" },
   { href: ROUTES.settingsBilling, key: "billing", icon: CreditCardIcon, admin: true, group: "main" },
