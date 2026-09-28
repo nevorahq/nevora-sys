@@ -493,6 +493,7 @@ export const en = {
       filtered: "No tasks match your filters",
     },
     item: {
+      delete: "Delete",
       deleteConfirm: "Delete this task?",
     },
     assignees: {

@@ -457,6 +457,7 @@ export const ru: Dictionary = {
       filtered: "Нет задач по вашим фильтрам",
     },
     item: {
+      delete: "Удалить",
       deleteConfirm: "Удалить эту задачу?",
     },
     assignees: {

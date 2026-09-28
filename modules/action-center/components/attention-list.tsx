@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronRightIcon, ClockIcon } from "lucide-react";
-import { ActionPriorityBadge } from "./action-priority-badge";
+import { PriorityBadge } from "@/shared/ui/priority-badge";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 import type { Locale } from "@/shared/i18n/constants";
 import { localizeActionItemTitle } from "../utils/action-item-title";
@@ -74,7 +74,7 @@ function AttentionRow({ item, t, locale }: { item: AttentionItem; t: ActionCente
         {meta}
       </div>
       <div className="flex shrink-0 items-center gap-2 self-center">
-        <ActionPriorityBadge priority={item.priority} label={t.priorities[item.priority]} />
+        <PriorityBadge priority={item.priority} label={t.priorities[item.priority]} />
         {destination.href && <ChevronRightIcon size={16} className="text-text-tertiary" />}
       </div>
     </>

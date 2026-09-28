@@ -29,6 +29,7 @@ const baseDict = {
   todos: {
     form: { updateButton: "Edit task" },
     priorities: { low: "Low", medium: "Medium", high: "High" },
+    item: { delete: "Delete" },
     due: {
       overdue: "Overdue",
       today: "Due today",
@@ -51,13 +52,24 @@ describe("TodoItem", () => {
     expect(screen.queryByRole("button", { name: "Edit task" })).toBeNull();
   });
 
-  it("shows only the overdue icon marker without the overdue text", () => {
+  it("shows the overdue marker as an icon on mobile and with its label from md up", () => {
     render(<TodoItem
       todo={{ ...baseTodo, due_date: "2000-01-01" }}
       dict={baseDict}
     />);
 
-    expect(screen.getByLabelText("Overdue task needs attention")).not.toBeNull();
-    expect(screen.queryByText("Overdue")).toBeNull();
+    const marker = screen.getByLabelText("Overdue task needs attention");
+    expect(marker.getAttribute("title")).toBe("Overdue");
+    const label = screen.getByText("Overdue");
+    expect(label.className).toContain("sr-only");
+    expect(label.className).toContain("md:not-sr-only");
+  });
+
+  it("shows the priority as a dot, with its label for screen readers and desktop", () => {
+    render(<TodoItem todo={{ ...baseTodo, priority: "high" }} dict={baseDict} />);
+
+    const label = screen.getByText("High");
+    expect(label.className).toContain("md:not-sr-only");
+    expect(label.closest("[title]")?.getAttribute("title")).toBe("High");
   });
 });

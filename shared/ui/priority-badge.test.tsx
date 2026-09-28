@@ -2,13 +2,13 @@
 
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { ActionPriorityBadge } from "./action-priority-badge";
+import { PriorityBadge } from "./priority-badge";
 
 afterEach(cleanup);
 
-describe("ActionPriorityBadge", () => {
+describe("PriorityBadge", () => {
   it("keeps the label for screen readers and as a tooltip when only the dot shows", () => {
-    render(<ActionPriorityBadge priority="high" label="Высокий" />);
+    render(<PriorityBadge priority="high" label="Высокий" />);
 
     const label = screen.getByText("Высокий");
     expect(label.className).toContain("sr-only");
@@ -17,7 +17,7 @@ describe("ActionPriorityBadge", () => {
   });
 
   it("colours the dot by priority", () => {
-    const { container } = render(<ActionPriorityBadge priority="critical" label="Critical" />);
+    const { container } = render(<PriorityBadge priority="critical" label="Critical" />);
     expect(container.querySelector("[aria-hidden='true']")?.className).toContain("bg-danger");
   });
 });

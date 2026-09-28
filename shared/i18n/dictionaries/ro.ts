@@ -466,6 +466,7 @@ export const ro: Dictionary = {
       filtered: "Nicio sarcină nu corespunde filtrelor",
     },
     item: {
+      delete: "Șterge",
       deleteConfirm: "Ștergi această sarcină?",
     },
     assignees: {
