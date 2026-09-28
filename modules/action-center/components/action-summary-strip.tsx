@@ -63,7 +63,7 @@ export function ActionSummaryStrip({ counts, active, labels }: ActionSummaryStri
             onClick={() => selectFilter(key)}
             className={cn(
               "group soft-card-sm flex flex-col items-center gap-1.5 p-3 text-center",
-              "md:items-stretch md:gap-2 md:p-4 md:text-left",
+              "md:cursor-pointer md:items-stretch md:gap-2 md:p-4 md:text-left",
               // Analog feel: the card lifts under the pointer, presses in on click,
               // and the selected filter stays pressed in.
               "transition-[transform,box-shadow,background-color] duration-200 ease-out motion-reduce:transition-none",
