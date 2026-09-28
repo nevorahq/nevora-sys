@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, CircleDotIcon, FileTextIcon, Repeat2Icon, TagIcon, UsersIcon } from "lucide-react";
+import { ArrowLeftIcon, CheckIcon, CircleDotIcon, CircleIcon, Clock3Icon, FileTextIcon, Repeat2Icon, TagIcon, UsersIcon, type LucideIcon } from "lucide-react";
 import { requireOrg } from "@/lib/auth/require-org";
 import { canDo } from "@/lib/context/current-context";
 import { createClient } from "@/lib/supabase/server";
@@ -29,8 +29,16 @@ const PRIORITY_STYLES: Record<TaskPriority, string> = {
   low: "bg-accent-green-soft text-accent-green", medium: "bg-accent-yellow-soft text-accent-yellow", high: "bg-accent-pink-soft text-accent-pink",
 };
 
-const STATUS_STYLES: Record<TaskStatus, string> = {
-  todo: "bg-surface-sunken text-text-secondary", in_progress: "bg-accent-lilac-soft text-accent-lilac", done: "bg-accent-green-soft text-accent-green",
+/**
+ * Header status chip. Mobile: a round, filled chip with the status icon (no
+ * text); desktop: icon + label. Filled colours, since the old lilac-on-lilac
+ * pill was barely readable.
+ */
+const STATUS_CHIP: Record<TaskStatus, { icon: LucideIcon; style: string }> = {
+  todo: { icon: CircleIcon, style: "bg-surface-sunken text-text-secondary ring-1 ring-border-soft" },
+  // Lilac and green fills stay light in both themes, so their content stays dark.
+  in_progress: { icon: Clock3Icon, style: "bg-accent-lilac text-neutral-900" },
+  done: { icon: CheckIcon, style: "bg-accent-green text-neutral-900" },
 };
 
 interface TaskPreviewPageProps {
@@ -95,7 +103,7 @@ export default async function TaskPreviewPage({
           </div>
           <div className="flex items-center gap-2">
             {canEditTask && <TaskEditModeButton />}
-            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLES[task.status as TaskStatus]}`}>{dict.todos.statuses[task.status as TaskStatus]}</span>
+            <TaskStatusChip status={task.status as TaskStatus} label={dict.todos.statuses[task.status as TaskStatus]} />
           </div>
         </div>
       </div>
@@ -124,5 +132,18 @@ export default async function TaskPreviewPage({
         </aside>
       </div>
     </TaskInlineEditProvider>
+  );
+}
+
+function TaskStatusChip({ status, label }: { status: TaskStatus; label: string }) {
+  const { icon: Icon, style } = STATUS_CHIP[status];
+  return (
+    <span
+      title={label}
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 rounded-full text-xs font-semibold md:h-auto md:w-auto md:px-3 md:py-1.5 ${style}`}
+    >
+      <Icon size={16} strokeWidth={2.25} aria-hidden className="md:h-3.5 md:w-3.5" />
+      <span className="sr-only md:not-sr-only">{label}</span>
+    </span>
   );
 }
