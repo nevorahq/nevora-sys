@@ -254,7 +254,8 @@ export async function getUsage(
       .from("ai_requests")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", organizationId)
-      .in("action_type", ["summary", "insights", "recommendations"]);
+      // capture_intent: Inbox captures share this limit (ADR 002, step 0.2).
+      .in("action_type", ["summary", "insights", "recommendations", "capture_intent"]);
     if (window.start) query = query.gte("created_at", window.start.toISOString()) as typeof query;
     if (window.end) query = query.lt("created_at", window.end.toISOString()) as typeof query;
     const { count } = await query;

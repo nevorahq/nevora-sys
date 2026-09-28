@@ -43,12 +43,18 @@ Rules:
   completed purchase, populate "obligation" with isFinancialObligation=true, the
   most specific obligationType, and paymentDueDate (and nextPaymentDate +
   billingInterval when recurring). For an already-paid receipt, omit obligation
-  (null).`;
+  (null).
+- If the document is not financial (a handwritten note, a whiteboard, a
+  contract, a letter, a to-do list), set documentType "unknown" and leave the
+  financial fields null.
+- Always fill "visibleText" with a plain transcription of the readable text, in
+  its original language, at most 3000 characters.`;
 
 const TOOL_INPUT_SCHEMA = {
   type: "object",
   properties: {
     documentType: { type: "string", enum: ["receipt", "invoice", "payment_confirmation", "unknown"] },
+    visibleText: { type: ["string", "null"] },
     merchant: {
       type: "object",
       properties: {
@@ -172,7 +178,9 @@ export async function normalizeFinancialDocument(
     const client = getAnthropicClient();
     const message = await client.messages.create({
       model: AI_MODELS.default,
-      max_tokens: 2048,
+      // Room for the transcription (up to ~3000 chars) on top of the financial
+      // fields; a truncated tool call would fail the whole extraction.
+      max_tokens: 4096,
       system: SYSTEM_PROMPT,
       tools: [
         {

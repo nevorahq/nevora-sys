@@ -10,8 +10,21 @@ import { z } from "zod";
  * `nullable` everywhere because the model must use null (not invent) for any
  * value it cannot read from the document.
  */
+/** Cap on the transcription kept per document; matches a Capture Inbox entry. */
+export const VISIBLE_TEXT_MAX_LENGTH = 4000;
+
 export const ExtractedFinancialDocumentSchema = z.object({
   documentType: z.enum(["receipt", "invoice", "payment_confirmation", "unknown"]),
+
+  /**
+   * Plain transcription of the readable text. The only text an image yields
+   * (images have no text layer); it feeds task detection for Inbox captures of
+   * non-financial documents (ADR 002, step 0.3).
+   */
+  visibleText: z
+    .string()
+    .nullish()
+    .transform((value) => (value?.trim() ? value.trim().slice(0, VISIBLE_TEXT_MAX_LENGTH) : null)),
 
   merchant: z.object({
     name: z.string().nullable(),
@@ -21,7 +34,8 @@ export const ExtractedFinancialDocumentSchema = z.object({
 
   transaction: z.object({
     date: z.string().nullable(),          // ISO 8601 (YYYY-MM-DD) when present
-    currency: z.string().default("EUR"),  // ISO 4217
+    // ISO 4217. A non-financial document may come back with null here.
+    currency: z.preprocess((value) => value ?? undefined, z.string().default("EUR")),
     subtotal: z.number().nullable(),
     tax: z.number().nullable(),
     total: z.number().nullable(),
@@ -31,13 +45,15 @@ export const ExtractedFinancialDocumentSchema = z.object({
 
   items: z
     .array(
+      // The tool schema requires only `name`; the model omits the rest when a
+      // line has no such value (a menu or price list), which is the same as null.
       z.object({
         name: z.string(),
-        quantity: z.number().nullable(),
-        unitPrice: z.number().nullable(),
-        totalPrice: z.number().nullable(),
-        taxRate: z.number().nullable(),
-        category: z.string().nullable(),
+        quantity: z.number().nullable().default(null),
+        unitPrice: z.number().nullable().default(null),
+        totalPrice: z.number().nullable().default(null),
+        taxRate: z.number().nullable().default(null),
+        category: z.string().nullable().default(null),
       }),
     )
     .default([]),

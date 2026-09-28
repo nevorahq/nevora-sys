@@ -5,6 +5,7 @@ import { emitDomainEvent } from "@/lib/events";
 import { createActionItemForDocument } from "@/modules/action-center/services/create-action-item-for-document";
 import { detectPlannerIntent } from "./detect-planner-intent";
 import { createPlannerSuggestion } from "./create-planner-suggestion";
+import { reserveCaptureAiCall } from "./reserve-capture-ai-call";
 import { confidenceBand, type PlannerEntry, type PlannerSuggestion } from "../types/planner.types";
 import { mapEntryToMissingInfoActionItem } from "../utils/map-suggestion-to-action-item";
 
@@ -48,7 +49,9 @@ export async function processPlannerEntry(
 
   let detection;
   try {
-    detection = await detectPlannerIntent(rawText);
+    detection = await detectPlannerIntent(rawText, {
+      reserveAiCall: () => reserveCaptureAiCall(supabase, ctx, entry.id),
+    });
   } catch (error) {
     console.error("[processPlannerEntry] detection failed:", error);
     return failEntry(supabase, ctx, entry, "AI intent detection failed. Review this capture manually.");
