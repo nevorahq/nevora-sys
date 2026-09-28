@@ -150,5 +150,7 @@ live before the next starts.
 - One review surface, one set of invariants, one place to add a channel.
 - Channels bring unauthenticated traffic onto an AI call; step 0.2 must land
   before step 2.
-- Legacy pending drafts of the retired financial types remain unsupported in
-  the review UI and age out through `expire-stale-planner-suggestions`.
+- Drafts of the retired financial types (created before 0.1, or proposed by a
+  model that ignores the prompt) are accepted as a plain task: the payment date
+  becomes the due date, payee and amount go into the description. They are no
+  longer a dead end. *Added 2026-09-28, after a real draft failed to accept.*
