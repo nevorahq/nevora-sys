@@ -99,12 +99,13 @@ describe("DraftExplanation", () => {
     expect(screen.getByText(dict.linksLabel)).toBeDefined();
   });
 
-  it("reports the AI intent for a typed capture", () => {
+  it("says the AI read the capture without printing the model's intent label", () => {
     render(
-      <DraftExplanation dict={dict} explanation={explanation({ origin: { kind: "ai_detection", intent: "pay a bill" } })} />,
+      <DraftExplanation dict={dict} explanation={explanation({ origin: { kind: "ai_detection", intent: "pay_rent" } })} />,
     );
 
-    expect(screen.getByText(/pay a bill/)).toBeDefined();
+    expect(screen.getByText(dict.whyAi)).toBeDefined();
+    expect(screen.queryByText(/pay_rent/)).toBeNull();
   });
 
   it("renders an unmapped entity type rather than an empty chip", () => {

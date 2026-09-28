@@ -9,6 +9,7 @@ import type { ActionResult } from "@/lib/validators/common";
 import { createPlannerEntrySchema } from "../schemas/planner-entry.schema";
 import { createPlannerEntry } from "../services/create-planner-entry";
 import { processPlannerEntry } from "../services/process-planner-entry";
+import { getInboxErrors, messageForCode, rawTextFieldErrors } from "./inbox-errors";
 
 /**
  * Capture a raw entry and immediately run intent detection so a suggestion is
@@ -20,8 +21,9 @@ export async function createPlannerEntryAction(
   formData: FormData,
 ): Promise<ActionResult> {
   const ctx = await requireOrg();
+  const errors = await getInboxErrors();
   if (!canDo(ctx, "planner.entry.create")) {
-    return { error: "You don't have permission to capture entries" };
+    return { error: errors.forbidden };
   }
 
   const parsed = createPlannerEntrySchema.safeParse({
@@ -30,12 +32,7 @@ export async function createPlannerEntryAction(
   });
 
   if (!parsed.success) {
-    const fieldErrors: Record<string, string[]> = {};
-    for (const issue of parsed.error.issues) {
-      const key = String(issue.path[0] ?? "_form");
-      fieldErrors[key] = [...(fieldErrors[key] ?? []), issue.message];
-    }
-    return { fieldErrors };
+    return { fieldErrors: rawTextFieldErrors(errors, parsed.error.issues) };
   }
 
   const supabase = await createClient();
@@ -44,7 +41,7 @@ export async function createPlannerEntryAction(
     entryType: parsed.data.entryType,
   });
 
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) return { error: messageForCode(errors, result.code, "captureFailed") };
 
   // Synchronous processing keeps the MVP simple; detection degrades gracefully
   // and never throws, so a capture is never lost even if the AI is unavailable.

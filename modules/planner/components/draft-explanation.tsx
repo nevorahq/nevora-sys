@@ -91,7 +91,8 @@ function EntityChip({ type, dict }: { type: string; dict: Dictionary["inbox"]["d
 function originText(origin: Explanation["origin"], dict: Dictionary["inbox"]["draft"]): string {
   switch (origin.kind) {
     case "ai_detection":
-      return origin.intent ? `${dict.whyAi}: ${origin.intent}` : dict.whyAi;
+      // The intent is a machine label from the model ("pay_rent"), not copy.
+      return dict.whyAi;
     case "source_entity": {
       const source = dict.sources[origin.sourceType as keyof typeof dict.sources] ?? origin.sourceType;
       return origin.label ? `${dict.whySource} ${source} — ${origin.label}` : `${dict.whySource} ${source}`;

@@ -7,6 +7,7 @@ import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 import { acceptPlannerSuggestionSchema } from "../schemas/planner-suggestion.schema";
 import { acceptPlannerSuggestion } from "../services/accept-planner-suggestion";
+import { getInboxErrors, messageForCode } from "./inbox-errors";
 
 export async function acceptPlannerSuggestionAction(
   _prevState: ActionResult,
@@ -17,11 +18,11 @@ export async function acceptPlannerSuggestionAction(
   const parsed = acceptPlannerSuggestionSchema.safeParse({
     suggestionId: formData.get("suggestionId"),
   });
-  if (!parsed.success) return { error: "Invalid suggestion" };
+  if (!parsed.success) return { error: (await getInboxErrors()).invalid };
 
   const supabase = await createClient();
   const result = await acceptPlannerSuggestion(supabase, ctx, parsed.data.suggestionId);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) return { error: messageForCode(await getInboxErrors(), result.code, "acceptFailed") };
 
   // The accept may have created a task / financial task / link / action item —
   // revalidate the surfaces that could now show it.

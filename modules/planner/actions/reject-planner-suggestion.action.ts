@@ -7,6 +7,7 @@ import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 import { rejectPlannerSuggestionSchema } from "../schemas/planner-suggestion.schema";
 import { rejectPlannerSuggestion } from "../services/reject-planner-suggestion";
+import { getInboxErrors, messageForCode } from "./inbox-errors";
 
 export async function rejectPlannerSuggestionAction(
   _prevState: ActionResult,
@@ -18,11 +19,11 @@ export async function rejectPlannerSuggestionAction(
     suggestionId: formData.get("suggestionId"),
     reason: (formData.get("reason") as string) || undefined,
   });
-  if (!parsed.success) return { error: "Invalid rejection" };
+  if (!parsed.success) return { error: (await getInboxErrors()).invalid };
 
   const supabase = await createClient();
   const result = await rejectPlannerSuggestion(supabase, ctx, parsed.data);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) return { error: messageForCode(await getInboxErrors(), result.code, "rejectFailed") };
 
   revalidatePath(ROUTES.inbox);
   revalidatePath(ROUTES.actions);

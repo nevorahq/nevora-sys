@@ -8,10 +8,11 @@ import {
   PLANNER_SUGGESTION_OPEN_STATUSES,
   type PlannerSuggestion,
 } from "../types/planner.types";
+import type { PlannerErrorCode } from "../types/planner.types";
 
 export type EditResult =
   | { ok: true; suggestion: PlannerSuggestion }
-  | { ok: false; error: string };
+  | { ok: false; error: string; code: PlannerErrorCode };
 
 /**
  * Edit a pending suggestion before accepting it. Only safe, user-owned fields
@@ -26,7 +27,7 @@ export async function editPlannerSuggestion(
   input: EditPlannerSuggestionInput,
 ): Promise<EditResult> {
   if (!canDo(ctx, "planner.suggestion.edit")) {
-    return { ok: false, error: "Forbidden" };
+    return { ok: false, error: "Forbidden", code: "forbidden" };
   }
 
   const { data, error } = await supabase
@@ -36,11 +37,11 @@ export async function editPlannerSuggestion(
     .eq("organization_id", ctx.org.id)
     .maybeSingle();
 
-  if (error || !data) return { ok: false, error: "Suggestion not found" };
+  if (error || !data) return { ok: false, error: "Suggestion not found", code: "not_found" };
   const current = data as PlannerSuggestion;
 
   if (current.status !== "pending" && current.status !== "edited") {
-    return { ok: false, error: `Cannot edit a ${current.status} suggestion` };
+    return { ok: false, error: `Cannot edit a ${current.status} suggestion`, code: "not_open" };
   }
 
   const patch: Record<string, unknown> = {
@@ -66,10 +67,10 @@ export async function editPlannerSuggestion(
 
   if (updateError) {
     console.error("[editPlannerSuggestion] update failed:", updateError.message);
-    return { ok: false, error: "Failed to update suggestion" };
+    return { ok: false, error: "Failed to update suggestion", code: "failed" };
   }
   if (!updated) {
-    return { ok: false, error: "This suggestion is no longer editable" };
+    return { ok: false, error: "This suggestion is no longer editable", code: "not_open" };
   }
 
   await emitDomainEvent({

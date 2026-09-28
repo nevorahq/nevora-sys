@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { emitDomainEvent } from "@/lib/events";
 import { PLANNER_ENTRY_COLUMNS, type PlannerEntry, type PlannerEntryType } from "../types/planner.types";
+import type { PlannerErrorCode } from "../types/planner.types";
 
 export interface CreatePlannerEntryInput {
   rawText: string;
@@ -12,7 +13,7 @@ export interface CreatePlannerEntryInput {
 
 export type CreatePlannerEntryResult =
   | { ok: true; entry: PlannerEntry }
-  | { ok: false; error: string };
+  | { ok: false; error: string; code: PlannerErrorCode };
 
 /**
  * Insert a raw capture. organization_id / workspace_id / created_by come only
@@ -25,7 +26,7 @@ export async function createPlannerEntry(
   input: CreatePlannerEntryInput,
 ): Promise<CreatePlannerEntryResult> {
   const rawText = input.rawText.trim();
-  if (!rawText) return { ok: false, error: "Nothing to capture" };
+  if (!rawText) return { ok: false, error: "Nothing to capture", code: "empty" };
 
   const id = randomUUID();
   const { data, error } = await supabase
@@ -46,7 +47,7 @@ export async function createPlannerEntry(
 
   if (error || !data) {
     console.error("[createPlannerEntry] insert failed:", error?.message);
-    return { ok: false, error: "Failed to capture entry" };
+    return { ok: false, error: "Failed to capture entry", code: "failed" };
   }
 
   await emitDomainEvent({

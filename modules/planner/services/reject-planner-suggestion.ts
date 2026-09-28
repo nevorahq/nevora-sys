@@ -9,8 +9,9 @@ import {
   type PlannerSuggestion,
 } from "../types/planner.types";
 import { resolvePlannerActionItems } from "./resolve-planner-action-item";
+import type { PlannerErrorCode } from "../types/planner.types";
 
-export type RejectResult = { ok: true } | { ok: false; error: string };
+export type RejectResult = { ok: true } | { ok: false; error: string; code: PlannerErrorCode };
 
 /**
  * Reject a suggestion. Historical record is preserved (status → rejected, never
@@ -24,7 +25,7 @@ export async function rejectPlannerSuggestion(
   input: RejectPlannerSuggestionInput,
 ): Promise<RejectResult> {
   if (!canDo(ctx, "planner.suggestion.reject")) {
-    return { ok: false, error: "Forbidden" };
+    return { ok: false, error: "Forbidden", code: "forbidden" };
   }
 
   const { data, error } = await supabase
@@ -34,11 +35,11 @@ export async function rejectPlannerSuggestion(
     .eq("organization_id", ctx.org.id)
     .maybeSingle();
 
-  if (error || !data) return { ok: false, error: "Suggestion not found" };
+  if (error || !data) return { ok: false, error: "Suggestion not found", code: "not_found" };
   const current = data as PlannerSuggestion;
 
   if (current.status !== "pending" && current.status !== "edited") {
-    return { ok: false, error: `Cannot reject a ${current.status} suggestion` };
+    return { ok: false, error: `Cannot reject a ${current.status} suggestion`, code: "not_open" };
   }
 
   // Compare-and-swap on the open statuses. Reject is irreversible (Phase B
@@ -59,10 +60,10 @@ export async function rejectPlannerSuggestion(
 
   if (updateError) {
     console.error("[rejectPlannerSuggestion] update failed:", updateError.message);
-    return { ok: false, error: "Failed to reject suggestion" };
+    return { ok: false, error: "Failed to reject suggestion", code: "failed" };
   }
   if (!rejected) {
-    return { ok: false, error: "This suggestion is no longer pending" };
+    return { ok: false, error: "This suggestion is no longer pending", code: "not_open" };
   }
 
   // If no other pending/edited suggestions remain for the entry, close the entry.

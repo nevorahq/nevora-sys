@@ -7,6 +7,7 @@ import { ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 import { editPlannerSuggestionSchema } from "../schemas/planner-suggestion.schema";
 import { editPlannerSuggestion } from "../services/edit-planner-suggestion";
+import { getInboxErrors, messageForCode } from "./inbox-errors";
 
 /**
  * Edit a pending suggestion. Accepts title/description edits from a simple form;
@@ -26,10 +27,10 @@ export async function editPlannerSuggestionAction(
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         proposedPayload = parsed as Record<string, unknown>;
       } else {
-        return { error: "Payload must be a JSON object" };
+        return { error: (await getInboxErrors()).invalid };
       }
     } catch {
-      return { error: "Payload is not valid JSON" };
+      return { error: (await getInboxErrors()).invalid };
     }
   }
 
@@ -40,18 +41,12 @@ export async function editPlannerSuggestionAction(
     suggestionType: (formData.get("suggestionType") as string) || undefined,
     proposedPayload,
   });
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string[]> = {};
-    for (const issue of parsed.error.issues) {
-      const key = String(issue.path[0] ?? "_form");
-      fieldErrors[key] = [...(fieldErrors[key] ?? []), issue.message];
-    }
-    return { fieldErrors };
-  }
+  // The review form shows one message, not per-field errors.
+  if (!parsed.success) return { error: (await getInboxErrors()).invalid };
 
   const supabase = await createClient();
   const result = await editPlannerSuggestion(supabase, ctx, parsed.data);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) return { error: messageForCode(await getInboxErrors(), result.code, "editFailed") };
 
   revalidatePath(ROUTES.inbox);
   return {};

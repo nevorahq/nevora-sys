@@ -37,7 +37,7 @@ export interface CaptureInboxDocumentInput {
 }
 
 export type CaptureInboxDocumentResult =
-  | { ok: false; status: number; error: string; diagnosticId?: string }
+  | { ok: false; status: number; error: string; code: CaptureErrorCode; diagnosticId?: string }
   | {
       ok: true;
       documentId: string;
@@ -45,8 +45,10 @@ export type CaptureInboxDocumentResult =
       entryId: string | null;
       reused: boolean;
       /** Present when the Document is safe but its planner entry could not be created. */
-      warning?: string;
+      warning?: "saved_not_linked";
     };
+
+export type CaptureErrorCode = "forbidden" | "invalid_file" | "plan_limit" | "failed";
 
 export async function captureInboxDocument(
   supabase: SupabaseClient,
@@ -56,10 +58,10 @@ export async function captureInboxDocument(
   // Both permissions are required: the capture creates a planner entry AND a
   // Document. Checked here (not trusted from the client) before any storage work.
   if (!canDo(ctx, "planner.entry.create")) {
-    return { ok: false, status: 403, error: "You do not have permission to capture entries." };
+    return { ok: false, status: 403, error: "You do not have permission to capture entries.", code: "forbidden" };
   }
   if (!hasDocumentPermission(ctx, "document.create") || !hasDocumentPermission(ctx, "document.attachment.upload")) {
-    return { ok: false, status: 403, error: "You do not have permission to create documents." };
+    return { ok: false, status: 403, error: "You do not have permission to create documents.", code: "forbidden" };
   }
 
   // Documents owns the file. doc_type stays 'unknown' — the composer does not ask
@@ -75,7 +77,14 @@ export async function captureInboxDocument(
   });
 
   if (!upload.ok) {
-    return { ok: false, status: upload.status, error: upload.error, diagnosticId: upload.diagnosticId };
+    return {
+      ok: false,
+      status: upload.status,
+      error: upload.error,
+      // Permissions were checked above, so a 403 from the upload is its plan gate.
+      code: upload.status === 400 ? "invalid_file" : upload.status === 403 ? "plan_limit" : "failed",
+      diagnosticId: upload.diagnosticId,
+    };
   }
 
   // Link the Document to exactly one capture entry. Reuse on retry is guaranteed
@@ -98,7 +107,7 @@ export async function captureInboxDocument(
       documentId: upload.documentId,
       entryId: null,
       reused: upload.reused,
-      warning: "Your file was saved to Documents, but we couldn't add it to your Inbox yet. It will appear shortly.",
+      warning: "saved_not_linked",
     };
   }
 

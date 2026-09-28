@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireAppAccess, isAccessError } from "@/lib/security";
+import { requireAppAccess, isAccessError, type AccessError } from "@/lib/security";
 import { createClient } from "@/lib/supabase/server";
 import { reportError } from "@/lib/observability/report-error";
 import { ROUTES } from "@/shared/config/routes";
 import { captureInboxDocument } from "@/modules/planner/services/capture-inbox-document";
 import { generateCaptureTitle } from "@/modules/planner/utils/generate-capture-title";
+import { getDictionary } from "@/shared/i18n/get-dictionary";
+import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
 export const runtime = "nodejs";
 
@@ -27,7 +29,26 @@ const captureFormSchema = z.object({
  * organization_id / workspace_id are resolved server-side from the session; the
  * client cannot influence tenancy.
  */
+/** Access denials in the viewer's language: permission, quota, or plan state. */
+function accessMessage(error: AccessError, dict: Dictionary): string {
+  switch (error.code) {
+    case "LIMIT_REACHED":
+      return dict.inbox.errors.planLimit;
+    case "AUTH_REQUIRED":
+    case "ORG_REQUIRED":
+    case "WORKSPACE_REQUIRED":
+    case "MEMBERSHIP_REQUIRED":
+    case "PERMISSION_DENIED":
+    case "INVALID_TENANT_CONTEXT":
+      return dict.inbox.errors.forbidden;
+    default:
+      return dict.access.blockedUpload;
+  }
+}
+
 export async function POST(request: Request) {
+  const { dict } = await getDictionary();
+  const errors = dict.inbox.errors;
   try {
     const ctx = await requireAppAccess({ permission: "data.write", capability: "documents", intent: "write" });
 
@@ -38,12 +59,12 @@ export async function POST(request: Request) {
       note: formData.get("note") || "",
     });
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Please review your capture." }, { status: 400 });
+      return NextResponse.json({ error: errors.invalid }, { status: 400 });
     }
 
     const files = formData.getAll("files").filter((entry): entry is File => entry instanceof File && entry.size > 0);
     if (files.length === 0) {
-      return NextResponse.json({ error: "Attach at least one file to capture." }, { status: 400 });
+      return NextResponse.json({ error: errors.noFiles }, { status: 400 });
     }
 
     const title = generateCaptureTitle({ filename: files[0]?.name, entryType: parsed.data.entryType });
@@ -58,8 +79,16 @@ export async function POST(request: Request) {
     });
 
     if (!result.ok) {
+      const message =
+        result.code === "forbidden"
+          ? errors.forbidden
+          : result.code === "invalid_file"
+            ? errors.invalidFile
+            : result.code === "plan_limit"
+              ? errors.planLimit
+              : errors.captureFailed;
       return NextResponse.json(
-        result.diagnosticId ? { error: result.error, diagnosticId: result.diagnosticId } : { error: result.error },
+        result.diagnosticId ? { error: message, diagnosticId: result.diagnosticId } : { error: message },
         { status: result.status },
       );
     }
@@ -74,15 +103,15 @@ export async function POST(request: Request) {
       documentId: result.documentId,
       entryId: result.entryId,
       reused: result.reused,
-      warning: result.warning ?? null,
+      warning: result.warning === "saved_not_linked" ? errors.savedNotLinked : null,
     });
   } catch (error) {
     if (isAccessError(error)) {
-      return NextResponse.json({ error: error.message }, { status: error.httpStatus });
+      return NextResponse.json({ error: accessMessage(error, dict) }, { status: error.httpStatus });
     }
-    const { message, diagnosticId } = reportError("inbox.capture.failed", error, {
-      userMessage: "We could not finish your capture. Please try again.",
+    const { diagnosticId } = reportError("inbox.capture.failed", error, {
+      userMessage: errors.captureFailed,
     });
-    return NextResponse.json({ error: message, diagnosticId }, { status: 500 });
+    return NextResponse.json({ error: errors.captureFailed, diagnosticId }, { status: 500 });
   }
 }
