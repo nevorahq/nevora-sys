@@ -42,15 +42,15 @@ context, контракты confirm-first finance и notification lifecycle.
 
 Ключевые источники:
 
-- [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md)
-- [`docs/MODULE_STATUS.md`](./MODULE_STATUS.md)
-- [`docs/contracts/financial-workflows.md`](./contracts/financial-workflows.md)
-- [`docs/contracts/notification-lifecycle.md`](./contracts/notification-lifecycle.md)
-- [`docs/CAPTURE_INBOX_CONTRACTS.md`](./CAPTURE_INBOX_CONTRACTS.md)
-- [`docs/release/release-checklist.md`](./release/release-checklist.md)
-- [`docs/release/smoke-test-checklist.md`](./release/smoke-test-checklist.md)
-- [`docs/release/p0-p1-issue-register.md`](./release/p0-p1-issue-register.md)
-- [`docs/observability/logging-and-errors.md`](./observability/logging-and-errors.md)
+- [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md)
+- [`docs/MODULE_STATUS.md`](../MODULE_STATUS.md)
+- [`docs/contracts/financial-workflows.md`](../contracts/financial-workflows.md)
+- [`docs/contracts/notification-lifecycle.md`](../contracts/notification-lifecycle.md)
+- [`docs/CAPTURE_INBOX_CONTRACTS.md`](../CAPTURE_INBOX_CONTRACTS.md)
+- [`docs/release/release-checklist.md`](../release/release-checklist.md)
+- [`docs/release/smoke-test-checklist.md`](../release/smoke-test-checklist.md)
+- [`docs/release/p0-p1-issue-register.md`](../release/p0-p1-issue-register.md)
+- [`docs/observability/logging-and-errors.md`](../observability/logging-and-errors.md)
 
 ## System Map
 

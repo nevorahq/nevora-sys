@@ -103,7 +103,7 @@ All log structured `cron.*` events (`info` on done, `error` on threw/misconfigur
 - **Orphan-link sweep (from §7.4):** polymorphic `entity_links` can orphan when a
   referent is hard-deleted. Recommended: a low-frequency sweep (extend
   `suggestions-sweep` or a new daily cron) that soft-deletes links whose target no
-  longer exists, using the query in `docs/audits/phase-7-data-integrity-audit.md`.
+  longer exists, using the query in `docs/archive/audits/phase-7-data-integrity-audit.md`.
 - **`reminders` de-dup:** confirm a reminder can't be sent twice for the same
   schedule/window (add a regression test in §7.10).
 

@@ -9,7 +9,7 @@
 > deployed, authenticated environment**: public routes, the anon REST surface,
 > cron auth, currency rendering, paused modules, and the automated gates. Every
 > scenario needing a logged-in user against real data is **NOT EXECUTED** — see
-> I-09 in [`p0-p1-issue-register.md`](./p0-p1-issue-register.md). Do not read this
+> I-09 in [`p0-p1-issue-register.md`](../../release/p0-p1-issue-register.md). Do not read this
 > as public-launch readiness.
 
 ## Environment

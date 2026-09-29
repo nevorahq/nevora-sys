@@ -1,7 +1,7 @@
 # Phase 3 — Proof Report — 2026-07-11 (I-09 interactive smoke)
 
 > Snapshot report. Do **not** rewrite after the tested commit moves.
-> Scenario source of truth: [`smoke-test-checklist.md`](./smoke-test-checklist.md).
+> Scenario source of truth: [`smoke-test-checklist.md`](../../release/smoke-test-checklist.md).
 > This file records **evidence**, not steps. A scenario closes only when its
 > evidence contract is met: (1) end-state screenshot, (2) `diagnosticId` of any
 > error + Sentry visibility, (3) for money scenarios, the A1–A3 SQL result.
@@ -23,7 +23,7 @@
 | **Auth session** | `enujnenco@enso.ro` → active org **"new org"** `5ff06592-8720-4728-94c7-73d6480aae10` (the fixtures org = "org A" of the contract) |
 | **Second org** | **"org A"** `5b23861d…` owned by `nev.front.dev@gmail.com` (different owner, for A-S7 isolation) |
 | **Sentry** | ☑ DSNs on Netlify · ☑ `monitoring.initialized/provider:sentry` · visibility check [`phase-3-sentry-visibility-check.md`](./phase-3-sentry-visibility-check.md) **PASS** (2026-07-11) |
-| **SQL pack** | [`scripts/db/phase-3-money-invariants.sql`](../../scripts/db/phase-3-money-invariants.sql) |
+| **SQL pack** | [`scripts/db/phase-3-money-invariants.sql`](../../../scripts/db/phase-3-money-invariants.sql) |
 
 ### Test-data note (important)
 The org literally named **`org A`** (`5b23861d`) is **empty** (0 subs / 0 docs / 0 tasks).
@@ -173,7 +173,7 @@ task) since the uploaded invoices were detected as already-incurred expenses.
 
 - [x] **I-09** — fully executed on the deployed env; every scenario has evidence.
       **All three money invariants A1, A2, A3 hold** (SQL-proven).
-- [x] I-09 flip `PARTIAL → closed with proof` in [`p0-p1-issue-register.md`](./p0-p1-issue-register.md).
+- [x] I-09 flip `PARTIAL → closed with proof` in [`p0-p1-issue-register.md`](../../release/p0-p1-issue-register.md).
 - [ ] ≥3 of 5 live users passed the Product Proof table without hints (separate item — Product Proof, not I-09).
 
 **Verdict:** **I-09 CLOSED — PASS.** 8 interactive scenarios + 4 ops ⚑ all PASS;

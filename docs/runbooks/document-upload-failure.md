@@ -60,4 +60,4 @@ transaction or task links to — check `entity_links` first.
 
 If uploads fail for every org: check `SUPABASE_SERVICE_ROLE_KEY` is **not** what
 the upload route uses (it must use the authenticated client), then check the
-bucket policy diff. See `docs/audits/phase-7-uploads-storage-audit.md`.
+bucket policy diff. See `docs/archive/audits/phase-7-uploads-storage-audit.md`.

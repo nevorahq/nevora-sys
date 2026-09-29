@@ -1,3 +1,7 @@
+> **Superseded** by [`../adr/002-multichannel-task-capture.md`](../adr/002-multichannel-task-capture.md)
+> and the current contract [`../CAPTURE_INBOX_CONTRACTS.md`](../CAPTURE_INBOX_CONTRACTS.md).
+> Kept for history — financial suggestion types and the en/ru scope below no longer apply.
+
 # Capture Inbox — Roadmap
 
 _The thin input layer of Nevora Business OS. Introduced in Phase 8 (migration 080)._

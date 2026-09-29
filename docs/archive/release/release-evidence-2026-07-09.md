@@ -6,13 +6,13 @@
 > `billing-paddle-replacement-20260709`, committed HEAD `6cf165f`, migration
 > baseline `000`–`101` (Paddle billing replacement + boundary migrations
 > `100`/`101`, applied on remote). For current state see
-> [`release-checklist.md`](./release-checklist.md). The Stripe→Paddle wording
+> [`release-checklist.md`](../../release/release-checklist.md). The Stripe→Paddle wording
 > below reflects the renamed provider; the commit and baseline figures are frozen
 > at what was actually tested.
 
 Consolidated evidence for the release-blocker closure. Companion docs:
 [`smoke-test-report-2026-07-09.md`](./smoke-test-report-2026-07-09.md) (per-scenario)
-and [`p0-p1-issue-register.md`](./p0-p1-issue-register.md) (issues + owners).
+and [`p0-p1-issue-register.md`](../../release/p0-p1-issue-register.md) (issues + owners).
 
 ## Branch / Commit
 

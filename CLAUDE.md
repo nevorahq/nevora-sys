@@ -4,7 +4,7 @@
 
 The whole product ships in **English, Russian and Romanian**. Every user-facing
 string must go through the dictionary — never hardcode UI text. Audit +
-remediation history: `docs/audits/I18N_COMPLIANCE_AUDIT_2026-07-15.md`.
+remediation history: `docs/archive/audits/I18N_COMPLIANCE_AUDIT_2026-07-15.md`.
 
 ## Locale model (`shared/i18n/constants.ts`)
 - `PublicLocale = "en" | "ru" | "ro"` — the single language axis for landing,
