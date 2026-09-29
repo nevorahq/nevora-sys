@@ -33,6 +33,7 @@ interface EntityLinkInput {
 const createEntityLink = vi.fn(async (_input: EntityLinkInput) => ({ ok: true as const, data: { id: "link-1" } }));
 const createActionItemForDocument = vi.fn(async () => ({ ok: true as const, actionItemId: "ai-1" }));
 const resolvePlannerActionItems = vi.fn(async () => undefined);
+const learnProjectRuleFromAccept = vi.fn(async (..._args: unknown[]) => undefined);
 
 vi.mock("@/lib/context/current-context", () => ({ canDo }));
 vi.mock("@/lib/events", () => ({ emitDomainEvent }));
@@ -42,6 +43,7 @@ vi.mock("@/modules/action-center/services/create-action-item-for-document", () =
   createActionItemForDocument,
 }));
 vi.mock("./resolve-planner-action-item", () => ({ resolvePlannerActionItems }));
+vi.mock("./project-rules", () => ({ learnProjectRuleFromAccept }));
 
 const { acceptPlannerSuggestion } = await import("./accept-planner-suggestion");
 
@@ -583,5 +585,21 @@ describe("acceptPlannerSuggestion — project (ADR 002, 0.2b)", () => {
       description: "By Friday",
       priority: "high",
     });
+  });
+});
+
+describe("acceptPlannerSuggestion — learned project rules (migration 125)", () => {
+  it("learns from the accepted draft once, on the first creation only", async () => {
+    const payload = { projectId: "33333333-3333-4333-8333-333333333333", suggestedProjectId: "44444444-4444-4444-8444-444444444444" };
+    const store = new Map([["sug-1", baseSuggestion({ proposed_payload: payload })]]);
+    await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+    expect(learnProjectRuleFromAccept).toHaveBeenCalledTimes(1);
+    expect(learnProjectRuleFromAccept.mock.calls[0][2]).toMatchObject({ planner_entry_id: "entry-1", proposed_payload: payload });
+
+    learnProjectRuleFromAccept.mockClear();
+    createStandardTask.mockResolvedValue({ ok: true as const, taskId: "task-1", created: false });
+    const retry = new Map([["sug-2", baseSuggestion({ id: "sug-2", proposed_payload: payload })]]);
+    await acceptPlannerSuggestion(makeSupabase(retry), ctx, "sug-2");
+    expect(learnProjectRuleFromAccept).not.toHaveBeenCalled();
   });
 });

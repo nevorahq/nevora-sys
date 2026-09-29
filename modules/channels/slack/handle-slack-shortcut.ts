@@ -10,7 +10,7 @@ import { findActiveIntegration } from "../services/link-codes";
 import { resolveUserLocale } from "../services/user-locale";
 import type { ChannelIntegration } from "../types";
 import { SLACK_SHORTCUT_CALLBACK_ID, slackExternalUserId } from "./slack-api";
-import { shortcutScope, slackMessageText, type SlackMessageShortcut } from "./slack-payload";
+import { shortcutScope, slackChannelSignals, slackMessageText, type SlackMessageShortcut } from "./slack-payload";
 
 export interface SlackHandlerDeps {
   /** Service-role client: an interaction request has no user session. */
@@ -88,7 +88,13 @@ export async function handleSlackShortcut(payload: SlackMessageShortcut, deps: S
   // Per Slack user: two teammates sending the same message each get a capture;
   // one user sending it twice gets one.
   const messageKey = `${payload.user.id}:${payload.channel.id}:${payload.message.ts}`;
-  const captured = await captureChannelText(deps.supabase, ctx, { channel: "slack", messageKey, text });
+  const captured = await captureChannelText(deps.supabase, ctx, {
+    channel: "slack",
+    messageKey,
+    text,
+    // The conversation a learned project rule can match (migration 125).
+    signals: slackChannelSignals(payload),
+  });
   if (!captured.ok) {
     if (captured.code === "too_long") {
       return {

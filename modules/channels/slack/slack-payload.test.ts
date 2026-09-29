@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSlackInteraction, shortcutScope, slackMarkupToText, slackMessageText } from "./slack-payload";
+import { parseSlackInteraction, shortcutScope, slackChannelSignals, slackMarkupToText, slackMessageText } from "./slack-payload";
 
 const shortcut = {
   type: "message_action",
@@ -68,5 +68,16 @@ describe("slackMarkupToText", () => {
 
   it("does not double-unescape an escaped entity", () => {
     expect(slackMarkupToText("&amp;lt;")).toBe("&lt;");
+  });
+});
+
+describe("slackChannelSignals", () => {
+  it("qualifies the conversation by its workspace and labels named channels only", () => {
+    const parsed = parseSlackInteraction(form(shortcut))!;
+    expect(slackChannelSignals(parsed)).toEqual({ slack_channel: "T1:C1", slack_channel_label: "#general" });
+    const dm = parseSlackInteraction(form({ ...shortcut, channel: { id: "D1", name: "directmessage" } }))!;
+    expect(slackChannelSignals(dm)).toEqual({ slack_channel: "T1:D1" });
+    const group = parseSlackInteraction(form({ ...shortcut, channel: { id: "G1", name: "mpdm-anna--bob-1" } }))!;
+    expect(slackChannelSignals(group)).toEqual({ slack_channel: "T1:G1" });
   });
 });

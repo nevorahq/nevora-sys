@@ -3,7 +3,13 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { emitDomainEvent } from "@/lib/events";
-import { PLANNER_ENTRY_COLUMNS, type PlannerEntry, type PlannerEntryType } from "../types/planner.types";
+import {
+  isMissingColumnError,
+  PLANNER_ENTRY_COLUMNS,
+  type ChannelSignals,
+  type PlannerEntry,
+  type PlannerEntryType,
+} from "../types/planner.types";
 
 /**
  * The four business entities that may seed a capture. Each maps to the matching
@@ -51,7 +57,7 @@ export interface CreateSourcedPlannerEntryInput {
    * The external channel the capture arrived from (ADR 002) and its message
    * key; unique per org + channel (migration 121). Omitted for in-app captures.
    */
-  channel?: { name: "telegram" | "slack" | "email"; messageKey: string } | null;
+  channel?: { name: "telegram" | "slack" | "email"; messageKey: string; signals?: ChannelSignals } | null;
 }
 
 export type CreateSourcedPlannerEntryResult =
@@ -79,23 +85,30 @@ export async function createSourcedPlannerEntry(
   const sourceColumn = SOURCE_COLUMN[entity.kind];
   const id = randomUUID();
 
-  const { data, error } = await supabase
-    .from("planner_entries")
-    .insert({
-      id,
-      organization_id: ctx.org.id,
-      workspace_id: ctx.workspace.id,
-      created_by: ctx.user.id,
-      owner_user_id: ctx.user.id,
-      raw_text: summary.trim() || null,
-      entry_type: entryType,
-      source: ENTRY_SOURCE[entity.kind],
-      status: input.status ?? "suggested",
-      [sourceColumn]: entity.id,
-      ...(input.channel ? { channel: input.channel.name, channel_message_key: input.channel.messageKey } : {}),
-    })
-    .select(PLANNER_ENTRY_COLUMNS)
-    .single();
+  const row: Record<string, unknown> = {
+    id,
+    organization_id: ctx.org.id,
+    workspace_id: ctx.workspace.id,
+    created_by: ctx.user.id,
+    owner_user_id: ctx.user.id,
+    raw_text: summary.trim() || null,
+    entry_type: entryType,
+    source: ENTRY_SOURCE[entity.kind],
+    status: input.status ?? "suggested",
+    [sourceColumn]: entity.id,
+    ...(input.channel ? { channel: input.channel.name, channel_message_key: input.channel.messageKey } : {}),
+  };
+  const signals = input.channel?.signals && Object.keys(input.channel.signals).length > 0 ? input.channel.signals : null;
+  const insert = (withSignals: boolean) =>
+    supabase
+      .from("planner_entries")
+      .insert(withSignals && signals ? { ...row, channel_signals: signals } : row)
+      .select(PLANNER_ENTRY_COLUMNS)
+      .single();
+
+  let { data, error } = await insert(true);
+  // Before migration 125 the source is simply not recorded; the capture still lands.
+  if (signals && isMissingColumnError(error)) ({ data, error } = await insert(false));
 
   if (error || !data) {
     // A document source is unique per (org, owner, source_document_id) since

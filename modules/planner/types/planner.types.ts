@@ -49,6 +49,29 @@ export interface PlannerEntry {
   updated_at: string;
 }
 
+/**
+ * Where a channel capture came from, in a form a learned project rule can match
+ * (migration 125, `planner_entries.channel_signals`). Keys mirror the JSON.
+ * Labels are for display only and never matched.
+ */
+export interface ChannelSignals {
+  /** "<team or enterprise id>:<channel id>". */
+  slack_channel?: string;
+  slack_channel_label?: string;
+  /** The original sender of a forwarded email, lower-case. */
+  email_sender?: string;
+  /** Its domain — only for company domains, never a public mailbox provider. */
+  email_domain?: string;
+}
+
+/**
+ * PostgREST/Postgres "no such column" — a database without the migration that
+ * adds it. Optional columns are then written without, never failing the capture.
+ */
+export function isMissingColumnError(error: { code?: string } | null | undefined): boolean {
+  return error?.code === "42703" || error?.code === "PGRST204";
+}
+
 export const PLANNER_ENTRY_COLUMNS =
   "id, organization_id, workspace_id, raw_text, entry_type, source, status, ai_detected_intent, ai_confidence, source_document_id, source_task_id, source_subscription_id, source_transaction_id, source_project_id, created_by, owner_user_id, visibility, created_at, updated_at" as const;
 

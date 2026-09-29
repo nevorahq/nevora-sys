@@ -113,6 +113,8 @@ describe("handleInboundEmail — routing and identity", () => {
   it("accepts Gmail automatic forwarding of a vendor's mail", async () => {
     const forwarded = mail({ from: "billing@vendor.md", headers: { "X-Forwarded-For": `anna@gmail.com inbox-${TOKEN}@in.nevora.app` } });
     expect((await handleInboundEmail(event(), deps(forwarded))).action).toBe("captured");
+    // The vendor is the source a learned project rule matches.
+    expect(mocks.captureText.mock.calls[0][2].signals).toEqual({ email_sender: "billing@vendor.md", email_domain: "vendor.md" });
   });
 
   it("stores the Gmail forwarding confirmation code for Settings instead of capturing it", async () => {
@@ -145,6 +147,8 @@ describe("handleInboundEmail — capture", () => {
       channel: "email",
       messageKey: "m1@mail.gmail.com",
       text: "Contract\n\nPlease send the signed contract to the client by Friday, and book the courier.",
+      // The owner's own mail, nothing forwarded: no source for a project rule.
+      signals: {},
     });
     expect(mocks.processText).not.toHaveBeenCalled();
     await result.after!();

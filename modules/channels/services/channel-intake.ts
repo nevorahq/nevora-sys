@@ -7,7 +7,13 @@ import { captureInboxDocument } from "@/modules/planner/services/capture-inbox-d
 import { generateCaptureTitle } from "@/modules/planner/utils/generate-capture-title";
 import { runDocumentExtraction } from "@/modules/documents/services/document-extraction-service";
 import { PLANNER_RAW_TEXT_MAX_LENGTH } from "@/modules/planner/schemas/planner-entry.schema";
-import { PLANNER_ENTRY_COLUMNS, type PlannerEntry, type PlannerSuggestion } from "@/modules/planner/types/planner.types";
+import {
+  isMissingColumnError,
+  PLANNER_ENTRY_COLUMNS,
+  type ChannelSignals,
+  type PlannerEntry,
+  type PlannerSuggestion,
+} from "@/modules/planner/types/planner.types";
 import type { Channel } from "../types";
 
 /**
@@ -31,29 +37,36 @@ export type CaptureChannelTextResult =
 export async function captureChannelText(
   supabase: SupabaseClient,
   ctx: CurrentContext,
-  input: { channel: Channel; messageKey: string; text: string; entryType?: "text" | "voice" },
+  input: { channel: Channel; messageKey: string; text: string; entryType?: "text" | "voice"; signals?: ChannelSignals },
 ): Promise<CaptureChannelTextResult> {
   const text = input.text.trim();
   if (!text) return { ok: false, code: "empty" };
   if (text.length > PLANNER_RAW_TEXT_MAX_LENGTH) return { ok: false, code: "too_long" };
 
-  const { data, error } = await supabase
-    .from("planner_entries")
-    .insert({
-      id: randomUUID(),
-      organization_id: ctx.org.id,
-      workspace_id: ctx.workspace.id,
-      created_by: ctx.user.id,
-      owner_user_id: ctx.user.id,
-      raw_text: text,
-      entry_type: input.entryType ?? "text",
-      source: "channel",
-      channel: input.channel,
-      channel_message_key: input.messageKey,
-      status: "captured",
-    })
-    .select(PLANNER_ENTRY_COLUMNS)
-    .single();
+  const row: Record<string, unknown> = {
+    id: randomUUID(),
+    organization_id: ctx.org.id,
+    workspace_id: ctx.workspace.id,
+    created_by: ctx.user.id,
+    owner_user_id: ctx.user.id,
+    raw_text: text,
+    entry_type: input.entryType ?? "text",
+    source: "channel",
+    channel: input.channel,
+    channel_message_key: input.messageKey,
+    status: "captured",
+  };
+  const signals = input.signals && Object.keys(input.signals).length > 0 ? input.signals : null;
+  const insert = (withSignals: boolean) =>
+    supabase
+      .from("planner_entries")
+      .insert(withSignals && signals ? { ...row, channel_signals: signals } : row)
+      .select(PLANNER_ENTRY_COLUMNS)
+      .single();
+
+  let { data, error } = await insert(true);
+  // Before migration 125 the source is simply not recorded; the capture still lands.
+  if (signals && isMissingColumnError(error)) ({ data, error } = await insert(false));
 
   if (!error && data) return { ok: true, entry: data as PlannerEntry, reused: false };
 
@@ -118,7 +131,14 @@ export type CaptureChannelFileResult =
 export async function captureChannelFile(
   supabase: SupabaseClient,
   ctx: CurrentContext,
-  input: { channel: Channel; messageKey: string; file: File; note: string | null; kind: "photo" | "document" },
+  input: {
+    channel: Channel;
+    messageKey: string;
+    file: File;
+    note: string | null;
+    kind: "photo" | "document";
+    signals?: ChannelSignals;
+  },
 ): Promise<CaptureChannelFileResult> {
   const result = await captureInboxDocument(supabase, ctx, {
     files: [input.file],
@@ -126,7 +146,7 @@ export async function captureChannelFile(
     note: input.note,
     entryType: input.kind,
     title: generateCaptureTitle({ filename: input.file.name, entryType: input.kind }),
-    channel: { name: input.channel, messageKey: input.messageKey },
+    channel: { name: input.channel, messageKey: input.messageKey, signals: input.signals },
   });
   if (!result.ok) return { ok: false, code: result.code };
   return {

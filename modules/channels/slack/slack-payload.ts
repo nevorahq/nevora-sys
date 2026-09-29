@@ -20,7 +20,7 @@ const messageShortcutSchema = z.object({
   callback_id: z.string(),
   response_url: z.string().max(2048),
   user: z.object({ id: z.string().min(1).max(64), team_id: z.string().max(64).optional() }),
-  channel: z.object({ id: z.string().min(1).max(64) }),
+  channel: z.object({ id: z.string().min(1).max(64), name: z.string().max(200).optional() }),
   team: z.object({ id: z.string().min(1).max(64), enterprise_id: z.string().max(64).optional() }).nullish(),
   enterprise: z.object({ id: z.string().min(1).max(64) }).nullish(),
   message: z.object({
@@ -106,4 +106,21 @@ export function slackMarkupToText(text: string): string {
 function splitOnce(value: string, separator: string): [string, string | null] {
   const index = value.indexOf(separator);
   return index === -1 ? [value, null] : [value.slice(0, index), value.slice(index + 1)];
+}
+
+/** Slack's names for conversations that are not channels: no "#name" to show. */
+const NON_CHANNEL_NAMES = new Set(["directmessage", "privategroup"]);
+
+/**
+ * Where the shortcut's message lives, as a learned project rule matches it
+ * (migration 125): the conversation, qualified by its workspace (or Grid org),
+ * plus a "#name" label for Settings when it is a named channel.
+ */
+export function slackChannelSignals(payload: SlackMessageShortcut): { slack_channel?: string; slack_channel_label?: string } {
+  const scope = shortcutScope(payload);
+  const owner = scope.teamId ?? scope.enterpriseId;
+  if (!owner) return {};
+  const name = payload.channel.name?.trim();
+  const label = name && !NON_CHANNEL_NAMES.has(name) && !name.startsWith("mpdm-") ? `#${name}` : undefined;
+  return { slack_channel: `${owner}:${payload.channel.id}`, ...(label ? { slack_channel_label: label } : {}) };
 }

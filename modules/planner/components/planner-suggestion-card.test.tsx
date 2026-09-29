@@ -63,4 +63,16 @@ describe("PlannerSuggestionCard — project", () => {
     render(<PlannerSuggestionCard suggestion={draft()} dict={dict} />);
     expect(screen.queryByText("Website redesign")).toBeNull();
   });
+
+  it("says the project came from the user's rule", () => {
+    render(
+      <PlannerSuggestionCard
+        suggestion={draft({ proposed_payload: { projectId: projects[0].id, projectSource: "rule", projectRuleId: "r1" } })}
+        projects={projects}
+        dict={dict}
+      />,
+    );
+    expect(screen.getByText(dict.project.byRule, { exact: false })).toBeDefined();
+    expect(screen.queryByText(dict.project.suggested, { exact: false })).toBeNull();
+  });
 });

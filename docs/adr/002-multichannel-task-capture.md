@@ -103,17 +103,20 @@ one ends in the shared intake, the Review tab and the confirm-first accept.
 | 0.1 | Detector proposes only `create_task` | Done 2026-09-28 |
 | 0.2a | Metered AI intent detection (migration 119) | Done 2026-09-28 |
 | 0.2b | Project classification (AI) + project picker | Done 2026-09-29 — needs a Tasks service redeploy |
+| 0.2b+ | Learned project rules by source (migration 125) | Done 2026-09-29 — apply migration 125 |
 | 0.3 | Work route for photo/document captures | Done 2026-09-28 |
 | 1 | `channel_integrations` + shared intake (migration 121) | Done 2026-09-28 |
 | 2 | Telegram — text, photos/documents (122), voice (124) | Done 2026-09-29 |
 | 3 | Slack — "Send to Nevora" message shortcut, text | Done 2026-09-29 (#82) |
 | 4 | Email forwarding via Resend Inbound (migration 123) | Done 2026-09-28 |
 
-Open, recorded under each step: learned project rules (0.2b, a migration);
+Open, recorded under each step: keyword project rules (0.2b+);
 files on a Slack message; domain events
 for channel captures; a live smoke of Slack with a real app (needs the
 `SLACK_*` secrets). Migrations 121–124 are applied manually — confirm they are
-live before enabling a channel in an environment.
+live before enabling a channel in an environment. Migration 125 is optional at
+deploy time: without it captures are stored without their source and no rule
+is learned or applied.
 
 **Step 0 — make the existing Inbox honest (prerequisite)**
 
@@ -166,10 +169,38 @@ live before enabling a channel in an environment.
     title and description left in the payload, not the ones the user edited on
     the card. The card's title and description now win (as they already did for
     the retired financial types).
-  - Not yet: the learned rules ("a correction becomes a private rule, so the
-    next similar capture is classified without a model call") — a new table and
-    migration. Projects are not in the HTTP `TasksApplication` yet, so the list
-    is read in-process in every transport mode, like the Tasks pages do.
+  - Projects are not in the HTTP `TasksApplication` yet, so the list is read
+    in-process in every transport mode, like the Tasks pages do.
+- 0.2b+ Learned project rules — rule-first, AI second. *Done 2026-09-29,
+  migration 125.* Decisions (with the product owner): rules match the capture's
+  **source**, not its words — keyword rules are a possible later step.
+  - Sources (`planner_entries.channel_signals`, written by the adapters): the
+    Slack conversation (`<team>:<channel>`, "#name" kept as a label), the
+    original sender of a forwarded email and its domain. The original sender is
+    `From` for Gmail's automatic forwarding, and the `From:`/`От:`/`De la:` line
+    opening the forwarded message for a manual forward; the owner's own mail has
+    none. A public mailbox provider (gmail.com, mail.ru, …) never gets a domain.
+    Telegram and in-app captures carry no source.
+  - `capture_project_rules`: one private rule per (org, user, source) → project,
+    RLS owner-only, the project must be in the same organization, deleting the
+    project deletes its rules. Verified by
+    `supabase/tests/125_capture_project_rules_verification.sql`.
+  - Apply: before the intent call, the user's rule for the most specific source
+    (Slack channel, then sender, then domain) whose project is still live
+    decides the project of every draft of the capture; the model then does not
+    see the project list. Usage is counted. Without a rule, 0.2b's AI pick.
+  - Learn — only from a correction: each draft records what Nevora proposed
+    (`suggestedProjectId`, `projectSource: rule|ai`, `projectRuleId`; system keys
+    an edit can neither set nor drop). On the first accept, a different project
+    upserts the rule for the source (Slack channel, else company domain, else
+    sender); clearing a project a rule proposed deletes that rule; clearing an
+    AI guess teaches nothing. Best-effort: a rule never fails an accept.
+  - The card says "by your rule"; Settings → Integrations lists the rules
+    (source → project, uses) with Delete (en/ru/ro).
+  - Honest limit: a rule saves the project guess, not the AI call — the title,
+    date and priority still come from the model.
+  - Tolerates a database without 125: signals are dropped on insert
+    (`42703`/`PGRST204` → retried without the column) and rules read as none.
 - 0.3 Work route for photo/document captures. *Done 2026-09-28.* When the
   extraction classifies a document captured in the Inbox as `unknown` (not a
   receipt, invoice or payment confirmation), `runDocumentExtraction` runs task
