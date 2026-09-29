@@ -1,93 +1,91 @@
 # Product Copy — Nevora Business OS
 
-> Canonical product positioning and the copy currently shipped on the landing
-> page (`modules/landing/constants/landing-content.ts`, bilingual en/ru). Keep
-> marketing, README and in-app copy aligned with this file. Tone: honest,
-> founder-led, no hype — no fake numbers, fake reviews, fake discounts or logos.
+> How Nevora talks about itself: positioning, audience, what the copy may and
+> may not promise, and the rules for writing it. **This file holds no shipped
+> strings** — the previous version copied landing headlines and drifted within
+> weeks. The strings live in code (see *Where copy lives*); this file is the
+> brief they are written against. Last reviewed 2026-09-29.
 
 ## Positioning
 
-Nevora Business OS is **not** just a CRM, a task manager or a finance tracker.
-It is an **Intelligent Business System for SMB** — one place where the key parts
-of a small business work together.
+Nevora is **one workspace where small-business work arrives from anywhere and
+becomes a clear next step — with the owner keeping the final word.**
 
-Core idea:
+Things are sent from wherever the user already is (the app, Telegram, Slack,
+a forwarded email, a photo or a receipt QR code). Nevora drafts a task or an
+expense and files it in the right project; nothing changes until the user
+confirms. The Action Center then shows what needs attention today.
 
-> Minimum effort. Maximum productivity. All business modules work together.
-> AI helps you make decisions. The system reduces routine.
+It is **not** a CRM, an ERP, an accounting system or an autonomous AI agent.
 
-## Hero (shipped)
-
-- **Title:** "A simple Business OS for focused work."
-- **Subtitle:** "Nevora Business OS helps small businesses keep tasks, money,
-  documents, subscriptions, analytics and AI in one clear system."
-- **Goal line:** "less chaos, fewer scattered tools, more control over your
-  working day."
-- **Primary CTA:** "Start free trial" · **Secondary CTA:** "See plans"
-- **Microcopy:** "14 days free. Up to 500 MB storage. No pressure to upgrade."
-
-## Product description
-
-The system brings the key parts of your business into one place, so you
-understand faster what is happening and what needs attention. Open your
-workspace, see what matters, make a decision, and move on.
-
-## Main modules (as marketed, active now)
-
-Tasks · Documents · Subscriptions · Money tracking · Business analytics ·
-AI assistant.
-
-**Client / CRM workflows are part of the product direction but currently
-paused** — they are not marketed as an active, available feature (removed from
-the capability list, the trial, and trial details). They remain in the
-"Coming soon" paid tiers (Start/Pro/Business) as roadmap direction only. See
-[`MODULE_STATUS.md`](./MODULE_STATUS.md).
+Core line (en / ru / ro): *Capture anything. Confirm what matters.* ·
+*Добавляйте что угодно. Подтверждайте главное.* · *Adaugă orice. Confirmă ce contează.*
 
 ## Who it is for
 
-Small and medium businesses that need order without enterprise weight — people
-who want a simple system that is useful before it is complex.
+Freelancers and small teams who run their own tasks, money and subscriptions,
+and want less typing and fewer scattered tools — not a heavy all-in-one suite.
 
-## Current product promise
+## What the copy may promise
 
-- Bring tasks, money, documents, subscriptions and recurring work into one
-  clear workspace.
-- See what needs attention and act, instead of switching between scattered tools.
-- An **AI assistant that helps** with summaries, insights and recommendations.
+Only what works in production today. Each claim below is live and, where
+marked, pinned by a test that fails the build if it stops being true.
 
-## Future product direction
+| Claim | Backed by |
+| --- | --- |
+| Capture from the app (text, photo, document, receipt scan), Telegram, Slack and email forwarding | ADR 002; live-smoked for Telegram text and email |
+| A note becomes a task draft with a date and a project; a receipt or invoice becomes an expense draft | Inbox pipeline, document extraction |
+| Moving a Slack/email capture to another project teaches a rule for that source | Migration `125` |
+| Nothing is created, posted or paid without confirmation | `test/release-invariants.test.ts` |
+| Marking a subscription payment paid twice records it once | `test/release-invariants.test.ts` |
+| Reading a notification does not resolve the work behind it | `test/release-invariants.test.ts` |
+| The AI writes only drafts; it cannot post money, mark paid, change plans or permissions, or delete data | `test/ai-governance.test.ts` |
+| Workspaces are isolated row by row | `lib/security/require-app-access.test.ts` |
+| Analytics events carry no document text, file names or emails | `test/analytics-privacy.test.ts` |
+| The whole product is in English, Russian and Romanian | Dictionaries + landing content |
+| Private beta: 14-day free trial, no card, paid plans switch on later | `modules/billing/plan-catalog.ts`, `BILLING_MODE=private_beta` |
 
-- Cross-module relations and an Action Center that surfaces what to do next.
-- Document automation (upload → extract → draft transaction → confirm).
-- Deeper analytics and AI-driven recommendations.
-- **AI-ready foundation; AI assistance is planned/scoped — not autonomous.**
+## What the copy must not promise (yet)
 
-## Pricing copy alignment
+- **Voice notes** — transcription is built but the provider account is unfunded.
+- **Files from Slack** — Slack capture is text only.
+- **Paid checkout** — implemented, but off in private beta; pricing shows
+  "Available after beta".
+- **Automatic acceptance** of drafts — explicitly not decided (ADR 002).
+- **A second workspace** per account during beta.
+- **Analytics and AI insight pages** — they exist but are not linked from the app.
+- **CRM, clients, leads, booking** — paused and closed; never on the landing,
+  pricing or trial.
+- Bank sync, accounting/tax features, anything "autonomous".
 
-One trial + paid plan model. Trial: 14 days, up to 2 members, 500 MB storage,
-module previews, basic analytics, limited AI assistant, no pressure to upgrade.
-Real checkout is **not yet built** — pricing copy is informational and CTAs route
-to registration. When checkout lands, wire CTAs to `?plan=<id>` (see the
-`TODO(pricing)` in landing content). Plan limits in copy must match
-`lib/billing` enforcement (Billing module).
+Before adding a claim, move it to the table above with its evidence.
 
-## Copy guardrails
+## Writing rules
 
-**Avoid:** overpromising, fake AI claims, enterprise-heavy language, excessive
-complexity, "fully autonomous AI agent / AI runs your whole business".
+- **Honest, founder-led, plain.** The contact section speaks in first person
+  singular ("I read every message").
+- **No invented proof:** no fake numbers, customers, reviews, logos or discounts.
+  Preview data is labelled as sample data.
+- **Confirm-first language:** Nevora *prepares, suggests, drafts*; the user
+  *confirms, accepts, decides*. Never "Nevora pays / books / decides".
+- **AI is an assistant**, not an agent. Say what it may do and what it may never
+  do alone.
+- **One glossary in every language** — the terminology table in
+  [`CLAUDE.md`](../CLAUDE.md) (Action Center, Inbox, Workspace, Finance, AI…).
+  No mixed-language sentences; the brand `Nevora Business OS` is never translated.
+- **All three locales change together.** A claim that exists in one language
+  exists in all three.
 
-**Prefer:** "AI-ready foundation", "AI assistance", "AI summaries and
-recommendations as roadmap direction".
+## Where copy lives
 
-## Known copy ⇄ product discrepancies
+| Surface | Source |
+| --- | --- |
+| Landing (all sections, preview, FAQ, contacts) | `modules/landing/constants/landing-content.ts` |
+| Pricing — stable data (prices, limits) | `modules/billing/plan-catalog.ts` |
+| Pricing — localized presentation | `modules/billing/plan-catalog.i18n.ts` (English defaults pinned by tests) |
+| App interface | `shared/i18n/dictionaries/{en,ru,ro}.ts` |
+| Bot and channel replies (Telegram, Slack, email) | `channels.*` keys in the dictionaries |
+| Legal pages | `modules/legal` |
 
-- **CRM / Clients — RESOLVED (Phase 0 finalization).** CRM is Paused/hidden, so
-  it is no longer presented as an active feature: removed from the landing
-  capability list (`value.items`), the trial features, and trial details, in
-  both en and ru. CRM is preserved only in the "Coming soon" paid tiers and in
-  the long-term product direction. Soft framing used: "Client and CRM workflows
-  are part of the product direction; the current focus is tasks, money,
-  documents, subscriptions, settings and the workflow automation foundation."
-- Contact channels in landing content are still placeholders
-  (`hello@nevora.com`, `@nevora`) — replace with real channels before launch.
-  *(Open follow-up — operational, does not block Phase 0.)*
+When the product changes what it can do, update the landing and this file's
+two lists in the same PR.
