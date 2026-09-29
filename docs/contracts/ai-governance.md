@@ -30,14 +30,16 @@ and review queues, never a domain fact.
 AI must never, on its own:
 
 - **post income or an expense** — no write to `money_transactions`;
-- **mark anything paid** — no `status = 'paid'` on `subscription_payment_cycles`
-  (the only "paid" state left outside the ledger since migration `115` dropped
-  Financial Tasks and the `mark_*_paid` RPCs);
+- **mark anything paid** — no write to `subscription_payment_cycles` (the only
+  "paid" state left outside the ledger since migration `115` dropped Financial
+  Tasks and the `mark_*_paid` RPCs); both RPC names stay banned so neither
+  comes back;
 - **change a billing plan** — no write to `billing_subscriptions`, no `changePlan`;
 - **change permissions** — no write to `memberships` / roles;
 - **delete critical data** — no `.delete()` on money, tasks, documents,
   subscriptions, organizations, or memberships (deleting its own stale
-  `ai_recommendations` before regenerating is allowed);
+  `ai_recommendations` before regenerating, or refunding its own unused
+  `ai_requests` quota row, is allowed);
 - **create organization-wide rules** — no `category_rules` / automation rule
   creation.
 
@@ -61,6 +63,11 @@ normal, gated path.
 
 `test/ai-governance.test.ts` scans every AI file and asserts: it writes only to
 the AI-owned allowlist, never references a forbidden table or RPC, and the pure
-suggestion helpers stay write-free. Combined with the confirm-first invariants in
+suggestion helpers stay write-free. Any source file that calls a model (the
+Anthropic client or a provider endpoint) must be on that list, so a new call
+site cannot go unscanned. The Inbox steps that run the model and store its
+drafts (`process-planner-entry`, `propose-tasks-from-document-capture`) may
+additionally write only the capture and its drafts (`planner_entries`,
+`planner_suggestions`), never delete, and never reference a forbidden table. Combined with the confirm-first invariants in
 `test/release-invariants.test.ts`, this pins the whole "AI cannot act on its own"
 guarantee to the build.

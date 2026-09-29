@@ -20,11 +20,11 @@ const productPlatformRestrictedPaths = [
 const moneyTableRestrictions = [
   {
     selector: "CallExpression[callee.type='MemberExpression'][callee.property.name='from'][arguments.0.value='money_transactions']",
-    message: "Ledger access belongs to Money or @/workflows/financial-obligations.",
+    message: "Ledger access belongs to Money; read it through @/platform/finance/server.",
   },
   {
     selector: "CallExpression[callee.type='MemberExpression'][callee.property.name='from'][arguments.0.value='money_accounts']",
-    message: "Money-account access belongs to Money or @/workflows/financial-obligations.",
+    message: "Money-account access belongs to Money; read it through @/platform/finance/server.",
   },
 ];
 
@@ -42,18 +42,21 @@ const subscriptionTableRestrictions = [
   },
   {
     selector: "CallExpression[callee.type='MemberExpression'][callee.property.name='from'][arguments.0.value='subscription_payment_cycles']",
-    message: "Payment-cycle storage belongs to Subscriptions or @/workflows/financial-obligations.",
+    message: "Payment-cycle storage belongs to Subscriptions; use @/platform/subscriptions/server.",
   },
 ];
 
+// Both RPCs were dropped by migration 115 (Financial Tasks and the obligation
+// bridge are gone). The selectors are kept on purpose: a call revived from an
+// old branch or a stale doc would only fail at runtime, so lint names it first.
 const paymentRpcRestrictions = [
   {
     selector: "CallExpression[callee.type='MemberExpression'][callee.property.name='rpc'][arguments.0.value='mark_financial_task_paid']",
-    message: "Invoke the financial-task payment RPC through @/workflows/financial-obligations.",
+    message: "mark_financial_task_paid was dropped by migration 115 with Financial Tasks; there is no replacement.",
   },
   {
     selector: "CallExpression[callee.type='MemberExpression'][callee.property.name='rpc'][arguments.0.value='mark_subscription_payment_paid']",
-    message: "Invoke the subscription payment RPC through @/workflows/financial-obligations.",
+    message: "mark_subscription_payment_paid was dropped by migration 115; mark a cycle paid in Subscriptions (markSubscriptionPaymentAsPaid), which posts nothing to Money.",
   },
 ];
 
@@ -182,8 +185,8 @@ const eslintConfig = defineConfig([
     },
   },
   // The three independently extractable products never import each other.
-  // Cross-product composition belongs in `workflows/`; shared vocabulary and
-  // ports belong in `platform/`.
+  // Cross-product reads and actions go through the ports in `platform/`, which
+  // also holds the shared vocabulary.
   {
     files: ["modules/tasks/**/*.{ts,tsx}"],
     rules: {
@@ -194,7 +197,7 @@ const eslintConfig = defineConfig([
           patterns: [
             {
               regex: "^@/modules/(?:moneyflow|subtracker)(?:$|/)",
-              message: "Compose Tasks with Money/Subscriptions in @/workflows, not inside the product.",
+              message: "Tasks must not import Money/Subscriptions; go through their @/platform ports.",
             },
           ],
         },
@@ -211,7 +214,7 @@ const eslintConfig = defineConfig([
           patterns: [
             {
               regex: "^@/modules/(?:tasks|subtracker)(?:$|/)",
-              message: "Compose Money with Tasks/Subscriptions in @/workflows, not inside the product.",
+              message: "Money must not import Tasks/Subscriptions; go through their @/platform ports.",
             },
           ],
         },
@@ -228,7 +231,7 @@ const eslintConfig = defineConfig([
           patterns: [
             {
               regex: "^@/modules/(?:tasks|moneyflow)(?:$|/)",
-              message: "Compose Subscriptions with Tasks/Money in @/workflows, not inside the product.",
+              message: "Subscriptions must not import Tasks/Money; go through their @/platform ports.",
             },
           ],
         },
@@ -348,7 +351,7 @@ const eslintConfig = defineConfig([
     },
   },
   // Server ownership guard: each product may query only its own business tables.
-  // Cross-product reads/mutations go through platform ports or workflows.
+  // Cross-product reads/mutations go through platform ports.
   {
     files: ["modules/tasks/**/*.{ts,tsx}"],
     rules: {
