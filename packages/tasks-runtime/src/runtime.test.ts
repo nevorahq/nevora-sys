@@ -133,3 +133,101 @@ describe("runtime application read scope", () => {
     expect(workspaceFilter(orgWide.calls)).toBe(false);
   });
 });
+
+describe("createStandardTask with a project (ADR 002, 0.2b)", () => {
+  const PROJECT_ID = "55555555-5555-4555-8555-555555555555";
+  const PROJECT_WORKSPACE = "66666666-6666-4666-8666-666666666666";
+
+  function fakeSupabase(project: Record<string, unknown> | null, insertError: { code: string; message: string } | null = null) {
+    const inserts: Record<string, unknown>[] = [];
+    const filters: Array<[string, string, unknown]> = [];
+    const rpc = vi.fn(async () => ({ data: 0, error: null }));
+    const from = vi.fn((table: string) => {
+      const builder: Record<string, unknown> = {};
+      builder.select = vi.fn(() => builder);
+      builder.eq = vi.fn((column: string, value: unknown) => {
+        filters.push([table, column, value]);
+        return builder;
+      });
+      builder.is = vi.fn(() => builder);
+      builder.maybeSingle = vi.fn(async () =>
+        table === "projects" ? { data: project, error: null } : { data: { id: "existing-task" }, error: null },
+      );
+      builder.insert = vi.fn(async (row: Record<string, unknown>) => {
+        inserts.push(row);
+        return { error: insertError };
+      });
+      return builder;
+    });
+    return { supabase: { from, rpc } as unknown as SupabaseClient, inserts, filters, rpc };
+  }
+
+  function freshEffects(): TasksRuntimeEffects {
+    return {
+      reserveTaskUsage: vi.fn(async () => undefined),
+      releaseTaskUsage: vi.fn(async () => undefined),
+      emitDomainEvent: vi.fn(async () => undefined),
+      emitAuditLog: vi.fn(async () => undefined),
+      createDocumentTaskLink: vi.fn(async () => undefined),
+    };
+  }
+
+  it("creates the task in the project's workspace and recomputes its progress", async () => {
+    const fake = fakeSupabase({ id: PROJECT_ID, workspace_id: PROJECT_WORKSPACE, archived_at: null });
+    const application = createTasksRuntimeApplication({ supabase: fake.supabase, context, effects: freshEffects() });
+
+    await expect(application.createStandardTask({ title: "Draft the brief", projectId: PROJECT_ID })).resolves.toMatchObject({
+      ok: true,
+      created: true,
+    });
+    expect(fake.inserts[0]).toMatchObject({
+      organization_id: context.organizationId,
+      workspace_id: PROJECT_WORKSPACE,
+      project_id: PROJECT_ID,
+    });
+    // The project is looked up inside the bound organization only.
+    expect(fake.filters).toContainEqual(["projects", "organization_id", context.organizationId]);
+    expect(fake.rpc).toHaveBeenCalledWith("recalculate_project_progress", { p_project_id: PROJECT_ID });
+  });
+
+  it("keeps the caller's workspace and no project when none is given", async () => {
+    const fake = fakeSupabase(null);
+    const application = createTasksRuntimeApplication({ supabase: fake.supabase, context, effects: freshEffects() });
+    await application.createStandardTask({ title: "Call the bank" });
+    expect(fake.inserts[0]).toMatchObject({ workspace_id: context.workspaceId, project_id: null });
+    expect(fake.rpc).not.toHaveBeenCalled();
+  });
+
+  it("refuses a missing, foreign or archived project before reserving quota", async () => {
+    for (const project of [null, { id: PROJECT_ID, workspace_id: PROJECT_WORKSPACE, archived_at: "2026-09-01T00:00:00Z" }]) {
+      const fake = fakeSupabase(project);
+      const effects = freshEffects();
+      const application = createTasksRuntimeApplication({ supabase: fake.supabase, context, effects });
+      await expect(application.createStandardTask({ title: "X", projectId: PROJECT_ID })).resolves.toEqual({
+        ok: false,
+        error: "Project not found",
+        code: "project_not_found",
+      });
+      expect(effects.reserveTaskUsage).not.toHaveBeenCalled();
+      expect(fake.inserts).toHaveLength(0);
+    }
+  });
+
+  it("resolves a retried confirm to the existing task wherever its workspace is", async () => {
+    const fake = fakeSupabase(
+      { id: PROJECT_ID, workspace_id: PROJECT_WORKSPACE, archived_at: null },
+      { code: "23505", message: "duplicate" },
+    );
+    const effects = freshEffects();
+    const application = createTasksRuntimeApplication({ supabase: fake.supabase, context, effects });
+    await expect(
+      application.createStandardTask({
+        title: "X",
+        projectId: PROJECT_ID,
+        sourceSuggestionId: "77777777-7777-4777-8777-777777777777",
+      }),
+    ).resolves.toEqual({ ok: true, taskId: "existing-task", created: false });
+    expect(effects.releaseTaskUsage).toHaveBeenCalledTimes(1);
+    expect(fake.filters.filter(([table, column]) => table === "todos" && column === "workspace_id")).toHaveLength(0);
+  });
+});

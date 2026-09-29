@@ -182,6 +182,7 @@ export const ro: Dictionary = {
       unsupported: "Această sugestie nu poate fi acceptată. Transform-o într-o sarcină.",
       partial: "Acceptată, dar Mesajele primite nu s-au actualizat. Reîncarcă pagina.",
       taskFailed: "Sarcina nu a putut fi creată. Poate ai atins limita planului.",
+      projectUnavailable: "Acest proiect a fost arhivat sau șters. Alege alt proiect (Editează) sau fără proiect, apoi acceptă.",
       empty: "Scrie ceva pentru a adăuga.",
       tooLong: "Maximum {max} de caractere.",
       acceptFailed: "Sugestia nu a putut fi acceptată. Încearcă din nou.",
@@ -219,6 +220,11 @@ export const ro: Dictionary = {
     rejected: "Respins",
     failed: "Nu s-a putut procesa — verifică manual.",
     createdEntity: "Creat",
+    project: {
+      label: "Proiect",
+      none: "Fără proiect",
+      suggested: "propus",
+    },
     financialFields: {
       paymentDate: "Data plății",
       amount: "Sumă",

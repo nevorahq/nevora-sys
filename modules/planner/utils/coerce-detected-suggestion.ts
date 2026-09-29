@@ -55,6 +55,8 @@ export function coerceDetectedSuggestion(suggestion: DetectedSuggestion): Detect
     }),
   );
   const dueDate = readString(payload, "dueDate") ?? readString(payload, "financialDueDate");
+  // Already resolved against the organization's projects (resolveProjectRefs).
+  const projectId = readString(payload, "projectId");
 
   return {
     suggestionType: "create_task",
@@ -65,6 +67,7 @@ export function coerceDetectedSuggestion(suggestion: DetectedSuggestion): Detect
       description,
       ...(dueDate ? { dueDate } : {}),
       priority: readString(payload, "priority") ?? "medium",
+      ...(projectId ? { projectId } : {}),
     },
     confidence: suggestion.confidence,
   };

@@ -33,6 +33,8 @@ export function messageForCode(errors: InboxErrors, code: PlannerErrorCode, onFa
       return errors.partial;
     case "task_failed":
       return errors.taskFailed;
+    case "project_unavailable":
+      return errors.projectUnavailable;
     case "empty":
       return errors.empty;
     case "failed":

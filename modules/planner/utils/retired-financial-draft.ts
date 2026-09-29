@@ -33,5 +33,6 @@ export function retiredFinancialDraftToTaskPayload(
     description,
     dueDate: text(payload, "financialDueDate") ?? text(payload, "dueDate"),
     priority: text(payload, "priority") ?? "medium",
+    projectId: text(payload, "projectId"),
   };
 }

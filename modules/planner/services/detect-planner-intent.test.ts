@@ -101,3 +101,56 @@ describe("buildIntentSystemPrompt", () => {
     }
   });
 });
+
+describe("detectPlannerIntent project classification (ADR 002, 0.2b)", () => {
+  const originalKey = process.env.ANTHROPIC_API_KEY;
+  const projects = [
+    { id: "11111111-1111-4111-8111-111111111111", name: "Website redesign" },
+    { id: "22222222-2222-4222-8222-222222222222", name: "Acme retainer" },
+  ];
+  beforeEach(() => {
+    process.env.ANTHROPIC_API_KEY = "test-key";
+    create.mockReset();
+  });
+  afterEach(() => {
+    process.env.ANTHROPIC_API_KEY = originalKey;
+  });
+
+  const answer = (payload: Record<string, unknown>, suggestionType = "create_task") => ({
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          detectedIntent: "task",
+          confidence: 0.9,
+          suggestions: [{ suggestionType, title: "Send Acme the invoice", proposedPayload: payload, confidence: 0.9 }],
+        }),
+      },
+    ],
+  });
+
+  it("shows the projects to the model and maps its key back to the project id", async () => {
+    create.mockResolvedValue(answer({ title: "Send Acme the invoice", project: "p2" }));
+    const result = await detectPlannerIntent("Send Acme the invoice", { projects });
+
+    expect(create.mock.calls[0][0].system).toContain("- p2: Acme retainer");
+    expect(result.suggestions[0].proposedPayload.projectId).toBe(projects[1].id);
+    expect(result.suggestions[0].proposedPayload).not.toHaveProperty("project");
+  });
+
+  it("keeps the project when a retired financial draft is coerced into a task", async () => {
+    create.mockResolvedValue(answer({ financialDueDate: "2026-10-01", amount: 500, project: "p2" }, "create_financial_task"));
+    const result = await detectPlannerIntent("Pay Acme 500 EUR", { projects });
+    expect(result.suggestions[0].suggestionType).toBe("create_task");
+    expect(result.suggestions[0].proposedPayload.projectId).toBe(projects[1].id);
+  });
+
+  it("does not mention projects when the organization has none", () => {
+    expect(buildIntentSystemPrompt(new Date("2026-09-29T00:00:00Z"))).not.toContain("Projects of this organization");
+  });
+
+  it("proposes no project without the model", async () => {
+    const result = await detectPlannerIntent("Send Acme the invoice", { projects, reserveAiCall: async () => false });
+    expect(result.suggestions[0].proposedPayload).not.toHaveProperty("projectId");
+  });
+});

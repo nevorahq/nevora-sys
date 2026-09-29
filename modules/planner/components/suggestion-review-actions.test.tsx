@@ -96,3 +96,55 @@ describe("SuggestionReviewActions — financial capture", () => {
     expect(payload).toMatchObject({ financialDueDate: "2026-07-20", amount: 300, currency: "MDL" });
   });
 });
+
+describe("SuggestionReviewActions — project picker (ADR 002, 0.2b)", () => {
+  const projects = [
+    { id: "22222222-2222-4222-8222-222222222222", name: "Website redesign" },
+    { id: "33333333-3333-4333-8333-333333333333", name: "Acme retainer" },
+  ];
+  const payloadSent = () => JSON.parse((editMock.mock.calls[0][1] as FormData).get("proposedPayload") as string);
+
+  it("pre-selects the suggested project and keeps the other payload keys when it changes", async () => {
+    const draft = suggestion("create_task", { dueDate: "2026-10-01", priority: "high", projectId: projects[0].id });
+    render(<SuggestionReviewActions suggestion={draft} projects={projects} dict={dict} />);
+    fireEvent.click(screen.getByRole("button", { name: dict.edit }));
+
+    const select = screen.getByLabelText(dict.project.label) as HTMLSelectElement;
+    expect(select.value).toBe(projects[0].id);
+    fireEvent.change(select, { target: { value: projects[1].id } });
+    fireEvent.click(screen.getByRole("button", { name: dict.save }));
+
+    await waitFor(() => expect(editMock).toHaveBeenCalledTimes(1));
+    expect(payloadSent()).toEqual({ dueDate: "2026-10-01", priority: "high", projectId: projects[1].id });
+  });
+
+  it("removes the project when \"No project\" is chosen", async () => {
+    render(<SuggestionReviewActions suggestion={suggestion("create_task", { projectId: projects[0].id })} projects={projects} dict={dict} />);
+    fireEvent.click(screen.getByRole("button", { name: dict.edit }));
+    fireEvent.change(screen.getByLabelText(dict.project.label), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: dict.save }));
+
+    await waitFor(() => expect(editMock).toHaveBeenCalledTimes(1));
+    expect(payloadSent()).toEqual({});
+  });
+
+  it("puts the chosen project into a financial draft's payload", async () => {
+    render(<SuggestionReviewActions suggestion={suggestion("create_financial_task", { amount: 300 })} projects={projects} dict={dict} />);
+    fireEvent.click(screen.getByRole("button", { name: dict.edit }));
+    fireEvent.change(screen.getByLabelText(dict.project.label), { target: { value: projects[1].id } });
+    fireEvent.click(screen.getByRole("button", { name: dict.save }));
+
+    await waitFor(() => expect(editMock).toHaveBeenCalledTimes(1));
+    expect(payloadSent()).toMatchObject({ amount: 300, projectId: projects[1].id });
+  });
+
+  it("shows no picker without the project list, and then leaves the payload alone", async () => {
+    render(<SuggestionReviewActions suggestion={suggestion("create_task", { projectId: projects[0].id })} dict={dict} />);
+    fireEvent.click(screen.getByRole("button", { name: dict.edit }));
+    expect(screen.queryByLabelText(dict.project.label)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: dict.save }));
+
+    await waitFor(() => expect(editMock).toHaveBeenCalledTimes(1));
+    expect((editMock.mock.calls[0][1] as FormData).get("proposedPayload")).toBeNull();
+  });
+});

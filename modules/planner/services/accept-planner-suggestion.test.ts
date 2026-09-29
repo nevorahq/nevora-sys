@@ -527,3 +527,61 @@ describe("explainDraft().unsupported agrees with what accept actually refuses", 
     expect(claimedUnsupported).toBe(refusedAsUnsupported);
   });
 });
+
+describe("acceptPlannerSuggestion — project (ADR 002, 0.2b)", () => {
+  const PROJECT_ID = "33333333-3333-4333-8333-333333333333";
+
+  it("files the task under the draft's project", async () => {
+    const store = new Map([["sug-1", baseSuggestion({ proposed_payload: { projectId: PROJECT_ID } })]]);
+    await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+    expect(createStandardTask.mock.calls[0][0]).toMatchObject({ projectId: PROJECT_ID, sourceSuggestionId: "sug-1" });
+  });
+
+  it("creates a task without a project when the draft has none or a malformed one", async () => {
+    for (const payload of [{}, { projectId: "not-a-uuid" }]) {
+      createStandardTask.mockClear();
+      const store = new Map([["sug-1", baseSuggestion({ proposed_payload: payload })]]);
+      await expect(acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1")).resolves.toMatchObject({ ok: true });
+      // No key at all: a Tasks service that predates it (strict schema) must keep working.
+      expect(createStandardTask.mock.calls[0][0]).not.toHaveProperty("projectId");
+    }
+  });
+
+  it("carries the project of a retired financial draft", async () => {
+    const store = new Map([
+      ["sug-1", baseSuggestion({ suggestion_type: "create_financial_task", proposed_payload: { projectId: PROJECT_ID } })],
+    ]);
+    await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+    expect(createStandardTask.mock.calls[0][0]).toMatchObject({ projectId: PROJECT_ID });
+  });
+
+  it("reports an archived project as its own code and keeps the draft open", async () => {
+    createStandardTask.mockResolvedValue({ ok: false, error: "Project not found", code: "project_not_found" } as never);
+    const store = new Map([["sug-1", baseSuggestion({ proposed_payload: { projectId: PROJECT_ID } })]]);
+
+    const result = await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+
+    expect(result).toEqual({ ok: false, error: "Project not found", code: "project_unavailable" });
+    expect(store.get("sug-1")!.status).toBe("pending");
+  });
+
+  it("creates the title and description the card shows, not the model's copy in the payload", async () => {
+    const store = new Map([
+      [
+        "sug-1",
+        baseSuggestion({
+          status: "edited",
+          title: "Send the signed lease to Anna",
+          description: "By Friday",
+          proposed_payload: { title: "Sign the lease", description: "model text", priority: "high" },
+        }),
+      ],
+    ]);
+    await acceptPlannerSuggestion(makeSupabase(store), ctx, "sug-1");
+    expect(createStandardTask.mock.calls[0][0]).toMatchObject({
+      title: "Send the signed lease to Anna",
+      description: "By Friday",
+      priority: "high",
+    });
+  });
+});

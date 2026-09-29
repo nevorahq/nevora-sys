@@ -102,14 +102,15 @@ one ends in the shared intake, the Review tab and the confirm-first accept.
 |---|---|---|
 | 0.1 | Detector proposes only `create_task` | Done 2026-09-28 |
 | 0.2a | Metered AI intent detection (migration 119) | Done 2026-09-28 |
-| 0.2b | Project classification + project picker | **Not started** |
+| 0.2b | Project classification (AI) + project picker | Done 2026-09-29 — needs a Tasks service redeploy |
 | 0.3 | Work route for photo/document captures | Done 2026-09-28 |
 | 1 | `channel_integrations` + shared intake (migration 121) | Done 2026-09-28 |
 | 2 | Telegram — text, photos/documents (122), voice (124) | Done 2026-09-29 |
 | 3 | Slack — "Send to Nevora" message shortcut, text | Done 2026-09-29 (#82) |
 | 4 | Email forwarding via Resend Inbound (migration 123) | Done 2026-09-28 |
 
-Open, recorded under each step: 0.2b; files on a Slack message; domain events
+Open, recorded under each step: learned project rules (0.2b, a migration);
+files on a Slack message; domain events
 for channel captures; a live smoke of Slack with a real app (needs the
 `SLACK_*` secrets). Migrations 121–124 are applied manually — confirm they are
 live before enabling a channel in an environment.
@@ -131,11 +132,44 @@ live before enabling a channel in an environment.
   `ai_suggestions.monthly` figure shown on the billing page. Note the DB quota
   is shared with document extraction and categorization: a trial org that
   spends its 20 calls on captures has none left for documents that month.
-- 0.2b Project classification (AI-only first). Needs `projectId` on
-  `CreateStandardTaskInput` — a change to `tasks-contracts`, the `.strict()`
-  `tasks-api` wire schema and `tasks-runtime`, hence a redeploy of the staged
-  Tasks service — plus a project picker on the review card (en/ru/ro). The task
-  is created in the project's workspace, not the caller's default one.
+- 0.2b Project classification (AI-only first). *Done 2026-09-29, no migration.*
+  - Seam: `CreateStandardTaskInput.projectId` in `tasks-contracts`, the
+    `.strict()` `tasks-api` wire schema and `tasks-runtime`. The runtime looks
+    the project up **inside the bound organization** (the staged service runs on
+    the service role — no RLS to fall back on), refuses a missing or archived one
+    with `code: "project_not_found"` *before* reserving quota, and creates the
+    task in **the project's workspace**. The exactly-once lookup after a `23505`
+    now matches `todos_source_suggestion_unique_idx` exactly (organization +
+    suggestion), since the task may live outside the caller's workspace.
+    Project progress is recomputed best-effort (`recalculate_project_progress`
+    is org-member scoped: it updates under a session, no-ops under the service
+    role until the next status change). **The staged Tasks service must be
+    redeployed** before `TASKS_TRANSPORT=http` sends `projectId`: the old
+    service's strict schema would reject it. The key is sent only when a draft
+    has a project, so drafts without one keep working across the rollout.
+  - Classification: the same metered intent call (no extra AI call) sees the
+    organization's live projects (not archived; active or paused; the 50 most
+    recently updated), read through the Tasks platform adapter
+    (`listTaskProjectOptions`). The model gets short keys (`p1`, `p2`, …), never
+    ids, and answers `proposedPayload.project`; only a key from the list maps
+    back to `projectId`, so a hallucinated or model-supplied id resolves to "no
+    project". Names are flattened (no newlines/quotes) and marked as data. The
+    project survives the retired-financial coercion. No model → no project.
+    Used by typed captures, channel captures and document work routes alike.
+  - Review: the card names the project ("suggested" until the user edits the
+    draft); Edit offers a project picker (en/ru/ro) listing the same live
+    projects, "No project" included. The edit keeps every other payload key.
+    Accept passes the project on; a project archived after classification is
+    refused with its own message ("pick another project") and the draft stays
+    open.
+  - Found on the way: accepting an edited `create_task` draft used the model's
+    title and description left in the payload, not the ones the user edited on
+    the card. The card's title and description now win (as they already did for
+    the retired financial types).
+  - Not yet: the learned rules ("a correction becomes a private rule, so the
+    next similar capture is classified without a model call") — a new table and
+    migration. Projects are not in the HTTP `TasksApplication` yet, so the list
+    is read in-process in every transport mode, like the Tasks pages do.
 - 0.3 Work route for photo/document captures. *Done 2026-09-28.* When the
   extraction classifies a document captured in the Inbox as `unknown` (not a
   receipt, invoice or payment confirmation), `runDocumentExtraction` runs task
