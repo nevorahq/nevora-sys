@@ -133,6 +133,15 @@ describe("isPublicRoute", () => {
     expect(existsSync("app/api/channels/email/inbound/route.ts")).toBe(true);
   });
 
+  it("пропускает interactivity Slack, но не OAuth-маршруты подключения", () => {
+    // Хендлер сам проверяет подпись Slack; connect/callback требуют сессию пользователя.
+    expect(isMachineRoute("/api/channels/slack/interactivity")).toBe(true);
+    expect(isPublicRoute("/api/channels/slack/interactivity")).toBe(false);
+    expect(isMachineRoute("/api/channels/slack/connect")).toBe(false);
+    expect(isMachineRoute("/api/channels/slack/callback")).toBe(false);
+    expect(existsSync("app/api/channels/slack/interactivity/route.ts")).toBe(true);
+  });
+
   it("сверяет только точное совпадение — префикс не открывает соседей", () => {
     expect(isMachineRoute("/api/cron")).toBe(false);
     expect(isMachineRoute("/api/cron/")).toBe(false);

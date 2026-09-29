@@ -60,9 +60,8 @@ export type ConsumeLinkCodeResult =
   | { ok: false; reason: "invalid" | "failed" };
 
 /**
- * Claim a code and link the sender. Service-role client: the webhook has no
- * session. An external account already linked elsewhere is moved to this user,
- * and this user's previous account on the channel is revoked — one-to-one.
+ * Claim a code and link the sender (`linkExternalAccount`). Service-role
+ * client: the webhook has no session.
  */
 export async function consumeLinkCode(
   supabase: SupabaseClient,
@@ -91,8 +90,36 @@ export async function consumeLinkCode(
   }
   if (!claimed) return { ok: false, reason: "invalid" };
 
-  const organizationId = claimed.organization_id as string;
-  const userId = claimed.user_id as string;
+  return linkExternalAccount(
+    supabase,
+    channel,
+    {
+      organizationId: claimed.organization_id as string,
+      workspaceId: claimed.workspace_id as string | null,
+      userId: claimed.user_id as string,
+    },
+    sender,
+  );
+}
+
+export type LinkExternalAccountResult =
+  | { ok: true; integration: ChannelIntegration }
+  | { ok: false; reason: "failed" };
+
+/**
+ * Link an external account to a Nevora user — after a claimed code (Telegram)
+ * or a completed OAuth install (Slack). Service-role client. An external
+ * account already linked elsewhere is moved to this user, and this user's
+ * previous account on the channel is revoked — one-to-one.
+ */
+export async function linkExternalAccount(
+  supabase: SupabaseClient,
+  channel: Channel,
+  owner: { organizationId: string; workspaceId: string | null; userId: string },
+  sender: ExternalSender,
+  metadata?: Record<string, unknown>,
+): Promise<LinkExternalAccountResult> {
+  const now = new Date().toISOString();
 
   // Free both unique slots: this external account anywhere, and this user's
   // current account on the channel in this organization.
@@ -103,31 +130,33 @@ export async function consumeLinkCode(
       .from("channel_integrations")
       .update(revoke)
       .eq("channel", channel)
-      .eq("organization_id", organizationId)
-      .eq("user_id", userId)
+      .eq("organization_id", owner.organizationId)
+      .eq("user_id", owner.userId)
       .eq("status", "active"),
   ]);
   if (byExternal.error || byUser.error) {
-    console.error("[consumeLinkCode] revoke failed:", byExternal.error?.message ?? byUser.error?.message);
+    console.error("[linkExternalAccount] revoke failed:", byExternal.error?.message ?? byUser.error?.message);
     return { ok: false, reason: "failed" };
   }
 
   const { data: integration, error: insertError } = await supabase
     .from("channel_integrations")
     .insert({
-      organization_id: organizationId,
-      workspace_id: claimed.workspace_id as string | null,
-      user_id: userId,
+      organization_id: owner.organizationId,
+      workspace_id: owner.workspaceId,
+      user_id: owner.userId,
       channel,
       external_user_id: sender.userId,
       external_chat_id: sender.chatId,
       external_username: sender.username,
       status: "active",
+      // Only sent when given: the column is migration 123.
+      ...(metadata ? { metadata } : {}),
     })
     .select(CHANNEL_INTEGRATION_COLUMNS)
     .single();
   if (insertError || !integration) {
-    console.error("[consumeLinkCode] link failed:", insertError?.message);
+    console.error("[linkExternalAccount] link failed:", insertError?.message);
     return { ok: false, reason: "failed" };
   }
   return { ok: true, integration: integration as ChannelIntegration };
