@@ -79,6 +79,7 @@ describe("handleSlackShortcut", () => {
       channel: "slack",
       messageKey: "U1:C1:1700000000.000100",
       text: "Send the report by Friday",
+      signals: { slack_channel: "T1:C1" },
     });
     // Nothing is sent to Slack before the acknowledgement.
     expect(replies).toEqual([]);
@@ -178,5 +179,10 @@ describe("handleSlackShortcut", () => {
   it("captures another app's message from its attachments", async () => {
     await handleSlackShortcut(shortcut({ text: "", attachments: [{ title: "Fix login", text: "Due Friday" }] }), deps());
     expect(mocks.capture.mock.calls[0][2].text).toBe("Fix login\nDue Friday");
+  });
+
+  it("records the named channel for a learned project rule", async () => {
+    await handleSlackShortcut(shortcut({}, { channel: { id: "C9", name: "acme-support" } }), deps());
+    expect(mocks.capture.mock.calls[0][2].signals).toEqual({ slack_channel: "T1:C9", slack_channel_label: "#acme-support" });
   });
 });

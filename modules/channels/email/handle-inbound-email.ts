@@ -19,6 +19,7 @@ import { resolveUserLocale } from "../services/user-locale";
 import {
   captureTextFromEmail,
   cleanSubject,
+  emailSignals,
   hasSubstantialBody,
   isAutomated,
   isSentByOwner,
@@ -122,6 +123,8 @@ export async function handleInboundEmail(event: InboundEmailEvent, deps: Inbound
   }
   const ctx = context.ctx;
   const messageKey = emailMessageKey(email.messageId || event.data.email_id);
+  // Who the forwarded mail is from, for a learned project rule (migration 125).
+  const signals = emailSignals(email, [owner]);
 
   // ── Attachments → Documents (receipts, invoices, briefs) ──────────────────
   const files: Array<{ documentId: string; entryId: string | null; extractionId: string }> = [];
@@ -149,6 +152,7 @@ export async function handleInboundEmail(event: InboundEmailEvent, deps: Inbound
       file: new File([downloaded.bytes], name, { type: attachment.contentType }),
       note: subject || null,
       kind: attachment.contentType.startsWith("image/") ? "photo" : "document",
+      signals,
     });
     if (!stored.ok) {
       if (stored.code === "failed") throw new Error("Email attachment could not be stored.");
@@ -175,6 +179,7 @@ export async function handleInboundEmail(event: InboundEmailEvent, deps: Inbound
       channel: "email",
       messageKey,
       text: captureTextFromEmail(email, PLANNER_RAW_TEXT_MAX_LENGTH),
+      signals,
     });
     if (!captured.ok && captured.code === "failed") throw new Error("Email text could not be stored.");
     if (captured.ok) {

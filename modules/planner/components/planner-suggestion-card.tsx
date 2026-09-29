@@ -66,7 +66,12 @@ export function PlannerSuggestionCard({
         <p className="mt-2 text-xs text-text-secondary">
           <span className="text-text-tertiary">{dict.project.label}:</span>{" "}
           <span className="font-medium text-text-primary">{project.name}</span>
-          {suggestion.status === "pending" && <span className="text-text-tertiary"> · {dict.project.suggested}</span>}
+          {suggestion.status === "pending" && (
+            <span className="text-text-tertiary">
+              {" · "}
+              {suggestion.proposed_payload?.projectSource === "rule" ? dict.project.byRule : dict.project.suggested}
+            </span>
+          )}
         </p>
       )}
 

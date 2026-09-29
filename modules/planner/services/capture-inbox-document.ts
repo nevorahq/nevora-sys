@@ -5,7 +5,7 @@ import { canDo } from "@/lib/context/current-context";
 import { createDocumentWithAttachments } from "@/modules/documents/services/document-upload-service";
 import { hasDocumentPermission } from "@/modules/documents/services/document-permissions";
 import { createSourcedPlannerEntry } from "./create-sourced-planner-entry";
-import type { PlannerEntryType } from "../types/planner.types";
+import type { ChannelSignals, PlannerEntryType } from "../types/planner.types";
 
 /**
  * Inbox binary capture orchestration.
@@ -42,7 +42,7 @@ export interface CaptureInboxDocumentInput {
    * service path, the capture carries its channel + message key, and the caller
    * runs the extraction it gets back.
    */
-  channel?: { name: "telegram" | "slack" | "email"; messageKey: string } | null;
+  channel?: { name: "telegram" | "slack" | "email"; messageKey: string; signals?: ChannelSignals } | null;
 }
 
 export type CaptureInboxDocumentResult =

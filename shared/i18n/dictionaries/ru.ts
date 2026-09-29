@@ -215,6 +215,7 @@ export const ru: Dictionary = {
       label: "Проект",
       none: "Без проекта",
       suggested: "предложено",
+      byRule: "по вашему правилу",
     },
     financialFields: {
       paymentDate: "Дата платежа",
@@ -1815,6 +1816,20 @@ export const ru: Dictionary = {
           disconnectFailed: "Не удалось отключить. Попробуйте снова.",
         },
       },
+    },
+    projectRules: {
+      title: "Правила проектов",
+      description: "Если вы переносите черновик из Slack или почты в другой проект, Nevora запоминает это для источника — следующий захват оттуда попадёт в этот проект. Ваши правила видите только вы.",
+      empty: "Правил пока нет. Измените проект у черновика из Slack или почты и примите его — правило появится здесь.",
+      sources: {
+        slack_channel: "Slack",
+        email_sender: "Отправитель",
+        email_domain: "Домен",
+      },
+      uses: "сработало {count}×",
+      unknownProject: "Удалённый проект",
+      delete: "Удалить",
+      deleteFailed: "Не удалось удалить правило. Попробуйте снова.",
     },
     email: {
       settings: {

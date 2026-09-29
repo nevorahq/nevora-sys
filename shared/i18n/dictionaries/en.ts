@@ -239,6 +239,8 @@ export const en = {
       none: "No project",
       /** Shown next to a project AI chose, until the user edits the draft. */
       suggested: "suggested",
+      /** Shown instead of "suggested" when the user's learned rule chose the project. */
+      byRule: "by your rule",
     },
     /**
      * Extra fields shown in the edit form for a financial suggestion. A financial
@@ -1896,6 +1898,22 @@ export const en = {
           disconnectFailed: "Couldn't disconnect. Try again.",
         },
       },
+    },
+    /** Learned project rules (Settings → Integrations; migration 125). */
+    projectRules: {
+      title: "Project rules",
+      description: "When you move a draft from Slack or email to another project, Nevora remembers it for that source — the next capture from there lands in that project. Only you see your rules.",
+      empty: "No rules yet. Change the project of a draft that came from Slack or email, and accept it — the rule appears here.",
+      sources: {
+        slack_channel: "Slack",
+        email_sender: "Sender",
+        email_domain: "Domain",
+      },
+      /** {count} is how many captures the rule filed. */
+      uses: "used {count}×",
+      unknownProject: "Deleted project",
+      delete: "Delete",
+      deleteFailed: "Couldn't delete the rule. Try again.",
     },
     email: {
       settings: {

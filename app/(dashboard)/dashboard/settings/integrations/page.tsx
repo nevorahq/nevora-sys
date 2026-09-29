@@ -12,6 +12,16 @@ import { getEmailChannelConfig } from "@/modules/channels/email/resend-inbound";
 import { getMyChannelIntegration } from "@/modules/channels/queries/get-my-channel-integration";
 import { getTelegramConfig } from "@/modules/channels/telegram/telegram-api";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
+import { ProjectRulesCard, type ProjectRuleView } from "@/modules/planner/components/project-rules-card";
+import { listMyProjectRules, type MyProjectRule } from "@/modules/planner/services/project-rules";
+
+/** How a rule's source reads in Settings; the stored label wins when there is one. */
+function ruleSourceLabel(rule: MyProjectRule): string {
+  if (rule.signalLabel) return rule.signalLabel;
+  if (rule.signalType === "email_domain") return `@${rule.signalValue}`;
+  if (rule.signalType === "slack_channel") return rule.signalValue.split(":").pop() ?? rule.signalValue;
+  return rule.signalValue;
+}
 
 export default async function IntegrationsSettingsPage({
   searchParams,
@@ -23,11 +33,19 @@ export default async function IntegrationsSettingsPage({
   const email = getEmailChannelConfig();
   const slack = getSlackConfig();
   const supabase = await createClient();
-  const [integration, forwarding, slackIntegration] = await Promise.all([
+  const [integration, forwarding, slackIntegration, rules] = await Promise.all([
     telegram ? getMyChannelIntegration(supabase, ctx, "telegram") : null,
     email ? getMyEmailForwarding(supabase, ctx, email.domain) : null,
     slack ? getMySlackIntegration(supabase, ctx) : null,
+    listMyProjectRules(supabase, ctx),
   ]);
+  const ruleViews: ProjectRuleView[] = rules.map((rule) => ({
+    id: rule.id,
+    signalType: rule.signalType,
+    sourceLabel: ruleSourceLabel(rule),
+    projectName: rule.projectName,
+    hits: rule.hits,
+  }));
   // The OAuth callback's outcome (`?slack=`); anything else is ignored.
   const slackResult = SLACK_CONNECT_RESULTS.find((result): result is SlackConnectResult => result === params.slack) ?? null;
   const t = dict.channels.telegram.settings;
@@ -56,6 +74,8 @@ export default async function IntegrationsSettingsPage({
           teamName={slackIntegration?.teamName ?? null}
           result={slackResult}
         />
+        {/* Rules only exist for Slack and email captures; shown once either is set up. */}
+        {(slack || email || ruleViews.length > 0) && <ProjectRulesCard t={dict.channels.projectRules} rules={ruleViews} />}
       </div>
     </>
   );

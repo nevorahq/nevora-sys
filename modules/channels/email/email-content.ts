@@ -159,3 +159,54 @@ export function htmlToText(html: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
+
+/**
+ * Mailbox providers anyone can sign up to: a domain rule on these would file
+ * every stranger's mail under one project, so they only ever get a per-address
+ * rule. Not exhaustive — an unlisted provider just gets a domain rule the user
+ * can delete.
+ */
+const PUBLIC_MAIL_DOMAINS = new Set([
+  "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "msn.com",
+  "yahoo.com", "ymail.com", "icloud.com", "me.com", "mac.com", "aol.com",
+  "proton.me", "protonmail.com", "pm.me", "gmx.com", "gmx.net", "gmx.de", "web.de",
+  "mail.com", "zoho.com", "yandex.ru", "yandex.com", "ya.ru", "mail.ru", "bk.ru",
+  "inbox.ru", "list.ru", "rambler.ru", "mail.md", "yahoo.ro",
+]);
+
+const FORWARDED_FROM = /^(from|от|de la|de)\s*:\s*(.+)$/i;
+
+/**
+ * Who originally wrote a forwarded email: with Gmail's automatic forwarding the
+ * `From` is still the original sender; with a manual forward `From` is the
+ * owner, and the sender is the `From:` line that opens the forwarded message.
+ * Null for the owner's own mail (nothing was forwarded).
+ */
+export function originalSender(email: ReceivedEmail, ownerAddresses: readonly string[]): string | null {
+  const owners = ownerAddresses.filter(Boolean);
+  const isOwner = (address: string) => owners.some((owner) => sameMailbox(owner, address));
+  const from = extractAddress(email.from);
+  if (from && !isOwner(from)) return from;
+
+  const lines = (email.text?.trim() ? email.text : htmlToText(email.html ?? "")).replace(/\r\n?/g, "\n").split("\n");
+  const forwardAt = lines.findIndex((line) => FORWARD_MARKERS.some((marker) => marker.test(line.trim())));
+  if (forwardAt < 0) return null;
+  for (const line of lines.slice(forwardAt + 1, forwardAt + 12)) {
+    const match = line.trim().match(FORWARDED_FROM);
+    if (!match) continue;
+    const address = extractAddress(match[2]);
+    return address && !isOwner(address) ? address : null;
+  }
+  return null;
+}
+
+/**
+ * The source a learned project rule can match (migration 125): the original
+ * sender, and their domain unless it is a public mailbox provider.
+ */
+export function emailSignals(email: ReceivedEmail, ownerAddresses: readonly string[]): { email_sender?: string; email_domain?: string } {
+  const sender = originalSender(email, ownerAddresses);
+  if (!sender) return {};
+  const domain = sender.split("@")[1];
+  return domain && !PUBLIC_MAIL_DOMAINS.has(domain) ? { email_sender: sender, email_domain: domain } : { email_sender: sender };
+}

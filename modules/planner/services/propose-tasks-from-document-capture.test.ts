@@ -8,6 +8,8 @@ const { detectPlannerIntent, createPlannerSuggestion, loadProjectCandidates } = 
 vi.mock("./detect-planner-intent", () => ({ detectPlannerIntent }));
 vi.mock("./create-planner-suggestion", () => ({ createPlannerSuggestion }));
 vi.mock("./load-project-candidates", () => ({ loadProjectCandidates }));
+vi.mock("./project-rules", () => ({ loadEntrySignals: async () => ({}), matchProjectRule: async () => null }));
+vi.mock("server-only", () => ({}));
 
 import { proposeTasksFromDocumentCapture } from "./propose-tasks-from-document-capture";
 import type { PlannerEntry } from "../types/planner.types";

@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   captureTextFromEmail,
   cleanSubject,
+  emailSignals,
   hasSubstantialBody,
   htmlToText,
   isAutomated,
   isSentByOwner,
   meaningfulBody,
+  originalSender,
   readGmailForwardingConfirmation,
   type ReceivedEmail,
 } from "./email-content";
@@ -134,5 +136,35 @@ describe("capture text", () => {
   it("tells a real body from a one-liner around an attachment", () => {
     expect(hasSubstantialBody(email({ text: "See attached." }))).toBe(false);
     expect(hasSubstantialBody(email({ text: "Please pay this invoice before Friday and send me the receipt." }))).toBe(true);
+  });
+});
+
+describe("original sender and project-rule signals (migration 125)", () => {
+  const owners = ["anna@gmail.com"];
+
+  it("takes the sender of Gmail's automatic forwarding from From", () => {
+    const auto = email({ from: "Billing <billing@acme.com>" });
+    expect(originalSender(auto, owners)).toBe("billing@acme.com");
+    expect(emailSignals(auto, owners)).toEqual({ email_sender: "billing@acme.com", email_domain: "acme.com" });
+  });
+
+  it.each([
+    ["en", "---------- Forwarded message ---------\nFrom: Bob Stone <bob@acme.com>\nDate: Mon\nSubject: Brief"],
+    ["ru", "---------- Пересылаемое сообщение ---------\nОт: Боб <bob@acme.com>\nДата: пн"],
+    ["ro", "---------- Mesaj redirecționat ---------\nDe la: Bob <bob@acme.com>\nData: luni"],
+  ])("reads the forwarded From line of a manual forward (%s)", (_locale, forwarded) => {
+    const manual = email({ text: `FYI\n\n${forwarded}\n\nPlease review the brief.` });
+    expect(originalSender(manual, owners)).toBe("bob@acme.com");
+  });
+
+  it("has no sender for the owner's own mail, or a forward of their own mail", () => {
+    expect(originalSender(email({ text: "Remember to call the notary" }), owners)).toBeNull();
+    const self = email({ text: "---------- Forwarded message ---------\nFrom: Anna <anna+work@gmail.com>\n\nhi" });
+    expect(originalSender(self, owners)).toBeNull();
+    expect(emailSignals(self, owners)).toEqual({});
+  });
+
+  it("never proposes a domain rule for a public mailbox provider", () => {
+    expect(emailSignals(email({ from: "Bob <bob@yahoo.com>" }), owners)).toEqual({ email_sender: "bob@yahoo.com" });
   });
 });

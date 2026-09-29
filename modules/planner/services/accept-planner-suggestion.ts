@@ -18,6 +18,7 @@ import {
   type PlannerSuggestionStatus,
 } from "../types/planner.types";
 import { resolvePlannerActionItems } from "./resolve-planner-action-item";
+import { learnProjectRuleFromAccept } from "./project-rules";
 import { retiredFinancialDraftToTaskPayload } from "../utils/retired-financial-draft";
 import type { PlannerErrorCode } from "../types/planner.types";
 
@@ -204,6 +205,11 @@ export async function acceptPlannerSuggestion(
       },
     }),
     resolvePlannerActionItems(supabase, ctx, [suggestion.id, suggestion.planner_entry_id]),
+    // A changed project teaches a rule for the capture's source (migration 125).
+    // Only on the first creation: a retried confirm already learned it.
+    outcome.created && outcome.entityType === "task"
+      ? learnProjectRuleFromAccept(supabase, ctx, suggestion)
+      : Promise.resolve(),
   ]);
 
   return outcome;

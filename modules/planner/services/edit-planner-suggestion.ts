@@ -9,6 +9,7 @@ import {
   type PlannerSuggestion,
 } from "../types/planner.types";
 import type { PlannerErrorCode } from "../types/planner.types";
+import { preserveProjectProvenance } from "../utils/project-rule-signals";
 
 export type EditResult =
   | { ok: true; suggestion: PlannerSuggestion }
@@ -51,7 +52,11 @@ export async function editPlannerSuggestion(
   if (input.title !== undefined) patch.title = input.title;
   if (input.description !== undefined) patch.description = input.description ?? null;
   if (input.suggestionType !== undefined) patch.suggestion_type = input.suggestionType;
-  if (input.proposedPayload !== undefined) patch.proposed_payload = input.proposedPayload;
+  // Nevora's project provenance (what it proposed, and why) survives every edit
+  // and cannot be forged by one: accept compares against it to learn a rule.
+  if (input.proposedPayload !== undefined) {
+    patch.proposed_payload = preserveProjectProvenance(input.proposedPayload, current.proposed_payload);
+  }
 
   // Compare-and-swap on the open statuses: an edit must not land on a suggestion
   // an in-flight accept has already claimed ('processing'), or the accept would

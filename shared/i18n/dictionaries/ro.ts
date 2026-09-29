@@ -224,6 +224,7 @@ export const ro: Dictionary = {
       label: "Proiect",
       none: "Fără proiect",
       suggested: "propus",
+      byRule: "după regula ta",
     },
     financialFields: {
       paymentDate: "Data plății",
@@ -1824,6 +1825,20 @@ export const ro: Dictionary = {
           disconnectFailed: "Nu am putut deconecta. Încearcă din nou.",
         },
       },
+    },
+    projectRules: {
+      title: "Reguli de proiect",
+      description: "Când muți o ciornă din Slack sau email în alt proiect, Nevora ține minte asta pentru sursa respectivă — următoarea captură de acolo ajunge în acel proiect. Doar tu îți vezi regulile.",
+      empty: "Încă nu ai reguli. Schimbă proiectul unei ciorne venite din Slack sau email și accept-o — regula apare aici.",
+      sources: {
+        slack_channel: "Slack",
+        email_sender: "Expeditor",
+        email_domain: "Domeniu",
+      },
+      uses: "folosită de {count}×",
+      unknownProject: "Proiect șters",
+      delete: "Șterge",
+      deleteFailed: "Regula nu a putut fi ștearsă. Încearcă din nou.",
     },
     email: {
       settings: {
