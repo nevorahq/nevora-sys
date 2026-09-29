@@ -127,6 +127,12 @@ describe("isPublicRoute", () => {
     expect(existsSync("app/api/channels/telegram/webhook/route.ts")).toBe(true);
   });
 
+  it("пропускает webhook входящей почты: Resend присылает его без сессии", () => {
+    expect(isMachineRoute("/api/channels/email/inbound")).toBe(true);
+    expect(isPublicRoute("/api/channels/email/inbound")).toBe(false);
+    expect(existsSync("app/api/channels/email/inbound/route.ts")).toBe(true);
+  });
+
   it("сверяет только точное совпадение — префикс не открывает соседей", () => {
     expect(isMachineRoute("/api/cron")).toBe(false);
     expect(isMachineRoute("/api/cron/")).toBe(false);
