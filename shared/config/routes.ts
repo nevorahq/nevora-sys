@@ -91,6 +91,7 @@ export const ROUTES = {
  */
 export const PRODUCT_ENTRY_ROUTES = [
   ROUTES.dashboard,
+  ROUTES.inbox,
   ROUTES.tasks,
   ROUTES.money,
   ROUTES.subscriptions,

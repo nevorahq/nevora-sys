@@ -14,6 +14,11 @@
  * Тон: честный founder-led копирайт. Единый глоссарий терминов, без хайпа,
  * без смешения языков, без фейковых цифр и отзывов. Финансовые действия — только
  * после подтверждения пользователя; ИИ ничего не выполняет автоматически.
+ *
+ * Лендинг описывает ОДНО рабочее пространство с общей боковой панелью (PR #75):
+ * Входящие собирают всё из приложения, Telegram, Slack и почты, Nevora готовит
+ * черновики, пользователь подтверждает. Обещаем только то, что работает сейчас —
+ * например, голосовые в Telegram не упоминаем, пока не подключено распознавание.
  */
 
 import type { PublicLocale } from "@/shared/i18n/constants";
@@ -26,26 +31,25 @@ export const LANDING_LOCALES = ["en", "ru", "ro"] as const;
 export type LandingLocale = PublicLocale;
 
 /**
- * Карточки текущих возможностей. Исторические id сохраняются как стабильные
- * ключи локализации и тестов, а видимые названия соответствуют продуктам.
+ * Карточки «что доступно сегодня» — по одной на раздел боковой панели.
  * `id` — стабильный ключ: он связывает локализованный текст с иконкой в
  * `areas-section` и переживает перевод. Порядок и состав одинаковы во всех
  * локалях — это пинит `landing-content.test.ts`.
  */
-export const AREA_IDS = ["actions", "work", "money", "documents", "inbox", "team"] as const;
+export const AREA_IDS = ["actions", "inbox", "work", "money", "subscriptions", "documents"] as const;
 
 export type AreaId = (typeof AREA_IDS)[number];
 
 /**
- * Четыре состояния модели внимания (`docs/contracts/attention-model.md` §1).
- * Порядок — путь сигнала: добавлено → сообщено → требует действия → сделано.
+ * Вкладки интерактивного превью. Каждая ведёт в свой раздел приложения через
+ * вход (`PREVIEW_ENTRY_ROUTE` в `product-preview-section`).
  */
-export const ATTENTION_IDS = ["captured", "informed", "required", "done"] as const;
+export const PREVIEW_IDS = ["inbox", "tasks", "finance", "subscriptions"] as const;
 
-export type AttentionId = (typeof ATTENTION_IDS)[number];
+export type PreviewId = (typeof PREVIEW_IDS)[number];
 
 /** Вопросы FAQ. Стабильные `id` держат один порядок и состав во всех локалях. */
-export const FAQ_IDS = ["beta", "afterTrial", "workspace", "data", "ai", "languages"] as const;
+export const FAQ_IDS = ["beta", "afterTrial", "workspace", "data", "ai", "channels", "languages"] as const;
 
 export type FaqId = (typeof FAQ_IDS)[number];
 
@@ -68,14 +72,14 @@ export type ProofId = (typeof PROOF_IDS)[number];
 
 const en = {
   meta: {
-    title: "Nevora — Tasks, Finance and Subscriptions as focused apps",
+    title: "Nevora — capture anything, confirm what matters",
     description:
-      "Three focused business apps with one Nevora account: manage tasks and projects, track finances, and keep recurring subscriptions under control.",
+      "One workspace for small businesses. Send notes, emails, receipts and messages from the app, Telegram, Slack or email — Nevora prepares tasks and expense drafts, and nothing changes until you confirm.",
   },
   nav: [
     { label: "Home", href: "#home" },
     { label: "How it works", href: "#how" },
-    { label: "Products", href: "#products" },
+    { label: "Product", href: "#products" },
     { label: "Pricing", href: "#pricing" },
     { label: "Contact", href: "#contact" },
   ],
@@ -89,149 +93,157 @@ const en = {
     close: "Close menu",
   },
   hero: {
-    title: "Three focused apps. One Nevora account.",
+    title: "Capture anything. Confirm what matters.",
     subtitle:
-      "Choose Tasks, Finance or Subscriptions. After sign-in, Nevora opens the selected product and keeps unrelated modules out of your navigation.",
-    trust: "One account · focused navigation · your selected product opens after sign-in.",
-    primaryCta: "Explore the apps",
+      "Forward an email, message the Telegram bot, send a Slack message or snap a receipt. Nevora turns it into a task or an expense draft and files it in the right place — nothing changes until you confirm.",
+    trust: "Nothing is created, posted or paid without your confirmation.",
+    primaryCta: "See the product",
     secondaryCta: "Start a 14-day trial",
     microcopy: "Private beta · 14-day trial · 500 MB storage · no card · EN / RU / RO.",
-    audience: "For people and small teams who want focused tools without a heavy all-in-one interface.",
+    audience: "For freelancers and small teams who run their own tasks, money and subscriptions.",
   },
   preview: {
-    title: "Choose the workspace you need",
+    title: "One workspace, one sidebar",
     subtitle:
-      "Switch between the three live product areas. Each one has its own routes, navigation and day-to-day workflow.",
-    caption: "Interactive product preview — sample data. Opening an app preserves your choice through sign-in.",
+      "Inbox, Tasks, Finance and Subscriptions live side by side, and the Action Center shows what needs you today across all of them.",
+    caption: "Interactive preview — sample data. “Open” takes you to that section after sign-in.",
+    tabs: [
+      {
+        id: "inbox",
+        title: "Inbox",
+        description:
+          "Everything you send to Nevora lands here as a draft. Accept it, edit it or throw it away — your call.",
+        metric: "3",
+        metricLabel: "drafts to review",
+        openLabel: "Open Inbox",
+        items: [
+          { title: "“Sign the lease renewal by Friday”", meta: "Email · task draft · project Office", status: "Review" },
+          { title: "Receipt photo — office supplies", meta: "Telegram · expense draft · €42.50", status: "Review" },
+          { title: "“Call the accountant tomorrow at 10”", meta: "Slack · task draft · due tomorrow", status: "Review" },
+        ],
+      },
+      {
+        id: "tasks",
+        title: "Tasks",
+        description:
+          "Day-to-day work with priorities, due dates and projects. Tasks you accept from the Inbox arrive in the right project.",
+        metric: "12",
+        metricLabel: "open tasks",
+        openLabel: "Open Tasks",
+        items: [
+          { title: "Prepare client proposal", meta: "Today · High priority", status: "In progress" },
+          { title: "Update release checklist", meta: "Product launch", status: "To do" },
+          { title: "Review landing copy", meta: "Marketing", status: "Done" },
+        ],
+      },
+      {
+        id: "finance",
+        title: "Finance",
+        description:
+          "Accounts, income, expenses and transfers in several currencies. A receipt becomes an expense only after you confirm it.",
+        metric: "€4,280",
+        metricLabel: "tracked balance",
+        openLabel: "Open Finance",
+        items: [],
+      },
+      {
+        id: "subscriptions",
+        title: "Subscriptions",
+        description:
+          "Recurring services, renewal dates and payment reminders — and a list of renewals to decide on before they charge.",
+        metric: "3",
+        metricLabel: "renewals this month",
+        openLabel: "Open Subscriptions",
+        items: [
+          { title: "Cloud storage", meta: "Renews 24 Oct · €15", status: "Active" },
+          { title: "Design tools", meta: "Renews 2 Nov · €24", status: "Decide" },
+          { title: "Team calls", meta: "Renews 11 Nov · €12", status: "Active" },
+        ],
+      },
+    ],
+    // Строки вкладки «Финансы»: состояние — канонический ключ бейджа, общий для
+    // всех локалей (подпись берётся из dict.money.states).
     rows: [
-      { name: "Acme Studio — invoice", amount: "€1,200", state: "due" },
-      { name: "Cloud storage — subscription", amount: "€15", state: "paid" },
+      { name: "Receipt — office supplies", amount: "€42.50", state: "needs_review" },
+      { name: "Cloud storage", amount: "€15", state: "paid" },
       { name: "Office rent", amount: "€800", state: "planned" },
-      { name: "Scanned receipt", amount: "—", state: "needs_review" },
     ],
   },
   how: {
-    title: "Choose, sign in, stay focused",
-    subtitle:
-      "The product you choose on the landing page stays selected through login or registration.",
+    title: "From anywhere to done — you have the last word",
+    subtitle: "Three steps. The last one is always yours.",
     steps: [
       {
-        badge: "1",
-        title: "Choose an app",
-        text: "Start with Tasks, Finance or Subscriptions from the product menu or interactive preview.",
+        badge: "Capture",
+        title: "Send it from where you are",
+        text: "Type or photograph it in the app, scan a receipt’s QR code, message the Telegram bot, use “Send to Nevora” in Slack or forward an email.",
       },
       {
-        badge: "2",
-        title: "Sign in once",
-        text: "Log in or create an account. Nevora safely keeps the selected destination during authentication.",
+        badge: "Prepare",
+        title: "Nevora drafts it",
+        text: "A note becomes a task with a date and a project. A receipt or an invoice becomes an expense draft with its amount and line items.",
       },
       {
-        badge: "3",
-        title: "Work in context",
-        text: "You land in the chosen app and see only its product navigation, while account settings remain shared.",
+        badge: "Confirm",
+        title: "You decide",
+        text: "Accept, edit or reject it in the Inbox. Only then does it appear in Tasks or Finance — and the Action Center shows what is left.",
       },
     ],
   },
   areas: {
     title: "What is available today",
-    subtitle:
-      "The landing page now matches the routes and capabilities already available in the application.",
+    subtitle: "Everything below works in the app right now.",
     items: [
       {
         id: "actions",
-        title: "Tasks",
-        text: "Create, prioritise and complete daily work in a dedicated task workspace.",
-      },
-      {
-        id: "work",
-        title: "Projects",
-        text: "Group tasks into projects and open dedicated project pages without leaving the Tasks app.",
-      },
-      {
-        id: "money",
-        title: "Accounts and transactions",
-        text: "Track balances, income, expenses and transfers inside the Finance app.",
-      },
-      {
-        id: "documents",
-        title: "Finance rules",
-        text: "Create explicit rules for repeatable transaction categorisation and keep manual control.",
+        title: "Action Center",
+        text: "Your home screen: what is overdue, due today or waiting for a decision — across every section.",
       },
       {
         id: "inbox",
+        title: "Inbox and channels",
+        text: "Capture in the app or from Telegram, Slack and email. Move a draft to another project once, and Nevora remembers it for that source.",
+      },
+      {
+        id: "work",
+        title: "Tasks and projects",
+        text: "Priorities, due dates, recurring tasks, assignees and projects for you and your team.",
+      },
+      {
+        id: "money",
+        title: "Finance",
+        text: "Accounts, income, expenses and transfers in several currencies, with rules for categories that repeat.",
+      },
+      {
+        id: "subscriptions",
         title: "Subscriptions",
-        text: "Keep recurring services, renewal dates and payment workflow in their own app.",
+        text: "Renewal dates, payment reminders and a list of renewals to keep or cancel before they charge.",
       },
       {
-        id: "team",
-        title: "Shared account layer",
-        text: "Use one identity, one organisation and shared settings while product navigation remains separate.",
+        id: "documents",
+        title: "Documents",
+        text: "Receipts, invoices and contracts stored privately. Nevora reads amounts, dates and line items for you to check.",
       },
     ],
-  },
-  attention: {
-    title: "Captured, informed, needed, done — four different things",
-    subtitle:
-      "Most tools blur them, so “I saw it” quietly counts as “it is handled”. Nevora keeps them apart.",
-    items: [
-      {
-        id: "captured",
-        title: "Captured",
-        text: "Something you dropped into the Inbox. Not classified and not an obligation — it waits for your review.",
-      },
-      {
-        id: "informed",
-        title: "Informed",
-        text: "A notification reached you. That is delivery and nothing more: marking it read changes no obligation anywhere.",
-      },
-      {
-        id: "required",
-        title: "Needs action",
-        text: "A business action is genuinely required. It stays on your home screen until the underlying work is done.",
-      },
-      {
-        id: "done",
-        title: "Done",
-        text: "The owning module recorded the real thing — task closed, payment made, review confirmed. Only that resolves it.",
-      },
-    ],
-    closing:
-      "Which is why an unpaid invoice cannot be silenced by clearing a notification badge.",
-  },
-  states: {
-    title: "One financial vocabulary, everywhere",
-    subtitle:
-      "A subscription, an invoice, a receipt and a manual expense all move through the same six states — and they are called the same thing on every screen.",
-    items: [
-      { id: "detected", text: "A signal was found. Nothing is owed yet." },
-      { id: "needs_review", text: "Waiting for you to classify or confirm it." },
-      { id: "planned", text: "A future obligation exists on the books." },
-      { id: "due", text: "Owed now: the date arrived, or a payment task is open." },
-      { id: "paid", text: "Money actually moved — the only state backed by a transaction." },
-      { id: "cancelled", text: "Closed without payment: rejected, skipped or cancelled." },
-    ],
-    note: "Reaching “Paid” takes an explicit confirmation from you — and confirming the same obligation twice cannot pay it twice.",
   },
   control: {
-    title: "Separate products, shared foundation",
-    subtitle:
-      "The interface is split by product without forcing you to maintain three unrelated accounts.",
+    title: "Nevora prepares. You decide.",
+    subtitle: "Automation that saves you typing — never one that acts behind your back.",
     points: [
       {
-        title: "Focused product navigation",
-        text: "Tasks, Finance and Subscriptions expose only the routes needed for the selected workflow.",
+        title: "Confirm-first, always",
+        text: "Every draft — a task from Slack, an expense from a receipt — waits in the Inbox until you accept it.",
       },
       {
-        title: "Choice survives authentication",
-        text: "The selected product is carried safely through login, registration and onboarding.",
+        title: "It learns from your corrections",
+        text: "File a Slack or email capture under another project once, and the next one from that source goes there directly.",
       },
       {
-        title: "Safe shared access",
-        text: "Authentication, organisation access and settings stay centralised, with validated internal redirects.",
+        title: "Only accounts you linked",
+        text: "Telegram, Slack and email capture accept messages only from accounts you connected in Settings. Everything else is ignored.",
       },
     ],
-    closing:
-      "You can move between products when you choose, without mixing their navigation by default.",
+    closing: "Channels change where things come from — not who decides.",
   },
   proof: {
     title: "How we prove it, not just say it",
@@ -241,22 +253,22 @@ const en = {
       {
         id: "money",
         claim: "Money moves only when you confirm it",
-        how: "Nothing posts a transaction on its own. The confirm-first rule is checked by a test, not left to convention.",
+        how: "Nothing posts a transaction on its own — not a receipt, not a subscription, not a finished task. A test checks it, not a convention.",
       },
       {
         id: "idempotent",
-        claim: "Paying twice can’t charge twice",
-        how: "Marking the same obligation paid more than once is idempotent by construction — the second confirm is a no-op.",
+        claim: "Marking paid twice records it once",
+        how: "Marking the same subscription payment paid twice is a no-op the second time — a retry or a double click cannot duplicate it.",
       },
       {
         id: "notifications",
         claim: "Reading a notice doesn’t resolve it",
-        how: "Notification state and obligation state are separate. Clearing a badge never closes the underlying work.",
+        how: "Notification state and task state are separate. Clearing a badge never closes the underlying work.",
       },
       {
         id: "ai",
         claim: "The AI can’t act on its own",
-        how: "AI writes only to its own suggestion tables — it can’t post money, mark anything paid, change your plan or permissions, or delete data.",
+        how: "AI writes only drafts — it can’t post money, mark anything paid, change your plan or permissions, or delete data.",
       },
       {
         id: "isolation",
@@ -279,50 +291,23 @@ const en = {
     can: {
       title: "AI may",
       points: [
-        "Read a document and extract its fields",
-        "Suggest a category, a task or a next step",
-        "Explain why something needs your attention",
+        "Read a document, a receipt or a forwarded email and extract its fields",
+        "Turn a note or a message into a task draft with a date and a project",
+        "Suggest a category for an expense",
       ],
     },
     cannot: {
       title: "AI may never, on its own",
       points: [
         "Post income or an expense",
-        "Mark an obligation as paid",
+        "Mark anything as paid",
         "Change your billing plan",
         "Change anyone’s permissions",
         "Delete your data",
       ],
     },
     closing:
-      "Every accepted suggestion runs through the same module and the same confirmation as a manual action. The AI has no privileged path.",
-  },
-  docJourney: {
-    title: "From a photo of an invoice to a paid obligation",
-    subtitle:
-      "The flagship path, and you approve every step that touches money.",
-    steps: [
-      {
-        badge: "Upload",
-        title: "Add the document",
-        text: "Photograph or drop in an invoice or a receipt. It lands in your Inbox, nowhere else yet.",
-      },
-      {
-        badge: "Extract",
-        title: "Nevora reads it",
-        text: "The amount, date and counterparty are extracted into a draft. Still a suggestion — no money is touched.",
-      },
-      {
-        badge: "Decide",
-        title: "You classify it",
-        text: "An invoice becomes an obligation to pay; a receipt becomes a recorded expense. One document, one entry — never both.",
-      },
-      {
-        badge: "Confirm",
-        title: "You mark it paid",
-        text: "Only your explicit confirmation posts the transaction — and doing it twice will not pay it twice.",
-      },
-    ],
+      "Every accepted draft runs through the same module and the same confirmation as a manual action. The AI has no privileged path.",
   },
   plans: {
     title: "Pricing",
@@ -330,11 +315,12 @@ const en = {
     betaNotice:
       "Nevora is in private beta: the free trial is open to everyone, and paid plans switch on once billing is enabled. No card is charged in the meantime.",
     note: {
-      lead: "Try the current Nevora apps for 14 days with up to 500 MB of storage.",
+      lead: "Try all of Nevora for 14 days with up to 500 MB of storage.",
       points: [
+        "Inbox with Telegram, Slack and email",
         "Tasks and projects",
-        "Accounts and transactions",
-        "Recurring subscriptions",
+        "Finance and documents",
+        "Subscriptions",
       ],
     },
     workspace:
@@ -366,8 +352,13 @@ const en = {
       },
       {
         id: "ai",
-        q: "Will I see every module after sign-in?",
-        a: "No. Nevora opens the app you selected and shows that product’s navigation. You can deliberately switch to Tasks, Finance or Subscriptions from the app menu whenever you need another workspace.",
+        q: "Does the AI do things on its own?",
+        a: "No. It reads what you send and prepares drafts — a task, an expense, a project. Nothing is created, posted or paid until you accept it. AI requests count toward your plan’s monthly limit.",
+      },
+      {
+        id: "channels",
+        q: "How do I send things from Telegram, Slack or email?",
+        a: "In Settings → Integrations: link the Telegram bot with a one-time code, connect Slack, or copy your personal forwarding address. Messages from accounts you haven’t linked are not captured.",
       },
       {
         id: "languages",
@@ -380,7 +371,7 @@ const en = {
     title: "Why Nevora exists",
     paragraphs: [
       "Many business tools become heavy too early — extra menus, unused features and limits that get in the way.",
-      "Nevora is being built in the other direction: focused apps for tasks, finances and subscriptions, connected by one account but separated enough to keep every workflow clear.",
+      "Nevora is being built the other way round: you send things from wherever you already are, Nevora does the routine sorting, and you keep the final word on every task and every euro.",
     ],
   },
   contact: {
@@ -393,7 +384,7 @@ const en = {
     ],
   },
   footer: {
-    tagline: "Focused business apps, connected by one account.",
+    tagline: "Capture anything. Confirm what matters.",
     note: "Built for clarity, productivity and real daily use.",
     productHeading: "Product",
     legalHeading: "Legal",
@@ -408,14 +399,14 @@ export type LandingContent = typeof en;
 
 const ru: LandingContent = {
   meta: {
-    title: "Nevora — Задачи, Финансы и Подписки как отдельные приложения",
+    title: "Nevora — добавляйте что угодно, подтверждайте главное",
     description:
-      "Три сфокусированных бизнес-приложения с одним аккаунтом Nevora: задачи и проекты, учёт финансов и контроль регулярных подписок.",
+      "Одно рабочее пространство для малого бизнеса. Отправляйте заметки, письма, чеки и сообщения из приложения, Telegram, Slack или почты — Nevora подготовит задачи и черновики расходов, а без вашего подтверждения ничего не изменится.",
   },
   nav: [
     { label: "Главная", href: "#home" },
     { label: "Как это работает", href: "#how" },
-    { label: "Приложения", href: "#products" },
+    { label: "Продукт", href: "#products" },
     { label: "Тарифы", href: "#pricing" },
     { label: "Контакты", href: "#contact" },
   ],
@@ -426,149 +417,155 @@ const ru: LandingContent = {
     close: "Закрыть меню",
   },
   hero: {
-    title: "Три отдельных приложения. Один аккаунт Nevora.",
+    title: "Добавляйте что угодно. Подтверждайте главное.",
     subtitle:
-      "Выберите «Задачи», «Финансы» или «Подписки». После входа Nevora откроет выбранный продукт и скроет из навигации посторонние модули.",
-    trust: "Один аккаунт · сфокусированная навигация · выбранный продукт откроется после входа.",
-    primaryCta: "Посмотреть приложения",
+      "Перешлите письмо, напишите боту в Telegram, отправьте сообщение из Slack или сфотографируйте чек. Nevora превратит это в задачу или черновик расхода и разложит по местам — без вашего подтверждения ничего не изменится.",
+    trust: "Ничего не создаётся, не проводится и не оплачивается без вашего подтверждения.",
+    primaryCta: "Посмотреть продукт",
     secondaryCta: "Начать пробный период",
     microcopy: "Закрытая бета · пробный период 14 дней · 500 МБ · без карты · EN / RU / RO.",
-    audience: "Для людей и небольших команд, которым нужны понятные инструменты без перегруженного интерфейса.",
+    audience: "Для фрилансеров и небольших команд, которые сами ведут задачи, деньги и подписки.",
   },
   preview: {
-    title: "Выберите нужное рабочее пространство",
+    title: "Одно рабочее пространство, одно меню",
     subtitle:
-      "Переключайтесь между тремя доступными продуктами. У каждого — свои маршруты, навигация и рабочий сценарий.",
-    caption: "Интерактивное превью с примерными данными. Выбор приложения сохранится при входе.",
+      "Входящие, Задачи, Финансы и Подписки находятся рядом, а Центр действий показывает, что требует вашего внимания сегодня во всех разделах.",
+    caption: "Интерактивное превью с примерными данными. «Открыть» ведёт в этот раздел после входа.",
+    tabs: [
+      {
+        id: "inbox",
+        title: "Входящие",
+        description:
+          "Всё, что вы отправляете в Nevora, попадает сюда черновиком. Примите, исправьте или удалите — решаете вы.",
+        metric: "3",
+        metricLabel: "черновика на проверку",
+        openLabel: "Открыть Входящие",
+        items: [
+          { title: "«Подписать продление аренды до пятницы»", meta: "Почта · черновик задачи · проект «Офис»", status: "Проверить" },
+          { title: "Фото чека — канцтовары", meta: "Telegram · черновик расхода · €42,50", status: "Проверить" },
+          { title: "«Позвонить бухгалтеру завтра в 10»", meta: "Slack · черновик задачи · срок завтра", status: "Проверить" },
+        ],
+      },
+      {
+        id: "tasks",
+        title: "Задачи",
+        description:
+          "Ежедневная работа с приоритетами, сроками и проектами. Задачи, принятые из Входящих, сразу попадают в нужный проект.",
+        metric: "12",
+        metricLabel: "открытых задач",
+        openLabel: "Открыть Задачи",
+        items: [
+          { title: "Подготовить предложение клиенту", meta: "Сегодня · Высокий приоритет", status: "В работе" },
+          { title: "Обновить чек-лист релиза", meta: "Запуск продукта", status: "К выполнению" },
+          { title: "Проверить текст лендинга", meta: "Маркетинг", status: "Готово" },
+        ],
+      },
+      {
+        id: "finance",
+        title: "Финансы",
+        description:
+          "Счета, доходы, расходы и переводы в нескольких валютах. Чек становится расходом только после вашего подтверждения.",
+        metric: "€4 280",
+        metricLabel: "учтённый баланс",
+        openLabel: "Открыть Финансы",
+        items: [],
+      },
+      {
+        id: "subscriptions",
+        title: "Подписки",
+        description:
+          "Регулярные сервисы, даты продления и напоминания об оплате — и список продлений, по которым нужно решить до списания.",
+        metric: "3",
+        metricLabel: "продления в этом месяце",
+        openLabel: "Открыть Подписки",
+        items: [
+          { title: "Облачное хранилище", meta: "Продление 24 окт. · €15", status: "Активна" },
+          { title: "Инструменты дизайна", meta: "Продление 2 нояб. · €24", status: "Решить" },
+          { title: "Командные звонки", meta: "Продление 11 нояб. · €12", status: "Активна" },
+        ],
+      },
+    ],
     rows: [
-      { name: "Acme Studio — счёт", amount: "€1 200", state: "due" },
-      { name: "Облачное хранилище — подписка", amount: "€15", state: "paid" },
+      { name: "Чек — канцтовары", amount: "€42,50", state: "needs_review" },
+      { name: "Облачное хранилище", amount: "€15", state: "paid" },
       { name: "Аренда офиса", amount: "€800", state: "planned" },
-      { name: "Отсканированный чек", amount: "—", state: "needs_review" },
     ],
   },
   how: {
-    title: "Выберите, войдите, работайте без лишнего",
-    subtitle:
-      "Продукт, выбранный на лендинге, останется выбранным во время входа или регистрации.",
+    title: "Откуда угодно — до результата, последнее слово за вами",
+    subtitle: "Три шага. Последний всегда ваш.",
     steps: [
       {
-        badge: "1",
-        title: "Выберите приложение",
-        text: "Начните с «Задач», «Финансов» или «Подписок» через меню или интерактивное превью.",
+        badge: "Добавить",
+        title: "Отправьте оттуда, где вы сейчас",
+        text: "Напишите или сфотографируйте в приложении, отсканируйте QR-код чека, напишите боту в Telegram, нажмите «Send to Nevora» в Slack или перешлите письмо.",
       },
       {
-        badge: "2",
-        title: "Войдите один раз",
-        text: "Авторизуйтесь или создайте аккаунт. Nevora безопасно сохранит выбранный маршрут.",
+        badge: "Подготовить",
+        title: "Nevora готовит черновик",
+        text: "Заметка становится задачей со сроком и проектом. Чек или счёт — черновиком расхода с суммой и позициями.",
       },
       {
-        badge: "3",
-        title: "Работайте в контексте",
-        text: "Вы попадёте в выбранное приложение и увидите только его навигацию, а настройки аккаунта останутся общими.",
+        badge: "Подтвердить",
+        title: "Решаете вы",
+        text: "Примите, исправьте или отклоните во Входящих. Только тогда запись появится в Задачах или Финансах, а Центр действий покажет, что осталось.",
       },
     ],
   },
   areas: {
     title: "Что уже доступно",
-    subtitle:
-      "Лендинг теперь отражает реальные маршруты и возможности текущего приложения.",
+    subtitle: "Всё перечисленное ниже работает в приложении прямо сейчас.",
     items: [
       {
         id: "actions",
-        title: "Задачи",
-        text: "Создавайте, расставляйте приоритеты и завершайте ежедневную работу в отдельном пространстве.",
-      },
-      {
-        id: "work",
-        title: "Проекты",
-        text: "Объединяйте задачи в проекты и открывайте отдельные страницы проектов внутри приложения «Задачи».",
-      },
-      {
-        id: "money",
-        title: "Счета и транзакции",
-        text: "Контролируйте балансы, доходы, расходы и переводы внутри приложения «Финансы».",
-      },
-      {
-        id: "documents",
-        title: "Финансовые правила",
-        text: "Создавайте явные правила категоризации повторяющихся транзакций, сохраняя ручной контроль.",
+        title: "Центр действий",
+        text: "Главный экран: что просрочено, что на сегодня и что ждёт решения — по всем разделам сразу.",
       },
       {
         id: "inbox",
+        title: "Входящие и каналы",
+        text: "Добавляйте в приложении или из Telegram, Slack и почты. Один раз перенесите черновик в другой проект — Nevora запомнит это для источника.",
+      },
+      {
+        id: "work",
+        title: "Задачи и проекты",
+        text: "Приоритеты, сроки, повторяющиеся задачи, исполнители и проекты — для вас и вашей команды.",
+      },
+      {
+        id: "money",
+        title: "Финансы",
+        text: "Счета, доходы, расходы и переводы в нескольких валютах, с правилами для повторяющихся категорий.",
+      },
+      {
+        id: "subscriptions",
         title: "Подписки",
-        text: "Храните регулярные сервисы, даты продления и статусы оплаты в отдельном приложении.",
+        text: "Даты продления, напоминания об оплате и список продлений: оставить или отменить до списания.",
       },
       {
-        id: "team",
-        title: "Общий слой аккаунта",
-        text: "Одна учётная запись, одна организация и общие настройки при раздельной продуктовой навигации.",
+        id: "documents",
+        title: "Документы",
+        text: "Чеки, счета и договоры хранятся приватно. Nevora считывает суммы, даты и позиции, а вы проверяете.",
       },
     ],
-  },
-  attention: {
-    title: "Добавлено, сообщено, требуется, сделано — это разные вещи",
-    subtitle:
-      "Большинство инструментов их смешивают, и «я увидел» тихо превращается в «это сделано». Nevora их разделяет.",
-    items: [
-      {
-        id: "captured",
-        title: "Добавлено",
-        text: "То, что вы бросили во входящие. Не классифицировано и не обязательство — ждёт вашей проверки.",
-      },
-      {
-        id: "informed",
-        title: "Сообщено",
-        text: "Уведомление до вас дошло. Это только доставка: отметка «прочитано» нигде не меняет обязательство.",
-      },
-      {
-        id: "required",
-        title: "Требует действия",
-        text: "Действительно нужно бизнес-действие. Остаётся на главном экране, пока лежащая в основе работа не сделана.",
-      },
-      {
-        id: "done",
-        title: "Сделано",
-        text: "Модуль записал реальный факт — задача закрыта, платёж проведён, проверка подтверждена. Только это закрывает пункт.",
-      },
-    ],
-    closing:
-      "Поэтому неоплаченный счёт нельзя заглушить, сбросив значок уведомления.",
-  },
-  states: {
-    title: "Единый финансовый словарь — везде",
-    subtitle:
-      "Подписка, счёт, чек и ручной расход проходят одни и те же шесть состояний — и называются одинаково на каждом экране.",
-    items: [
-      { id: "detected", text: "Сигнал найден. Пока ничего не должно." },
-      { id: "needs_review", text: "Ждёт, чтобы вы классифицировали или подтвердили." },
-      { id: "planned", text: "Будущее обязательство уже учтено." },
-      { id: "due", text: "К оплате сейчас: срок наступил или открыта задача на платёж." },
-      { id: "paid", text: "Деньги действительно двигались — единственное состояние за реальной транзакцией." },
-      { id: "cancelled", text: "Закрыто без оплаты: отклонено, пропущено или отменено." },
-    ],
-    note: "Чтобы дойти до «Оплачено», нужно ваше явное подтверждение — а подтвердить одно обязательство дважды не значит оплатить его дважды.",
   },
   control: {
-    title: "Отдельные продукты, общая основа",
-    subtitle:
-      "Интерфейс разделён по продуктам, но вам не придётся поддерживать три независимых аккаунта.",
+    title: "Nevora готовит. Решаете вы.",
+    subtitle: "Автоматизация, которая избавляет от ручного ввода, но никогда не действует за вашей спиной.",
     points: [
       {
-        title: "Сфокусированная навигация",
-        text: "«Задачи», «Финансы» и «Подписки» показывают только маршруты выбранного рабочего сценария.",
+        title: "Всегда сначала подтверждение",
+        text: "Любой черновик — задача из Slack или расход из чека — ждёт во Входящих, пока вы его не примете.",
       },
       {
-        title: "Выбор сохраняется при входе",
-        text: "Выбранный продукт безопасно переносится через логин, регистрацию и онбординг.",
+        title: "Учится на ваших исправлениях",
+        text: "Один раз отнесите сообщение из Slack или письмо к другому проекту — и следующее из того же источника попадёт туда сразу.",
       },
       {
-        title: "Безопасный общий доступ",
-        text: "Авторизация, доступ к организации и настройки централизованы, а внутренние переходы проходят проверку.",
+        title: "Только привязанные аккаунты",
+        text: "Telegram, Slack и почта принимают сообщения только от аккаунтов, которые вы подключили в Настройках. Остальное игнорируется.",
       },
     ],
-    closing:
-      "Переключаться между продуктами можно осознанно, не смешивая их навигацию по умолчанию.",
+    closing: "Каналы меняют то, откуда приходят дела, — но не то, кто принимает решение.",
   },
   proof: {
     title: "Как мы это доказываем, а не просто заявляем",
@@ -578,22 +575,22 @@ const ru: LandingContent = {
       {
         id: "money",
         claim: "Деньги двигаются только после вашего подтверждения",
-        how: "Ничто не проводит транзакцию само. Правило «сначала подтверждение» проверяется тестом, а не держится на договорённости.",
+        how: "Ничто не проводит транзакцию само — ни чек, ни подписка, ни завершённая задача. Это проверяет тест, а не договорённость.",
       },
       {
         id: "idempotent",
-        claim: "Двойная оплата не спишет дважды",
-        how: "Отметить одно обязательство оплаченным дважды идемпотентно по построению — второе подтверждение ничего не делает.",
+        claim: "Двойная отметка оплаты учитывается один раз",
+        how: "Если отметить один и тот же платёж по подписке оплаченным дважды, второй раз ничего не произойдёт — повтор или двойной клик не создадут дубль.",
       },
       {
         id: "notifications",
         claim: "Прочтение уведомления его не закрывает",
-        how: "Состояние уведомления и состояние обязательства раздельны. Сброс значка никогда не завершает саму работу.",
+        how: "Состояние уведомления и состояние задачи раздельны. Сброс значка никогда не завершает саму работу.",
       },
       {
         id: "ai",
         claim: "ИИ не может действовать сам",
-        how: "ИИ пишет только в свои таблицы предложений — он не проводит деньги, не отмечает оплату, не меняет тариф или права и не удаляет данные.",
+        how: "ИИ пишет только черновики — он не проводит деньги, не отмечает оплату, не меняет тариф или права и не удаляет данные.",
       },
       {
         id: "isolation",
@@ -616,50 +613,23 @@ const ru: LandingContent = {
     can: {
       title: "ИИ может",
       points: [
-        "Прочитать документ и извлечь его поля",
-        "Предложить категорию, задачу или следующий шаг",
-        "Объяснить, почему что-то требует вашего внимания",
+        "Прочитать документ, чек или пересланное письмо и извлечь поля",
+        "Превратить заметку или сообщение в черновик задачи со сроком и проектом",
+        "Предложить категорию расхода",
       ],
     },
     cannot: {
       title: "ИИ никогда сам не",
       points: [
         "Проведёт доход или расход",
-        "Отметит обязательство оплаченным",
+        "Отметит что-либо оплаченным",
         "Сменит ваш тариф",
         "Изменит чьи-либо права",
         "Удалит ваши данные",
       ],
     },
     closing:
-      "Любое принятое предложение проходит через тот же модуль и то же подтверждение, что и ручное действие. У ИИ нет привилегированного пути записи.",
-  },
-  docJourney: {
-    title: "От фото счёта до оплаченного обязательства",
-    subtitle:
-      "Флагманский путь, где каждый шаг, касающийся денег, подтверждаете вы.",
-    steps: [
-      {
-        badge: "Загрузка",
-        title: "Добавьте документ",
-        text: "Сфотографируйте или перетащите счёт или чек. Он попадает во входящие — и пока никуда больше.",
-      },
-      {
-        badge: "Извлечение",
-        title: "Nevora читает его",
-        text: "Сумма, дата и контрагент извлекаются в черновик. Это всё ещё предложение — деньги не затронуты.",
-      },
-      {
-        badge: "Решение",
-        title: "Вы классифицируете",
-        text: "Счёт становится обязательством к оплате, чек — записанным расходом. Один документ — одна запись, никогда обе сразу.",
-      },
-      {
-        badge: "Подтверждение",
-        title: "Вы отмечаете оплату",
-        text: "Транзакцию проводит только ваше явное подтверждение — и дважды оно не оплатит счёт дважды.",
-      },
-    ],
+      "Любой принятый черновик проходит через тот же модуль и то же подтверждение, что и ручное действие. У ИИ нет привилегированного пути записи.",
   },
   plans: {
     title: "Тарифы",
@@ -668,15 +638,16 @@ const ru: LandingContent = {
     betaNotice:
       "Nevora в закрытой бете: пробный период открыт для всех, а платные тарифы включатся после подключения оплаты. Пока никакая карта не списывается.",
     note: {
-      lead: "Попробуйте текущие приложения Nevora 14 дней с хранилищем до 500 МБ.",
+      lead: "Попробуйте всю Nevora 14 дней с хранилищем до 500 МБ.",
       points: [
+        "Входящие с Telegram, Slack и почтой",
         "Задачи и проекты",
-        "Счета и транзакции",
-        "Регулярные подписки",
+        "Финансы и документы",
+        "Подписки",
       ],
     },
     workspace:
-      "Одна рабочая область на аккаунт во время закрытой беты. Приглашайте коллег в неё по ролям; отдельная вторая область откроется после беты.",
+      "Одно рабочее пространство на аккаунт во время закрытой беты. Приглашайте коллег в него по ролям; второе, отдельное пространство откроется после беты.",
   },
   faq: {
     title: "Вопросы перед стартом",
@@ -694,18 +665,23 @@ const ru: LandingContent = {
       },
       {
         id: "workspace",
-        q: "Можно ли создать больше одной рабочей области?",
-        a: "Во время закрытой беты у каждого аккаунта одна рабочая область. Вы можете приглашать в неё коллег с ролями; создание второй, отдельной области откроется после беты.",
+        q: "Можно ли создать больше одного рабочего пространства?",
+        a: "Во время закрытой беты у каждого аккаунта одно рабочее пространство. Вы можете приглашать в него коллег с ролями; создание второго, отдельного пространства откроется после беты.",
       },
       {
         id: "data",
         q: "Где хранятся мои данные и кто их видит?",
-        a: "Ваша рабочая область изолирована и приватна. Приглашённые коллеги видят только то, что позволяет их роль, и мы не передаём ваши данные кому-либо втихую.",
+        a: "Ваше рабочее пространство изолировано и приватно. Приглашённые коллеги видят только то, что позволяет их роль, и мы не передаём ваши данные кому-либо втихую.",
       },
       {
         id: "ai",
-        q: "После входа я увижу все модули?",
-        a: "Нет. Nevora откроет выбранное приложение и покажет навигацию только этого продукта. При необходимости можно осознанно переключиться на «Задачи», «Финансы» или «Подписки» через меню приложений.",
+        q: "ИИ что-то делает сам?",
+        a: "Нет. Он читает то, что вы отправили, и готовит черновики — задачу, расход, проект. Ничего не создаётся, не проводится и не оплачивается, пока вы это не примете. Запросы к ИИ учитываются в месячном лимите тарифа.",
+      },
+      {
+        id: "channels",
+        q: "Как отправлять дела из Telegram, Slack или почты?",
+        a: "В Настройках → Интеграции: привяжите бота Telegram одноразовым кодом, подключите Slack или скопируйте свой личный адрес для пересылки. Сообщения от непривязанных аккаунтов не добавляются.",
       },
       {
         id: "languages",
@@ -718,7 +694,7 @@ const ru: LandingContent = {
     title: "Почему существует Nevora",
     paragraphs: [
       "Многие бизнес-инструменты становятся тяжёлыми слишком рано — лишние меню, неиспользуемые функции и ограничения, которые мешают.",
-      "Nevora строится в другом направлении: отдельные приложения для задач, финансов и подписок, связанные одним аккаунтом, но достаточно разделённые для ясной работы.",
+      "Nevora строится наоборот: вы отправляете дела оттуда, где уже находитесь, рутинную сортировку берёт на себя Nevora, а последнее слово по каждой задаче и каждому евро остаётся за вами.",
     ],
   },
   contact: {
@@ -731,7 +707,7 @@ const ru: LandingContent = {
     ],
   },
   footer: {
-    tagline: "Сфокусированные бизнес-приложения, связанные одним аккаунтом.",
+    tagline: "Добавляйте что угодно. Подтверждайте главное.",
     note: "Создано для ясности, продуктивности и реального ежедневного использования.",
     productHeading: "Продукт",
     legalHeading: "Правовое",
@@ -743,14 +719,14 @@ const ru: LandingContent = {
 
 const ro: LandingContent = {
   meta: {
-    title: "Nevora — Sarcini, Finanțe și Abonamente ca aplicații separate",
+    title: "Nevora — adaugă orice, confirmă ce contează",
     description:
-      "Trei aplicații de business concentrate, cu un singur cont Nevora: sarcini și proiecte, evidență financiară și controlul abonamentelor recurente.",
+      "Un singur spațiu de lucru pentru afaceri mici. Trimite notițe, e-mailuri, bonuri și mesaje din aplicație, Telegram, Slack sau e-mail — Nevora pregătește sarcini și ciorne de cheltuieli, iar nimic nu se schimbă până nu confirmi.",
   },
   nav: [
     { label: "Acasă", href: "#home" },
     { label: "Cum funcționează", href: "#how" },
-    { label: "Aplicații", href: "#products" },
+    { label: "Produs", href: "#products" },
     { label: "Prețuri", href: "#pricing" },
     { label: "Contact", href: "#contact" },
   ],
@@ -761,149 +737,155 @@ const ro: LandingContent = {
     close: "Închide meniul",
   },
   hero: {
-    title: "Trei aplicații concentrate. Un singur cont Nevora.",
+    title: "Adaugă orice. Confirmă ce contează.",
     subtitle:
-      "Alege Sarcini, Finanțe sau Abonamente. După autentificare, Nevora deschide produsul ales și elimină modulele fără legătură din navigație.",
-    trust: "Un cont · navigație concentrată · produsul ales se deschide după autentificare.",
-    primaryCta: "Explorează aplicațiile",
+      "Redirecționează un e-mail, scrie-i botului de Telegram, trimite un mesaj din Slack sau fotografiază un bon. Nevora îl transformă într-o sarcină sau o ciornă de cheltuială și îl pune la locul lui — nimic nu se schimbă până nu confirmi.",
+    trust: "Nimic nu este creat, înregistrat sau plătit fără confirmarea ta.",
+    primaryCta: "Vezi produsul",
     secondaryCta: "Începe proba de 14 zile",
     microcopy: "Versiune beta privată · probă de 14 zile · 500 MB · fără card · EN / RU / RO.",
-    audience: "Pentru persoane și echipe mici care vor instrumente clare, fără o interfață all-in-one greoaie.",
+    audience: "Pentru freelanceri și echipe mici care își gestionează singuri sarcinile, banii și abonamentele.",
   },
   preview: {
-    title: "Alege spațiul de lucru de care ai nevoie",
+    title: "Un spațiu de lucru, un singur meniu",
     subtitle:
-      "Comută între cele trei produse disponibile. Fiecare are propriile rute, propria navigație și propriul flux de lucru.",
-    caption: "Previzualizare interactivă cu date de exemplu. Alegerea aplicației se păstrează la autentificare.",
+      "Mesaje primite, Sarcini, Finanțe și Abonamente stau unele lângă altele, iar Centrul de acțiuni arată ce are nevoie de tine azi, în toate secțiunile.",
+    caption: "Previzualizare interactivă cu date de exemplu. „Deschide” te duce în acea secțiune după autentificare.",
+    tabs: [
+      {
+        id: "inbox",
+        title: "Mesaje primite",
+        description:
+          "Tot ce trimiți în Nevora ajunge aici ca ciornă. Accept-o, editeaz-o sau renunță la ea — tu decizi.",
+        metric: "3",
+        metricLabel: "ciorne de verificat",
+        openLabel: "Deschide Mesaje primite",
+        items: [
+          { title: "„Semnează prelungirea chiriei până vineri”", meta: "E-mail · ciornă de sarcină · proiect Birou", status: "Verifică" },
+          { title: "Poză bon — rechizite de birou", meta: "Telegram · ciornă de cheltuială · €42,50", status: "Verifică" },
+          { title: "„Sună contabilul mâine la 10”", meta: "Slack · ciornă de sarcină · termen mâine", status: "Verifică" },
+        ],
+      },
+      {
+        id: "tasks",
+        title: "Sarcini",
+        description:
+          "Munca zilnică cu priorități, termene și proiecte. Sarcinile acceptate din Mesaje primite ajung direct în proiectul potrivit.",
+        metric: "12",
+        metricLabel: "sarcini deschise",
+        openLabel: "Deschide Sarcini",
+        items: [
+          { title: "Pregătește oferta pentru client", meta: "Astăzi · Prioritate înaltă", status: "În lucru" },
+          { title: "Actualizează lista de lansare", meta: "Lansare produs", status: "De făcut" },
+          { title: "Verifică textul landingului", meta: "Marketing", status: "Gata" },
+        ],
+      },
+      {
+        id: "finance",
+        title: "Finanțe",
+        description:
+          "Conturi, venituri, cheltuieli și transferuri în mai multe valute. Un bon devine cheltuială doar după ce confirmi.",
+        metric: "€4.280",
+        metricLabel: "sold urmărit",
+        openLabel: "Deschide Finanțe",
+        items: [],
+      },
+      {
+        id: "subscriptions",
+        title: "Abonamente",
+        description:
+          "Servicii recurente, date de reînnoire și mementouri de plată — plus o listă de reînnoiri de decis înainte de debitare.",
+        metric: "3",
+        metricLabel: "reînnoiri luna aceasta",
+        openLabel: "Deschide Abonamente",
+        items: [
+          { title: "Stocare cloud", meta: "Reînnoire 24 oct. · €15", status: "Activ" },
+          { title: "Instrumente de design", meta: "Reînnoire 2 nov. · €24", status: "De decis" },
+          { title: "Apeluri de echipă", meta: "Reînnoire 11 nov. · €12", status: "Activ" },
+        ],
+      },
+    ],
     rows: [
-      { name: "Acme Studio — factură", amount: "€1.200", state: "due" },
-      { name: "Stocare cloud — abonament", amount: "€15", state: "paid" },
+      { name: "Bon — rechizite de birou", amount: "€42,50", state: "needs_review" },
+      { name: "Stocare cloud", amount: "€15", state: "paid" },
       { name: "Chirie birou", amount: "€800", state: "planned" },
-      { name: "Bon scanat", amount: "—", state: "needs_review" },
     ],
   },
   how: {
-    title: "Alege, autentifică-te, lucrează concentrat",
-    subtitle:
-      "Produsul ales pe landing rămâne selectat în timpul autentificării sau înregistrării.",
+    title: "De oriunde până la rezultat — ultimul cuvânt e al tău",
+    subtitle: "Trei pași. Ultimul este mereu al tău.",
     steps: [
       {
-        badge: "1",
-        title: "Alege o aplicație",
-        text: "Începe cu Sarcini, Finanțe sau Abonamente din meniu sau din previzualizarea interactivă.",
+        badge: "Adaugă",
+        title: "Trimite de unde ești",
+        text: "Scrie sau fotografiază în aplicație, scanează codul QR al unui bon, scrie-i botului de Telegram, folosește „Send to Nevora” în Slack sau redirecționează un e-mail.",
       },
       {
-        badge: "2",
-        title: "Autentifică-te o dată",
-        text: "Intră în cont sau creează unul. Nevora păstrează în siguranță destinația selectată.",
+        badge: "Pregătește",
+        title: "Nevora face o ciornă",
+        text: "O notiță devine o sarcină cu termen și proiect. Un bon sau o factură devine o ciornă de cheltuială cu sumă și articole.",
       },
       {
-        badge: "3",
-        title: "Lucrează în context",
-        text: "Ajungi în aplicația aleasă și vezi doar navigația ei, iar setările contului rămân comune.",
+        badge: "Confirmă",
+        title: "Tu decizi",
+        text: "Acceptă, editează sau respinge în Mesaje primite. Abia apoi apare în Sarcini sau Finanțe — iar Centrul de acțiuni arată ce a mai rămas.",
       },
     ],
   },
   areas: {
     title: "Ce este disponibil acum",
-    subtitle:
-      "Landingul reflectă acum rutele și funcționalitățile disponibile în aplicația curentă.",
+    subtitle: "Tot ce vezi mai jos funcționează în aplicație chiar acum.",
     items: [
       {
         id: "actions",
-        title: "Sarcini",
-        text: "Creează, prioritizează și finalizează munca zilnică într-un spațiu dedicat.",
-      },
-      {
-        id: "work",
-        title: "Proiecte",
-        text: "Grupează sarcinile în proiecte și deschide pagini dedicate în aplicația Sarcini.",
-      },
-      {
-        id: "money",
-        title: "Conturi și tranzacții",
-        text: "Urmărește solduri, venituri, cheltuieli și transferuri în aplicația Finanțe.",
-      },
-      {
-        id: "documents",
-        title: "Reguli financiare",
-        text: "Creează reguli explicite pentru clasificarea tranzacțiilor repetate și păstrează controlul manual.",
+        title: "Centrul de acțiuni",
+        text: "Ecranul principal: ce a întârziat, ce e de azi și ce așteaptă o decizie — din toate secțiunile.",
       },
       {
         id: "inbox",
+        title: "Mesaje primite și canale",
+        text: "Adaugă în aplicație sau din Telegram, Slack și e-mail. Mută o ciornă în alt proiect o dată, iar Nevora ține minte asta pentru acea sursă.",
+      },
+      {
+        id: "work",
+        title: "Sarcini și proiecte",
+        text: "Priorități, termene, sarcini recurente, responsabili și proiecte — pentru tine și echipa ta.",
+      },
+      {
+        id: "money",
+        title: "Finanțe",
+        text: "Conturi, venituri, cheltuieli și transferuri în mai multe valute, cu reguli pentru categoriile care se repetă.",
+      },
+      {
+        id: "subscriptions",
         title: "Abonamente",
-        text: "Păstrează serviciile recurente, datele de reînnoire și starea plăților într-o aplicație separată.",
+        text: "Date de reînnoire, mementouri de plată și o listă de reînnoiri de păstrat sau anulat înainte de debitare.",
       },
       {
-        id: "team",
-        title: "Nivel comun de cont",
-        text: "O identitate, o organizație și setări comune, cu navigația produselor separată.",
+        id: "documents",
+        title: "Documente",
+        text: "Bonuri, facturi și contracte păstrate privat. Nevora citește sumele, datele și articolele, iar tu le verifici.",
       },
     ],
-  },
-  attention: {
-    title: "Adăugat, informat, necesar, făcut — sunt lucruri diferite",
-    subtitle:
-      "Majoritatea instrumentelor le amestecă, iar „am văzut” devine tacit „e rezolvat”. Nevora le ține separate.",
-    items: [
-      {
-        id: "captured",
-        title: "Adăugat",
-        text: "Ceva ce ai pus în Mesaje primite. Neclasificat și nu o obligație — așteaptă verificarea ta.",
-      },
-      {
-        id: "informed",
-        title: "Informat",
-        text: "O notificare a ajuns la tine. Este doar livrare: marcarea ca citită nu schimbă nicio obligație.",
-      },
-      {
-        id: "required",
-        title: "Necesită acțiune",
-        text: "Chiar este nevoie de o acțiune de business. Rămâne pe ecranul principal până când lucrul de bază este făcut.",
-      },
-      {
-        id: "done",
-        title: "Făcut",
-        text: "Modulul a înregistrat faptul real — sarcină închisă, plată efectuată, verificare confirmată. Doar asta îl rezolvă.",
-      },
-    ],
-    closing:
-      "De aceea o factură neplătită nu poate fi redusă la tăcere ștergând un indicator de notificare.",
-  },
-  states: {
-    title: "Un singur vocabular financiar, peste tot",
-    subtitle:
-      "Un abonament, o factură, un bon și o cheltuială manuală trec prin aceleași șase stări — și se numesc la fel pe fiecare ecran.",
-    items: [
-      { id: "detected", text: "Un semnal a fost găsit. Nimic nu este datorat încă." },
-      { id: "needs_review", text: "Așteaptă să îl clasifici sau să îl confirmi." },
-      { id: "planned", text: "O obligație viitoare există deja în evidență." },
-      { id: "due", text: "De plată acum: data a sosit sau o sarcină de plată este deschisă." },
-      { id: "paid", text: "Banii chiar s-au mișcat — singura stare susținută de o tranzacție." },
-      { id: "cancelled", text: "Închis fără plată: respins, sărit sau anulat." },
-    ],
-    note: "Pentru a ajunge la „Plătit” e nevoie de confirmarea ta explicită — iar confirmarea aceleiași obligații de două ori nu o plătește de două ori.",
   },
   control: {
-    title: "Produse separate, fundație comună",
-    subtitle:
-      "Interfața este separată pe produse fără să te oblige să întreții trei conturi independente.",
+    title: "Nevora pregătește. Tu decizi.",
+    subtitle: "Automatizare care te scutește de tastat — niciodată una care acționează pe la spatele tău.",
     points: [
       {
-        title: "Navigație concentrată",
-        text: "Sarcini, Finanțe și Abonamente afișează doar rutele necesare fluxului selectat.",
+        title: "Mereu întâi confirmarea",
+        text: "Orice ciornă — o sarcină din Slack, o cheltuială dintr-un bon — așteaptă în Mesaje primite până o accepți.",
       },
       {
-        title: "Alegerea trece prin autentificare",
-        text: "Produsul ales este transmis în siguranță prin login, înregistrare și onboarding.",
+        title: "Învață din corecturile tale",
+        text: "Pune o dată un mesaj din Slack sau un e-mail în alt proiect, iar următorul din aceeași sursă ajunge direct acolo.",
       },
       {
-        title: "Acces comun sigur",
-        text: "Autentificarea, accesul la organizație și setările sunt centralizate, cu redirectări interne validate.",
+        title: "Doar conturile conectate",
+        text: "Telegram, Slack și e-mailul acceptă mesaje doar de la conturile pe care le-ai conectat în Setări. Restul este ignorat.",
       },
     ],
-    closing:
-      "Poți comuta intenționat între produse fără a le amesteca navigația în mod implicit.",
+    closing: "Canalele schimbă de unde vin lucrurile — nu cine decide.",
   },
   proof: {
     title: "Cum dovedim, nu doar spunem",
@@ -913,22 +895,22 @@ const ro: LandingContent = {
       {
         id: "money",
         claim: "Banii se mișcă doar când confirmi tu",
-        how: "Nimic nu înregistrează o tranzacție singur. Regula „mai întâi confirmarea” este verificată de un test, nu lăsată pe seama convenției.",
+        how: "Nimic nu înregistrează o tranzacție singur — nici un bon, nici un abonament, nici o sarcină terminată. O verifică un test, nu o convenție.",
       },
       {
         id: "idempotent",
-        claim: "Plata de două ori nu debitează de două ori",
-        how: "Marcarea aceleiași obligații ca plătită de mai multe ori este idempotentă prin construcție — a doua confirmare nu face nimic.",
+        claim: "Marcată plătită de două ori, contează o dată",
+        how: "Dacă marchezi aceeași plată de abonament ca plătită de două ori, a doua oară nu se întâmplă nimic — o reîncercare sau un dublu-clic nu creează un duplicat.",
       },
       {
         id: "notifications",
         claim: "Citirea unei notificări nu o rezolvă",
-        how: "Starea notificării și starea obligației sunt separate. Ștergerea unui indicator nu închide niciodată lucrul de bază.",
+        how: "Starea notificării și starea sarcinii sunt separate. Ștergerea unui indicator nu închide niciodată lucrul de bază.",
       },
       {
         id: "ai",
         claim: "IA nu poate acționa singură",
-        how: "IA scrie doar în propriile tabele de sugestii — nu înregistrează bani, nu marchează plăți, nu îți schimbă planul sau drepturile și nu șterge date.",
+        how: "IA scrie doar ciorne — nu înregistrează bani, nu marchează plăți, nu îți schimbă planul sau drepturile și nu șterge date.",
       },
       {
         id: "isolation",
@@ -951,50 +933,23 @@ const ro: LandingContent = {
     can: {
       title: "IA poate",
       points: [
-        "Să citească un document și să îi extragă câmpurile",
-        "Să sugereze o categorie, o sarcină sau un pas următor",
-        "Să explice de ce ceva îți necesită atenția",
+        "Să citească un document, un bon sau un e-mail redirecționat și să extragă câmpurile",
+        "Să transforme o notiță sau un mesaj într-o ciornă de sarcină cu termen și proiect",
+        "Să sugereze o categorie pentru o cheltuială",
       ],
     },
     cannot: {
       title: "IA niciodată, singură, nu",
       points: [
         "Va înregistra un venit sau o cheltuială",
-        "Va marca o obligație ca plătită",
+        "Va marca ceva ca plătit",
         "Îți va schimba planul de facturare",
         "Va schimba drepturile cuiva",
         "Îți va șterge datele",
       ],
     },
     closing:
-      "Fiecare sugestie acceptată trece prin același modul și aceeași confirmare ca o acțiune manuală. IA nu are o cale de scriere privilegiată.",
-  },
-  docJourney: {
-    title: "De la poza unei facturi la o obligație plătită",
-    subtitle:
-      "Traseul principal, în care aprobi fiecare pas ce atinge banii.",
-    steps: [
-      {
-        badge: "Încărcare",
-        title: "Adaugă documentul",
-        text: "Fotografiază sau trage o factură ori un bon. Ajunge în Mesaje primite, deocamdată nicăieri altundeva.",
-      },
-      {
-        badge: "Extragere",
-        title: "Nevora îl citește",
-        text: "Suma, data și partenerul sunt extrase într-o ciornă. Tot o sugestie — niciun ban nu este atins.",
-      },
-      {
-        badge: "Decizie",
-        title: "Tu îl clasifici",
-        text: "O factură devine o obligație de plată; un bon devine o cheltuială înregistrată. Un document, o intrare — niciodată ambele.",
-      },
-      {
-        badge: "Confirmare",
-        title: "Tu marchezi plata",
-        text: "Doar confirmarea ta explicită înregistrează tranzacția — iar de două ori nu o plătește de două ori.",
-      },
-    ],
+      "Fiecare ciornă acceptată trece prin același modul și aceeași confirmare ca o acțiune manuală. IA nu are o cale de scriere privilegiată.",
   },
   plans: {
     title: "Prețuri",
@@ -1003,11 +958,12 @@ const ro: LandingContent = {
     betaNotice:
       "Nevora este în versiune beta privată: proba gratuită este deschisă tuturor, iar planurile plătite se activează după pornirea facturării. Până atunci niciun card nu este debitat.",
     note: {
-      lead: "Încearcă aplicațiile Nevora actuale timp de 14 zile, cu până la 500 MB de stocare.",
+      lead: "Încearcă tot Nevora timp de 14 zile, cu până la 500 MB de stocare.",
       points: [
+        "Mesaje primite cu Telegram, Slack și e-mail",
         "Sarcini și proiecte",
-        "Conturi și tranzacții",
-        "Abonamente recurente",
+        "Finanțe și documente",
+        "Abonamente",
       ],
     },
     workspace:
@@ -1039,8 +995,13 @@ const ro: LandingContent = {
       },
       {
         id: "ai",
-        q: "Voi vedea toate modulele după autentificare?",
-        a: "Nu. Nevora deschide aplicația aleasă și afișează navigația acelui produs. Poți comuta intenționat la Sarcini, Finanțe sau Abonamente din meniul de aplicații când ai nevoie.",
+        q: "IA face ceva singură?",
+        a: "Nu. Citește ce trimiți și pregătește ciorne — o sarcină, o cheltuială, un proiect. Nimic nu este creat, înregistrat sau plătit până nu accepți. Cererile către IA intră în limita lunară a planului.",
+      },
+      {
+        id: "channels",
+        q: "Cum trimit lucruri din Telegram, Slack sau e-mail?",
+        a: "În Setări → Integrări: conectează botul de Telegram cu un cod unic, conectează Slack sau copiază adresa ta personală de redirecționare. Mesajele de la conturi neconectate nu sunt adăugate.",
       },
       {
         id: "languages",
@@ -1053,7 +1014,7 @@ const ro: LandingContent = {
     title: "De ce există Nevora",
     paragraphs: [
       "Multe instrumente de business devin grele prea devreme — meniuri în plus, funcții nefolosite și limite care încurcă.",
-      "Nevora se construiește în direcția opusă: aplicații separate pentru sarcini, finanțe și abonamente, conectate printr-un singur cont, dar suficient de separate pentru un flux clar.",
+      "Nevora se construiește invers: trimiți lucrurile de acolo unde ești deja, Nevora face sortarea de rutină, iar ultimul cuvânt despre fiecare sarcină și fiecare euro rămâne al tău.",
     ],
   },
   contact: {
@@ -1066,7 +1027,7 @@ const ro: LandingContent = {
     ],
   },
   footer: {
-    tagline: "Aplicații de business concentrate, conectate printr-un singur cont.",
+    tagline: "Adaugă orice. Confirmă ce contează.",
     note: "Construit pentru claritate, productivitate și utilizare zilnică reală.",
     productHeading: "Produs",
     legalHeading: "Legal",

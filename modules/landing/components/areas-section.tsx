@@ -1,10 +1,10 @@
 import {
-  FolderKanbanIcon,
-  ListTodoIcon,
-  Repeat2Icon,
-  TagIcon,
-  UsersIcon,
-  WalletCardsIcon,
+  CheckSquareIcon,
+  FileTextIcon,
+  HomeIcon,
+  InboxIcon,
+  RepeatIcon,
+  WalletIcon,
   type LucideIcon,
 } from "lucide-react";
 import type { AreaId, LandingContent } from "../constants/landing-content";
@@ -15,17 +15,18 @@ import type { AreaId, LandingContent } from "../constants/landing-content";
  * область добавили в контент, но забыли здесь.
  */
 const AREA_ICONS: Record<AreaId, LucideIcon> = {
-  actions: ListTodoIcon,
-  work: FolderKanbanIcon,
-  money: WalletCardsIcon,
-  documents: TagIcon,
-  inbox: Repeat2Icon,
-  team: UsersIcon,
+  actions: HomeIcon,
+  inbox: InboxIcon,
+  work: CheckSquareIcon,
+  money: WalletIcon,
+  subscriptions: RepeatIcon,
+  documents: FileTextIcon,
 };
 
 /**
- * Реально доступные возможности трёх приложений и общего слоя аккаунта. Один
- * контейнер с внутренними разделителями вместо набора тяжёлых neu-карточек.
+ * Реально доступные разделы — по одному на пункт боковой панели приложения,
+ * с теми же иконками. Один контейнер с внутренними разделителями вместо набора
+ * тяжёлых neu-карточек.
  */
 export function AreasSection({ content }: { content: LandingContent["areas"] }) {
   return (
@@ -41,7 +42,7 @@ export function AreasSection({ content }: { content: LandingContent["areas"] }) 
           колонок — без хрупких nth-child border-правил на каждом брейкпоинте. */}
       <ul className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-(--neu-radius-lg) border border-border-soft bg-border-soft shadow-neu-sm sm:grid-cols-2 lg:grid-cols-3">
         {content.items.map((item) => {
-          const Icon = AREA_ICONS[item.id as AreaId] ?? ListTodoIcon;
+          const Icon = AREA_ICONS[item.id as AreaId] ?? CheckSquareIcon;
           return (
             <li key={item.id} className="nv-hover-lift flex flex-col bg-surface p-6">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-(--neu-radius-md) bg-surface-sunken text-text-primary shadow-neu-inset">

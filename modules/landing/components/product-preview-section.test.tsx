@@ -18,16 +18,18 @@ const stateLabels = {
 } as const;
 
 describe("ProductPreviewSection", () => {
-  it("переключает продукты и сохраняет выбранный маршрут в ссылке входа", async () => {
+  it("переключает разделы и сохраняет выбранный маршрут в ссылке входа", async () => {
     const user = userEvent.setup();
     render(
-      <ProductPreviewSection
-        content={getLandingContent("ru").preview}
-        locale="ru"
-        stateLabels={stateLabels}
-      />,
+      <ProductPreviewSection content={getLandingContent("ru").preview} stateLabels={stateLabels} />,
     );
 
+    expect(screen.getByRole("heading", { name: "Входящие" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Открыть Входящие" }).getAttribute("href")).toBe(
+      "/login?next=%2Fdashboard%2Finbox",
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Задачи" }));
     expect(screen.getByRole("heading", { name: "Задачи" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Открыть Задачи" }).getAttribute("href")).toBe(
       "/login?next=%2Ftasks",
@@ -35,6 +37,8 @@ describe("ProductPreviewSection", () => {
 
     await user.click(screen.getByRole("tab", { name: "Финансы" }));
     expect(screen.getByRole("heading", { name: "Финансы" })).toBeTruthy();
+    // Строки финансов подписаны каноническими состояниями из словаря.
+    expect(screen.getByText("Требует проверки")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Открыть Финансы" }).getAttribute("href")).toBe(
       "/login?next=%2Ffinance",
     );

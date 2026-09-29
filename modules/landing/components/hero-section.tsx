@@ -3,7 +3,7 @@ import { ArrowRightIcon, ShieldCheckIcon } from "lucide-react";
 import { ROUTES } from "@/shared/config/routes";
 import type { LandingContent } from "../constants/landing-content";
 
-/** Hero — первый экран: три продуктовых контура и единая точка входа. */
+/** Hero — первый экран: добавить что угодно, подтвердить главное. */
 export function HeroSection({ content }: { content: LandingContent["hero"] }) {
   return (
     <section

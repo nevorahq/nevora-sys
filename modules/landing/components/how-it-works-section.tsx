@@ -1,10 +1,11 @@
-import { ArrowRightIcon, LayoutGridIcon, LogInIcon, FocusIcon } from "lucide-react";
+import { ArrowRightIcon, CheckCircle2Icon, InboxIcon, SparklesIcon } from "lucide-react";
 import type { LandingContent } from "../constants/landing-content";
 
-const STEP_ICONS = [LayoutGridIcon, LogInIcon, FocusIcon] as const;
+const STEP_ICONS = [InboxIcon, SparklesIcon, CheckCircle2Icon] as const;
 
 /**
- * Как работает продуктовый вход: выбрать → авторизоваться → работать в контексте.
+ * Как работает продукт: добавить откуда угодно → Nevora готовит черновик →
+ * решаете вы.
  * Служит визуальным якорем потока, а не просто набором карточек.
  * Горизонтальная на десктопе, вертикальная на мобильном.
  */
@@ -20,7 +21,7 @@ export function HowItWorksSection({ content }: { content: LandingContent["how"] 
 
       <ol className="mt-12 flex flex-col items-stretch gap-4 md:flex-row md:items-center md:gap-2">
         {content.steps.map((step, i) => {
-          const Icon = STEP_ICONS[i] ?? LayoutGridIcon;
+          const Icon = STEP_ICONS[i] ?? InboxIcon;
           return (
             <li key={step.title} className="flex flex-1 flex-col items-stretch gap-4 md:flex-row md:items-center">
               <div
