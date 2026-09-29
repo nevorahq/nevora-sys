@@ -25,6 +25,7 @@ describe("isPublicRoute", () => {
   it("разрешает next только для Главной и корней модулей", () => {
     expect(PRODUCT_ENTRY_ROUTES).toEqual([
       ROUTES.dashboard,
+      ROUTES.inbox,
       ROUTES.tasks,
       ROUTES.money,
       ROUTES.subscriptions,

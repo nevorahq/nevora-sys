@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { CANONICAL_FINANCIAL_STATES } from "@/modules/moneyflow/contracts";
 import {
   AREA_IDS,
-  ATTENTION_IDS,
   FAQ_IDS,
+  PREVIEW_IDS,
   PROOF_IDS,
   LANDING_LOCALES,
   getLandingContent,
@@ -26,22 +26,19 @@ describe("landing content", () => {
     }
   });
 
-  it("keeps the same attention ids, in the same order, in every locale", () => {
+  it("keeps the same preview tabs, in the same order, with non-empty copy, in every locale", () => {
+    // Иконка и маршрут «Открыть …» выбираются по id вкладки — рассинхрон id
+    // оставил бы вкладку без иконки и без ссылки.
     for (const locale of LANDING_LOCALES) {
-      const ids = getLandingContent(locale).attention.items.map((item) => item.id);
-      expect(ids, `attention ids for locale "${locale}"`).toEqual([...ATTENTION_IDS]);
-    }
-  });
-
-  it("covers exactly the canonical financial states, so the shared badge labels every row", () => {
-    // StatesSection рендерит по CANONICAL_FINANCIAL_STATES и берёт подпись из
-    // словаря по id — незнакомый id останется без текста, а пропущенный оставит
-    // каноническое состояние без описания. Держим множество id ровно равным.
-    for (const locale of LANDING_LOCALES) {
-      const ids = getLandingContent(locale).states.items.map((item) => item.id);
-      expect([...ids].sort(), `states ids for locale "${locale}"`).toEqual(
-        [...CANONICAL_FINANCIAL_STATES].sort(),
-      );
+      const tabs = getLandingContent(locale).preview.tabs;
+      expect(
+        tabs.map((tab) => tab.id),
+        `preview tab ids for locale "${locale}"`,
+      ).toEqual([...PREVIEW_IDS]);
+      for (const tab of tabs) {
+        expect(tab.title.length, `empty tab title "${tab.id}" in "${locale}"`).toBeGreaterThan(0);
+        expect(tab.openLabel.length, `empty open label "${tab.id}" in "${locale}"`).toBeGreaterThan(0);
+      }
     }
   });
 
