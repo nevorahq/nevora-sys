@@ -7,6 +7,7 @@ import { DocumentExtractionReview } from "@/modules/documents/components/documen
 import { getInboxDashboardData } from "../queries/get-inbox-dashboard-data";
 import { getInboxDocumentReviews } from "../queries/get-inbox-document-reviews";
 import { reconcileInboxDocumentCaptures } from "../services/capture-inbox-document";
+import { loadProjectCandidates } from "../services/load-project-candidates";
 import { InboxCaptureComposer } from "./inbox-capture-composer";
 import { ReceiptReviewLauncher } from "./receipt-review-launcher";
 import { InboxTabs } from "./inbox-tabs";
@@ -55,9 +56,10 @@ export async function InboxPage({ initialTab = "inbox", focusSuggestionId = null
   // attention only). Fails soft: a broken funnel row never takes the Inbox down.
   const wizard = await getWizardState(supabase, ctx);
 
-  const [data, documentReviews] = await Promise.all([
+  const [data, documentReviews, projects] = await Promise.all([
     getInboxDashboardData(ctx),
     getInboxDocumentReviews(supabase, ctx),
+    loadProjectCandidates(supabase, ctx),
   ]);
   const canUpdateEntries = canDo(ctx, "planner.entry.update");
   const canDeleteEntries = canDo(ctx, "planner.entry.delete");
@@ -72,7 +74,7 @@ export async function InboxPage({ initialTab = "inbox", focusSuggestionId = null
         // highlight its exact Review card (see InboxTabs focus handling).
         <div key={suggestion.id} id={`suggestion-${suggestion.id}`} className="soft-card scroll-mt-24 p-4">
           {/* The Review tab is the confirm surface, so it carries the B3 panel. */}
-          <PlannerSuggestionCard suggestion={suggestion} entry={entry} showExplanation dict={dict} />
+          <PlannerSuggestionCard suggestion={suggestion} entry={entry} showExplanation projects={projects} dict={dict} />
         </div>
       ))}
 

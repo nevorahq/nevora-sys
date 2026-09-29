@@ -132,6 +132,7 @@ export interface DomainEventPayloadMap {
     priority: string;
     due_date?: string | null;
     assignee_id?: string | null;
+    project_id?: string | null;
   };
   "task.completed": {
     title: string;

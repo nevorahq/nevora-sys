@@ -9,9 +9,13 @@ import { acceptPlannerSuggestionAction } from "../actions/accept-planner-suggest
 import { rejectPlannerSuggestionAction } from "../actions/reject-planner-suggestion.action";
 import { editPlannerSuggestionAction } from "../actions/edit-planner-suggestion.action";
 import { isFinancialSuggestionType, type PlannerSuggestion } from "../types/planner.types";
+import type { ProjectCandidate } from "../utils/project-classification";
+import { draftProjectId, isTaskDraft, withDraftProject } from "../utils/draft-project";
 
 interface SuggestionReviewActionsProps {
   suggestion: PlannerSuggestion;
+  /** Live projects; given → the edit form offers a project picker (ADR 002, 0.2b). */
+  projects?: readonly ProjectCandidate[];
   dict: Dictionary["inbox"];
 }
 
@@ -21,6 +25,7 @@ interface FinancialPayload {
   amount?: number;
   currency?: string;
   providerName?: string;
+  projectId?: string;
 }
 
 function readFinancialPayload(payload: Record<string, unknown>): FinancialPayload {
@@ -29,6 +34,7 @@ function readFinancialPayload(payload: Record<string, unknown>): FinancialPayloa
     amount: typeof payload.amount === "number" ? payload.amount : undefined,
     currency: typeof payload.currency === "string" ? payload.currency : undefined,
     providerName: typeof payload.providerName === "string" ? payload.providerName : undefined,
+    projectId: typeof payload.projectId === "string" ? payload.projectId : undefined,
   };
 }
 
@@ -41,10 +47,13 @@ function readFinancialPayload(payload: Record<string, unknown>): FinancialPayloa
  * whose due date is the payment date, so the date is optional. The edit form
  * still exposes the date, amount, currency and payee, which the task carries.
  */
-export function SuggestionReviewActions({ suggestion, dict }: SuggestionReviewActionsProps) {
+export function SuggestionReviewActions({ suggestion, projects, dict }: SuggestionReviewActionsProps) {
   const [editing, setEditing] = useState(false);
   const isFinancial = isFinancialSuggestionType(suggestion.suggestion_type);
   const financial = readFinancialPayload(suggestion.proposed_payload ?? {});
+  const currentProjectId = draftProjectId(suggestion);
+  // Only task drafts carry a project, and only where the live list was loaded.
+  const showProjectPicker = Boolean(projects?.length) && isTaskDraft(suggestion.suggestion_type);
 
   const [acceptState, acceptAction, acceptPending] = useActionState<ActionResult, FormData>(
     acceptPlannerSuggestionAction,
@@ -72,7 +81,13 @@ export function SuggestionReviewActions({ suggestion, dict }: SuggestionReviewAc
         if (currency) payload.currency = currency.toUpperCase();
         const provider = (formData.get("providerName") as string | null)?.trim();
         if (provider) payload.providerName = provider;
+        const project = showProjectPicker ? ((formData.get("projectId") as string | null) ?? "") : (currentProjectId ?? "");
+        if (project) payload.projectId = project;
         formData.set("proposedPayload", JSON.stringify(payload));
+      } else if (showProjectPicker) {
+        // The server REPLACES the payload: keep every key, change the project.
+        const project = (formData.get("projectId") as string | null) ?? "";
+        formData.set("proposedPayload", JSON.stringify(withDraftProject(suggestion.proposed_payload ?? {}, project)));
       }
       const result = await editPlannerSuggestionAction(prev, formData);
       if (!result.error && !result.fieldErrors) setEditing(false);
@@ -101,6 +116,25 @@ export function SuggestionReviewActions({ suggestion, dict }: SuggestionReviewAc
             defaultValue={suggestion.description ?? ""}
             className="w-full resize-none rounded-(--neu-radius-md) bg-surface-sunken px-3 py-2 text-sm text-text-primary shadow-neu-inset focus:outline-none focus:ring-2 focus:ring-accent-yellow/40"
           />
+
+          {showProjectPicker && (
+            <label className="flex flex-col gap-1 text-xs font-medium text-text-secondary" htmlFor={`project-${suggestion.id}`}>
+              {dict.project.label}
+              <select
+                id={`project-${suggestion.id}`}
+                name="projectId"
+                defaultValue={currentProjectId && projects?.some((p) => p.id === currentProjectId) ? currentProjectId : ""}
+                className="w-full rounded-(--neu-radius-md) bg-surface-sunken px-3 py-2 text-sm font-normal text-text-primary shadow-neu-inset focus:outline-none focus:ring-2 focus:ring-accent-yellow/40"
+              >
+                <option value="">{dict.project.none}</option>
+                {projects?.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           {isFinancial && (
             <div className="flex flex-col gap-2">

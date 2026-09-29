@@ -229,4 +229,6 @@ export type PlannerErrorCode =
   | "failed"
   | "partial"
   | "empty"
-  | "task_failed";
+  | "task_failed"
+  /** The draft's project was archived or deleted after classification. */
+  | "project_unavailable";

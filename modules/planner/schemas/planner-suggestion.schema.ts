@@ -100,6 +100,10 @@ export const createTaskPayloadSchema = z.object({
   // whole accept over a value the user never chose.
   priority: z.enum(["low", "medium", "high", "urgent"]).catch("medium").default("medium"),
   linkTo: suggestionLinkTargetSchema.optional(),
+  // ADR 002, 0.2b: the project the draft is filed under. A malformed value is
+  // dropped to "no project" rather than failing the accept; whether the project
+  // exists, is live and belongs to the organization is the Tasks runtime's call.
+  projectId: uuidSchema.nullish().catch(null),
 });
 export type CreateTaskPayload = z.infer<typeof createTaskPayloadSchema>;
 

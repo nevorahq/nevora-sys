@@ -15,8 +15,10 @@ import {
   createStandardTask,
   getTaskById,
   getTasks,
+  listProjectOptions,
   retireGeneratedTasks,
   updateGeneratedTaskDueDate,
+  type ProjectOption,
 } from "@/modules/tasks/server";
 import { createHttpTasksApplication, TasksTransportError } from "./http";
 import {
@@ -75,6 +77,19 @@ export function createInProcessTasksApplication(
       retireGeneratedTasks({ supabase, ctx: currentContext, ...input }),
   };
 }
+
+/**
+ * Live projects a new task can be filed under (ADR 002, 0.2b) — for other
+ * modules, which reach Tasks only through this adapter. In-process for now, like
+ * the Tasks pages' own project reads: projects are not part of the HTTP
+ * TasksApplication yet. The client is explicit because a channel webhook reads
+ * with the service role; the organization id is what scopes it then.
+ */
+export function listTaskProjectOptions(supabase: SupabaseClient, organizationId: string): Promise<ProjectOption[]> {
+  return listProjectOptions(supabase, organizationId);
+}
+
+export type { ProjectOption };
 
 export type TasksTransportMode = "in-process" | "shadow" | "http-read" | "http";
 

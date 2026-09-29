@@ -20,4 +20,6 @@ export type { GeneratedTaskMutationResult } from "./services/generated-task-life
 export { getProjects } from "./projects/queries/get-projects";
 export type { GetProjectsOptions } from "./projects/queries/get-projects";
 export { getProjectById } from "./projects/queries/get-project-by-id";
+export { listProjectOptions, PROJECT_OPTIONS_LIMIT } from "./projects/queries/list-project-options";
+export type { ProjectOption } from "./projects/queries/list-project-options";
 export { getProjectTasks, getUnassignedTasks } from "./projects/queries/get-project-tasks";

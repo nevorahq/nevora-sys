@@ -194,6 +194,7 @@ export const en = {
       unsupported: "This suggestion can't be accepted. Edit it into a task.",
       partial: "Accepted, but the Inbox didn't update. Refresh the page.",
       taskFailed: "The task couldn't be created. Your plan limit may have been reached.",
+      projectUnavailable: "This project was archived or deleted. Pick another project (Edit) or none, then accept.",
       empty: "Write something to add.",
       /** {max} is the character limit. */
       tooLong: "Keep it under {max} characters.",
@@ -232,6 +233,13 @@ export const en = {
     rejected: "Rejected",
     failed: "Couldn't process — review manually.",
     createdEntity: "Created",
+    /** Project the draft is filed under (ADR 002, 0.2b). */
+    project: {
+      label: "Project",
+      none: "No project",
+      /** Shown next to a project AI chose, until the user edits the draft. */
+      suggested: "suggested",
+    },
     /**
      * Extra fields shown in the edit form for a financial suggestion. A financial
      * task requires a payment date before it can be accepted, so the review UI must

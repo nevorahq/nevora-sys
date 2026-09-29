@@ -31,6 +31,7 @@ const createStandardInput = z.object({
   status: z.enum(TASK_STATUSES).optional(),
   dueDate: isoDate.nullable().optional(),
   sourceSuggestionId: uuid.nullable().optional(),
+  projectId: uuid.nullable().optional(),
 }).strict();
 
 const createGeneratedInput = z.object({

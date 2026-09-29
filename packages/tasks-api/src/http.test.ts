@@ -17,4 +17,25 @@ describe("Tasks HTTP request schema", () => {
     });
     expect(parsed.success).toBe(false);
   });
+
+  it("accepts a project on createStandardTask and rejects a non-uuid one", () => {
+    const base = { title: "Draft the brief", sourceSuggestionId: "77777777-7777-4777-8777-777777777777" };
+    expect(tasksHttpRequestSchema.safeParse({
+      operation: "createStandardTask",
+      input: { ...base, projectId: "55555555-5555-4555-8555-555555555555" },
+    }).success).toBe(true);
+    expect(tasksHttpRequestSchema.safeParse({ operation: "createStandardTask", input: { ...base, projectId: null } }).success).toBe(true);
+    expect(tasksHttpRequestSchema.safeParse({ operation: "createStandardTask", input: base }).success).toBe(true);
+    expect(tasksHttpRequestSchema.safeParse({
+      operation: "createStandardTask",
+      input: { ...base, projectId: "not-a-uuid" },
+    }).success).toBe(false);
+  });
+
+  it("still rejects unknown createStandardTask keys (strict wire schema)", () => {
+    expect(tasksHttpRequestSchema.safeParse({
+      operation: "createStandardTask",
+      input: { title: "X", workspaceId: "55555555-5555-4555-8555-555555555555" },
+    }).success).toBe(false);
+  });
 });

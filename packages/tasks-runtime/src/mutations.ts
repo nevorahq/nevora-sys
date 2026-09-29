@@ -26,6 +26,29 @@ export async function createStandardTask(
   const status: TaskStatus = input.status ?? "todo";
   const dueDate = input.dueDate ?? null;
   const sourceSuggestionId = input.sourceSuggestionId ?? null;
+  const projectId = input.projectId ?? null;
+
+  // A project decides the workspace: the task lives where its project lives.
+  // Resolved before the quota is reserved, and always scoped to the bound
+  // organization — the service-role runtime has no RLS to fall back on.
+  let workspaceId = context.workspaceId;
+  if (projectId) {
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("id, workspace_id, archived_at")
+      .eq("id", projectId)
+      .eq("organization_id", context.organizationId)
+      .maybeSingle();
+    if (projectError) {
+      console.error("[tasks-runtime] project lookup failed:", projectError.message);
+      return { ok: false, error: "Failed to create task" };
+    }
+    if (!project || project.archived_at) {
+      return { ok: false, error: "Project not found", code: "project_not_found" };
+    }
+    workspaceId = project.workspace_id as string;
+  }
+
   let reserved = false;
 
   try {
@@ -42,7 +65,8 @@ export async function createStandardTask(
   const { error } = await supabase.from("todos").insert({
     id: taskId,
     organization_id: context.organizationId,
-    workspace_id: context.workspaceId,
+    workspace_id: workspaceId,
+    project_id: projectId,
     created_by: context.actorId,
     updated_by: context.actorId,
     title,
@@ -56,11 +80,12 @@ export async function createStandardTask(
 
   if (error) {
     if (error.code === "23505" && sourceSuggestionId) {
+      // Mirrors todos_source_suggestion_unique_idx (organization, suggestion):
+      // the first confirm may have landed in the project's workspace.
       const { data: existing } = await supabase
         .from("todos")
         .select("id")
         .eq("organization_id", context.organizationId)
-        .eq("workspace_id", context.workspaceId)
         .eq("source_suggestion_id", sourceSuggestionId)
         .is("deleted_at", null)
         .maybeSingle();
@@ -79,18 +104,29 @@ export async function createStandardTask(
       eventName: "task.created",
       aggregateType: "task",
       aggregateId: taskId,
-      payload: { title, priority, due_date: dueDate },
+      payload: { title, priority, due_date: dueDate, project_id: projectId },
     }),
     effects.emitAuditLog({
       entityType: "todos",
       entityId: taskId,
       action: "create",
-      newData: { title, priority, status, due_date: dueDate },
+      newData: { title, priority, status, due_date: dueDate, project_id: projectId },
       metadata: { source: "dashboard", trigger: "planner" },
     }),
+    projectId ? recalculateProjectProgress(supabase, projectId) : Promise.resolve(),
   ]);
 
   return { ok: true, taskId, created: true };
+}
+
+/**
+ * Best-effort: a stale progress bar must never fail the task. The RPC is
+ * org-member scoped (060), so it updates under a user session and is a no-op
+ * under the service role; the next status change recomputes it either way.
+ */
+async function recalculateProjectProgress(supabase: SupabaseClient, projectId: string): Promise<void> {
+  const { error } = await supabase.rpc("recalculate_project_progress", { p_project_id: projectId });
+  if (error) console.error("[tasks-runtime] project progress recalculation failed:", error.message);
 }
 
 export async function createGeneratedTask(

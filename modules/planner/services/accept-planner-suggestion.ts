@@ -294,11 +294,20 @@ async function acceptAsTask(
     description: parsed.data.description,
     priority,
     dueDate: parsed.data.dueDate ?? null,
+    // ADR 002, 0.2b: filed under the project the draft shows; the Tasks runtime
+    // re-checks it and creates the task in that project's workspace. Sent only
+    // when set, so a staged Tasks service that predates the key (strict schema)
+    // keeps accepting every draft without a project.
+    ...(parsed.data.projectId ? { projectId: parsed.data.projectId } : {}),
     // Exactly-once key (099). A retry after a crashed confirm resolves to the
     // task this suggestion already created instead of a second one.
     sourceSuggestionId: suggestion.id,
   });
-  if (!res.ok) return { ok: false, error: res.error, code: "task_failed" };
+  if (!res.ok) {
+    // Archived or deleted since the draft was classified: the user picks another.
+    if (res.code === "project_not_found") return { ok: false, error: res.error, code: "project_unavailable" };
+    return { ok: false, error: res.error, code: "task_failed" };
+  }
   // Phase B / B3: the draft told the user "a link will be created". Draw it.
   // Skipped on the dedup path: the link was already drawn by the first confirm,
   // and drawSuggestedLink would only log a duplicate-link error.
@@ -318,7 +327,14 @@ async function routeAccept(
 
   switch (suggestion.suggestion_type) {
     case "create_task":
-      return acceptAsTask(ctx, tasks, suggestion, { title: suggestion.title, ...payload });
+      // The card shows (and the edit form writes) the suggestion's own title and
+      // description, so those win over the copy the model left in the payload —
+      // confirm creates exactly what the user reviewed.
+      return acceptAsTask(ctx, tasks, suggestion, {
+        ...payload,
+        title: suggestion.title,
+        description: suggestion.description ?? payload.description,
+      });
 
     // Retired Financial Tasks types. Tasks and Money no longer bridge, so the
     // draft is accepted as the plain task it describes rather than refused —

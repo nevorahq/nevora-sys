@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentContext } from "@/lib/context/current-context";
 import { detectPlannerIntent } from "./detect-planner-intent";
 import { createPlannerSuggestion } from "./create-planner-suggestion";
+import { loadProjectCandidates } from "./load-project-candidates";
 import { PLANNER_ENTRY_COLUMNS, type PlannerEntry, type PlannerEntryStatus } from "../types/planner.types";
 
 const OPEN_CAPTURE: PlannerEntryStatus[] = ["captured", "processing", "suggested"];
@@ -52,7 +53,10 @@ export async function proposeTasksFromDocumentCapture(
     .eq("planner_entry_id", capture.id);
   if (existing) return existing;
 
-  const detection = await detectPlannerIntent(text, { source: "document" });
+  const detection = await detectPlannerIntent(text, {
+    source: "document",
+    projects: await loadProjectCandidates(supabase, ctx),
+  });
 
   let created = 0;
   for (const detected of detection.suggestions) {

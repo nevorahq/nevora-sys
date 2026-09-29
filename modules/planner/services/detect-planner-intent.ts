@@ -4,6 +4,7 @@ import { logger } from "@/lib/observability/logger";
 import { plannerIntentDetectionSchema } from "../schemas/planner-suggestion.schema";
 import { normalizePlannerIntent } from "../utils/normalize-planner-intent";
 import { coerceDetection } from "../utils/coerce-detected-suggestion";
+import { buildProjectPromptSection, resolveProjectRefs, type ProjectCandidate } from "../utils/project-classification";
 import type { PlannerIntentDetectionResult } from "../types/planner.types";
 
 /**
@@ -44,7 +45,11 @@ e.g. a deadline to meet, something to sign, send, call about or prepare.
 If it asks for no action, return an empty "suggestions" array.`,
 };
 
-export function buildIntentSystemPrompt(today: Date, source: IntentSource = "capture"): string {
+export function buildIntentSystemPrompt(
+  today: Date,
+  source: IntentSource = "capture",
+  projects: readonly ProjectCandidate[] = [],
+): string {
   const iso = today.toISOString().slice(0, 10);
   return `You are the intent router for a business "Capture Inbox".
 ${SOURCE_RULES[source]}
@@ -77,7 +82,7 @@ Rules:
   overdue, срочно) → "high", or explicitly says it can wait → "low".
 - Write title and description in the language of the input.
 - If a date is unknown, omit it and add it to missingInformation.
-- Never invent specific dates or amounts that are not implied by the input.`;
+- Never invent specific dates or amounts that are not implied by the input.${buildProjectPromptSection(projects)}`;
 }
 
 export interface DetectPlannerIntentOptions {
@@ -93,13 +98,19 @@ export interface DetectPlannerIntentOptions {
    * is called. `false` (quota exhausted) degrades to the fallback.
    */
   reserveAiCall?: () => Promise<boolean>;
+  /**
+   * The organization's live projects (ADR 002, 0.2b). The model may file each
+   * draft under one; only ids from this list can come out. Without the model
+   * (fallback) no project is proposed.
+   */
+  projects?: readonly ProjectCandidate[];
 }
 
 const NO_ACTION: PlannerIntentDetectionResult = { detectedIntent: "no_action", confidence: 0, suggestions: [] };
 
 export async function detectPlannerIntent(
   rawText: string,
-  { today = new Date(), source = "capture", reserveAiCall }: DetectPlannerIntentOptions = {},
+  { today = new Date(), source = "capture", reserveAiCall, projects = [] }: DetectPlannerIntentOptions = {},
 ): Promise<PlannerIntentDetectionResult> {
   const text = rawText.trim();
   const fallback = () => (source === "document" ? NO_ACTION : normalizePlannerIntent(text));
@@ -118,7 +129,7 @@ export async function detectPlannerIntent(
     const message = await anthropic.messages.create({
       model: AI_MODELS.fast,
       max_tokens: 1024,
-      system: buildIntentSystemPrompt(today, source),
+      system: buildIntentSystemPrompt(today, source, projects),
       messages: [{ role: "user", content: text }],
     });
 
@@ -139,7 +150,7 @@ export async function detectPlannerIntent(
       return fallback();
     }
 
-    return coerceDetection(validated.data);
+    return coerceDetection(resolveProjectRefs(validated.data, projects));
   } catch (error) {
     logger.warn?.("[detectPlannerIntent] AI call failed, using fallback", {
       error: error instanceof Error ? error.message : String(error),

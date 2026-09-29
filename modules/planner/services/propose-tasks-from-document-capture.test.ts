@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { detectPlannerIntent, createPlannerSuggestion } = vi.hoisted(() => ({
+const { detectPlannerIntent, createPlannerSuggestion, loadProjectCandidates } = vi.hoisted(() => ({
   detectPlannerIntent: vi.fn(),
   createPlannerSuggestion: vi.fn(),
+  loadProjectCandidates: vi.fn(),
 }));
 vi.mock("./detect-planner-intent", () => ({ detectPlannerIntent }));
 vi.mock("./create-planner-suggestion", () => ({ createPlannerSuggestion }));
+vi.mock("./load-project-candidates", () => ({ loadProjectCandidates }));
 
 import { proposeTasksFromDocumentCapture } from "./propose-tasks-from-document-capture";
 import type { PlannerEntry } from "../types/planner.types";
@@ -37,6 +39,7 @@ const task = (title: string) => ({ suggestionType: "create_task", title, propose
 beforeEach(() => {
   vi.clearAllMocks();
   createPlannerSuggestion.mockResolvedValue({ ok: true, suggestion: {} });
+  loadProjectCandidates.mockResolvedValue([{ id: "project-1", name: "Lease" }]);
 });
 
 describe("proposeTasksFromDocumentCapture", () => {
@@ -51,7 +54,10 @@ describe("proposeTasksFromDocumentCapture", () => {
     const created = await proposeTasksFromDocumentCapture(supabase, ctx, capture, "Sign the lease. Call the notary.");
 
     expect(created).toBe(2);
-    expect(detectPlannerIntent).toHaveBeenCalledWith("Sign the lease. Call the notary.", { source: "document" });
+    expect(detectPlannerIntent).toHaveBeenCalledWith("Sign the lease. Call the notary.", {
+      source: "document",
+      projects: [{ id: "project-1", name: "Lease" }],
+    });
     expect(createPlannerSuggestion).toHaveBeenCalledTimes(2);
     expect(createPlannerSuggestion).toHaveBeenCalledWith(supabase, ctx, "entry-1", expect.anything());
     expect(updates[0]).toMatchObject({ table: "planner_entries", ai_detected_intent: "lease" });

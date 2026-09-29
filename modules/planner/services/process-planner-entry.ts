@@ -6,6 +6,7 @@ import { createActionItemForDocument } from "@/modules/action-center/services/cr
 import { detectPlannerIntent } from "./detect-planner-intent";
 import { createPlannerSuggestion } from "./create-planner-suggestion";
 import { reserveCaptureAiCall } from "./reserve-capture-ai-call";
+import { loadProjectCandidates } from "./load-project-candidates";
 import { confidenceBand, type PlannerEntry, type PlannerSuggestion } from "../types/planner.types";
 import { mapEntryToMissingInfoActionItem } from "../utils/map-suggestion-to-action-item";
 
@@ -51,6 +52,7 @@ export async function processPlannerEntry(
   try {
     detection = await detectPlannerIntent(rawText, {
       reserveAiCall: () => reserveCaptureAiCall(supabase, ctx, entry.id),
+      projects: await loadProjectCandidates(supabase, ctx),
     });
   } catch (error) {
     console.error("[processPlannerEntry] detection failed:", error);
