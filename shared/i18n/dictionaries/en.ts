@@ -1805,7 +1805,15 @@ export const en = {
         mediaTasks: "Added to your Inbox. Tasks found: {count}. Confirm them in Nevora: {url}",
         mediaSaved: "Saved to Documents and added to your Inbox for review: {url}",
         mediaFailed: "I couldn't read this file. It's saved in Documents — review it in Nevora: {url}",
-        mediaUnsupported: "I can read photos, PDFs and images. Voice messages, video and audio aren't supported.",
+        mediaUnsupported: "I can read text, voice messages, photos, PDFs and images. Video isn't supported.",
+        /** {text} is the transcript (shortened). */
+        voiceHeard: "Heard: “{text}”",
+        /** {max} is the limit in minutes. */
+        voiceTooLong: "This voice message is too long — keep it under {max} minutes.",
+        voiceEmpty: "I couldn't make out any speech. Try again, or send it as text.",
+        voiceFailed: "I couldn't transcribe this voice message right now. Try again in a minute.",
+        voiceUnavailable: "Voice messages aren't set up yet. Send it as text.",
+        aiLimit: "Your plan's AI limit for this month has been reached, so the voice message wasn't transcribed. Send it as text.",
         /** {max} is the size limit in MB. */
         mediaTooLarge: "This file is too large — send one up to {max} MB.",
         mediaInvalid: "This file type can't be added. Send a photo, a PDF or an image.",

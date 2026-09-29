@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasMedia, parseTelegramCommand, pickAttachment, telegramUpdateSchema } from "./telegram-update";
+import { hasMedia, parseTelegramCommand, pickAttachment, pickVoice, telegramUpdateSchema } from "./telegram-update";
 
 describe("parseTelegramCommand", () => {
   it.each([
@@ -46,7 +46,7 @@ describe("hasMedia", () => {
   it("detects photos, files and voice", () => {
     expect(hasMedia({ ...base, photo: [{ file_id: "p" }] })).toBe(true);
     expect(hasMedia({ ...base, document: { file_id: "d" } })).toBe(true);
-    expect(hasMedia({ ...base, voice: {} })).toBe(true);
+    expect(hasMedia({ ...base, voice: { file_id: "v" } })).toBe(true);
     expect(hasMedia({ ...base, text: "hi" })).toBe(false);
   });
 });
@@ -75,7 +75,33 @@ describe("pickAttachment", () => {
 
   it("ignores text and voice", () => {
     expect(pickAttachment({ ...base, text: "hi" })).toBeNull();
-    expect(pickAttachment({ ...base, voice: {} })).toBeNull();
+    expect(pickAttachment({ ...base, voice: { file_id: "v" } })).toBeNull();
+  });
+});
+
+describe("pickVoice", () => {
+  const base = { message_id: 7, chat: { id: 1, type: "private" } };
+  it("reads a voice note as OGG with its duration", () => {
+    expect(pickVoice({ ...base, voice: { file_id: "v", duration: 12, mime_type: "audio/ogg", file_size: 30_000 } })).toEqual({
+      fileId: "v",
+      fileName: "telegram-voice-7.ogg",
+      mimeType: "audio/ogg",
+      durationSeconds: 12,
+      size: 30_000,
+    });
+  });
+
+  it("reads a forwarded audio file with its own name, and defaults a missing type", () => {
+    expect(pickVoice({ ...base, audio: { file_id: "a", file_name: "memo.m4a", mime_type: "audio/mp4" } })).toMatchObject({
+      fileName: "memo.m4a",
+      mimeType: "audio/mp4",
+    });
+    expect(pickVoice({ ...base, voice: { file_id: "v" } })).toMatchObject({ mimeType: "audio/ogg", fileName: "telegram-voice-7.ogg" });
+  });
+
+  it("is null for anything else", () => {
+    expect(pickVoice({ ...base, text: "hi" })).toBeNull();
+    expect(pickVoice({ ...base, photo: [{ file_id: "p" }] })).toBeNull();
   });
 });
 

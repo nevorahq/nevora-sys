@@ -9,13 +9,17 @@ import { DOCUMENT_MAX_FILE_SIZE_BYTES } from "@/modules/documents/constants/docu
 import {
   captureChannelFile,
   captureChannelText,
+  findChannelCapture,
   processChannelCapture,
   processChannelFileCapture,
   type ChannelFileOutcome,
 } from "../services/channel-intake";
 import { consumeLinkCode, findActiveIntegration, revokeIntegrationByExternal } from "../services/link-codes";
 import type { ChannelIntegration } from "../types";
-import { hasMedia, parseTelegramCommand, pickAttachment, type TelegramUpdate } from "./telegram-update";
+import type { PlannerEntry } from "@/modules/planner/types/planner.types";
+import { hasMedia, parseTelegramCommand, pickAttachment, pickVoice, type TelegramUpdate } from "./telegram-update";
+import { TRANSCRIPTION_MAX_BYTES, VOICE_MAX_SECONDS, type TranscriptionResult } from "../voice/transcribe-voice";
+import type { CurrentContext } from "@/lib/context/current-context";
 import type { TelegramDownload } from "./telegram-api";
 
 export interface TelegramHandlerDeps {
@@ -26,6 +30,14 @@ export interface TelegramHandlerDeps {
   download: (fileId: string, maxBytes: number) => Promise<TelegramDownload>;
   /** Public app origin, for the Inbox link in replies. */
   appUrl: string;
+  /**
+   * Speech-to-text for voice messages; null when not configured (voice is then
+   * declined). `reserve` records the paid call in the AI quota first.
+   */
+  transcriber: {
+    reserve: (ctx: CurrentContext, durationSeconds: number | null) => Promise<boolean>;
+    transcribe: (audio: { bytes: ArrayBuffer; fileName: string; mimeType: string }) => Promise<TranscriptionResult>;
+  } | null;
 }
 
 export interface TelegramHandleResult {
@@ -40,6 +52,7 @@ export interface TelegramHandleResult {
     | "media_not_supported"
     | "media_too_large"
     | "media_rejected"
+    | "voice_rejected"
     | "context_denied"
     | "too_long"
     | "captured"
@@ -115,11 +128,16 @@ export async function handleTelegramUpdate(
   const inboxUrl = `${deps.appUrl}${ROUTES.inbox}?tab=review`;
 
   const attachment = pickAttachment(message);
-  if (hasMedia(message) && !attachment) {
+  const voice = pickVoice(message);
+  if (voice && !deps.transcriber) {
+    await reply(locale, (bot) => bot.voiceUnavailable);
+    return { action: "media_not_supported" };
+  }
+  if (hasMedia(message) && !attachment && !voice) {
     await reply(locale, (bot) => bot.mediaUnsupported);
     return { action: "media_not_supported" };
   }
-  if (!attachment && (!text || command)) {
+  if (!attachment && !voice && (!text || command)) {
     await reply(locale, (bot) => bot.help);
     return { action: "help" };
   }
@@ -133,6 +151,55 @@ export async function handleTelegramUpdate(
   }
   const ctx = context.ctx;
   const messageKey = `${chatId}:${message.message_id}`;
+
+  if (voice && deps.transcriber) {
+    const tooLong = () => reply(locale, (bot) => bot.voiceTooLong.replace("{max}", String(VOICE_MAX_SECONDS / 60)));
+    if ((voice.durationSeconds ?? 0) > VOICE_MAX_SECONDS || (voice.size ?? 0) > TRANSCRIPTION_MAX_BYTES) {
+      await tooLong();
+      return { action: "voice_rejected" };
+    }
+
+    // A redelivery must not pay for a second transcription.
+    const existing = await findChannelCapture(deps.supabase, ctx, "telegram", messageKey);
+    if (existing) {
+      return existing.status === "captured"
+        ? { action: "duplicate", after: () => replyWithDraft(deps, ctx, locale, existing, null, inboxUrl, reply) }
+        : { action: "duplicate" };
+    }
+
+    const downloaded = await deps.download(voice.fileId, TRANSCRIPTION_MAX_BYTES);
+    if (!downloaded.ok) {
+      if (downloaded.reason === "too_large") {
+        await tooLong();
+        return { action: "voice_rejected" };
+      }
+      throw new Error("Telegram voice message could not be downloaded.");
+    }
+
+    if (!(await deps.transcriber.reserve(ctx, voice.durationSeconds))) {
+      await reply(locale, (bot) => bot.aiLimit);
+      return { action: "voice_rejected" };
+    }
+    const transcript = await deps.transcriber.transcribe({ bytes: downloaded.bytes, fileName: voice.fileName, mimeType: voice.mimeType });
+    if (!transcript.ok) {
+      // Answered, not retried: a redelivery would pay for the call again.
+      await reply(locale, (bot) => (transcript.reason === "empty" ? bot.voiceEmpty : bot.voiceFailed));
+      return { action: "voice_rejected" };
+    }
+
+    const heard = transcript.text.slice(0, PLANNER_RAW_TEXT_MAX_LENGTH);
+    const stored = await captureChannelText(deps.supabase, ctx, { channel: "telegram", messageKey, text: heard, entryType: "voice" });
+    if (!stored.ok) {
+      if (stored.code === "failed") throw new Error("Telegram voice capture could not be stored.");
+      await reply(locale, (bot) => bot.voiceEmpty);
+      return { action: "voice_rejected" };
+    }
+    const entry = stored.entry;
+    return {
+      action: stored.reused ? "duplicate" : "captured",
+      after: () => replyWithDraft(deps, ctx, locale, entry, heard, inboxUrl, reply),
+    };
+  }
 
   if (attachment) {
     const tooLarge = () => reply(locale, (bot) => bot.mediaTooLarge.replace("{max}", String(DOCUMENT_MAX_FILE_SIZE_BYTES / (1024 * 1024))));
@@ -210,21 +277,42 @@ export async function handleTelegramUpdate(
   const entry = captured.entry;
   return {
     action: captured.reused ? "duplicate" : "captured",
-    after: async () => {
-      const processed = await processChannelCapture(deps.supabase, ctx, entry);
-      const draft = processed.suggestions[0];
-      await reply(locale, (bot) =>
-        draft
-          ? bot.captured
-              .replace("{title}", draft.title)
-              .replace("{url}", `${deps.appUrl}${ROUTES.inbox}?tab=review&suggestion=${draft.id}`)
-          : bot.capturedNoDraft.replace("{url}", inboxUrl),
-      );
-    },
+    after: () => replyWithDraft(deps, ctx, locale, entry, null, inboxUrl, reply),
   };
 }
 
 type BotCopy = ReturnType<typeof getDictionaryFor>["channels"]["telegram"]["bot"];
+
+/** Longest transcript quoted back in a reply; the full text is in the Inbox. */
+const HEARD_PREVIEW_CHARS = 300;
+
+/**
+ * Run intent detection on a stored capture and answer with the draft it
+ * produced — preceded, for a voice note, by what was heard, so the sender can
+ * tell a mis-transcription at a glance.
+ */
+async function replyWithDraft(
+  deps: TelegramHandlerDeps,
+  ctx: CurrentContext,
+  locale: Locale,
+  entry: PlannerEntry,
+  heard: string | null,
+  inboxUrl: string,
+  reply: (locale: Locale, pick: (bot: BotCopy) => string) => Promise<boolean>,
+): Promise<void> {
+  const processed = await processChannelCapture(deps.supabase, ctx, entry);
+  const draft = processed.suggestions[0];
+  await reply(locale, (bot) => {
+    const result = draft
+      ? bot.captured
+          .replace("{title}", draft.title)
+          .replace("{url}", `${deps.appUrl}${ROUTES.inbox}?tab=review&suggestion=${draft.id}`)
+      : bot.capturedNoDraft.replace("{url}", inboxUrl);
+    if (!heard) return result;
+    const preview = heard.length > HEARD_PREVIEW_CHARS ? `${heard.slice(0, HEARD_PREVIEW_CHARS).trimEnd()}…` : heard;
+    return `${bot.voiceHeard.replace("{text}", preview)}\n\n${result}`;
+  });
+}
 
 const INTL_LOCALE: Record<Locale, string> = { en: "en-US", ru: "ru-RU", ro: "ro-RO" };
 
