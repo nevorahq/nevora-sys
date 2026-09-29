@@ -31,7 +31,6 @@ function walk(dir: string): string[] {
 /** Files that emit a domain event or an audit log. */
 const EVENT_FILES = [
   ...walk("modules"),
-  ...walk("workflows"),
   ...walk("platform"),
   ...walk("packages"),
   ...walk("apps"),

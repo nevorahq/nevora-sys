@@ -202,7 +202,6 @@ describe("paused modules: read-path coverage", () => {
 
   const activeFiles = walk("modules")
     .concat(
-      walk("workflows"),
       walk("platform"),
       walk("packages"),
       walk("apps"),

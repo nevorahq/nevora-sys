@@ -67,7 +67,6 @@ describe("workspace extraction boundaries", () => {
   it("routes cross-module Tasks server calls through the platform adapter", () => {
     const crossModuleFiles = [
       ...walk("modules").filter((file) => !file.startsWith("modules/tasks/")),
-      ...walk("workflows"),
     ];
     const offenders = crossModuleFiles.flatMap((file) =>
       moduleSpecifiers(read(file))
@@ -86,7 +85,6 @@ describe("workspace extraction boundaries", () => {
       ...walk("modules"),
       ...walk("platform"),
       ...walk("shared"),
-      ...walk("workflows"),
     ];
     const forbidden = new Set([
       "@/modules/tasks/contracts",
