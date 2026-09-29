@@ -205,6 +205,14 @@ HTTPS, no SDK) and the transcript becomes an ordinary text capture with
   mis-transcription is visible at a glance;
 - off unless `OPENAI_API_KEY` is set: voice is then declined with "send it as
   text".
+- provider failures are split (2026-09-29, after a real `429
+  credit_balance_exhausted`): an account problem (no credits, bad or revoked
+  key) answers "voice is temporarily unavailable"; a transient one (rate
+  limit, 5xx, timeout) answers "try again in a minute". In both cases the
+  provider did no billed work, so the reserved quota unit is returned — the
+  row is deleted, because the `ai_calls` quota counts every row of the month
+  regardless of status (059). Heard silence (`empty`) was billed and keeps its
+  unit. The log carries the provider's error type and code, never its message.
 
 Deliberately not yet:
 - **Domain events** for channel captures are not recorded: `emitDomainEvent`

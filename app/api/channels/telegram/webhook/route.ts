@@ -7,6 +7,7 @@ import { handleTelegramUpdate } from "@/modules/channels/telegram/handle-telegra
 import { telegramUpdateSchema } from "@/modules/channels/telegram/telegram-update";
 import {
   getTranscriptionConfig,
+  releaseVoiceTranscription,
   reserveVoiceTranscription,
   transcribeVoice,
 } from "@/modules/channels/voice/transcribe-voice";
@@ -67,6 +68,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       transcriber: transcription
         ? {
             reserve: (ctx, durationSeconds) => reserveVoiceTranscription(supabase, ctx, durationSeconds),
+            release: (ctx, requestId) => releaseVoiceTranscription(supabase, ctx, requestId),
             transcribe: (audio) => transcribeVoice(transcription, audio),
           }
         : null,

@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   download: vi.fn(),
   findCapture: vi.fn(),
   reserve: vi.fn(),
+  release: vi.fn(),
   transcribe: vi.fn(),
 }));
 vi.mock("../services/link-codes", () => ({
@@ -72,7 +73,7 @@ const deps = (language: string | null = "ru") => ({
   },
   download: mocks.download,
   appUrl: "https://app.nevora.test",
-  transcriber: { reserve: mocks.reserve, transcribe: mocks.transcribe },
+  transcriber: { reserve: mocks.reserve, release: mocks.release, transcribe: mocks.transcribe },
 });
 
 beforeEach(() => {
@@ -307,7 +308,7 @@ describe("handleTelegramUpdate — voice messages", () => {
     mocks.resolve.mockResolvedValue({ ok: true, ctx });
     mocks.findCapture.mockResolvedValue(null);
     mocks.download.mockResolvedValue({ ok: true, bytes: new Uint8Array([1]).buffer });
-    mocks.reserve.mockResolvedValue(true);
+    mocks.reserve.mockResolvedValue("air-1");
     mocks.transcribe.mockResolvedValue({ ok: true, text: "Завтра в десять позвонить в банк насчёт кредита" });
     mocks.capture.mockResolvedValue({ ok: true, entry: { id: "e1", status: "captured" }, reused: false });
   });
@@ -335,7 +336,7 @@ describe("handleTelegramUpdate — voice messages", () => {
   });
 
   it("checks the AI quota before paying for a transcription", async () => {
-    mocks.reserve.mockResolvedValue(false);
+    mocks.reserve.mockResolvedValue(null);
     expect((await handleTelegramUpdate(update(undefined, voice), deps("ru"))).action).toBe("voice_rejected");
     expect(mocks.transcribe).not.toHaveBeenCalled();
     expect(sent[0]).toContain("лимит ИИ");
@@ -364,6 +365,24 @@ describe("handleTelegramUpdate — voice messages", () => {
     await handleTelegramUpdate(update(undefined, voice), deps("en"));
     expect(sent[1]).toContain("couldn't make out any speech");
     expect(mocks.capture).not.toHaveBeenCalled();
+  });
+
+  it("gives the quota unit back when the provider did no work, but not for heard silence", async () => {
+    mocks.transcribe.mockResolvedValueOnce({ ok: false, reason: "failed" });
+    await handleTelegramUpdate(update(undefined, voice), deps("en"));
+    expect(mocks.release).toHaveBeenCalledWith(ctx, "air-1");
+
+    mocks.release.mockClear();
+    mocks.transcribe.mockResolvedValueOnce({ ok: false, reason: "empty" });
+    await handleTelegramUpdate(update(undefined, voice), deps("en"));
+    expect(mocks.release).not.toHaveBeenCalled();
+  });
+
+  it("says voice is temporarily unavailable when the provider account is out of credits", async () => {
+    mocks.transcribe.mockResolvedValueOnce({ ok: false, reason: "unavailable" });
+    expect((await handleTelegramUpdate(update(undefined, voice), deps("ru"))).action).toBe("voice_rejected");
+    expect(mocks.release).toHaveBeenCalledWith(ctx, "air-1");
+    expect(sent[0]).toBe("Голосовые сообщения временно недоступны. Пока напишите текстом.");
   });
 
   it("asks for text when voice is not configured", async () => {
