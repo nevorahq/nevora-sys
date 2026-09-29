@@ -93,6 +93,27 @@ external id).
 
 ## Rollout
 
+### Status (2026-09-29)
+
+All three channels — Telegram, Slack and email — are built and merged: every
+one ends in the shared intake, the Review tab and the confirm-first accept.
+
+| Step | What | Status |
+|---|---|---|
+| 0.1 | Detector proposes only `create_task` | Done 2026-09-28 |
+| 0.2a | Metered AI intent detection (migration 119) | Done 2026-09-28 |
+| 0.2b | Project classification + project picker | **Not started** |
+| 0.3 | Work route for photo/document captures | Done 2026-09-28 |
+| 1 | `channel_integrations` + shared intake (migration 121) | Done 2026-09-28 |
+| 2 | Telegram — text, photos/documents (122), voice (124) | Done 2026-09-29 |
+| 3 | Slack — "Send to Nevora" message shortcut, text | Done 2026-09-29 (#82) |
+| 4 | Email forwarding via Resend Inbound (migration 123) | Done 2026-09-28 |
+
+Open, recorded under each step: 0.2b; files on a Slack message; domain events
+for channel captures; a live smoke of Slack with a real app (needs the
+`SLACK_*` secrets). Migrations 121–124 are applied manually — confirm they are
+live before enabling a channel in an environment.
+
 **Step 0 — make the existing Inbox honest (prerequisite)**
 
 - 0.1 The detector (AI prompt and no-AI fallback) proposes only `create_task`.
@@ -219,7 +240,7 @@ Deliberately not yet:
   resolves the organization from the session (`requireOrg`) and logs instead.
   The capture, suggestions and AI metering are unaffected.
 
-**Step 3 — Slack.** *Text done 2026-09-29; no migration (121 already allows
+**Step 3 — Slack.** *Text done 2026-09-29 (#82); no migration (121 already allows
 `slack`, 123's `metadata` holds the workspace name).*
 - One Slack app, message shortcut **"Send to Nevora"** (`callback_id
   send_to_nevora`), `commands` scope only: no event subscriptions, no channel
