@@ -14,7 +14,7 @@ import {
   verifySlackSignature,
 } from "./slack-api";
 
-const SECRET = "8f742231b10e8888abcd99yyyzzz85a5";
+const SECRET = "test-signing-secret";
 const NOW_MS = 1_790_000_000_000;
 const NOW_S = String(Math.floor(NOW_MS / 1000));
 const body = "payload=%7B%22type%22%3A%22message_action%22%7D";

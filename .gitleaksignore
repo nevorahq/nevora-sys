@@ -1,0 +1,6 @@
+# Specific, reviewed gitleaks false positives — by fingerprint only, never by
+# path (see .gitleaks.toml). Format: <commit>:<file>:<rule>:<line>.
+
+# A made-up Slack signing secret in a unit-test fixture (PR #82); the value was
+# replaced with "test-signing-secret" in the next commit. Not a real credential.
+5c14cea366a845fd4f3876591af4f2daaed34e0c:modules/channels/slack/slack-api.test.ts:generic-api-key:17
