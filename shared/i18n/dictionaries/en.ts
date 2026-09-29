@@ -1838,11 +1838,47 @@ export const en = {
         connectedAs: "Connected as {name}",
         disconnect: "Disconnect",
         notConfigured: "Telegram isn't set up on this server yet.",
-        comingSoon: "Slack and email forwarding are coming next.",
+        comingSoon: "Slack is coming next.",
         errors: {
           failed: "Couldn't create a code. Try again.",
           disconnectFailed: "Couldn't disconnect. Try again.",
         },
+      },
+    },
+    email: {
+      settings: {
+        title: "Email",
+        description: "Forward any email to your personal address: its text becomes a task draft, invoices and receipts become expense drafts.",
+        getAddress: "Get my address",
+        addressLabel: "Your forwarding address",
+        copy: "Copy",
+        copied: "Copied",
+        /** {email} is the user's account email. */
+        senderRule: "Forward from {email}. Mail from other senders is ignored.",
+        gmailHint: "Automatic forwarding in Gmail: Settings → Forwarding and POP/IMAP → Add a forwarding address, then paste this address. Gmail sends a confirmation code — it appears here.",
+        confirmationTitle: "Gmail confirmation code",
+        confirmationBody: "Enter this code in Gmail to finish setting up forwarding:",
+        confirmationLink: "Or confirm with the link",
+        rotate: "Get a new address",
+        rotateHint: "The old address stops working immediately.",
+        disconnect: "Disconnect",
+        notConfigured: "Email forwarding isn't set up on this server yet.",
+        errors: {
+          failed: "Couldn't create the address. Try again.",
+          disconnectFailed: "Couldn't disconnect. Try again.",
+        },
+      },
+      /** Plain-text notices mailed to the owner — only when a forward is refused. */
+      notice: {
+        subject: "Nevora couldn't add your forwarded email",
+        /** {subject} is the forwarded email's subject. */
+        intro: "Your forwarded email “{subject}” wasn't added to the Inbox.",
+        readOnly: "Your organization is read-only right now (the trial or subscription has ended).",
+        planLimit: "Your plan's limit has been reached.",
+        forbidden: "Your role can't add to the Inbox.",
+        notMember: "You're no longer a member of the organization this address belongs to.",
+        /** {name} is the file name, {max} the size limit in MB. */
+        tooLarge: "The attachment “{name}” is larger than {max} MB and was skipped.",
       },
     },
   },

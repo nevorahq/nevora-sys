@@ -240,6 +240,8 @@ export const MACHINE_ROUTES = [
   "/api/billing/webhook",
   // Telegram Bot API webhook — verifies the secret token Telegram echoes (ADR 002).
   "/api/channels/telegram/webhook",
+  // Resend Inbound webhook — verifies the Svix signature itself (ADR 002).
+  "/api/channels/email/inbound",
 ] as const;
 
 export function isMachineRoute(pathname: string): boolean {

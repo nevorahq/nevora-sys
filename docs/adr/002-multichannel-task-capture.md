@@ -211,7 +211,39 @@ Deliberately not yet:
   resolves the organization from the session (`requireOrg`) and logs instead.
   The capture, suggestions and AI metering are unaffected.
 
-**Step 3 — Slack.** **Step 4 — Email forwarding.**
+**Step 3 — Slack.** Not started.
+
+**Step 4 — Email forwarding.** *Done 2026-09-28, Resend Inbound, migration 123.*
+Decisions (with the product owner): Resend as the provider; a **per-user**
+address instead of one per organization; no reply on success, a notice only
+on refusal.
+- Address `inbox-<token>@<INBOUND_EMAIL_DOMAIN>`, issued / rotated / disconnected
+  in Settings → Integrations. The random token is the integration's
+  `external_user_id`, so the recipient identifies the user — automatic
+  forwarding rewrites the sender, the recipient survives it.
+- Webhook `/api/channels/email/inbound` (in `MACHINE_ROUTES`) verifies the
+  Svix / Standard Webhooks signature over the raw body (Resend SDK), fails
+  closed. The event is metadata only; the body, headers, SPF/DKIM/DMARC results
+  and attachment URLs come from the receiving API.
+- The sender must be the owner: a manual forward From their account email
+  (DMARC must not fail, so it cannot simply be spoofed), or Gmail automatic
+  forwarding naming them in `X-Forwarded-For`. Anything else is dropped
+  silently — a leaked address alone cannot fill someone's Inbox, and unknown
+  senders are never answered (backscatter). Other providers' automatic
+  forwarding (which do not add such a header) is therefore not accepted yet;
+  a verified list of extra sender addresses is the natural next step.
+- Gmail's forwarding-confirmation mail is not captured: its code/link is stored
+  on the integration (`metadata`, migration 123, webhook-written only) and shown
+  in Settings so the user can finish the Gmail setup.
+- Text: subject + the meaningful body (HTML → text, quoted replies and
+  signatures dropped, a forwarded message's own body kept) → task detection.
+  Attachments (up to 5, not inline images, 10 MB each) → the Documents pipeline
+  as in step 2 (receipts/invoices → expense drafts, briefs → task drafts). A
+  one-line body around attachments ("see attached") is not captured as text.
+- Keys: `Message-ID` for the text, `Message-ID#attachment-id` per file — a
+  redelivery is one capture. Auto-submitted mail and bounces are ignored.
+- Refusals (read-only org, plan limit, oversized attachment) are mailed to the
+  owner's account address — never to the sender, who may be a vendor.
 
 Each step keeps `typecheck`, `lint`, `test` and `build` green and is smoked
 live before the next starts.
