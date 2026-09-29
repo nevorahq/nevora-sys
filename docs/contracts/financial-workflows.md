@@ -1,6 +1,6 @@
 # Contract — Financial Workflows (confirm-first)
 
-**Status:** Active · **Last verified:** 2026-08-21
+**Status:** Active · **Last verified:** 2026-09-29 (after migration `115`)
 **Enforced by:** [`test/release-invariants.test.ts`](../../test/release-invariants.test.ts)
 
 Nevora is **AI-assisted, not AI-controlled**. This document is the normative
@@ -24,47 +24,56 @@ below is asserted by a test that fails the build if the clause is broken.
 | F4 | Subscription **attachment** (linking a doc) is not an expense. | Filing a receipt ≠ posting it. |
 | F5 | Task **completion** is not payment. | "Done" is an operational state, not a financial one. |
 | F6 | A **planned** obligation is not a posted transaction. | `status='planned'` rows are forecasts. |
-| F7 | A posted transaction is created **only** by explicit user confirmation, or by an already-approved idempotent workflow. | Single door into the ledger. |
+| F7 | A posted transaction is created **only** by explicit user confirmation in Finance or in a review surface. | Single door into the ledger. |
 | F8 | Repeating the confirmation must **not** duplicate the transaction. | Double-click, retry, and refresh are all safe. |
 
-## 2. The only two doors into the ledger
+## 2. The single door into the ledger
 
-Every `money_transactions` row with `status='posted'` originates from exactly one of:
+Every `money_transactions` row with `status='posted'` originates from an
+**explicit user confirmation** — the user saw the amount and pressed a button:
 
-1. **Explicit user confirmation.**
-   `createTransactionAction`, `confirmDocumentTransactionAction`,
-   `postPlannedTransactionAction`, `createTransferAction`.
-   The user saw the amount and pressed a button.
+- **In Finance:** `createTransactionAction`, `postPlannedTransactionAction`,
+  `createTransferAction`, `confirmDocumentTransactionAction`
+  (`modules/moneyflow/actions/`).
+- **In a review surface:** `confirmFinancialSuggestionRecord`
+  (`modules/review/services/financial-suggestion.service.ts`) — reached from the
+  Inbox / Documents review, including the receipt review dialog
+  (`saveReviewedReceiptAction`).
 
-2. **An approved idempotent workflow.**
-   `workflows/financial-obligations/actions.ts::markSubscriptionPaymentAction`
-   → `mark_subscription_payment_paid` RPC (078)
-   `workflows/financial-obligations/actions.ts::markFinancialTaskPaidAction`
-   → `mark_financial_task_paid` RPC (079)
-   Still user-initiated ("Mark as paid"), but the posting is atomic and replay-safe.
+Nothing else. In particular **no cron, no AI job, no channel webhook and no
+event handler posts money.**
 
-Nothing else. In particular **no cron, no AI job, and no event handler posts money.**
-The daily `sweep-subscription-payment-workflow` is repair-only: it opens missing
-planned cycles and missing payment tasks, and never marks anything paid.
+**Subscriptions and Tasks do not write to Money** (migration `115`, ADR 001).
+The former second door — `mark_subscription_payment_paid` (`078`) and
+`mark_financial_task_paid` (`079`), which posted an expense atomically on
+"Mark as paid" — was dropped together with Financial Tasks. Marking a
+subscription payment paid now records the fact on
+`subscription_payment_cycles` only; a user who wants it in Finance records it
+there. The daily `subscription-sweep` is repair-only: it opens missing planned
+cycles and payment tasks, and never marks anything paid.
 
 ## 3. How idempotency is guaranteed (F8)
 
-`mark_subscription_payment_paid` is not "idempotent by convention" — it is
-idempotent by three independent database mechanisms:
+**Confirming a financial suggestion.** `confirmFinancialSuggestionRecord`
+returns the existing `created_transaction_id` with `alreadyConfirmed: true`
+when the suggestion is already confirmed, and refuses rejected ones — a second
+click posts nothing. One document yields at most one posted transaction.
 
-1. **Row lock.** The cycle is read `FOR UPDATE`, so two concurrent clicks serialize.
-2. **Status guard.** `IF v_cycle.status = 'paid' THEN` returns
-   `{already_paid: true}` with the *existing* `transaction_id`, creating nothing.
+**Marking a subscription payment paid** (no money is posted, but the cycle must
+not be settled twice). `markSubscriptionPaymentAsPaid`
+(`modules/subtracker/services/mark-subscription-payment-as-paid.ts`) is guarded
+three ways:
+
+1. **Status guard.** A cycle already `paid` returns success without writing.
+2. **Compare-and-set.** The UPDATE carries
+   `.in("status", ["planned", "task_open"])`, so a concurrent pay/skip cannot
+   both win.
 3. **Unique keys.** `UNIQUE (organization_id, idempotency_key)` and
    `UNIQUE (organization_id, subscription_id, billing_period_key)` on
-   `subscription_payment_cycles` make a duplicate physically impossible even if
-   (1) and (2) were bypassed.
+   `subscription_payment_cycles` (`078`) make a duplicate cycle impossible.
 
-The amount and currency are re-read **server-side** from the cycle/subscription.
-They are never accepted from the client.
-
-For one-off financial tasks, the equivalent guard is
-`todos.financial_transaction_id` — non-null means already posted.
+Amounts are never accepted from the client for either path — they come from
+the stored suggestion or cycle.
 
 ## 4. The canonical flow
 
@@ -101,12 +110,15 @@ Landing and pricing copy are asserted against these rules in
 
 Structural (runs in CI, no database needed):
 
-- `test/release-invariants.test.ts` → F1–F8, by asserting on the live migration
-  SQL and on module source.
+- `test/release-invariants.test.ts` → F1–F8, by asserting on the migration SQL
+  and on module source (subscription creation, document attachment, task
+  completion, the subscription sweep and document extraction never insert into
+  `money_transactions`; the mark-as-paid compare-and-set is present).
 
 Behavioural (must be exercised against a real database before release):
 
-- `docs/release/smoke-test-checklist.md` §"Mark as paid idempotency".
+- `docs/release/smoke-test-checklist.md` — document → confirm → exactly one
+  transaction; subscription mark-as-paid twice → one paid cycle.
 
 Structural tests cannot prove runtime behaviour. They prove the *forbidden
 construct is absent*, which is what regresses in practice.

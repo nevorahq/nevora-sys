@@ -27,26 +27,30 @@ start.
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | yes | Supabase project URL (validated as URL). |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Public anon key. |
-| `SUPABASE_SERVICE_ROLE_KEY` | rate-limit / cron | Server-only. Rate limiter + extraction sweep. Unset → fail-open no-op. |
+| `SUPABASE_SERVICE_ROLE_KEY` | cron / channels | Server-only. Cron sweeps, channel webhooks (no session), account deletion, rate limiter. |
 | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | email | Transactional email (verified sender). |
 | `ANTHROPIC_API_KEY` | AI / extraction | AI module + document-to-transaction OCR. |
 | `DOCUMENT_EXTRACTION_MOCK` | local | `1`/`true` stubs AI extraction (no credits). |
-| `CRON_SECRET` | cron | Required, fail-closed, for `/api/cron/extraction-sweep`. |
+| `CRON_SECRET` | cron | Required, fail-closed, for every `/api/cron/*` route (Netlify Scheduled Functions send it). |
 | `RUN_DB_TESTS` | tests | `1` enables the opt-in DB integration test (local DB only). |
 | `TASKS_TRANSPORT` | Tasks extraction | `in-process`, `shadow`, `http-read`, or `http`. |
 | `TASKS_API_URL` | Tasks HTTP | Optional Tasks service origin; falls back to app URL/request host. |
 | `TASKS_SERVICE_AUTH_SECRET` | Tasks machine calls | 32+ character secret for short-lived, operation-bound service claims. |
 | `TASKS_SHADOW_READ_PERCENT` | Tasks canary | Percentage of reads compared remotely in `shadow` mode; default `100`. |
 
+Channels (Telegram, Slack, inbound email), voice transcription, Gmail import,
+Paddle, push and Sentry have their own variables — the full list with comments
+is [`.env.example`](../.env.example), summarized in the [README](../README.md).
+
 ## Verifying changes
 
 ```bash
-npm run typecheck   # next typegen + tsc --noEmit
-npm run typecheck:packages # independently check workspace packages/apps
+npm run typecheck   # next typegen + tsc --noEmit + every package and app
+npm run typecheck:packages # only the workspace packages/apps
 npm run lint        # ESLint (eslint-config-next, typescript)
 npm test            # Vitest (business logic, permissions, route matching)
 npm run build       # production build
-npm run build:tasks # standalone Tasks runtime
+npm run build:tasks # standalone Tasks runtime (also build:subscriptions, build:finance)
 npm run smoke:tasks # run the built Tasks server and verify deployment invariants
 npm run rehearse:tasks # local Supabase + container + signed write/read integration
 npm run canary:tasks # health, readiness, signed read and optional parity check
@@ -57,9 +61,11 @@ the container before publishing it to GHCR. Staging hosts must deploy the
 immutable `sha-<full-commit>` tag with `deploy/tasks/compose.staging.yml`; the
 mutable `staging` alias is for discovery only, not rollback-safe deployment.
 
-CI runs the same sequence on every push/PR to `main`
-(`.github/workflows/ci.yml`): install → `next typegen` → typecheck → lint →
-test → root build → Tasks build. Run these locally before pushing.
+CI (`.github/workflows/ci.yml`) runs three jobs on every push/PR to `main`:
+`secrets` (gitleaks over the history), `verify` (typecheck → lint → test → root
+build → Tasks build, smoke test and container) and `db` (local Supabase, every
+migration from scratch, then the SQL harnesses in `supabase/tests/`). Run the
+`verify` steps locally before pushing.
 
 > `next typegen` generates Next 16 typed-route globals (PageProps/RouteContext)
 > into `.next/dev/types`. They don't exist on a fresh checkout, so `typecheck`
@@ -71,12 +77,17 @@ The production Next.js application remains at the repository root while domain
 boundaries are extracted incrementally into npm workspaces:
 
 ```text
-apps/tasks/                  # independently deployable Tasks Next.js shell
-packages/tasks-api/          # authenticated read/write port definitions
-packages/tasks-contracts/    # portable Tasks DTOs, schemas, constants, helpers
-packages/tasks-runtime/      # shared Supabase queries, mutations and effects
-packages/financial-state/    # shared financial-state contract and UI badge
+apps/{tasks,subscriptions,finance}/          # independently deployable Next.js shells
+packages/{tasks,subscriptions,finance}-api/       # authenticated read/write port definitions
+packages/{tasks,subscriptions,finance}-contracts/ # portable DTOs, schemas, constants, helpers
+packages/{tasks,subscriptions,finance}-runtime/   # Supabase implementation for the standalone app
+packages/financial-state/                    # shared financial-state contract and UI badge
 ```
+
+All three products follow the same pattern (ADR 001). Status on 2026-09-29:
+Tasks is deployed to staging and production runs `TASKS_TRANSPORT=shadow`;
+Subscriptions and Finance build but are not deployed, so their transports stay
+`in-process`. The rest of this section uses Tasks as the worked example.
 
 `apps/tasks` builds as a standalone Next.js application and executes the strict
 Tasks RPC locally. The `@nevora/tasks-runtime` package owns the shared Supabase
@@ -139,7 +150,9 @@ supabase migration new <name>   # create the next NNN_*.sql file
 ```
 
 - **Never edit an already-applied migration.** New schema changes are a new file
-  with the next number (`068_*.sql`, …) — numeric prefix, not date prefix.
+  with the next number (next free: `126`) — numeric prefix, not date prefix.
+- Migrations reach the remote project only when the owner applies them by hand;
+  don't assume one is live until that is confirmed.
 - One migration carries table + indexes + RLS policies + grants together.
 - Make migrations idempotent (`IF NOT EXISTS` / `IF EXISTS`).
 - Do **not** apply migrations to the remote project from local dev without
@@ -184,25 +197,26 @@ or local deep imports. See `docs/adr/001-product-module-boundaries.md`.
 Portable Tasks types, schemas, constants and pure key helpers are the exception
 to the root entrypoint convention: import them from `@nevora/tasks-contracts`.
 
-Tasks, Money and Subscriptions also do not import one another. Put shared,
-product-neutral contracts and service ports under `platform/`; put UI or server
-orchestration that combines products under `workflows/`:
+Tasks, Money and Subscriptions also do not import one another and do not write
+each other's tables. Shared, product-neutral contracts and ports live under
+`platform/` — `access`, `activity`, `financial-state`, `task-lifecycle`, and the
+per-product transport seams `tasks`, `subscriptions`, `finance`:
 
 ```text
-platform <- modules/{tasks,moneyflow,subtracker} <- workflows <- app routes
+platform <- modules/{tasks,moneyflow,subtracker} <- app routes
 ```
 
-For example, `workflows/financial-obligations/ui.tsx` supplies Money's account
-prompt to task/subscription panels through a neutral composition slot.
-Its `actions.ts` and `server.ts` entrypoints own cross-product payment mutations;
-product components receive those mutations as callbacks. Do not call the
-`mark_financial_task_paid` or `mark_subscription_payment_paid` RPC directly from
-a product module—ESLint treats that as a boundary violation.
+Since migration `115` there is no cross-product payment orchestration: the
+former `workflows/financial-obligations` layer, Financial Tasks and the
+`mark_*_paid` RPCs are gone, and marking a subscription paid posts nothing to
+Money.
 
 Database-table ownership follows the same rule. Tasks owns `todos`, Money owns
 `money_*`, and Subscriptions owns `subscriptions` plus
-`subscription_payment_cycles`. Cross-product lifecycle calls use the transport
-seams under `platform/task-lifecycle` and `platform/financial-obligations`.
+`subscription_payment_cycles`. The one cross-product write — Subscriptions
+opening a payment task — goes through `platform/task-lifecycle` into the Tasks
+port (`createGeneratedTask`). ESLint (`no-restricted-syntax` in
+`eslint.config.mjs`) rejects direct access to another product's tables.
 
 - **Business logic lives in `modules/`**, not in `app/page.tsx` (routing only)
   and not in `shared/` (reusable infra/UI only).
@@ -273,8 +287,9 @@ no service role in app logic, no client-trusted ids, no raw SQL interpolation.
 
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — target architecture and hard rules.
 - [`MODULE_STATUS.md`](./MODULE_STATUS.md) — honest per-module status.
-- [`ROADMAP.md`](./ROADMAP.md) — phases, starting at Phase 0.
-- [`PRODUCT_COPY.md`](./PRODUCT_COPY.md) — positioning and landing copy.
+- [`adr/`](./adr/) — product module boundaries (001), multichannel capture (002).
+- [`ROADMAP.md`](./ROADMAP.md) — phases and their status.
+- [`PRODUCT_COPY.md`](./PRODUCT_COPY.md) — positioning and copy rules.
 - [`SECURITY.md`](./SECURITY.md) — security checklist and tenant isolation.
 - [`nevora-architect-prompt.md`](./nevora-architect-prompt.md) — architect system prompt.
 - [`automation-foundation.md`](./automation-foundation.md),

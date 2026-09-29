@@ -27,13 +27,20 @@ detected → needs_review → planned → due → paid | cancelled
 | **needs_review** | Awaiting explicit human classification/confirmation | No | No |
 | **planned** | A planned obligation exists (future/expected) | No | No |
 | **due** | The obligation is now owed (its date has arrived / a payment task is open) | No | No |
-| **paid** | A posted `money_transactions` row exists — money actually moved | **Yes** | **Yes** |
+| **paid** | Money actually moved — a posted `money_transactions` row in Finance, or a subscription cycle the user marked paid | **Yes** | In Finance **yes**; a subscription cycle **no** (since `115`) |
 | **cancelled** | Terminal without payment (rejected / skipped / dismissed / cancelled) | No | No |
 
-**Only `paid` is a posted transaction.** The transition into `paid` happens ONLY
-through an explicit, authorized, idempotent workflow (user confirm, or
-`mark_subscription_payment_paid` / `mark_financial_task_paid` /
-`confirmFinancialSuggestion`). Nothing else posts money.
+**Only `paid` is a posted transaction** — no other state ever has a ledger row
+behind it. The converse no longer holds everywhere: since migration `115`
+(Tasks / Money / Subscriptions stopped bridging) a subscription cycle can be
+`paid` in Subscriptions with no Money transaction at all.
+
+The transition into `paid` happens ONLY through an explicit user action: a
+confirmation in Finance or in a review surface (`confirmFinancialSuggestionRecord`),
+or "Mark as paid" on a subscription cycle (`markSubscriptionPaymentAsPaid`, which
+posts nothing). The former RPCs `mark_subscription_payment_paid` (`078`) and
+`mark_financial_task_paid` (`079`) were dropped in `115`. See
+[`financial-workflows.md`](./financial-workflows.md) §2.
 
 ---
 
@@ -60,7 +67,11 @@ A `planned` cycle whose `due_date` has arrived resolves to **due** — §1 defin
 sweep may not have run yet. This is a **label** derivation only: no DB status is
 rewritten, and it never turns anything into `paid`.
 
-### `todos.financial_status` (migration 079)
+### `todos.financial_status` (migration 079) — **removed in `115`**
+
+Financial Tasks no longer exist; the column was dropped with them. The mapping is
+kept for reading historical data and old events only.
+
 | DB value | Canonical |
 |---|---|
 | `open` | planned → due (by `financial_due_date`) |
@@ -93,16 +104,18 @@ action item (attention-model §5). Extraction status never means money moved.
 - **detected / needs_review are not a financial fact.** A suggestion is a
   candidate; it posts nothing.
 - **planned / due are not a posted transaction.** An obligation is owed, not paid.
-- **Only an approved transition creates `paid`** — an explicit user confirm or an
-  already-approved idempotent RPC. Repeat clicks and concurrent requests must not
-  create a second `paid` transaction (see idempotency keys in 078/079, exactly-once
-  indexes in 099).
-- **Task completion ≠ payment.** `todos.status = 'done'` does not imply
-  `financial_status = 'paid'`; the two are independent columns.
+- **Only an explicit user action creates `paid`** — a confirmation in Finance or
+  review, or a guarded "Mark as paid" on a subscription cycle. Repeat clicks and
+  concurrent requests must not create a second transaction or settle a cycle
+  twice (confirm returns the existing transaction; cycle compare-and-set and
+  unique keys in `078`; exactly-once indexes in `099`).
+- **Task completion ≠ payment.** Completing a task never marks anything paid or
+  posts money; Tasks has no financial columns since `115`.
 - **Document attachment ≠ expense.** Linking a document posts no transaction.
-- **Subscription creation / attachment ≠ expense.** Only `mark ... paid` posts.
-- **One obligation → one posted transaction.** Enforced by the per-source
-  idempotency keys, not re-derived per click.
+- **Subscription creation / attachment / mark as paid ≠ expense.** Nothing in
+  Subscriptions writes to Money.
+- **One document → at most one posted transaction.** Confirming an already
+  confirmed suggestion returns the existing transaction instead of posting again.
 - **Historical posted values are immutable.** A `paid` transaction keeps the
   amount and FX rate captured at posting time; current organization exchange
   rates (migration 107) never rewrite a posted row.
@@ -114,9 +127,9 @@ action item (attention-model §5). Extraction status never means money moved.
 | Canonical | Primary surface |
 |---|---|
 | detected / needs_review | Capture Inbox + Documents review (financial_suggestions) |
-| planned | Money → planned obligations (planned transactions, open cycles/tasks) |
-| due | Money → Financial Tasks + subscription cycles due |
-| paid | Money → Transactions ledger (posted) |
+| planned | Finance → planned transactions; Subscriptions → open cycles |
+| due | Subscriptions → cycles whose date arrived or whose payment task is open |
+| paid | Finance → transactions ledger (posted); Subscriptions → paid cycles (no ledger row) |
 | cancelled | terminal — retained for history, not shown as attention |
 
 Sprint 4 unit 4.3 unifies these under one Money workspace; the vocabulary here is
@@ -127,7 +140,8 @@ what every tab and label must use (unit 4.4).
 `FinancialStateBadge` component, whose labels always come from `dict.money.states`
 (en/ru/ro). Converted surfaces: subscription payment workflow panel, subscription
 payment task panel, subscription suggestion panel, subscription list item,
-financial task panel, document extraction review. The competing hardcoded
+financial task panel (removed with Financial Tasks in `115`), document extraction
+review. The competing hardcoded
 `REVIEW_STATE_LABELS` map was deleted, as were the `financialTask.status*`
 dictionary keys. `modules/moneyflow/components/financial-state-badge.test.tsx`
 fails if a surface reintroduces its own vocabulary.
