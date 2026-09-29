@@ -18,11 +18,13 @@ Run through this before opening a PR that touches data, schema, or mutations:
 [ ] INSERT/UPDATE policy has WITH CHECK
 [ ] Mutation has a permission check (owner/admin/member)
 [ ] Server Action validates input with Zod
-[ ] No service role in application logic
+[ ] Service role only as allowed in ARCHITECTURE.md (session-less surface or listed exception)
 [ ] No client-trusted organization_id / workspace_id (taken from requireOrg())
 [ ] No raw SQL interpolation
 [ ] Critical action creates an audit log
 [ ] Important business action emits a domain event
+[ ] New machine-facing route (webhook, cron, internal) verifies its caller and is in MACHINE_ROUTES
+[ ] Nothing outside Money inserts into money_transactions
 ```
 
 ## Tenant isolation
@@ -41,11 +43,16 @@ Run through this before opening a PR that touches data, schema, or mutations:
 
 - Pin `search_path` and declare an explicit `GRANT EXECUTE` model
   (`035_rpc_grant_hardening.sql`, `037_security_definer_grants.sql`):
-  - **public (`anon`)**: only slug/token-resolving functions
-    (`create_booking_request_public`, `check_client_booking_conflict_public`,
-    `get_invite_info`) — they never accept internal ids from the client.
+  - **public (`anon`)**: only token-resolving functions (`get_invite_info`) —
+    they never accept internal ids from the client. The public booking RPCs
+    (`create_booking_request_public`, `check_client_booking_conflict_public`)
+    had their `anon` EXECUTE revoked by migration `098` while Booking is paused;
+    un-pausing must restore it deliberately.
   - **authenticated-only**: provisioning + membership RPC
     (`create_organization`, `invite_member`, `accept_invite`, …).
+  - **service_role-only**: `check_rate_limit`, and the service-identity usage
+    RPCs used by `apps/tasks` (`114`) and channel uploads (`122`) — each repeats
+    the membership check itself.
   - **internal-only**: trigger functions and provisioning helpers (EXECUTE
     revoked from clients).
   - **RLS helpers** (`is_org_member`, …) stay callable by `anon`/`authenticated`
@@ -53,23 +60,48 @@ Run through this before opening a PR that touches data, schema, or mutations:
 
 ## Rate limiting
 
-- Public booking endpoints are protected by a **Postgres-backed** rate limiter
-  (`lib/rate-limit/`, migrations `036`/`038`) — works in serverless/multi-instance
-  environments, no external paid service.
+- A **Postgres-backed** rate limiter (`lib/rate-limit/`, migrations `036`/`038`)
+  works in serverless/multi-instance environments with no external paid
+  service. Today it guards only the public booking endpoints, which are paused
+  and answer 404.
 - The write RPC `check_rate_limit` is **service_role only**; the public client
   cannot call it. `limit`/`window` are allow-listed per bucket in SQL (not set by
   the client). `identifier` is a SHA-256 hex of `IP (+ org slug)` — raw IP / email
   / phone are never stored or logged. On exceed: `429` + `Retry-After`.
 
+## Machine-facing surfaces
+
+Every route that runs without a user session authenticates its caller before
+doing any work, and must be listed in `MACHINE_ROUTES`
+(`shared/config/routes.ts`) — otherwise `proxy.ts` redirects it to `/login`.
+
+| Surface | Caller check |
+| --- | --- |
+| `/api/cron/*` | `Authorization: Bearer CRON_SECRET` — 503 if unset, 401 if wrong |
+| `/api/internal/{activation-funnel,job-health}` | `Bearer METRICS_SECRET` (distinct from `CRON_SECRET`) |
+| `/api/internal/{tasks,subscriptions,finance}` | HMAC service claims (`nts1.` / `nss1.` / `nfs1.`), bound to one operation, short-lived; live membership re-checked |
+| `/api/channels/telegram/webhook` | `X-Telegram-Bot-Api-Secret-Token` = `TELEGRAM_WEBHOOK_SECRET`; sender must be a linked account |
+| `/api/channels/slack/*` | Slack signing secret; OAuth `state` bound to an httpOnly cookie, user and organization |
+| `/api/channels/email/inbound` | Svix signature (`RESEND_INBOUND_WEBHOOK_SECRET`); sender must be the account owner, unknown senders dropped |
+| `/api/billing/webhook` | Paddle `ts=…;h1=…` signature; paid plans activate only here |
+
+Channel traffic is unauthenticated input that reaches an AI call, so the AI
+request is metered **before** the model is called (`capture_intent`, migration
+`119`; `voice_transcription`, `124` — a transcription the provider could not run
+returns its unit).
+
 ## Secrets & service role
 
-- `SUPABASE_SERVICE_ROLE_KEY` is **server-only**. It is used solely by the rate
-  limiter and the cron extraction-sweep worker (cross-org). If unset, those
-  degrade to a fail-open no-op — never put it in request-path business logic.
-- `CRON_SECRET` is **required and fail-closed** for `/api/cron/extraction-sweep`
+- `SUPABASE_SERVICE_ROLE_KEY` is **server-only**. It is allowed on session-less
+  surfaces (cron, the webhooks above, internal service routes) and on the short
+  list of in-session exceptions in [`ARCHITECTURE.md`](./ARCHITECTURE.md), always
+  scoped to a verified organization/user. A new use must extend that list.
+- `CRON_SECRET` is **required and fail-closed** for every `/api/cron/*` route
   (Bearer auth). Generate with `openssl rand -hex 32`.
-- `ANTHROPIC_API_KEY`, `RESEND_API_KEY` are server-only; never expose to the
-  client. Only `NEXT_PUBLIC_*` values reach the browser.
+- `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `RESEND_API_KEY`, channel secrets,
+  `GMAIL_TOKEN_ENCRYPTION_KEY` and Paddle secrets are server-only; never expose
+  them to the client. Only `NEXT_PUBLIC_*` values reach the browser. Gmail OAuth
+  tokens are stored encrypted.
 - `.env.example` carries placeholders only — never a real key, not even a
   test-mode one. Paddle placeholders use obvious non-secret samples such as
   `pdl_sdbx_your_api_key`, `pdl_ntfset_your_notification_destination_secret`,
@@ -102,6 +134,11 @@ exposure was local-disk only.
    of a real account and it sat unencrypted on disk. Rotation is cheap;
    assurance is not.
 3. Never place a live value in `.env.example`, including test-mode keys.
+
+Rotation is still owed and tracked as **I-07** in
+[`release/p0-p1-issue-register.md`](./release/p0-p1-issue-register.md) — a
+public-launch blocker. Recurrence is guarded by gitleaks in CI and the
+pre-commit hook (see `DEVELOPMENT.md`).
 
 Verify the current tree stays clean (the character classes keep this command from
 matching its own documentation):
