@@ -36,7 +36,7 @@ ORDER BY updated_at;
 
 | Cause | Check |
 |---|---|
-| Cron not running | `/api/cron/extraction-sweep` — is it scheduled in `vercel.json`? |
+| Cron not running | `/api/cron/extraction-sweep` — is `netlify/functions/extraction-sweep.mts` deployed with its `*/10` schedule, and is the site deploying at all? |
 | Cron rejecting | It is **fail-closed**: no `CRON_SECRET` ⇒ 503, wrong secret ⇒ 401. A 503 in logs means the env var is missing, not that the job failed. |
 | `ANTHROPIC_API_KEY` missing / rate-limited | The sweep triggers billed AI spend; it refuses to run unconfigured. |
 | `DOCUMENT_EXTRACTION_MOCK` set in prod | Extraction "succeeds" with mock data. Must be unset in production. |
