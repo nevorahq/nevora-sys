@@ -36,7 +36,10 @@ export interface TelegramHandlerDeps {
    * declined). `reserve` records the paid call in the AI quota first.
    */
   transcriber: {
-    reserve: (ctx: CurrentContext, durationSeconds: number | null) => Promise<boolean>;
+    /** The ledger row id, or null when the AI quota is used up. */
+    reserve: (ctx: CurrentContext, durationSeconds: number | null) => Promise<string | null>;
+    /** Give the unit back when the provider did no work. */
+    release: (ctx: CurrentContext, requestId: string) => Promise<void>;
     transcribe: (audio: { bytes: ArrayBuffer; fileName: string; mimeType: string }) => Promise<TranscriptionResult>;
   } | null;
 }
@@ -177,14 +180,19 @@ export async function handleTelegramUpdate(
       throw new Error("Telegram voice message could not be downloaded.");
     }
 
-    if (!(await deps.transcriber.reserve(ctx, voice.durationSeconds))) {
+    const requestId = await deps.transcriber.reserve(ctx, voice.durationSeconds);
+    if (!requestId) {
       await reply(locale, (bot) => bot.aiLimit);
       return { action: "voice_rejected" };
     }
     const transcript = await deps.transcriber.transcribe({ bytes: downloaded.bytes, fileName: voice.fileName, mimeType: voice.mimeType });
     if (!transcript.ok) {
+      // The provider did no (billed) work: the quota unit goes back.
+      if (transcript.reason !== "empty") await deps.transcriber.release(ctx, requestId);
       // Answered, not retried: a redelivery would pay for the call again.
-      await reply(locale, (bot) => (transcript.reason === "empty" ? bot.voiceEmpty : bot.voiceFailed));
+      await reply(locale, (bot) =>
+        transcript.reason === "empty" ? bot.voiceEmpty : transcript.reason === "unavailable" ? bot.voiceTemporarilyUnavailable : bot.voiceFailed,
+      );
       return { action: "voice_rejected" };
     }
 

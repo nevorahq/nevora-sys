@@ -1813,6 +1813,7 @@ export const en = {
         voiceEmpty: "I couldn't make out any speech. Try again, or send it as text.",
         voiceFailed: "I couldn't transcribe this voice message right now. Try again in a minute.",
         voiceUnavailable: "Voice messages aren't set up yet. Send it as text.",
+        voiceTemporarilyUnavailable: "Voice messages are temporarily unavailable. Send it as text for now.",
         aiLimit: "Your plan's AI limit for this month has been reached, so the voice message wasn't transcribed. Send it as text.",
         /** {max} is the size limit in MB. */
         mediaTooLarge: "This file is too large — send one up to {max} MB.",

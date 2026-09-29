@@ -1754,6 +1754,7 @@ export const ro: Dictionary = {
         voiceEmpty: "Nu am putut distinge vorbirea. Încearcă din nou sau scrie un text.",
         voiceFailed: "Nu am putut transcrie mesajul vocal acum. Încearcă din nou peste un minut.",
         voiceUnavailable: "Mesajele vocale nu sunt încă configurate. Scrie un text.",
+        voiceTemporarilyUnavailable: "Mesajele vocale sunt temporar indisponibile. Deocamdată scrie un text.",
         aiLimit: "Limita lunară de IA a planului a fost atinsă, așa că mesajul vocal nu a fost transcris. Scrie un text.",
         mediaTooLarge: "Fișierul este prea mare — trimite unul de cel mult {max} MB.",
         mediaInvalid: "Acest tip de fișier nu poate fi adăugat. Trimite o poză, un PDF sau o imagine.",
