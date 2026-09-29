@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { LOCALES, type Locale } from "@/shared/i18n/constants";
+import type { Locale } from "@/shared/i18n/constants";
 import { getDictionaryFor } from "@/shared/i18n/get-dictionary";
 import { ROUTES } from "@/shared/config/routes";
 import { PLANNER_RAW_TEXT_MAX_LENGTH } from "@/modules/planner/schemas/planner-entry.schema";
@@ -14,6 +14,7 @@ import {
   type ChannelFileOutcome,
 } from "../services/channel-intake";
 import { consumeLinkCode, findActiveIntegration, revokeIntegrationByExternal } from "../services/link-codes";
+import { localeFromLanguageCode, resolveUserLocale } from "../services/user-locale";
 import type { ChannelIntegration } from "../types";
 import { hasMedia, parseTelegramCommand, pickAttachment, type TelegramUpdate } from "./telegram-update";
 import type { TelegramDownload } from "./telegram-api";
@@ -257,18 +258,12 @@ function botCopy(locale: Locale): BotCopy {
   return getDictionaryFor(locale).channels.telegram.bot;
 }
 
-/** Telegram's IETF tag (`ru`, `ro`, `en-US`, …) → an app locale; English otherwise. */
-export function localeFromLanguageCode(code: string | undefined): Locale {
-  const base = code?.toLowerCase().split("-")[0];
-  return LOCALES.find((locale) => locale === base) ?? "en";
+/** The linked user's chosen app language, else the Telegram client's. */
+function userLocale(supabase: SupabaseClient, integration: ChannelIntegration, fallback: Locale): Promise<Locale> {
+  return resolveUserLocale(supabase, integration.user_id, fallback);
 }
 
-/** The linked user's chosen app language, else the Telegram client's. */
-async function userLocale(supabase: SupabaseClient, integration: ChannelIntegration, fallback: Locale): Promise<Locale> {
-  const { data } = await supabase.from("profiles").select("language").eq("id", integration.user_id).maybeSingle();
-  const language = (data as { language?: string } | null)?.language;
-  return LOCALES.find((locale) => locale === language) ?? fallback;
-}
+export { localeFromLanguageCode };
 
 async function organizationName(supabase: SupabaseClient, organizationId: string): Promise<string> {
   const { data } = await supabase.from("organizations").select("name").eq("id", organizationId).maybeSingle();
