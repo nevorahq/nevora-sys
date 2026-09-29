@@ -1,6 +1,6 @@
 # Smoke Test Checklist — Nevora Business OS
 
-**Status:** Canonical · **Last updated:** 2026-07-09 (Paddle billing replacement)
+**Status:** Canonical · **Last updated:** 2026-09-29 (Financial Tasks removed in `115`; channels added)
 **Run:** by a human, against the deployed environment, after every release.
 
 Structural tests in CI prove a forbidden construct is *absent*. This checklist
@@ -61,13 +61,10 @@ org owned by a different user (for isolation checks).
 - [ ] ⚑ Completing a task posts **no** money transaction and marks **no**
       obligation paid. Check `money_transactions` count before/after.
 
-## 4. Financial Tasks
+## 4. Financial Tasks — removed
 
-- [ ] `/dashboard/tasks/financial` lists one-off financial obligations.
-- [ ] Mark a financial task paid → exactly one posted transaction.
-- [ ] ⚑ Click **Mark as paid** twice (double-click, then refresh and click again).
-      **Expect:** still exactly one transaction; second call reports already-paid.
-- [ ] Skip / dismiss a financial task → closes it, posts nothing.
+Financial Tasks were removed in migration `115`; there is no screen to test.
+- [ ] No "financial task" screen, tab or action is reachable from `/tasks`.
 
 ## 5. Money / Money Intelligence
 
@@ -96,18 +93,36 @@ org owned by a different user (for isolation checks).
 - [ ] ⚑ Attaching a document to a subscription posts **no** money transaction.
 - [ ] A planned payment cycle + payment task are created.
 - [ ] Subscription payment review appears in the Action Center.
-- [ ] Mark the cycle paid → one expense, task completed, subscription advanced,
-      next cycle opened.
-- [ ] ⚑ **Idempotency.** Click Mark as paid twice.
-      **Expect:** one transaction, `already_paid: true` on the second call, and
-      the schedule advances exactly once.
+- [ ] Mark the cycle paid → cycle `paid`, subscription advanced, next cycle
+      opened.
+- [ ] ⚑ Marking a cycle paid posts **no** money transaction (since `115`).
+      Check `money_transactions` count before/after.
+- [ ] ⚑ **Idempotency.** Click Mark as paid twice (double-click, then refresh and
+      click again). **Expect:** the second call changes nothing and the schedule
+      advances exactly once.
+- [ ] Renewal decision: a renewal due soon appears in the decision list; keep /
+      cancel records the decision without touching payment state.
 
 ## 8. Capture Inbox
 
 - [ ] `/dashboard/inbox` accepts a raw capture.
 - [ ] AI produces a suggestion; accept / edit / reject all work.
 - [ ] Accepting routes through the existing module service (task/doc/etc.).
+- [ ] A task draft proposes a project; changing it on accept is kept.
+- [ ] Photo of a handwritten list / whiteboard → task drafts, no expense draft.
+- [ ] Receipt photo or **Scan** (QR) → expense draft in the review dialog;
+      confirm → exactly one posted transaction; confirm again → still one.
 - [ ] ⚑ Accepting a capture never posts money directly.
+
+### 8b. Channels (each after linking in Settings → Integrations)
+
+- [ ] Telegram: link with the code; a text message → Inbox draft; a photo /
+      document → captured; an unlinked account is asked to link, nothing captured.
+- [ ] Slack: "Send to Nevora" on a message → Inbox draft (text only).
+- [ ] Email: forward from the account address → draft; a PDF invoice attached
+      → expense draft; mail from any other sender → dropped silently.
+- [ ] ⚑ Each webhook answers non-200 to an unsigned request.
+- [ ] A redelivered Telegram message is captured once.
 - [ ] Pending-AI and failed-extraction states are visible and actionable.
 - [ ] Captures are owner-scoped: a member sees only their own.
 

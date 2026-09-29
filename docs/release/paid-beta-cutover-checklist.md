@@ -102,7 +102,7 @@ close them here since the cutover is the natural moment.
       (deferred *to this cutover*; still a public-launch blocker).
 - [ ] **I-11** — run CI green on the **actual deploy commit** (migrations `000`→head
       from scratch + SQL harnesses + `next build`).
-- [ ] **I-12** — replace placeholder landing contact channels with real ones.
+- [x] **I-12** — replace placeholder landing contact channels with real ones (done; verified 2026-09-29).
 
 ---
 

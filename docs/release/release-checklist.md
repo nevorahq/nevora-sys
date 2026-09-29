@@ -1,17 +1,20 @@
 # Release Checklist — Nevora Business OS
 
-**Status:** Canonical · **Last updated:** 2026-07-23 (schema-drift repair, migration `113` — tree `000`–`113`, applied on remote)
+**Status:** Canonical · **Last updated:** 2026-09-29 (tree `000`–`125`, applied on remote; host Netlify)
 **Supersedes:** [`phase-7-release-checklist.md`](./phase-7-release-checklist.md)
 (kept for history; its migration section stops at 077 and is stale)
 
 Run top-to-bottom before deploying. Do not skip §2 (migrations) or §3 (scope gate).
 
-**Current release line:** branch `billing-paddle-replacement-20260709`, HEAD
-`6cf165f` (committed). The Paddle billing replacement (Stripe adapter removed,
-`paddle-billing.adapter.ts` + `paddle-env.ts` added, migrations `100`/`101`) sits
-in the working tree on top of this HEAD and is not yet committed.
+**Release line:** `main`. Netlify deploys production on every merge to `main`
+(site `nevora-business-os`); CI (`verify`, `db`, `secrets`) must be green on the
+merge commit.
 
-**Latest smoke/verdict evidence (2026-07-09, commit `bb9c486`):**
+**Latest safety-gate evidence:**
+[`launch-readiness-2026-07-22.md`](./launch-readiness-2026-07-22.md) (safety gate
+verified, activation gate pending).
+
+**Earlier smoke/verdict evidence (2026-07-09, commit `bb9c486`):**
 [`release-evidence-2026-07-09.md`](./release-evidence-2026-07-09.md) (verdict:
 **Private Beta Ready**, public launch No-Go) ·
 [`smoke-test-report-2026-07-09.md`](./smoke-test-report-2026-07-09.md) (partial —
@@ -28,9 +31,9 @@ rotation + I-09 interactive smoke still open).
 
 | | |
 |---|---|
-| **Current baseline (tree)** | `000` – `113` (113 files, no duplicate prefixes; `054` is a known, intentional gap) |
-| **Next free number** | **`114`** |
-| **Remote state** | `000`–`113` applied on `uimpykbnatzhykzpastd` (`113` confirmed 2026-07-23; `000`–`112` **maintainer-confirmed 2026-07-22**). `000`–`105` confirmed 2026-07-13 (`105` = inbox universal-capture idempotency); `106`–`109` (multilingual + FX) applied 2026-07-16 (PR #46); `110`–`111` (job-health indexes + durable notification history) applied 2026-07-22 (PR #55); `112` (usage-discrepancy audit table) applied 2026-07-22. |
+| **Current baseline (tree)** | `000` – `125` (no duplicate prefixes; `054` is a known, intentional gap) |
+| **Next free number** | **`126`** |
+| **Remote state** | `000`–`125` applied on `uimpykbnatzhykzpastd` (`125` confirmed 2026-09-29 by probing `capture_project_rules`; `114` confirmed 2026-09-23; `115`–`124` applied by the maintainer 2026-08-22 → 2026-09-29). Earlier: `000`–`105` confirmed 2026-07-13 (`105` = inbox universal-capture idempotency); `106`–`109` (multilingual + FX) applied 2026-07-16 (PR #46); `110`–`111` (job-health indexes + durable notification history) applied 2026-07-22 (PR #55); `112` (usage-discrepancy audit table) applied 2026-07-22. |
 | **`098` status** | Applied. Anon can no longer read booking tables or EXECUTE the public booking RPCs (verified with the public anon key). |
 | **`099` status** | Applied. `todos.source_suggestion_id` + the four exactly-once indexes are live; the migration went in before the app deploy that writes the column. |
 | **`100`/`101` status** | Applied. `100` enforces the Paddle-only billing provider boundary; `101` fixes it to still allow the internal `'manual'` default so `create_organization` does not roll back. |
@@ -40,16 +43,17 @@ rotation + I-09 interactive smoke still open).
 | **`111` status** | Applied (2026-07-22). `process_due_reminders` now always materializes the action item + in-app notification for a due reminder; category mutes gate only the disruptive channels, not durable history. |
 | **`112` status** | Applied (2026-07-22). `usage_reconciliation_discrepancies` audit table (service-role only, RLS on / no policy). The usage-reconcile sweep writes to it best-effort. |
 | **`113` status** | **Applied 2026-07-23 (maintainer-confirmed, and independently verified: the `workspaces.slug` COMMENT that only `113` sets is present on remote via the PostgREST OpenAPI description).** A NO-OP on remote by design — Repairs drift found 2026-07-23 by running the opt-in integration test against a database rebuilt from this tree: `workspaces.slug` was missing (so `create_organization()` failed) and `money_accounts.user_id` was `NOT NULL` while no code sets it (so every account insert failed). Remote already has the slug column and no `user_id` column, so applying it changes nothing there — its value is that staging / DR / CI can rebuild a WORKING database. Proof: `supabase/tests/113_schema_drift_repair_verification.sql` actually calls `create_organization()` and inserts an account inside a rolled-back transaction; it FAILS without `113`. |
+| **`114`–`125` status** | Applied. `114` Tasks service usage RPCs; **`115` destructive** — drops Financial Tasks columns and the `mark_*_paid` RPCs (no app rollback may cross it); `116` Gmail import; `117`/`118` renewal decisions + reminders; `119` `capture_intent` AI quota; `120` `documents.capture_code`; `121`–`123` channel intake; `124` `voice_transcription` quota; `125` capture project rules. |
 | **Phase A schema change** | **None.** Phase A is code + docs only. |
 | **Phase B–D schema change** | `094` (planner confirmation), `095` (onboarding progress), `096` (Phase D commercial readiness), `097` (documents↔money↔subscriptions). |
 | **Paddle billing schema change** | `100` (Paddle-only billing boundary), `101` (fix boundary to allow internal `'manual'` provider). |
 | **Account deletion schema change** | `102`/`103` (auth-user-delete FK safety), `104` (`account_deletion_requests`). |
 | **Multilingual + FX schema change** | `106` (Romanian `language` CHECK), `107` (`organization_exchange_rates` + cross-currency transfers), `108`/`109` (`create_money_transfer` fixes). |
 
-> ⚠️ This table has gone stale **three times**: first at "000–086, next 087",
-> then at "000–093, next 094" (which also wrongly claimed "93 files, no gaps" —
-> there are 97 files and `054` is absent), then at "000–101, next 102" (the tree
-> had already reached `109`). **Do not reintroduce any of them.** Verify against
+> ⚠️ This table has gone stale **four times**: at "000–086, next 087", at
+> "000–093, next 094" (which also wrongly claimed "93 files, no gaps" — `054` is
+> absent), at "000–101, next 102" (the tree had reached `109`), and at "000–113,
+> next 114" (the tree had reached `125`). **Do not reintroduce any of them.** Verify against
 > the tree, not against a doc:
 >
 > ```sh
@@ -65,8 +69,8 @@ arity" and is **not** proof of absence.
 
 | Migration | Confirm this object exists | Verified 2026-07-08 |
 |---|---|---|
-| `078` Subscription Payment Workflow | table `subscription_payment_cycles`; RPC `mark_subscription_payment_paid` | ✅ |
-| `079` Financial Context Tasks | columns `todos.task_context_type`, `todos.financial_status` | ✅ |
+| `078` Subscription Payment Workflow | table `subscription_payment_cycles` (its RPC was dropped in `115`) | ✅ |
+| `079` Financial Context Tasks | superseded — `115` dropped these `todos` columns | — |
 | `080` Capture Inbox | tables `planner_entries`, `planner_suggestions` | ✅ |
 | `086` Trial Reuse Protection | table `billing_trial_claims` | ✅ |
 | `089` Trial Identity Hardening | table `billing_identities`; RPC `get_organization_access_state` | ✅ |
@@ -78,13 +82,22 @@ arity" and is **not** proof of absence.
 | `105` Inbox universal-capture idempotency | idempotency index on `planner_entries` | ✅ (2026-07-13) |
 | `107` Org FX rates + cross-currency transfers | table `organization_exchange_rates` | ✅ (2026-07-21) |
 | `106`/`108`/`109` Multilingual + FX fixes | `language` CHECK allows `'ro'`; `create_money_transfer` runs without 42702/42703 | ✅ (maintainer-confirmed 2026-07-21) |
+| `114` Tasks service usage | RPC `reserve_tasks_usage_for_service` (service_role) | ✅ (2026-09-23) |
+| `115` Remove Financial Tasks | `todos.financial_status` **absent** — `select=financial_status` → 400 while `select=id` → 200 | ✅ (2026-09-29) |
+| `116` Gmail invoice import | tables `gmail_connections`, `gmail_invoice_imports` | ✅ (2026-09-29) |
+| `117` Renewal decision inbox | table `subscription_renewal_cases` | ✅ (2026-09-29) |
+| `121` Channel intake | tables `channel_integrations`, `channel_link_codes`; `planner_entries.channel` | ✅ (2026-09-29) |
+| `125` Capture project rules | table `capture_project_rules`; `planner_entries.channel_signals` | ✅ (2026-09-29) |
 
 Migrations are applied **manually** by the maintainer (the Supabase CLI is not
 logged in). See `docs/runbooks/rollback.md` before applying anything irreversible.
 
 ---
 
-## 1. Environment variables (verify in Vercel **Production** scope)
+## 1. Environment variables (verify in Netlify, context *Production*, scopes *functions* + *runtime*)
+
+A changed variable reaches the site only with a **new deploy** — set it, then
+trigger a redeploy.
 
 | Var | Purpose | Notes |
 |---|---|---|
@@ -106,6 +119,14 @@ logged in). See `docs/runbooks/rollback.md` before applying anything irreversibl
 | `RUN_DB_TESTS` | gate DB tests | leave unset in prod |
 | `NEVORA_ENABLE_CRM` | paused-module flag | **must be unset/false in prod** |
 | `NEVORA_ENABLE_BOOKING` | paused-module flag | **must be unset/false in prod** |
+| `METRICS_SECRET` | internal metrics / job health | **secret**; distinct from `CRON_SECRET` |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME` / `TELEGRAM_WEBHOOK_SECRET` | Telegram capture | **secret**; re-register the webhook when the URL changes |
+| `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` / `SLACK_SIGNING_SECRET` | Slack capture | **secret** |
+| `RESEND_INBOUND_WEBHOOK_SECRET` / `INBOUND_EMAIL_DOMAIN` | email forwarding | **secret** + receiving domain |
+| `OPENAI_API_KEY` | voice transcription | **secret**; billed; unset ⇒ bot asks for text |
+| `GOOGLE_GMAIL_*` / `GMAIL_TOKEN_ENCRYPTION_KEY` | Gmail invoice import | **secret** |
+| `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | error reporting | recommended |
+| `TASKS_TRANSPORT` / `TASKS_API_URL` / `TASKS_SERVICE_AUTH_SECRET` / `TASKS_SHADOW_READ_PERCENT` | Tasks service seam | production runs `shadow` |
 
 - [ ] Every secret set in **Production** scope (not only Preview).
 - [ ] `DOCUMENT_EXTRACTION_MOCK` is **off**.
@@ -134,11 +155,12 @@ dashboard before making or keeping the repository public.
 
 Phase A locks the product promise. Confirm before shipping:
 
-**Active modules** — Dashboard (Action Center), Action Center, Tasks, Projects,
-Financial Tasks, Money, Money Intelligence, Documents, Subscriptions,
-Subscription Payment Workflow, Capture Inbox, Settings, Members,
-Billing / Plans / Limits, Relations, Notifications, Automation, Domain Events,
-Analytics, AI Assistant, Developer Access, Trial lifecycle.
+**Active modules** — Action Center (`/dashboard`), Inbox + channels (Telegram,
+Slack, email), Tasks + Projects (`/tasks`), Finance (`/finance`), Documents,
+Subscriptions (`/subscriptions`), Settings, Members, Billing / Plans / Limits,
+Notifications, Relations, Automation, Domain Events, Developer Access, Trial
+lifecycle. Overview, Analytics and AI pages exist but are not in the navigation.
+Financial Tasks were removed in `115`.
 
 **Paused modules** — CRM, Leads, Clients, Deals, Contacts, Pipelines, Booking
 (including its public surface).
@@ -160,26 +182,18 @@ Analytics, AI Assistant, Developer Access, Trial lifecycle.
 Automated by `shared/config/paused-modules.coverage.test.ts` — it scans the tree,
 so a *newly added* ungated CRM/Booking file fails CI.
 
-### ⚠️ Known residual: the app gate does not cover the data layer
+### Booking data layer — closed (`098`)
 
-Migration `016` grants `anon` SELECT on `booking_pages` (and the host/service
-tables the public flow needs). The **anon key is public by design**, so published
-booking pages remain enumerable straight from the Supabase REST endpoint even
-though every Next.js route 404s. Verified 2026-07-08 — 3 rows readable.
+Migration `016` had granted `anon` SELECT on the booking tables and EXECUTE on
+the public booking RPCs, so the module was gated in the app but not in the
+database. `098` revoked both (verified 2026-07-09 with the public anon key:
+`42501` on every booking table, `401` on the RPCs). Re-check if anything touches
+booking grants:
 
 ```sh
-# Reproduces the residual read (no app involved):
-curl -s "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/booking_pages?select=organization_slug,public_enabled" \
-  -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY"
+curl -s "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/booking_pages?select=organization_slug" \
+  -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY"   # must be a permission error
 ```
-
-- [ ] **Decide before public release** (product call, then tick):
-  - [ ] Accept — booking page slugs are low-sensitivity, or
-  - [ ] Set `public_enabled = false` on published rows (data change, reversible), or
-  - [ ] Migration `094` narrowing the `anon` SELECT policies (revert when un-pausing).
-
-This is not a Phase A regression — it predates it. But do not let §2 above read as
-"Booking is fully gated" until this is settled.
 
 ---
 
@@ -202,12 +216,25 @@ All cron routes fail closed on a missing/invalid `CRON_SECRET`.
 - [ ] `/api/cron/subscription-sweep`
 - [ ] `/api/cron/suggestions-sweep`
 - [ ] `/api/cron/trial-sweep`
+- [ ] `/api/cron/action-items-sweep`
+- [ ] `/api/cron/purge-deleted-accounts`
+- [ ] `/api/cron/usage-reconcile`
 - [ ] Each returns non-200 with no secret. Verify one by hand:
       `curl -i https://<host>/api/cron/reminders` ⇒ must not be 200.
-- [ ] `vercel.json` schedules match the routes that exist.
+- [ ] Every route has a `netlify/functions/<name>.mts` wrapper with a `schedule`
+      matching [`job-reliability-register.md`](./job-reliability-register.md).
 
 Background jobs use the service role. Each must be **scoped, idempotent, and
-logged**. The service role must never appear in an interactive request handler.
+logged**. Outside background jobs, the service role appears only on the
+session-less surfaces and exceptions listed in `docs/ARCHITECTURE.md`.
+
+## 4b. Machine routes
+
+- [ ] Every webhook answers non-200 to an unsigned request:
+      `/api/channels/telegram/webhook`, `/api/channels/slack/interactivity`,
+      `/api/channels/email/inbound`, `/api/billing/webhook`.
+- [ ] A 307 to `/login` from any of them means the route is missing from
+      `MACHINE_ROUTES` or production is serving an old build.
 
 ---
 
@@ -233,10 +260,13 @@ npm run build
 
 - A paused module is reachable by page, Server Action, or route handler.
 - A posted money transaction can be created without explicit confirmation.
-- "Mark as paid" can be made to post twice.
+- Confirming the same draft can post twice, or a subscription cycle can be
+  settled twice.
+- Anything outside Finance and review confirmation inserts into `money_transactions`.
 - Mark-all-as-read changes any obligation state.
 - `organization_id` is trusted from the client anywhere.
-- The service role is used in an interactive request handler.
+- The service role is used outside the list in `docs/ARCHITECTURE.md`.
+- A channel webhook does work before verifying its signature.
 - A cron route answers 200 without `CRON_SECRET`.
 - Migration baseline in this doc disagrees with `supabase/migrations/`.
 - Landing or pricing copy promises a paused module or autonomous AI.

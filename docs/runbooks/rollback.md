@@ -16,9 +16,18 @@ Two situations where rollback is the **wrong** first move:
 ## 1. App rollback (default, ~1 minute)
 
 ```
-Vercel → Deployments → last known-good → Promote to Production
+Netlify → site `nevora-business-os` → Deploys → last known-good **production**
+deploy → **Publish deploy**
 ```
-or `vercel rollback`.
+
+Publishing an older deploy restores the app **and** its Scheduled Functions
+together. If Netlify locks auto-publishing afterwards, unlock it once the fix is
+merged — otherwise later merges to `main` will not go live.
+
+**Never roll back past migration `115`** (2026-08-22). It dropped the
+`mark_*_paid` RPCs and the Financial Tasks columns that older builds call; a
+pre-`115` build breaks against today's schema. The same applies to any build
+older than a destructive migration.
 
 Verify immediately:
 
@@ -34,8 +43,10 @@ a bad feature. **Most incidents end here.**
 
 ## 2. Paused-module leak (no rollback needed)
 
-`NEVORA_ENABLE_CRM` / `NEVORA_ENABLE_BOOKING` are read at request time. Unset them
-in the environment. No deploy, no rollback. Confirm `/dashboard/crm` → 404.
+`NEVORA_ENABLE_CRM` / `NEVORA_ENABLE_BOOKING` are read at request time, but on
+Netlify an environment change reaches the runtime only with a **new deploy**.
+Unset them, then trigger a redeploy of the current commit — no rollback needed.
+Confirm `/dashboard/crm` → 404.
 
 ## 3. Database rollback (rare, deliberate)
 
@@ -87,5 +98,4 @@ The **last** file listed is what is live. The one before it is your target.
 - [ ] Re-run the ⚑ items in `docs/release/smoke-test-checklist.md`.
 - [ ] Record: what broke, what was rolled back, when, and the follow-up.
 - [ ] Confirm the migration baseline still matches `supabase/migrations/`
-      (tree `000`–`101`, next free `102`; all 101 applied on remote, `054` is a
-      known gap).
+      (see `OPERATIONS_MANUAL.md` → Database; `054` is a known gap).
