@@ -1,293 +1,135 @@
 # Roadmap — Nevora Business OS
 
-> Current source-of-truth roadmap for the repository. Status reflects the tree on
-> **2026-07-10**: migrations are present through
-> `101_fix_paddle_boundary_allows_internal.sql` (**baseline
-> `000`–`101`, next free `102`** — all 101 applied on remote; `100`/`101` are the
-> Paddle billing boundary, applied 2026-07-09; `054` is a known, intentional gap),
-> local `typecheck`
-> passes after `next typegen`, and the product focus is the **AI-assisted
-> operating desk, Action Center first** — not CRM or Booking expansion.
->
-> Earlier internal notes numbered phases differently (e.g. "Phase 2 — relations",
-> "Phase 3 — Action Center"). Those map onto the phases below; this document keeps
-> the stabilized execution order.
->
-> **Superseded statements elsewhere.** Any doc claiming the migration head is
-> `067`, `077`, `079`, `086`, or `093`, or that CRM/Booking are merely "hidden from
-> the sidebar", is stale. Canonical: [`OPERATIONS_MANUAL.md`](./OPERATIONS_MANUAL.md),
-> [`release/release-checklist.md`](./release/release-checklist.md),
-> [`MODULE_STATUS.md`](./MODULE_STATUS.md).
->
-> **Known truthfulness gaps (open, tracked as release blockers).** Do not read this
-> document as claiming these are done:
-> - Paddle: it is now the only paid billing provider, but the dedicated
->   checkout/webhook/portal pass is still pending. The repository default is
->   `BILLING_MODE=private_beta`, so paid self-serve checkout is intentionally
->   disabled until Paddle runtime config and smoke tests are complete.
-> - Phase D: `featureGateService` and `usageService` now guard document
->   processing, AI suggestions, and storage upload boundaries; legacy
->   `checkPlanLimit` still exists in older surfaces and should be retired
->   gradually.
-> - Booking: `098` (applied) closed the `anon` read + `SECURITY DEFINER` write
->   surface at the database layer, on top of the route 404s.
-> - Pricing: `modules/billing/plan-catalog.ts` is the single source of truth, in
->   EUR, matching the enforced `plan_limits`. `modules/landing` renders the same
->   commercial numbers through `public-plan-view.ts`; a consistency test pins them.
+> Source-of-truth roadmap. Status reflects `main` on **2026-09-29**: migrations
+> `000`–`125` in the tree and applied on remote (next free `126`; `054` is a
+> known gap), CI green (`verify`, `db`, `secrets`), production on Netlify in
+> **private beta**. Per-module detail: [`MODULE_STATUS.md`](./MODULE_STATUS.md).
+> Verify the migration head against the tree (`ls supabase/migrations | tail -1`)
+> and remote by probing an object the migration creates — never by trusting a doc.
 
-## Phase 0 — Stabilization & Source of Truth — *mostly done / keep synced*
+## Where we are
 
-Bring README, architecture, module status, roadmap, product copy, security and
-CI into one consistent, honest state. No new business features.
-- `docs/` source of truth (this set of files) created.
-- README synced with the real project state.
-- `typecheck` npm script added; lint / typecheck / build verified green.
-- CI already runs install → typegen → typecheck → lint → test → build.
-- Migration baseline is **`000` → `101` in the tree, next free `102`**; all 101
-  are applied on remote (`054` is a known, intentional gap). Do not describe `067`,
-  `077`, `079`, `086`, or `093` as the repository head. Verify against the tree,
-  not a doc: `ls supabase/migrations | tail -1`. And verify *remote* by probing an
-  object the migration creates — never by trusting this line.
+The engineering roadmap through the controlled beta is **done**. What decides the
+next step is product evidence, not code:
 
-Open follow-ups:
-- Keep release docs aligned with the latest migration head when a new migration
-  lands.
-- Replace placeholder landing contact channels before public launch.
+- **Product:** one workspace — capture from the app, Telegram, Slack or email →
+  Nevora drafts a task or an expense → the user confirms; the Action Center
+  shows what is left. Tasks, Finance and Subscriptions are separate products
+  that do not write into each other.
+- **Safety gate:** green, every row backed by a test
+  ([`release/launch-readiness-2026-07-22.md`](./release/launch-readiness-2026-07-22.md));
+  0 open P0/P1 ([`release/p0-p1-issue-register.md`](./release/p0-p1-issue-register.md)).
+- **Activation gate:** not started — no beta results recorded yet.
 
-## Phase A — Product Focus & Release Closure — *done (2026-07-08)*
+## Next
 
-Lock the active product scope and close release blockers before public release.
-No new product features.
+**Product owner**
+1. Run the controlled beta with 5 live users and fill
+   [`release/beta-report-TEMPLATE.md`](./release/beta-report-TEMPLATE.md). The
+   paid-beta trigger is ≥ 3 of 5 passing without hand-holding, not a date.
+2. Fill the launch-gate §2 and name the owners (release, incident, billing/data,
+   security) in [`release/launch-gate-checklist.md`](./release/launch-gate-checklist.md).
+3. Decide Overview / Analytics / AI pages: relink in the navigation or retire.
+4. Decide when (if ever) Tasks moves past `shadow` — see ADR 001.
 
-- **Action Center is the primary screen.** `/dashboard` now renders the Action
-  Center; the metrics roll-up moved to `/dashboard/overview`; `/dashboard/actions`
-  307s to `/dashboard` for old bookmarks and persisted `notifications.target_url`.
-- **Paused modules hard-gated at three surfaces.** CRM and Booking pages, all 19
-  Server Actions, and all 7 booking route handlers now reject server-side. The
-  public `/booking/*` surface 404s too. Hiding a nav link was never a gate: a
-  `"use server"` export stays reachable over POST even when its page 404s.
-- **Product copy already matched** the active scope (Phase-8 landing alignment);
-  Phase A added tests so it cannot drift back.
-- **Invariants encoded as tests** — `test/release-invariants.test.ts` and
-  `shared/config/paused-modules.coverage.test.ts` assert confirm-first finance,
-  mark-as-paid idempotency, "read is not resolved", and paused-module coverage by
-  scanning the source tree.
-- **Release documentation** — `OPERATIONS_MANUAL.md`, `contracts/`,
-  8 `runbooks/`, and canonical `release/{release-checklist,smoke-test-checklist,rollback-plan}.md`.
-- **No schema change in Phase A itself** (the baseline was `000`–`093` at the time).
-  Phases B–D later added `094`–`097`, release closure added `098`/`099`, and the
-  Paddle billing boundary added `100`/`101`; the current baseline is `000`–`101`.
+**Engineering, before paid beta**
+- Paddle end to end in sandbox: checkout → webhook → portal, then
+  `BILLING_MODE=paid_beta` ([`release/paid-beta-cutover-checklist.md`](./release/paid-beta-cutover-checklist.md)).
+- Live smoke of the channel paths not yet exercised: Telegram media, email
+  attachments, Gmail forwarding confirmation; voice once the transcription
+  provider is funded.
 
-Remaining (not blockers):
-- The daily screen now groups into **Needs your review / Money attention / Next
-  actions / Recently updated** (§9). Money attention is a product decision, not a
-  new data model: an item is financial when its type is payment/renewal or its
-  source/primary entity is a transaction or subscription, decided per-item in
-  `services/phase-b-sections.ts`. A finer split (Requires Confirmation / Overdue /
-  Inbox naming) is still open if wanted.
-- Move `syncActionItems()` generation fully to cron (it runs best-effort on load).
+**Engineering, before public launch**
+- I-07: rotate the legacy payment test key.
+- Transfer organization ownership (issue #39) — unblocks account deletion for owners.
+- Keep Netlify funded: crons and deploys stop when it is suspended.
 
-## Phase 1 — Core Foundation — *done*
+## Delivered
 
+| When | What |
+| --- | --- |
+| 2026-06 → 07-08 | **Phase 0 / A** — docs as source of truth, CI, Action Center as `/dashboard`, CRM and Booking hard-gated at pages, actions, route handlers and (`098`) the database |
+| 2026-07 | **Phases B, D** — confirm-first hardening, first-action wizard, draft review, empty states, activation telemetry, feature/usage enforcement (`featureGateService` / `usageService`) |
+| 2026-07-09 → 10 | **Billing → Paddle only** (`100`/`101`); checkout, portal and a Paddle-format webhook implemented (#17, #19); private beta by default |
+| 2026-07 | **Security phases 7 and 9** — all P0/P1 closed; Analytics entitlement + RLS; PII sanitizing at event/audit sinks |
+| 2026-07-16 | **Three languages** — landing, legal and app in en / ru / ro (`106`) |
+| 2026-07-21 → 22 | **H2 Sprints 1–6** — navigation reduction, unified attention model, Money workspace + canonical financial states, AI governance, job reliability register, usage reconciliation (`112`), activation metrics + launch gate |
+| 2026-07-23 → 24 | **Landing** rebuilt around the real product (four waves) |
+| 2026-08-21 → 22 | **ADR 001** — Tasks, Finance, Subscriptions behind ports with standalone `apps/*`; Tasks staged (`114`). **Products stop bridging** (`115`): Financial Tasks and the `mark_*_paid` RPCs removed |
+| 2026-09-23 | Product routes `/tasks`, `/finance`, `/subscriptions`; Gmail invoice import (`116`); renewal decision inbox (`117`); Tasks pages read through the seam; Tasks held in `shadow` |
+| 2026-09-28 → 29 | **One app shell** (#75). **ADR 002** — honest Inbox (`119`), receipt scan (`120`), channel intake + Telegram (`121`, `122`), email forwarding (`123`), voice (`124`), Slack, project classification with learned rules (`125`). Landing rewritten for one workspace |
+
+## Phases
+
+Phase numbers are kept from the original plan so older notes still map.
+
+### Phase 1 — Core Foundation — *done*
 Auth, organizations, workspaces, session context (`requireUser`/`requireOrg`),
-`proxy.ts` gating, onboarding, invites. This is the platform's core and is
-MVP Ready.
+`proxy.ts` gating, onboarding, invites. One organization per account until paid beta.
 
-## Phase 2 — Security Layer — *done / ongoing hardening*
+### Phase 2 — Security Layer — *done / ongoing*
+RLS with `WITH CHECK`, SECURITY DEFINER RPC with pinned `search_path` and explicit
+grants (`035`, `037`), fail-closed cron and metrics secrets, signed machine routes
+(see [`SECURITY.md`](./SECURITY.md)). Every new table and webhook must comply.
 
-RLS on business tables, `WITH CHECK` policies, SECURITY DEFINER RPC with pinned
-`search_path` + explicit grants (`035`, `037`), Postgres-backed rate limiting
-(`036`/`038`), cron auth (`CRON_SECRET`, fail-closed). Ongoing: keep every new
-table compliant (see `SECURITY.md`).
+### Phase 3 — Tasks / Finance / Documents / Subscriptions — *MVP ready*
+All four are MVP Ready. Since `115` Tasks is a plain to-do list with projects,
+and Subscriptions keeps its own payment cycles without posting to Finance.
+Remaining: route the manual "New task" form through the Tasks seam (it still
+inserts directly); retire the legacy `renewSubscriptionAction`.
 
-## Phase 3 — Tasks / Money / Documents / Subscriptions Stabilization — *in progress*
+### Phase 4 — Cross-module relations — *in progress*
+`entity_links` (`047`) across Tasks, Finance, Documents and Subscriptions,
+resolved from one `RELATION_ENTITY_CONFIG`; links are informational only. Needs
+consistent link-management UX.
 
-Stabilize the four priority business modules. Tasks, Money and Documents are
-MVP-ready inside the current scope; Subscriptions has moved beyond the original
-partial state and now has payment-cycle workflow primitives, but still needs
-end-to-end QA on real data.
+### Phase 5 — Automation foundation — *foundation*
+Domain-event dispatch, handlers and logs (`040`/`042`); reminders (`075`, `118`);
+eight Netlify-scheduled sweeps. No user-facing rules engine; auto-accept of
+drafts is explicitly not decided.
 
-Current additions beyond the 2026-06-30 roadmap:
-- Money intelligence (`069`) and category-rule governance (`070`) are present.
-- Subscription payment cycles (`078`) add planned/task-open/paid/skipped/cancelled
-  lifecycle around recurring payments.
-- Financial task context (`079`) extends `todos` so invoice/payment/domain/tax
-  obligations can be represented as actionable tasks without introducing a
-  parallel obligations table.
+### Phase 6 — Action Center — *done*
+Primary read-only screen at `/dashboard`: filter cards over one predicate, an
+attention list that routes to the owning module, stale items auto-closed.
+Open: move `syncActionItems()` fully to the sweep; retire the unused backend
+executors.
 
-Remaining:
-- Manual QA: task/project create/update/status/due-date/financial-task flows.
-- Manual QA: transfer neutrality, planned transaction posting and analytics
-  exclusion.
-- Manual QA: subscription payment cycles, mark-as-paid, skip, change due date and
-  cancel renewal.
-- Document extraction reliability and failed-upload cleanup checks.
+### Phase 7 — Documents automation — *done for the Inbox path*
+Upload / photo / scan → extraction → expense draft **or** task drafts → confirm.
+Receipt codes (EPC/SEPA, Swiss QR, SFS, EAN) re-parsed server-side. Open: verify
+the SFS format on a real receipt; duplicate-detection UX.
 
-## Phase 4 — Cross Module Relations — *in progress*
+### Phase 7b — Multichannel capture (ADR 002) — *done*
+Telegram (text, media, voice), Slack shortcut, email forwarding; one intake;
+project rules learned from corrections. Open: the live smokes listed under *Next*.
 
-`entity_links`-based relations (migration `047`) connecting Task ↔ Transaction ↔
-Subscription ↔ Document. Module exists; needs consistent link-management UX.
-Reverse navigation is in place: documents now show reverse linked entities
-through `UniversalRelationViewer` — a document linked from a subscription
-displays the related subscription on the document detail page.
-Relations scope currently covers active modules only: Tasks, Money, Documents and
-Subscriptions. CRM / Leads / Clients / Deals remain paused and out of scope.
-Future relation expansion must stay limited to active modules unless a paused
-module is explicitly reactivated by product decision. Relation resolver metadata
-(entity kind → table / route / label) is centralized in a single
-`RELATION_ENTITY_CONFIG`; verification fails closed for unsupported types.
+### Phase 8 — Analytics — *partial, unlinked*
+Page exists but has no navigation entry; still shows CRM metrics (accepted debt).
 
-## Phase 5 — Automation Foundation — *in progress*
+### Phase 9 — AI — *assistant only*
+AI powers capture intent, extraction and transcription, always as drafts and
+metered against one monthly quota. The insights/recommendations page exists but
+is unlinked. Never an autonomous agent.
 
-Domain-event dispatch engine + handlers + logs (`040`/`042`). Plumbing is in
-place with tests; no user-facing rules engine yet.
+### Phase 10 — SaaS monetization — *code complete, private beta*
+Plans in EUR from `modules/billing/plan-catalog.ts`; trial lifecycle; atomic
+usage reservations; Paddle checkout / portal / webhook implemented but never run
+end to end in sandbox. Remaining: that sandbox run, then paid beta.
 
-Current additions:
-- Reminder scheduling and attention counters (`075`) create reminder schedules
-  for tasks, subscriptions, planned payments, documents and snoozed actions.
-- `subscription-sweep` cron provisions subscription payment cycles/tasks.
+### Phase 11 — Notifications & reminders — *done*
+Delivery and preferences (`073`), tab indicator (`074`), reminders (`075`),
+durable history (`111`), mandatory notifications. Open: production check of
+browser permissions and quiet hours.
 
-Remaining:
-- Verify cron auth (`CRON_SECRET`) in production.
-- Add integration coverage for reminder de-duplication and stale-source handling.
-- Keep heavy work behind cron/async boundaries so user actions stay fast.
+### Phase 12 — Production hardening & controlled beta — *engineering done*
+Safety gate verified; job reliability register; rollback and incident runbooks;
+CI applies every migration from scratch. Remaining is the controlled beta itself.
 
-## Phase 6 — Action Center — *in progress*
+### Product-module extraction (ADR 001) — *optional*
+All three products have standalone apps; only Tasks is deployed (staging,
+`shadow` in production). Further cutover is a product decision, not a blocker.
 
-Orchestration layer (`/dashboard/actions`, migration `048`) normalizing module
-signals into `action_items`.
+## Parked / paused
 
-Done since the original roadmap:
-- Action Center is in the primary sidebar.
-- Document extraction creates review/confirm actions.
-- Reminder processing can surface tasks/subscriptions/payments/documents as
-  action items and notification counters.
-- **Inbox / Action-Center split:** the Action Center is now **read-only** — it owns
-  attention and routing, with six summary **filter** cards over one predicate
-  contract and a compact read-only Attention list that links each item to its
-  owning module (`getActionItemDestination`). All mutations (resolve / dismiss /
-  snooze / assign / execute / confirm / delete) and the interactive feed + detail
-  drawer were removed from its UI. Capture-derived review (planner suggestions and
-  a captured document's expense draft) moved fully into the Inbox, reusing existing
-  review Server Actions. Stale items auto-close via `reconcileStaleActionItems`.
-
-Open follow-ups:
-- Expand subscription/payment cycle signals into richer action types.
-- Add DB/integration tests for action/reminder idempotency.
-- Retire the now-unused Action Center backend actions/executors once no saved link
-  or notification depends on them.
-
-## Phase 7 — Documents Automation — *partially started*
-
-Document-to-Transaction pipeline (migrations `051`/`052`): receipt/invoice
-upload → AI extraction → draft money transaction → Action Center confirm.
-Working end-to-end; needs reliability and broader document types.
-
-Current direction:
-- Financial documents can now also suggest financial-context tasks via the `079`
-  model when the correct output is an obligation/reminder rather than an
-  immediate money draft.
-
-Remaining:
-- Keep the invariant: AI/document detection never posts a final money transaction.
-- Complete QA for Upload → Extract → Draft/Task → Action Center → Human
-  confirmation.
-- Add image/OCR provider hardening and duplicate-detection UX.
-
-## Phase 8 — Analytics Layer — *partial*
-
-Dashboard metrics, activity timeline, per-module stats exist. Next: aggregation
-and caching, richer visualizations.
-
-## Phase 9 — AI Layer — *partial*
-
-Insights and recommendations via Anthropic exist. Direction: scheduled
-generation, more domain-event-driven sources, summaries. **AI assistance is
-scoped — not an autonomous business agent.**
-
-## Phase 10 — SaaS Monetization — *private beta / Paddle replacement in progress*
-
-Billing/trials and plan limits exist. Phase 6 added normalized plan/developer
-access structures (`071`) and atomic usage reservations (`072`); Phase 7 added
-member-seat atomicity (`076`); Phase D added the commercial-readiness schema
-(`096`).
-
-The payment provider has been narrowed to **Paddle only**. The repository
-default is **Private Beta** (`BILLING_MODE=private_beta`), so self-serve
-checkout and Customer Portal are intentionally unavailable until the Paddle
-checkout, webhook, portal, and smoke-test pass is complete.
-
-Remaining:
-- Configure `BILLING_MODE=paid_beta`, `BILLING_PROVIDER=paddle`, Paddle secrets
-  and paid Price IDs outside the repo before enabling self-serve checkout.
-- Activate paid plans only from trusted provider webhooks; `success_url` must
-  remain display-only.
-- Keep public pricing on `modules/billing/public-plan-view.ts`; landing and
-  `/pricing` must not add their own tariff numbers.
-- Continue retiring legacy `checkPlanLimit` paths where Phase D services now
-  provide the commercial gate.
-- Retire or isolate legacy `checkPlanLimit` paths for the paused CRM keys
-  (`clients`, `deals`).
-
-## Phase 11 — Notifications, Reminders & Attention — *in progress*
-
-The original roadmap treated notifications as part of Action Center hardening.
-They are now a distinct production surface:
-- notification delivery/preferences (`073`);
-- browser tab indicator and read RPCs (`074`);
-- reminder schedules, reminder events and counters (`075`);
-- notification provider/UI and settings notification page.
-
-Remaining:
-- Production smoke test browser notification permissions, VAPID env and quiet
-  hours.
-- Verify tab/counter sync across multiple tabs.
-- Add integration tests for due reminders and category preference filtering.
-
-## Phase 12 — Production Hardening & Controlled Beta — *in progress*
-
-Phase 7 audit/release docs exist and several hardening migrations are present:
-- `076_phase7_member_seat_atomicity`;
-- `077_phase7_data_integrity_hardening`;
-- release checklist, rollback plan and beta launch plan under `docs/release/`.
-
-Current required gates before controlled beta:
-- `npm run typecheck`
-- `npm run lint`
-- `npm test`
-- `npm run build`
-- Supabase migration/lint verification against the target environment
-- manual smoke test of core flows on production-like infra
-
-Known gaps to keep visible:
-- DB/E2E harness for cross-org RLS denial and concurrent limit overshoot.
-- Remote migration status must be verified through `097`.
-- Paddle runtime configuration and checkout/webhook/portal implementation are
-  still pending, so paid self-serve checkout is not operational.
-- CRM and Booking remain out of active MVP scope. Booking's `anon` REST surface is
-  still open at the database layer (P0 — see `MODULE_STATUS.md`).
-
----
-
-### Parked / paused
-
-- **CRM / Clients** — implemented, Paused per product direction. Not marketed as
-  an active feature; preserved as long-term direction only.
-- **Booking** — implemented, hidden from navigation, **not part of the active MVP
-  scope**. Needs a product decision: resurface vs. formal pause.
-
-### Operational follow-ups
-
-- Replace placeholder landing contact channels (`hello@nevora.com`, `@nevora`)
-  with real ones before launch.
-- Verify remote migrations are applied through `097` before beta.
-- Re-run the release checklist after every migration head change.
-
-### Resolved operational follow-ups
-
-- **Migration `064` (task due-date history) remote status — verified on
-  2026-06-30** via `supabase migration list`. Migration `064` is **applied on
-  remote** Supabase; all migrations through `067` are present remotely. No
-  database action required.
-- **Local gates after the `079` task shape — verified on 2026-07-03**:
-  `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` pass.
+- **CRM / Clients** and **Booking** — implemented, paused and closed at every
+  surface. Un-pausing is a product decision with a checklist in `MODULE_STATUS.md`.

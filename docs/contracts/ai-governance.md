@@ -30,10 +30,10 @@ and review queues, never a domain fact.
 AI must never, on its own:
 
 - **post income or an expense** — no write to `money_transactions`;
-- **mark an obligation paid** — no write to `subscription_payment_cycles`, the
-  only "paid" state outside the ledger. Migration 115 removed Financial Tasks
-  and dropped `mark_subscription_payment_paid` / `mark_financial_task_paid`;
-  both names stay banned so neither comes back;
+- **mark anything paid** — no write to `subscription_payment_cycles` (the only
+  "paid" state left outside the ledger since migration `115` dropped Financial
+  Tasks and the `mark_*_paid` RPCs); both RPC names stay banned so neither
+  comes back;
 - **change a billing plan** — no write to `billing_subscriptions`, no `changePlan`;
 - **change permissions** — no write to `memberships` / roles;
 - **delete critical data** — no `.delete()` on money, tasks, documents,

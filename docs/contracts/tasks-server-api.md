@@ -84,9 +84,11 @@ Handler still performs full cryptographic and live-state verification.
 
 ## Explicit exclusion
 
-Marking a financial task paid is not a Tasks mutation: it atomically creates a
-Money transaction and settles the task. That operation stays in
-`workflows/financial-obligations`, preserving ledger ownership and idempotency.
+Tasks has no financial operations. Financial Tasks and `mark_financial_task_paid`
+were removed in migration `115`: completing or settling a task never touches
+Money. Callers outside Tasks only create tasks, through this port: the Inbox
+accepts drafts with `createStandardTask`, and Subscriptions opens payment tasks
+with `createGeneratedTask`.
 
 ## Standalone runtime and remaining step
 
@@ -101,9 +103,9 @@ grant to browser roles. Events, audit records and document-task links are
 written by the runtime with actor and tenant attribution from the verified
 context.
 
-The remaining operational step is production cutover: deploy `apps/tasks`,
-apply migration 114, configure its three secrets, run the read-only parity
-checker, then advance root through `shadow`, `http-read` and `http` according to
-the Tasks cutover runbook. `in-process` remains the rollback switch until live
+Status (2026-09-29): `apps/tasks` is deployed to Netlify staging, migration 114
+is applied, and production runs `TASKS_TRANSPORT=shadow`. Moving on to
+`http-read` and `http` is a product decision, not a pending engineering step —
+follow the Tasks cutover runbook when it is taken. `in-process` remains the rollback switch until live
 monitoring confirms parity; the root compatibility handler can be removed only
 afterward.

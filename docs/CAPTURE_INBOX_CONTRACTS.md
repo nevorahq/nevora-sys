@@ -1,6 +1,9 @@
 # Capture Inbox — Contracts
 
-Technical contract for `modules/planner` (migration 080).
+Technical contract for `modules/planner` (migration 080 onward). Last reviewed
+2026-09-29. Channel intake (Telegram, Slack, email) is designed in
+[`adr/002-multichannel-task-capture.md`](./adr/002-multichannel-task-capture.md);
+this file covers the shared pipeline every channel ends in.
 
 ## Data model
 
@@ -11,9 +14,11 @@ Technical contract for `modules/planner` (migration 080).
 | `id` | uuid PK |
 | `organization_id` | FK organizations, **always from server context** |
 | `workspace_id` | nullable FK workspaces |
-| `raw_text` | the captured text (text-first MVP) |
+| `raw_text` | the captured text (or a voice transcript) |
 | `entry_type` | `text \| file \| photo \| link \| voice \| document` |
-| `source` | `manual \| document \| subscription \| money \| task \| system` |
+| `source` | `manual \| document \| subscription \| money \| task \| system \| channel` (`channel` since `121`) |
+| `channel`, `channel_message_key` | set for channel captures; unique per org + channel, so a redelivered message is captured once (`121`) |
+| `channel_signals` | where a channel capture came from (Slack conversation, email sender/domain) — input to project rules (`125`) |
 | `status` | `captured → processing → suggested → accepted \| rejected \| archived \| failed` |
 | `ai_detected_intent`, `ai_confidence` | filled after detection (confidence 0..1) |
 | `source_*_id` | optional pointers to the seeding entity (FK-free by design) |
@@ -34,10 +39,22 @@ CHECK: an entry must carry `raw_text` OR at least one `source_*_id`.
 | `accepted_entity_type` / `accepted_entity_id` | set on accept |
 | `reject_reason` | audit trail (record never deleted) |
 
-**Suggestion type allow-list:** `create_task`, `create_financial_task`,
+**Suggestion type allow-list (DB):** `create_task`, `create_financial_task`,
 `create_document`, `create_subscription_reminder`, `create_money_reminder`,
 `link_entities`, `assign_project`, `create_project`, `create_action_item`.
 There is intentionally **no** transaction / expense / income producer.
+
+**What is proposed today:** the detector proposes only `create_task`
+(ADR 002 step 0.1); any other type the model returns is coerced by
+`coerce-detected-suggestion.ts`. The three financial types are **retired** —
+Financial Tasks were removed in `115` — and remain in the allow-list only so
+older drafts can still be accepted (as plain tasks, see below).
+
+**Project:** a `create_task` draft carries a proposed project in
+`proposed_payload` (`projectId`, with `suggestedProjectId` / `projectSource` /
+`projectRuleId` as system keys an edit cannot set). A matching private rule from
+`capture_project_rules` (`125`) decides the project before the model is asked;
+changing the project on accept teaches or deletes that rule.
 
 ## Suggestion lifecycle
 
@@ -58,10 +75,8 @@ never roll back the user's decision.
 
 | suggestion_type | requires permission | routes to | money? |
 |---|---|---|---|
-| `create_task` | `planner.suggestion.accept` + `data.write` | `createStandardTask` | no |
-| `create_financial_task` | `planner.suggestion.accept` + `data.write` | `createFinancialTask` (context `invoice_payment`) | **never posts a tx** |
-| `create_money_reminder` | same | `createFinancialTask` (context `expense_review`) | **never posts a tx** |
-| `create_subscription_reminder` | same | `createFinancialTask` (context `subscription_payment`) | **never posts a tx** |
+| `create_task` | `planner.suggestion.accept` + `data.write` | `tasks.createStandardTask` via `getTasksApplication` (Tasks seam) | no |
+| `create_financial_task` / `create_money_reminder` / `create_subscription_reminder` (retired) | same | a plain task via `retiredFinancialDraftToTaskPayload` (payment date → due date, payee + amount → description) | no |
 | `link_entities` | `planner.suggestion.accept` + `entity_link.create` | `createEntityLink` | no |
 | `create_action_item` | `planner.suggestion.accept` + `data.write` | `createActionItemForDocument` | no |
 | `create_document` / `assign_project` / `create_project` | — | refused safely (MVP) | no |
@@ -84,8 +99,8 @@ row instead offers a single navigation to its owning module, resolved by the pur
 
 - planner suggestion / entry → `/dashboard/inbox?tab=review&suggestion=<id>`
   (the exact Inbox Review);
-- task → `/dashboard/tasks/<id>`; transaction → `/dashboard/money/<id>`;
-  subscription → `/dashboard/subscriptions/<id>`; document → `/dashboard/documents/<id>`;
+- task → `/tasks/<id>`; transaction → `/finance/<id>`;
+  subscription → `/subscriptions/<id>`; document → `/dashboard/documents/<id>`;
 - unknown / deleted source → plain text, never a broken link.
 
 The six summary cards are accessible **filter buttons** over the read-only
@@ -107,8 +122,11 @@ report); the First Action Wizard lives on the Inbox page, not on `/dashboard`.
 ## Universal Capture — photo & document (migration 105)
 
 Inbox now captures binary files, not just text. The composer
-(`inbox-capture-composer.tsx`) has **Text / Photo / Document** modes; Text is
-unchanged (Server Action). Photo/Document POST multipart to `/api/inbox/capture`.
+(`inbox-capture-composer.tsx`) has **Text / Photo / Document / Scan** modes; Text
+is a Server Action, the others POST multipart to `/api/inbox/capture`. **Scan**
+reads a receipt QR/barcode in the browser; the code is stored in
+`documents.capture_code` (`120`) and re-parsed server-side, and its values win
+over the model's header.
 
 Flow (`captureInboxDocument`):
 
@@ -123,7 +141,10 @@ Flow (`captureInboxDocument`):
    `source_document_id`, `entry_type = photo|document`).
 5. Readable files (PDF/PNG/JPG/JPEG/WEBP) run the existing extraction pipeline;
    unreadable ones (DOCX/HEIC/HEIF) are stored and fail fast into an **honest**
-   manual-review state — never a faked "understood".
+   manual-review state — never a faked "understood". A document **with an
+   amount** becomes an expense draft (`financial_suggestions`); a document
+   **without one** (a note, a whiteboard, a contract) becomes task drafts from
+   its text (ADR 002 step 0.3). Never both.
 6. The Inbox card shows a live capture state (processing / review ready / needs
    manual review / failed) derived from the linked Document's extraction.
 
@@ -150,12 +171,14 @@ confirmation posts a transaction.
 
 ## Money-transaction restriction (hard guarantee)
 
-Capture Inbox has **no code path** to `money_transactions`. Every financial
-suggestion routes to `createFinancialTask`, which records a planned obligation
-only. A posted expense can be created **only** later, via an explicit
-Mark-as-paid on the resulting financial task (existing `mark_financial_task_paid`
-RPC). Regression-guarded by `modules/planner/types/planner.types.test.ts` and
-`normalize-planner-intent.test.ts`.
+The planner has **no code path** to `money_transactions`: accepting any planner
+suggestion creates a task, a link or an action item, never a transaction. A
+posted expense can come only from the separate document path — an extracted
+`financial_suggestions` draft that the user explicitly confirms
+(`confirmFinancialSuggestionRecord`, see
+[`contracts/financial-workflows.md`](./contracts/financial-workflows.md)).
+Regression-guarded by `modules/planner/types/planner.types.test.ts`,
+`normalize-planner-intent.test.ts` and `test/release-invariants.test.ts`.
 
 ## Permissions (RBAC, derived from role in `require-org.ts`)
 
@@ -169,7 +192,10 @@ Both tables: `SELECT` = `is_org_member(organization_id)`;
 `INSERT`/`UPDATE` = `is_org_member AND can_write_data`, with `WITH CHECK`
 (insert also requires `created_by = auth.uid()`). No hard delete (archive via
 status). `organization_id`/`workspace_id` are always server-derived — RLS is the
-defense-in-depth backstop against a spoofed payload. No service role is used.
+defense-in-depth backstop against a spoofed payload. In-app capture uses no
+service role; channel captures arrive without a session, so their context is
+rebuilt from the linked account (`resolveChannelContext`) after the webhook's
+signature check.
 
 ## Future improvements
 
@@ -181,3 +207,4 @@ defense-in-depth backstop against a spoofed payload. No service role is used.
   domain events (currently pull-based on the Inbox render, relocated off the
   Action Center render).
 - Reuse document/project create paths for the currently-refused types.
+- Auto-accept for rule-matched captures — explicitly **not** decided (ADR 002).
