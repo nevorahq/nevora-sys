@@ -31,7 +31,7 @@ export type CaptureChannelTextResult =
 export async function captureChannelText(
   supabase: SupabaseClient,
   ctx: CurrentContext,
-  input: { channel: Channel; messageKey: string; text: string },
+  input: { channel: Channel; messageKey: string; text: string; entryType?: "text" | "voice" },
 ): Promise<CaptureChannelTextResult> {
   const text = input.text.trim();
   if (!text) return { ok: false, code: "empty" };
@@ -46,7 +46,7 @@ export async function captureChannelText(
       created_by: ctx.user.id,
       owner_user_id: ctx.user.id,
       raw_text: text,
-      entry_type: "text",
+      entry_type: input.entryType ?? "text",
       source: "channel",
       channel: input.channel,
       channel_message_key: input.messageKey,
@@ -71,6 +71,26 @@ export async function captureChannelText(
 
   console.error("[captureChannelText] insert failed:", error?.message);
   return { ok: false, code: "failed" };
+}
+
+/**
+ * The capture already stored for a channel message, if any — checked before
+ * paid work (a transcription) so a redelivery is not charged twice.
+ */
+export async function findChannelCapture(
+  supabase: SupabaseClient,
+  ctx: CurrentContext,
+  channel: Channel,
+  messageKey: string,
+): Promise<PlannerEntry | null> {
+  const { data } = await supabase
+    .from("planner_entries")
+    .select(PLANNER_ENTRY_COLUMNS)
+    .eq("organization_id", ctx.org.id)
+    .eq("channel", channel)
+    .eq("channel_message_key", messageKey)
+    .maybeSingle();
+  return (data as PlannerEntry | null) ?? null;
 }
 
 /** Run AI intent detection on a channel capture; the drafts land in Review. */

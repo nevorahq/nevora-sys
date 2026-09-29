@@ -27,6 +27,14 @@ const telegramDocumentSchema = z.object({
   file_size: z.number().int().optional(),
 });
 
+const telegramAudioSchema = z.object({
+  file_id: z.string().max(512),
+  duration: z.number().int().nonnegative().optional(),
+  mime_type: z.string().max(255).optional(),
+  file_size: z.number().int().optional(),
+  file_name: z.string().max(512).optional(),
+});
+
 const telegramMessageSchema = z.object({
   message_id: z.number().int(),
   chat: z.object({ id: z.number().int(), type: z.string() }),
@@ -36,10 +44,11 @@ const telegramMessageSchema = z.object({
   // Telegram sends each photo in several sizes, smallest first.
   photo: z.array(telegramPhotoSizeSchema).optional(),
   document: telegramDocumentSchema.optional(),
-  // Presence flags only — not captured.
-  voice: z.unknown().optional(),
+  // A voice note (OGG/Opus) or a forwarded audio file: transcribed, then captured as text.
+  voice: telegramAudioSchema.optional(),
+  audio: telegramAudioSchema.optional(),
+  // Presence flag only — not captured.
   video: z.unknown().optional(),
-  audio: z.unknown().optional(),
 });
 
 export const telegramUpdateSchema = z.object({
@@ -98,6 +107,23 @@ export function pickAttachment(message: TelegramMessage): TelegramAttachment | n
     };
   }
   return null;
+}
+
+export type TelegramVoice = { fileId: string; fileName: string; mimeType: string; durationSeconds: number | null; size: number | null };
+
+/** A voice note or an audio file to transcribe; null otherwise. */
+export function pickVoice(message: TelegramMessage): TelegramVoice | null {
+  const audio = message.voice ?? message.audio;
+  if (!audio) return null;
+  const mimeType = audio.mime_type ?? (message.voice ? "audio/ogg" : "audio/mpeg");
+  const extension = mimeType.includes("ogg") ? "ogg" : mimeType.includes("mp4") || mimeType.includes("m4a") ? "m4a" : mimeType.includes("wav") ? "wav" : "mp3";
+  return {
+    fileId: audio.file_id,
+    fileName: audio.file_name?.trim() || `telegram-voice-${message.message_id}.${extension}`,
+    mimeType,
+    durationSeconds: audio.duration ?? null,
+    size: audio.file_size ?? null,
+  };
 }
 
 /** Whether the message carries something other than text (photo, file, voice…). */

@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
   captureFile: vi.fn(),
   processFile: vi.fn(),
   download: vi.fn(),
+  findCapture: vi.fn(),
+  reserve: vi.fn(),
+  transcribe: vi.fn(),
 }));
 vi.mock("../services/link-codes", () => ({
   consumeLinkCode: mocks.consume,
@@ -24,6 +27,7 @@ vi.mock("../services/channel-intake", () => ({
   processChannelCapture: mocks.process,
   captureChannelFile: mocks.captureFile,
   processChannelFileCapture: mocks.processFile,
+  findChannelCapture: mocks.findCapture,
 }));
 
 import { handleTelegramUpdate, localeFromLanguageCode } from "./handle-telegram-update";
@@ -68,6 +72,7 @@ const deps = (language: string | null = "ru") => ({
   },
   download: mocks.download,
   appUrl: "https://app.nevora.test",
+  transcriber: { reserve: mocks.reserve, transcribe: mocks.transcribe },
 });
 
 beforeEach(() => {
@@ -183,10 +188,10 @@ describe("handleTelegramUpdate — capture", () => {
     expect(mocks.capture).not.toHaveBeenCalled();
   });
 
-  it("refuses voice, video and audio without downloading anything", async () => {
-    const result = await handleTelegramUpdate(update(undefined, { voice: {} }), deps("en"));
+  it("refuses video without downloading anything", async () => {
+    const result = await handleTelegramUpdate(update(undefined, { video: {} }), deps("en"));
     expect(result.action).toBe("media_not_supported");
-    expect(sent[0]).toContain("Voice messages");
+    expect(sent[0]).toContain("Video isn't supported");
     expect(mocks.download).not.toHaveBeenCalled();
   });
 
@@ -290,6 +295,81 @@ describe("handleTelegramUpdate — photos and documents", () => {
   it("does not download for a sender whose organization is read-only", async () => {
     mocks.resolve.mockResolvedValue({ ok: false, reason: "read_only" });
     expect((await handleTelegramUpdate(update(undefined, photo), deps())).action).toBe("context_denied");
+    expect(mocks.download).not.toHaveBeenCalled();
+  });
+});
+
+describe("handleTelegramUpdate — voice messages", () => {
+  const voice = { voice: { file_id: "v1", duration: 14, mime_type: "audio/ogg", file_size: 40_000 } };
+
+  beforeEach(() => {
+    mocks.find.mockResolvedValue(integration);
+    mocks.resolve.mockResolvedValue({ ok: true, ctx });
+    mocks.findCapture.mockResolvedValue(null);
+    mocks.download.mockResolvedValue({ ok: true, bytes: new Uint8Array([1]).buffer });
+    mocks.reserve.mockResolvedValue(true);
+    mocks.transcribe.mockResolvedValue({ ok: true, text: "Завтра в десять позвонить в банк насчёт кредита" });
+    mocks.capture.mockResolvedValue({ ok: true, entry: { id: "e1", status: "captured" }, reused: false });
+  });
+
+  it("meters, transcribes and stores the transcript as a voice capture before acknowledging", async () => {
+    mocks.process.mockResolvedValue({ status: "suggested", suggestions: [{ id: "s1", title: "Позвонить в банк" }] });
+
+    const result = await handleTelegramUpdate(update(undefined, voice), deps("ru"));
+
+    expect(result.action).toBe("captured");
+    expect(mocks.reserve).toHaveBeenCalledWith(ctx, 14);
+    expect(mocks.transcribe).toHaveBeenCalledWith(expect.objectContaining({ fileName: "telegram-voice-55.ogg", mimeType: "audio/ogg" }));
+    expect(mocks.capture).toHaveBeenCalledWith(expect.anything(), ctx, {
+      channel: "telegram",
+      messageKey: "42:55",
+      text: "Завтра в десять позвонить в банк насчёт кредита",
+      entryType: "voice",
+    });
+    expect(sent).toEqual([]);
+
+    await result.after!();
+    expect(sent[0]).toBe(
+      "Распознано: «Завтра в десять позвонить в банк насчёт кредита»\n\nДобавлено во Входящие: «Позвонить в банк». Подтвердите в Nevora: https://app.nevora.test/dashboard/inbox?tab=review&suggestion=s1",
+    );
+  });
+
+  it("checks the AI quota before paying for a transcription", async () => {
+    mocks.reserve.mockResolvedValue(false);
+    expect((await handleTelegramUpdate(update(undefined, voice), deps("ru"))).action).toBe("voice_rejected");
+    expect(mocks.transcribe).not.toHaveBeenCalled();
+    expect(sent[0]).toContain("лимит ИИ");
+  });
+
+  it("refuses an over-long voice message without downloading it", async () => {
+    const long = { voice: { file_id: "v1", duration: 6 * 60 } };
+    expect((await handleTelegramUpdate(update(undefined, long), deps("en"))).action).toBe("voice_rejected");
+    expect(sent[0]).toContain("under 5 minutes");
+    expect(mocks.download).not.toHaveBeenCalled();
+  });
+
+  it("does not pay twice for a redelivered voice message", async () => {
+    mocks.findCapture.mockResolvedValue({ id: "e1", status: "suggested" });
+    expect(await handleTelegramUpdate(update(undefined, voice), deps())).toEqual({ action: "duplicate" });
+    expect(mocks.download).not.toHaveBeenCalled();
+    expect(mocks.reserve).not.toHaveBeenCalled();
+  });
+
+  it("answers a failed or empty transcription instead of retrying (a retry would pay again)", async () => {
+    mocks.transcribe.mockResolvedValueOnce({ ok: false, reason: "failed" });
+    expect((await handleTelegramUpdate(update(undefined, voice), deps("en"))).action).toBe("voice_rejected");
+    expect(sent[0]).toContain("couldn't transcribe");
+
+    mocks.transcribe.mockResolvedValueOnce({ ok: false, reason: "empty" });
+    await handleTelegramUpdate(update(undefined, voice), deps("en"));
+    expect(sent[1]).toContain("couldn't make out any speech");
+    expect(mocks.capture).not.toHaveBeenCalled();
+  });
+
+  it("asks for text when voice is not configured", async () => {
+    const result = await handleTelegramUpdate(update(undefined, voice), { ...deps("en"), transcriber: null });
+    expect(result.action).toBe("media_not_supported");
+    expect(sent[0]).toContain("Voice messages aren't set up yet");
     expect(mocks.download).not.toHaveBeenCalled();
   });
 });

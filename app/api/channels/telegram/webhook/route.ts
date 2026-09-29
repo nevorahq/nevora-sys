@@ -5,6 +5,11 @@ import { logger } from "@/lib/observability/logger";
 import { downloadTelegramFile, getTelegramConfig, sendTelegramMessage } from "@/modules/channels/telegram/telegram-api";
 import { handleTelegramUpdate } from "@/modules/channels/telegram/handle-telegram-update";
 import { telegramUpdateSchema } from "@/modules/channels/telegram/telegram-update";
+import {
+  getTranscriptionConfig,
+  reserveVoiceTranscription,
+  transcribeVoice,
+} from "@/modules/channels/voice/transcribe-voice";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,11 +58,18 @@ export async function POST(request: Request): Promise<NextResponse> {
   const parsed = telegramUpdateSchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ ok: true });
 
+  const transcription = getTranscriptionConfig();
   try {
     const result = await handleTelegramUpdate(parsed.data, {
       supabase,
       send: (chatId, text) => sendTelegramMessage(config.token, chatId, text),
       download: (fileId, maxBytes) => downloadTelegramFile(config.token, fileId, maxBytes),
+      transcriber: transcription
+        ? {
+            reserve: (ctx, durationSeconds) => reserveVoiceTranscription(supabase, ctx, durationSeconds),
+            transcribe: (audio) => transcribeVoice(transcription, audio),
+          }
+        : null,
       appUrl: (process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin).replace(/\/$/, ""),
     });
     if (result.after) {

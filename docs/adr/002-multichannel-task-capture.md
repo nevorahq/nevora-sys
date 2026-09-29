@@ -187,6 +187,25 @@ the caller's client. The extraction sweep calls it without a session, so a job
 it recovered would have failed its plan gate as `usage_limit_exceeded` (not
 seen in production data on 2026-09-28: the sweep had not recovered a job yet).
 
+*Voice messages done 2026-09-29, migration 124.* Claude does not accept audio,
+so a voice note (or a forwarded audio file) is transcribed by OpenAI's
+speech-to-text (`gpt-4o-mini-transcribe`, chosen by the product owner; plain
+HTTPS, no SDK) and the transcript becomes an ordinary text capture with
+`entry_type = 'voice'`. Rules:
+- metered first: an `ai_requests` row with `action_type = 'voice_transcription'`
+  (migration 124) goes through the shared monthly AI quota before the model is
+  called; there is no model-free fallback for audio, so a denied quota is told
+  to the user;
+- capped at 5 minutes / 25 MB, refused before downloading when Telegram's
+  metadata already says too long;
+- a redelivered message is looked up by its key before any paid work, and a
+  failed or empty transcription is answered rather than retried — a retry would
+  pay for the call again;
+- the reply quotes what was heard (first 300 characters) above the draft, so a
+  mis-transcription is visible at a glance;
+- off unless `OPENAI_API_KEY` is set: voice is then declined with "send it as
+  text".
+
 Deliberately not yet:
 - **Domain events** for channel captures are not recorded: `emitDomainEvent`
   resolves the organization from the session (`requireOrg`) and logs instead.
