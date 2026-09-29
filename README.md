@@ -274,6 +274,7 @@ schemas / components / types), экспортирующая публичный A
 
 ## Документация
 
+- [`docs/README.md`](docs/README.md) — оглавление всей документации.
 - [`docs/MODULE_STATUS.md`](docs/MODULE_STATUS.md) — честный статус каждого модуля.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — целевая архитектура и жёсткие правила.
 - [`docs/adr/`](docs/adr/) — архитектурные решения: границы модулей (001), приём дел из каналов (002).
@@ -284,3 +285,4 @@ schemas / components / types), экспортирующая публичный A
 - [`docs/PRODUCT_COPY.md`](docs/PRODUCT_COPY.md) — позиционирование и копирайт.
 - [`docs/SECURITY.md`](docs/SECURITY.md) — чек-лист безопасности и tenant-изоляция.
 - [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — запуск, проверки, как добавлять модули.
+- [`docs/archive/`](docs/archive/) — датированные отчёты и устаревшие планы (только история).

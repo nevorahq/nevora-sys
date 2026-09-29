@@ -2,7 +2,7 @@
 
 **Owner:** Platform
 **Last updated:** 2026-07-02 (Phase 7.5)
-**Related:** `docs/audits/phase-7-production-readiness-audit.md` (P2-1, P2-2)
+**Related:** `docs/archive/audits/phase-7-production-readiness-audit.md` (P2-1, P2-2)
 
 How Nevora logs failures and how errors reach the user. Read before adding a new
 server action, route handler, cron, or background job.

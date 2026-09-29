@@ -181,7 +181,7 @@ describe("paused modules: read-path coverage", () => {
   /**
    * Pre-existing debt, recorded rather than hidden. Each entry reads a paused
    * module's tables without a gate. None is a new regression, and none is in
-   * Phase 1 scope — see `docs/project-workflows-and-beta-plan-2026-07-10.md`.
+   * Phase 1 scope — see `docs/archive/project-workflows-and-beta-plan-2026-07-10.md`.
    *
    * Do not add to this list. Gate the file instead.
    */

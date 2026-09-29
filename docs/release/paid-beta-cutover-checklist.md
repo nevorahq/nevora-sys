@@ -2,7 +2,7 @@
 
 **Owner:** Release owner (nevorahq@gmail.com)
 **Prereq gate:** do **not** start this checklist until the closed-beta signal is in.
-**Related:** [`beta-remaining-2026-07-11.md`](./beta-remaining-2026-07-11.md) ·
+**Related:** [`beta-remaining-2026-07-11.md`](../archive/release/beta-remaining-2026-07-11.md) ·
 [`p0-p1-issue-register.md`](./p0-p1-issue-register.md) ·
 billing-mode decision [`billing-mode = private beta`]
 

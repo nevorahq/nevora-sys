@@ -291,6 +291,4 @@ no service role in app logic, no client-trusted ids, no raw SQL interpolation.
 - [`ROADMAP.md`](./ROADMAP.md) — phases and their status.
 - [`PRODUCT_COPY.md`](./PRODUCT_COPY.md) — positioning and copy rules.
 - [`SECURITY.md`](./SECURITY.md) — security checklist and tenant isolation.
-- [`nevora-architect-prompt.md`](./nevora-architect-prompt.md) — architect system prompt.
-- [`automation-foundation.md`](./automation-foundation.md),
-  [`money-upcoming-expenses.md`](./money-upcoming-expenses.md) — design notes.
+- [`archive/`](./archive/) — dated audits, reports and superseded plans (history only).

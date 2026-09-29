@@ -2,8 +2,8 @@
 
 **Owner:** Billing
 **Last updated:** 2026-07-02 (Phase 7.3)
-**Related audits:** `docs/audits/phase-7-production-readiness-audit.md`,
-`docs/audits/phase-7-security-rls-audit.md`
+**Related audits:** `docs/archive/audits/phase-7-production-readiness-audit.md`,
+`docs/archive/audits/phase-7-security-rls-audit.md`
 
 This document is the single source of truth for how plan limits are enforced.
 Phase 7.3 hardened it; read this before touching any create/delete path.

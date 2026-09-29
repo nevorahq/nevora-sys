@@ -6,7 +6,7 @@
 > [`smoke-test-report-2026-07-09.md`](./smoke-test-report-2026-07-09.md)).
 >
 > Scenario source of truth is the canonical
-> [`smoke-test-checklist.md`](./smoke-test-checklist.md); this report does **not**
+> [`smoke-test-checklist.md`](../../release/smoke-test-checklist.md); this report does **not**
 > restate the steps — it records **evidence**. A scenario is closed only when its
 > evidence contract is satisfied: (1) recording/screenshot of the end state,
 > (2) `diagnosticId` of any error + confirmation it is visible in Sentry, and
@@ -30,7 +30,7 @@
 | **Auth session** | authenticated as `<test user / org A>` |
 | **Second org** | `<org B, different owner>` (isolation checks) |
 | **Sentry** | ☐ DSNs set on Netlify · ☐ `monitoring.initialized/provider:sentry` seen · visibility check: [`phase-3-sentry-visibility-check.md`](./phase-3-sentry-visibility-check.md) `<PASS/FAIL>` |
-| **SQL pack** | [`scripts/db/phase-3-money-invariants.sql`](../../scripts/db/phase-3-money-invariants.sql) |
+| **SQL pack** | [`scripts/db/phase-3-money-invariants.sql`](../../../scripts/db/phase-3-money-invariants.sql) |
 
 ---
 
@@ -97,7 +97,7 @@
   > the cycle *was* paid through the real RPC — a transaction was created and
   > linked — and then that transaction was **hard-deleted** via
   > `deleteTransactionAction`, so the FK `transaction_id … ON DELETE SET NULL`
-  > ([`078_subscription_payment_cycles.sql`](../../supabase/migrations/078_subscription_payment_cycles.sql#L90))
+  > ([`078_subscription_payment_cycles.sql`](../../../supabase/migrations/078_subscription_payment_cycles.sql#L90))
   > nulled the link while the cycle stayed `paid`. (The task's
   > `financial_status='open'` is expected, not an anomaly: the cycle path links
   > money on `cycle.transaction_id`, never on the task.) A2 will correctly report
@@ -192,7 +192,7 @@ what they re-asked, where they went wrong.
 - [ ] **I-09** run once on the deployed env; every scenario has evidence per the
       contract; **all three** money invariants A1–A3 hold.
 - [ ] I-09 flipped `OPEN → closed with proof` in
-      [`p0-p1-issue-register.md`](./p0-p1-issue-register.md).
+      [`p0-p1-issue-register.md`](../../release/p0-p1-issue-register.md).
 - [ ] **≥3 of 5** live users passed the Product Proof table without hints.
 
 **Verdict:** `<Phase 3 CLOSED / NOT CLOSED — next step: … >`

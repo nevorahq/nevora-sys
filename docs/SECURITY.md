@@ -2,9 +2,7 @@
 
 > Security-first is a hard constraint, not a phase. RLS is the **primary** tenant
 > boundary; application-level `.eq()` filters are defense-in-depth only. See
-> [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the rules and
-> [`nevora-architect-prompt.md`](./nevora-architect-prompt.md) for the full
-> rationale with code references.
+> [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the rules.
 
 ## Per-change security checklist
 

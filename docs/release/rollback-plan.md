@@ -1,7 +1,7 @@
 # Rollback Plan — Nevora Business OS
 
 **Status:** Canonical · **Last updated:** 2026-09-29 (host is Netlify)
-**Supersedes:** [`phase-7-rollback-plan.md`](./phase-7-rollback-plan.md) (kept for
+**Supersedes:** [`phase-7-rollback-plan.md`](../archive/release/phase-7-rollback-plan.md) (kept for
 history; scoped to migrations 076/077)
 **Operational detail:** [`docs/runbooks/rollback.md`](../runbooks/rollback.md)
 

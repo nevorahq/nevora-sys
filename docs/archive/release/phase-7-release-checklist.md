@@ -1,7 +1,7 @@
 # Phase 7.11 — Production Release Checklist
 
 > ⚠️ **SUPERSEDED (2026-07-08).** Use
-> [`release-checklist.md`](./release-checklist.md).
+> [`release-checklist.md`](../../release/release-checklist.md).
 >
 > Kept for history. Its migration section stops at `077`; the current baseline is
 > `000`–`097` (next free `098`). It also predates the Phase A scope gate (paused
@@ -111,7 +111,7 @@ Data integrity green (§7.4)    ✅ (apply 076/077)
 Uploads green (§7.7)           ✅
 Core modules green (§7.10)     ✅
 Build green (§7.10)            ✅
-Rollback ready (§7.11)         → docs/release/phase-7-rollback-plan.md
+Rollback ready (§7.11)         → docs/archive/release/phase-7-rollback-plan.md
 No P0/P1 open                  ✅
 ```
 

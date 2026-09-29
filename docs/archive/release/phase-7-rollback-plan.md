@@ -1,7 +1,7 @@
 # Phase 7.11 — Rollback Plan
 
-> ⚠️ **SUPERSEDED (2026-07-08).** Use [`rollback-plan.md`](./rollback-plan.md)
-> (strategy) and [`../runbooks/rollback.md`](../runbooks/rollback.md) (procedure).
+> ⚠️ **SUPERSEDED (2026-07-08).** Use [`rollback-plan.md`](../../release/rollback-plan.md)
+> (strategy) and [`../runbooks/rollback.md`](../../runbooks/rollback.md) (procedure).
 >
 > Kept for history. Scoped to migrations `076`/`077`; the current baseline is
 > `000`–`097`.
@@ -82,7 +82,7 @@ feature-flag env checked in the mutation guards).
   `recalculateOrganizationUsage` exists in `billing-service.ts`, or run the drift
   query in `docs/billing/usage-model.md` §5 and correct.
 - **Orphaned storage/documents** (pre-P2-4 uploads): use the orphan queries in
-  `docs/audits/phase-7-data-integrity-audit.md` §4 to find and soft-delete.
+  `docs/archive/audits/phase-7-data-integrity-audit.md` §4 to find and soft-delete.
 - **Orgs without subscription:** backfill a trial (`init_trial_subscription`).
 
 ---

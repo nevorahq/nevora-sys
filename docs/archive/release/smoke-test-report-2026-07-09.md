@@ -6,7 +6,7 @@
 > `billing-paddle-replacement-20260709`, committed HEAD `6cf165f`, baseline
 > `000`–`101` (`100`/`101` = Paddle billing boundary, applied). This run has NOT
 > been re-executed against the Paddle branch. For current state see
-> [`release-checklist.md`](./release-checklist.md).
+> [`release-checklist.md`](../../release/release-checklist.md).
 
 **Status legend:** `PASS` (evidence recorded) · `FAIL` (issue logged) ·
 `BLOCKED` (cannot run — missing dependency) · `NOT EXECUTED` (no environment to run it).

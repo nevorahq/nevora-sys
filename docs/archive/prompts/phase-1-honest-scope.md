@@ -28,7 +28,7 @@ Phase 1 — единственная, что целиком выполняетс
 # Задача: Phase 1 — honest scope
 
 Репозиторий: `nevora-sys`, ветка от `main` (head `f1eeab1`).
-План: `docs/project-workflows-and-beta-plan-2026-07-10.md`, раздел `## Plan` → `### Phase 1`.
+План: `docs/archive/project-workflows-and-beta-plan-2026-07-10.md`, раздел `## Plan` → `### Phase 1`.
 Прочитай его целиком перед началом. Также прочитай `AGENTS.md`: это не тот Next.js,
 который ты знаешь, — сверяйся с `node_modules/next/dist/docs/` перед написанием кода.
 

@@ -1,7 +1,7 @@
 /**
  * Redacts an email for audit logs / domain events / application logs.
  *
- * Security principle (see docs/security/SECURITY_CONTROL_PLANE_AUDIT.md):
+ * Security principle (see docs/archive/security/SECURITY_CONTROL_PLANE_AUDIT.md):
  * raw email must never be persisted in audit_logs, domain_events or logs.
  * The local part carries the personal identifier, so we obscure it and keep
  * only the first character + domain — enough for support triage, not a

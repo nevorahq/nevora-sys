@@ -86,7 +86,7 @@ Deals / Clients as paid quota features** while those modules are paused.
 | Runbooks (8 files) | Phase 8 | `docs/runbooks/` directory MISSING |
 | `docs/contracts/notification-lifecycle.md` | Phase 8 | only `docs/contracts/domain-events.md` exists (policy lives in root `NOTIFICATION_POLICY.md`) |
 | `docs/contracts/financial-workflows.md` | Phase 8 | MISSING |
-| Production smoke-test **report** | Phase 7.13 | checklist exists (`docs/release/phase-7-release-checklist.md`), no executed report |
+| Production smoke-test **report** | Phase 7.13 | checklist exists (`docs/archive/release/phase-7-release-checklist.md`), no executed report |
 | Beta **report** | Phase 7.13 | `phase-7-beta-launch-plan.md` exists, no beta result report |
 | Currency management UI | Phase 10.1 | see above |
 | Usage-counter reconciliation job | Phase 12 | see above |

@@ -10,7 +10,7 @@
 an error on the **deployed** environment actually reaches Sentry — so that the
 evidence contract's "`diagnosticId` visible in Sentry" line is verifiable, not
 aspirational. This is the deployed-env analogue of the Phase 2 verify step in
-[`../observability/sentry-setup.md`](../observability/sentry-setup.md) →
+[`../observability/sentry-setup.md`](../../observability/sentry-setup.md) →
 _Verifying it works_.
 
 Without this, the `diagnosticId` column in the proof report has nothing to

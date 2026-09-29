@@ -2,8 +2,7 @@
 
 > Source of truth for the target architecture. Reflects the **actual repository**
 > (Server Actions, RLS policies, numbered SQL migrations), not generic best
-> practices. For the full architect system prompt see
-> [`nevora-architect-prompt.md`](./nevora-architect-prompt.md).
+> practices.
 
 Nevora Business OS is a **multi-tenant SaaS platform** for freelancers and small
 business, built as a **Modular Monolith** on Next.js 16 (App Router) + Supabase
