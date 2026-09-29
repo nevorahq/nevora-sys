@@ -219,7 +219,51 @@ Deliberately not yet:
   resolves the organization from the session (`requireOrg`) and logs instead.
   The capture, suggestions and AI metering are unaffected.
 
-**Step 3 — Slack.** Not started.
+**Step 3 — Slack.** *Text done 2026-09-29; no migration (121 already allows
+`slack`, 123's `metadata` holds the workspace name).*
+- One Slack app, message shortcut **"Send to Nevora"** (`callback_id
+  send_to_nevora`), `commands` scope only: no event subscriptions, no channel
+  history. Nevora reads exactly the one message a user sends it. App manifest:
+  `docs/integrations/slack-app-manifest.yml`; setup: `SLACK_CLIENT_ID`,
+  `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET`.
+- Linking is the OAuth v2 install, per user, from Settings → Integrations →
+  Slack (`/api/channels/slack/connect` → `/callback`, both session routes). The
+  `state` is bound to an httpOnly cookie scoped to the callback path and to the
+  user + organization that started it. The installing `authed_user` becomes the
+  integration's `external_user_id` = `<enterprise or team id>:<user id>` (Grid
+  org first: user ids are org-wide there). The bot token Slack returns is
+  **not stored** — replies go through the interaction's `response_url`, which
+  needs none. Linking reuses `linkExternalAccount` (extracted from
+  `consumeLinkCode`): the same one-to-one rule as Telegram.
+- Interactivity endpoint `/api/channels/slack/interactivity` (in
+  `MACHINE_ROUTES`): Slack's `v0` HMAC over the raw body with a five-minute
+  replay window (both directions), fail-closed (503 unconfigured, 401 bad
+  signature). Any other interaction type is acknowledged unread.
+- Slack allows three seconds and does not redeliver interactions: the capture
+  is stored before the empty 200, every reply (ephemeral, visible only to the
+  sender) and the AI step run after it. A storage failure is answered "try
+  again" instead of thrown.
+- Message key `<slack user>:<channel>:<ts>`: one user sending the same message
+  twice gets one capture ("already in your Inbox"), two teammates sending it
+  each get their own.
+- Text: the message text, or for a message another app posted, its legacy
+  attachments (pretext, title, text). Slack markup becomes plain text (`<url|label>`
+  → `label (url)`, `<#C|name>` → `#name`, `<!here>` → `@here`, entities
+  unescaped). User mentions without a label stay as ids — resolving names would
+  need `users:read`.
+- Replies are in the user's app language; an unlinked Slack user is answered in
+  English (a shortcut payload carries no locale) with the Settings link.
+
+Deliberately not yet:
+- **Files** attached to a Slack message are not captured (a message with only
+  files is answered "upload them in the Inbox"; with text, the text is captured
+  and the reply says the files were skipped). Downloading `url_private` needs
+  `files:read` and a stored, encrypted bot token — and the bot can only read
+  files in conversations it was added to, which a shortcut does not guarantee.
+- A `/nevora <text>` slash command and a global shortcut (capture a thought
+  without a message) — cheap to add on the same endpoint if asked for.
+- Uninstall events: without event subscriptions a revoked app simply stops
+  sending shortcuts; the integration row stays until the user disconnects.
 
 **Step 4 — Email forwarding.** *Done 2026-09-28, Resend Inbound, migration 123.*
 Decisions (with the product owner): Resend as the provider; a **per-user**

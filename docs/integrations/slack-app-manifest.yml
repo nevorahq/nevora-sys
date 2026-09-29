@@ -1,0 +1,38 @@
+# Slack app manifest for Nevora capture (ADR 002, step 3).
+#
+# api.slack.com/apps → Create New App → From an app manifest → paste this file,
+# after replacing https://app.example.com with the deploy origin
+# (NEXT_PUBLIC_APP_URL). Then copy Client ID, Client Secret and Signing Secret
+# from "Basic Information" into SLACK_CLIENT_ID / SLACK_CLIENT_SECRET /
+# SLACK_SIGNING_SECRET. Every user connects their own account in
+# Settings → Integrations → Slack (OAuth); to let users outside your own
+# workspace install it, enable "Manage Distribution".
+#
+# Least privilege: the `commands` scope only. No event subscriptions, no bot
+# events, no channel history — Nevora reads only the one message a user sends
+# it with the shortcut. Replies are ephemeral, through the interaction's
+# response_url, so no token is needed or stored.
+display_information:
+  name: Nevora
+  description: Send any Slack message to your Nevora Inbox as a task draft.
+  background_color: "#111827"
+features:
+  shortcuts:
+    - name: Send to Nevora
+      type: message
+      # Must match SLACK_SHORTCUT_CALLBACK_ID in modules/channels/slack/slack-api.ts.
+      callback_id: send_to_nevora
+      description: Add this message to your Nevora Inbox
+oauth_config:
+  redirect_urls:
+    - https://app.example.com/api/channels/slack/callback
+  scopes:
+    bot:
+      - commands
+settings:
+  interactivity:
+    is_enabled: true
+    request_url: https://app.example.com/api/channels/slack/interactivity
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

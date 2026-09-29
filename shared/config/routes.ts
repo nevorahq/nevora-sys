@@ -242,6 +242,8 @@ export const MACHINE_ROUTES = [
   "/api/channels/telegram/webhook",
   // Resend Inbound webhook — verifies the Svix signature itself (ADR 002).
   "/api/channels/email/inbound",
+  // Slack interactivity (message shortcut) — verifies Slack's request signature (ADR 002).
+  "/api/channels/slack/interactivity",
 ] as const;
 
 export function isMachineRoute(pathname: string): boolean {

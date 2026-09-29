@@ -1839,9 +1839,52 @@ export const en = {
         connectedAs: "Connected as {name}",
         disconnect: "Disconnect",
         notConfigured: "Telegram isn't set up on this server yet.",
-        comingSoon: "Slack is coming next.",
         errors: {
           failed: "Couldn't create a code. Try again.",
+          disconnectFailed: "Couldn't disconnect. Try again.",
+        },
+      },
+    },
+    slack: {
+      /** Ephemeral replies in Slack, seen only by the user who ran the shortcut. */
+      bot: {
+        /** {url} is the Settings → Integrations link. */
+        notLinked: "Your Slack account isn't connected to Nevora yet. Connect it in Nevora: Settings → Integrations → Slack — {url}",
+        /** {title} is the suggested task, {url} the Inbox review link. */
+        captured: "Added to your Inbox: “{title}”. Confirm it in Nevora: {url}",
+        capturedNoDraft: "Added to your Inbox. Review it in Nevora: {url}",
+        /** {url} is the Inbox review link. */
+        duplicate: "This message is already in your Inbox: {url}",
+        empty: "This message has no text to add.",
+        /** {url} is the Inbox link. */
+        filesNotSupported: "Files from Slack can't be added yet. Upload them in the Nevora Inbox: {url}",
+        filesSkipped: "Attached files weren't added — upload them in the Inbox if you need them.",
+        /** {max} is the character limit. */
+        tooLong: "This message is too long — Nevora accepts up to {max} characters.",
+        notMember: "You're no longer a member of the organization this Slack account is connected to. Connect again from Nevora.",
+        readOnly: "Your organization is read-only right now (the trial or subscription has ended), so nothing can be added.",
+        forbidden: "Your role can't add to the Inbox.",
+        failed: "Something went wrong and the message wasn't saved. Try again.",
+      },
+      settings: {
+        title: "Slack",
+        description: "On any Slack message, open the ⋯ menu and choose “Send to Nevora” — it lands in your Inbox and AI suggests a task for you to confirm. Nevora reads only the messages you send it.",
+        connect: "Connect Slack",
+        /** {team} is the Slack workspace name. */
+        connectedTo: "Connected to {team}",
+        connectedGeneric: "Connected",
+        howTo: "In Slack: hover a message → ⋯ More actions → Send to Nevora.",
+        disconnect: "Disconnect",
+        notConfigured: "Slack isn't set up on this server yet.",
+        result: {
+          connected: "Slack is connected.",
+          denied: "Slack wasn't connected: access was declined.",
+          failed: "Couldn't connect Slack. Try again.",
+          invalid_state: "The connection request expired. Try again.",
+          not_configured: "Slack isn't set up on this server yet.",
+          forbidden: "Your role can't connect Slack.",
+        },
+        errors: {
           disconnectFailed: "Couldn't disconnect. Try again.",
         },
       },
