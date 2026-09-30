@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ROUTES } from "@/shared/config/routes";
 import type { PublicLocale } from "@/shared/i18n/constants";
+import { getDictionaryFor } from "@/shared/i18n/get-dictionary";
+import { CookieSettingsButton } from "@/modules/cookie-consent";
 import { BRAND, type LandingContent } from "../constants/landing-content";
 
 interface LandingFooterProps {
@@ -54,6 +56,10 @@ export function LandingFooter({ nav, footer, locale }: LandingFooterProps) {
           <Link href={legalHref(ROUTES.refunds)} className="soft-focus text-sm text-text-secondary transition-colors hover:text-text-primary">
             {footer.refunds}
           </Link>
+          <CookieSettingsButton
+            label={getDictionaryFor(locale).cookieConsent.settings}
+            className="text-sm text-text-secondary"
+          />
         </nav>
       </div>
 

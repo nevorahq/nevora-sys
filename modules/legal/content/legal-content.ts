@@ -1294,7 +1294,7 @@ const termsRu: LegalDocument = {
 const privacyEn: LegalDocument = {
   title: "Privacy Policy",
   lastUpdatedLabel: "Last updated",
-  lastUpdated: "July 9, 2026",
+  lastUpdated: "September 30, 2026",
   intro: [
     {
       type: "paragraph",
@@ -1477,6 +1477,10 @@ const privacyEn: LegalDocument = {
         {
           type: "paragraph",
           text: "Where required by law, non-essential cookies should be used only with consent.",
+        },
+        {
+          type: "paragraph",
+          text: "We use PostHog (EU region) for product analytics. Analytics cookies and similar storage are set only after you accept them in the cookie banner. Session recording is disabled and analytics events do not include the text of what you see or type. You can withdraw or change your choice at any time via \"Cookie settings\" in the website footer or in your profile settings.",
         },
       ],
     },
@@ -1770,7 +1774,7 @@ const privacyEn: LegalDocument = {
 const privacyRo: LegalDocument = {
   title: "Politica de confidentialitate",
   lastUpdatedLabel: "Ultima actualizare",
-  lastUpdated: "9 iulie 2026",
+  lastUpdated: "30 septembrie 2026",
   intro: [
     {
       type: "paragraph",
@@ -1953,6 +1957,10 @@ const privacyRo: LegalDocument = {
         {
           type: "paragraph",
           text: "Unde este cerut de lege, cookies neesentiale ar trebui utilizate doar cu consimtamant.",
+        },
+        {
+          type: "paragraph",
+          text: "Folosim PostHog (regiunea UE) pentru analiza produsului. Cookie-urile de analiza si stocarea similara sunt setate doar dupa ce le acceptati in bannerul de cookie-uri. Inregistrarea sesiunilor este dezactivata, iar evenimentele de analiza nu includ textul pe care il vedeti sau il introduceti. Va puteti retrage sau modifica alegerea oricand prin \"Setări cookie-uri\" din subsolul website-ului sau din setarile profilului.",
         },
       ],
     },
@@ -2252,7 +2260,7 @@ const privacyRo: LegalDocument = {
 const privacyRu: LegalDocument = {
   title: "Политика конфиденциальности",
   lastUpdatedLabel: "Последнее обновление",
-  lastUpdated: "9 июля 2026 г.",
+  lastUpdated: "30 сентября 2026 г.",
   intro: [
     {
       type: "paragraph",
@@ -2435,6 +2443,10 @@ const privacyRu: LegalDocument = {
         {
           type: "paragraph",
           text: "Там, где это требуется законом, non-essential cookies должны использоваться только с согласием.",
+        },
+        {
+          type: "paragraph",
+          text: "Для продуктовой аналитики мы используем PostHog (регион ЕС). Аналитические cookie и аналогичное хранилище устанавливаются только после того, как вы примете их в баннере cookie. Запись сессий отключена, а события аналитики не содержат текст, который вы видите или вводите. Вы можете отозвать или изменить своё решение в любой момент через «Настройки cookie» в подвале сайта или в настройках профиля.",
         },
       ],
     },

@@ -402,6 +402,19 @@ export const ro: Dictionary = {
     toggleLight: "Comută pe modul luminos",
     toggleDark: "Comută pe modul întunecat",
   },
+  cookieConsent: {
+    regionLabel: "Consimțământ pentru cookie-uri",
+    title: "Folosim cookie-uri",
+    description:
+      "Cookie-urile esențiale vă păstrează autentificat. Cookie-urile de analiză ne ajută să înțelegem cum este folosit Nevora și se activează doar cu acordul dumneavoastră.",
+    privacyLink: "Politica de confidențialitate",
+    accept: "Acceptă",
+    decline: "Refuză",
+    settings: "Setări cookie-uri",
+    settingsTitle: "Cookie-uri și analiză",
+    settingsDescription:
+      "Alegeți dacă Nevora poate folosi cookie-uri de analiză. Puteți modifica alegerea oricând.",
+  },
   home: {
     subtitle: "Planificator simplu de sarcini",
     loginButton: "Autentificare",

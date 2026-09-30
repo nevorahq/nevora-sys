@@ -393,6 +393,19 @@ export const ru: Dictionary = {
     toggleLight: "Светлая тема",
     toggleDark: "Тёмная тема",
   },
+  cookieConsent: {
+    regionLabel: "Согласие на использование cookie",
+    title: "Мы используем cookie",
+    description:
+      "Необходимые cookie сохраняют вход в аккаунт. Аналитические cookie помогают понять, как используется Nevora, и включаются только с вашего согласия.",
+    privacyLink: "Политика конфиденциальности",
+    accept: "Принять",
+    decline: "Отклонить",
+    settings: "Настройки cookie",
+    settingsTitle: "Cookie и аналитика",
+    settingsDescription:
+      "Выберите, может ли Nevora использовать аналитические cookie. Решение можно изменить в любой момент.",
+  },
   home: {
     subtitle: "Простой планировщик задач",
     loginButton: "Войти",
