@@ -47,6 +47,21 @@ describe("NotificationSettingsForm", () => {
     vi.unstubAllGlobals();
   });
 
+  it("saves the daily Telegram digest switch and hour with the other preferences", async () => {
+    const user = userEvent.setup();
+    render(<NotificationSettingsForm initialPreferences={DEFAULT_NOTIFICATION_PREFERENCES} vapidPublicKey="AQIDBA" t={en.settings} />);
+    expect(screen.getByRole("heading", { name: en.settings.notifications.digestTitle })).toBeTruthy();
+    const hour = screen.getByLabelText(en.settings.notifications.digestHour) as HTMLSelectElement;
+    expect(hour.value).toBe("9");
+
+    await user.selectOptions(hour, "7");
+    await user.click(screen.getByLabelText(en.settings.notifications.digestEnable));
+    expect(hour.disabled).toBe(true);
+
+    await user.click(screen.getByRole("button", { name: en.settings.notifications.savePreferences }));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ telegramDigestEnabled: false, digestHour: 7 })));
+  });
+
   it("unlocks audio before persisting the enabled preference", async () => {
     const user = userEvent.setup();
     render(<NotificationSettingsForm initialPreferences={DEFAULT_NOTIFICATION_PREFERENCES} vapidPublicKey="AQIDBA" t={en.settings} />);

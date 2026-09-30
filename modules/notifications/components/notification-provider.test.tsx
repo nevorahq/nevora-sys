@@ -66,6 +66,8 @@ const preferences = {
   paymentRemindersEnabled: true,
   documentReviewEnabled: true,
   actionCenterEnabled: true,
+  telegramDigestEnabled: true,
+  digestHour: 9,
 };
 
 function Consumer() {

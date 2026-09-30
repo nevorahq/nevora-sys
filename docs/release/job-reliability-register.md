@@ -24,6 +24,7 @@ unset, `401` on a wrong secret.
 | `suggestions-sweep` | `0 3 * * *` | CRON_SECRET | TTL flip to `expired` (re-running is a no-op) | idempotent expiry; no retry state | n/a |
 | `trial-sweep` | `45 3 * * *` | CRON_SECRET | trial-lifecycle transitions are idempotent | idempotent; no retry state | n/a |
 | `purge-deleted-accounts` | `0 4 * * *` | CRON_SECRET | only purges rows past the 30-day grace; re-running is a no-op | idempotent hard-purge | n/a |
+| `notification-digest` | `5 * * * *` | CRON_SECRET | `notification_digests` UNIQUE(org, user, channel, local_date); the row is claimed before sending (insert, or compare-and-set on `attempts`) | a failed send is retried in the next hourly runs inside the user's 3-hour window; **terminal after 3 attempts** that day | a crash between claim and send leaves a `failed / sending` row the next run retries (worst case one duplicate message) |
 | `usage-reconcile` | `15 5 * * *` | CRON_SECRET | report-first; repair only when `USAGE_RECONCILE_REPAIR` set; setting a counter to its authoritative value is idempotent | logs every discrepancy, alerts above threshold; repair is gated | detects + repairs counter drift itself |
 
 **On-demand diagnostic:** `GET /api/internal/job-health` (METRICS_SECRET-gated,

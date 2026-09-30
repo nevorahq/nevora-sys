@@ -1602,6 +1602,10 @@ export const en = {
       browserRegisterError: "Nevora could not register this browser for notifications. Please try again.",
       browserDisabled: "Browser notifications disabled on this device.",
       browserDisableError: "Could not disable this browser subscription. Please try again.",
+      digestTitle: "Daily summary in Telegram",
+      digestHint: "Once a day: what is overdue and what is due today — only on days with something to show. Needs Telegram connected in Settings → Integrations.",
+      digestEnable: "Send the daily summary",
+      digestHour: "Send at",
     },
     members: {
       invite: "Invite member",
@@ -1834,6 +1838,21 @@ export const en = {
         readOnly: "Your organization is read-only right now (the trial or subscription has ended), so I can't add anything.",
         forbidden: "Your role can't add to the Inbox.",
         failed: "Something went wrong and the message wasn't saved. Try again.",
+      },
+      digest: {
+        title: "Nevora — what needs you today",
+        /** {count} is a number. */
+        overdue: "Overdue: {count}",
+        dueToday: "Due today: {count}",
+        needsAttention: "Needs attention in total: {count}",
+        overdueTag: "overdue",
+        todayTag: "today",
+        /** {count} is how many items the list above left out. */
+        more: "…and {count} more in the Action Center",
+        open: "Open the Action Center",
+        /** {url} is the Action Center link, used when a button can't be attached. */
+        openLink: "Open: {url}",
+        footer: "You get this once a day. Turn it off in Settings → Notifications.",
       },
       settings: {
         title: "Telegram",

@@ -352,9 +352,14 @@ Next Step: round out the org-level settings surface.
 Status: **MVP Ready**
 Current implementation: 1 action, 3 queries, 7 services; in-app bell, durable
 history (`111`), web push (VAPID), mandatory notifications that cannot be hidden,
-cron `reminders`.
-Known Issues: push is silently off without VAPID keys.
-Next Step: none blocking.
+cron `reminders`. **Daily Telegram digest** (ADR 003 step 1): one summary of the
+Action Center per linked user per day at their `digest_hour` (default 09:00),
+nothing on empty days; switch + hour in Settings → Notifications; cron
+`notification-digest` (hourly); log `notification_digests` (migration `126`).
+Known Issues: push is silently off without VAPID keys, and no user has enabled it
+in production — per ADR 003 it is kept but not promoted. Migration `126` must be
+applied before digests go out (until then the cron answers `migrationPending`).
+Next Step: ADR 003 step 2 — the same digest by email for users without Telegram.
 
 ## Members
 

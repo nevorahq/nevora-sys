@@ -1,6 +1,6 @@
 # Release Checklist — Nevora Business OS
 
-**Status:** Canonical · **Last updated:** 2026-09-29 (tree `000`–`125`, applied on remote; host Netlify)
+**Status:** Canonical · **Last updated:** 2026-09-30 (tree `000`–`126`; `126` pending apply; host Netlify)
 **Supersedes:** [`phase-7-release-checklist.md`](../archive/release/phase-7-release-checklist.md)
 (kept for history; its migration section stops at 077 and is stale)
 
@@ -31,8 +31,9 @@ rotation + I-09 interactive smoke still open).
 
 | | |
 |---|---|
-| **Current baseline (tree)** | `000` – `125` (no duplicate prefixes; `054` is a known, intentional gap) |
-| **Next free number** | **`126`** |
+| **Current baseline (tree)** | `000` – `126` (no duplicate prefixes; `054` is a known, intentional gap) |
+| **Next free number** | **`127`** |
+| **Pending on remote** | `126` notification digests (ADR 003) — apply **before** relying on the digest; code tolerates its absence (cron → `migrationPending`, settings save without the digest fields). Confirm: table `notification_digests`, `user_notification_preferences.digest_hour`. |
 | **Remote state** | `000`–`125` applied on `uimpykbnatzhykzpastd` (`125` confirmed 2026-09-29 by probing `capture_project_rules`; `114` confirmed 2026-09-23; `115`–`124` applied by the maintainer 2026-08-22 → 2026-09-29). Earlier: `000`–`105` confirmed 2026-07-13 (`105` = inbox universal-capture idempotency); `106`–`109` (multilingual + FX) applied 2026-07-16 (PR #46); `110`–`111` (job-health indexes + durable notification history) applied 2026-07-22 (PR #55); `112` (usage-discrepancy audit table) applied 2026-07-22. |
 | **`098` status** | Applied. Anon can no longer read booking tables or EXECUTE the public booking RPCs (verified with the public anon key). |
 | **`099` status** | Applied. `todos.source_suggestion_id` + the four exactly-once indexes are live; the migration went in before the app deploy that writes the column. |
@@ -219,6 +220,7 @@ All cron routes fail closed on a missing/invalid `CRON_SECRET`.
 - [ ] `/api/cron/action-items-sweep`
 - [ ] `/api/cron/purge-deleted-accounts`
 - [ ] `/api/cron/usage-reconcile`
+- [ ] `/api/cron/notification-digest`
 - [ ] Each returns non-200 with no secret. Verify one by hand:
       `curl -i https://<host>/api/cron/reminders` ⇒ must not be 200.
 - [ ] Every route has a `netlify/functions/<name>.mts` wrapper with a `schedule`

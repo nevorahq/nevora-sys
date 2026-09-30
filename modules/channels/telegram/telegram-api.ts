@@ -25,7 +25,18 @@ export function getTelegramConfig(): TelegramConfig | null {
   return { token, webhookSecret, botUsername: username || null };
 }
 
-export async function sendTelegramMessage(token: string, chatId: string, text: string): Promise<boolean> {
+export interface TelegramLinkButton {
+  label: string;
+  /** Must be https — Telegram rejects other schemes on inline buttons. */
+  url: string;
+}
+
+export async function sendTelegramMessage(
+  token: string,
+  chatId: string,
+  text: string,
+  button?: TelegramLinkButton,
+): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE}/bot${token}/sendMessage`, {
       method: "POST",
@@ -36,6 +47,7 @@ export async function sendTelegramMessage(token: string, chatId: string, text: s
         // parsed as Markdown/HTML.
         text: text.slice(0, 4096),
         link_preview_options: { is_disabled: true },
+        ...(button ? { reply_markup: { inline_keyboard: [[{ text: button.label, url: button.url }]] } } : {}),
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
