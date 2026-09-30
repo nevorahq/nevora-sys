@@ -127,6 +127,7 @@ trigger a redeploy.
 | `OPENAI_API_KEY` | voice transcription | **secret**; billed; unset ⇒ bot asks for text |
 | `GOOGLE_GMAIL_*` / `GMAIL_TOKEN_ENCRYPTION_KEY` | Gmail invoice import | **secret** |
 | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | error reporting | recommended |
+| `NEXT_PUBLIC_POSTHOG_KEY` / `_HOST` / `_UI_HOST` | product analytics (PostHog EU) | optional; public key; captures only after cookie consent |
 | `TASKS_TRANSPORT` / `TASKS_API_URL` / `TASKS_SERVICE_AUTH_SECRET` / `TASKS_SHADOW_READ_PERCENT` | Tasks service seam | production runs `shadow` |
 
 - [ ] Every secret set in **Production** scope (not only Preview).

@@ -8,7 +8,8 @@ import "@fontsource/geist-mono/400.css";
 import "./globals.css";
 import { ThemeProvider } from "@/shared/ui/theme-provider";
 import { StoreProvider } from "@/store/provider";
-import { getPublicLocale } from "@/shared/i18n/get-dictionary";
+import { getDictionaryFor, getPublicLocale } from "@/shared/i18n/get-dictionary";
+import { CookieConsentBanner, PostHogProvider, getPostHogConfig } from "@/modules/cookie-consent";
 
 export const metadata: Metadata = {
   title: {
@@ -48,6 +49,13 @@ export default async function RootLayout({
   // раньше был жёстко "en". Языковое меню лендинга и переключатель приложения
   // держат cookie в актуальном состоянии, так что переходы сохраняют язык.
   const locale = await getPublicLocale();
+  // Все три среза: баннер следует `<html lang>`, который лендинг `/en` `/ru` `/ro`
+  // поправляет на клиенте, если cookie не совпадает с URL (типично для первого визита).
+  const cookieConsentLabels = {
+    en: getDictionaryFor("en").cookieConsent,
+    ru: getDictionaryFor("ru").cookieConsent,
+    ro: getDictionaryFor("ro").cookieConsent,
+  };
 
   return (
     <html
@@ -59,6 +67,8 @@ export default async function RootLayout({
         <StoreProvider>
           <ThemeProvider>{children}</ThemeProvider>
         </StoreProvider>
+        <PostHogProvider config={getPostHogConfig()} />
+        <CookieConsentBanner locale={locale} labels={cookieConsentLabels} />
       </body>
     </html>
   );

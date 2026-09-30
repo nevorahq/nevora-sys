@@ -436,6 +436,19 @@ export const en = {
     toggleLight: "Switch to light mode",
     toggleDark: "Switch to dark mode",
   },
+  cookieConsent: {
+    regionLabel: "Cookie consent",
+    title: "We use cookies",
+    description:
+      "Essential cookies keep you signed in. Analytics cookies help us understand how Nevora is used and are only set with your consent.",
+    privacyLink: "Privacy Policy",
+    accept: "Accept",
+    decline: "Decline",
+    settings: "Cookie settings",
+    settingsTitle: "Cookies and analytics",
+    settingsDescription:
+      "Choose whether Nevora may use analytics cookies. You can change your choice at any time.",
+  },
   home: {
     subtitle: "Simple task planner",
     loginButton: "Sign In",

@@ -3,6 +3,7 @@ import { getPendingAccountDeletion } from "@/modules/settings/queries/get-accoun
 import { ProfileForm } from "@/modules/settings/components/ProfileForm";
 import { DeleteAccountSection } from "@/modules/settings/components/DeleteAccountSection";
 import { SettingsHeader } from "@/modules/settings/components/SettingsHeader";
+import { CookiePreferencesCard } from "@/modules/cookie-consent";
 import { ACCOUNT_DELETION_GRACE_DAYS } from "@/modules/settings/config/account-deletion";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +26,9 @@ export default async function ProfileSettingsPage() {
     <>
       <SettingsHeader title={t.header.profileTitle} description={t.header.profileDescription} />
       <ProfileForm profile={profile} t={t} common={dict.common} />
+      <div className="mt-8">
+        <CookiePreferencesCard t={dict.cookieConsent} />
+      </div>
       <div className="mt-8">
         <DeleteAccountSection
           email={profile.email}

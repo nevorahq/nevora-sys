@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { ROUTES } from "@/shared/config/routes";
+import { getDictionaryFor } from "@/shared/i18n/get-dictionary";
+import { CookieSettingsButton } from "@/modules/cookie-consent";
+import { HtmlLangSync } from "@/modules/landing/components/html-lang-sync";
 import {
   LEGAL_UI,
   type LegalBlock,
@@ -67,6 +70,9 @@ export function LegalPageShell({ document, locale, page }: LegalPageShellProps) 
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      {/* `?lang` can disagree with the locale cookie on a direct visit; keep
+          `<html lang>` (and the cookie banner that follows it) on the page's language. */}
+      <HtmlLangSync locale={locale} />
       <header className="border-b border-border-soft bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-5 sm:px-6 md:flex-row md:items-center md:justify-between">
           <Link href={ROUTES.home} className="flex w-fit items-center gap-2 font-semibold tracking-tight text-text-primary">
@@ -127,6 +133,7 @@ export function LegalPageShell({ document, locale, page }: LegalPageShellProps) 
             >
               {ui.refunds}
             </Link>
+            <CookieSettingsButton label={getDictionaryFor(locale).cookieConsent.settings} />
           </nav>
         </div>
       </footer>

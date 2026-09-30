@@ -100,6 +100,7 @@ sandbox, ротация ключа I-07, передача владения ор�
 | `GOOGLE_GMAIL_CLIENT_ID`, `GOOGLE_GMAIL_CLIENT_SECRET`, `GOOGLE_GMAIL_REDIRECT_URI`, `GMAIL_TOKEN_ENCRYPTION_KEY` | для импорта из Gmail | Read-only OAuth для импорта счетов в Подписки; токены шифруются. |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | для push | Web-push уведомления. Без них push тихо отключён. |
 | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` | рекомендуется | Ошибки сервера и браузера, алерты сверки лимитов. |
+| `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `NEXT_PUBLIC_POSTHOG_UI_HOST` | нет | Продуктовая аналитика PostHog (EU). Без ключа SDK не запускается; с ключом события идут только после согласия в cookie-баннере. Хосты по умолчанию — EU. |
 | `BILLING_MODE` | нет | Без значения — `private_beta`: checkout и Customer Portal выключены. `paid_beta`/`production` требуют секретов Paddle. |
 | `BILLING_PROVIDER` | нет | Провайдер биллинга; сейчас `paddle`. |
 | `PADDLE_ENV`, `PADDLE_API_KEY`, `PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_SELLER_ID`, `PADDLE_PRICE_*` | для платного режима | Не нужны в `private_beta`. Проверяется только непустота, не валидность. |
