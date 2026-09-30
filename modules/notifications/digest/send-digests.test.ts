@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { sendTelegramDigests } from "./send-telegram-digests";
+import { sendEmailDigests, sendTelegramDigests } from "./send-digests";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/require-org", () => ({
@@ -187,5 +187,65 @@ describe("sendTelegramDigests", () => {
   it("reports a missing migration instead of failing", async () => {
     const pending = run(baseTables(), MORNING, vi.fn(), { missingDigests: true });
     expect(await pending.promise).toMatchObject({ ok: true, migrationPending: true, sent: 0 });
+  });
+});
+
+describe("sendEmailDigests", () => {
+  const OTHER = "user-2";
+  function emailTables(): Record<string, Row[]> {
+    const tables = baseTables();
+    // user-1 has Telegram (from baseTables); user-2 does not.
+    tables.memberships.push({ organization_id: ORG, user_id: OTHER, role: "member", status: "active" });
+    tables.profiles.push({ id: OTHER, language: "ro" });
+    tables.user_notification_preferences.push({
+      organization_id: ORG, user_id: OTHER, email_digest_enabled: true, digest_hour: 9, timezone: "Europe/Chisinau",
+      quiet_hours_enabled: false, quiet_hours_start: "22:00", quiet_hours_end: "08:00",
+    });
+    tables.organizations[0].name = "Acme";
+    return tables;
+  }
+  function runEmail(tables: Record<string, Row[]>, getEmail = vi.fn().mockResolvedValue("anna@example.test"), send = vi.fn().mockResolvedValue(true)) {
+    return {
+      send,
+      getEmail,
+      promise: sendEmailDigests({ supabase: fakeDb(tables), now: MORNING, appUrl: "https://app.example", getEmail, send }),
+    };
+  }
+
+  it("emails members without Telegram, never the ones who get it in Telegram", async () => {
+    const tables = emailTables();
+    const { send, getEmail, promise } = runEmail(tables);
+    expect(await promise).toMatchObject({ ok: true, candidates: 1, sent: 1 });
+    expect(getEmail).toHaveBeenCalledWith(OTHER);
+    expect(getEmail).not.toHaveBeenCalledWith(USER);
+    const [to, email] = send.mock.calls[0];
+    expect(to).toBe("anna@example.test");
+    expect(email.subject).toBe("Nevora — necesită atenția ta azi: 2");
+    expect(email.text).toContain("Iată ce necesită atenție azi în Acme.");
+    expect(tables.notification_digests).toEqual([expect.objectContaining({ user_id: OTHER, channel: "email", status: "sent", item_count: 2 })]);
+  });
+
+  it("records an account without an email address and sends nothing", async () => {
+    const tables = emailTables();
+    const { send, promise } = runEmail(tables, vi.fn().mockResolvedValue(null));
+    expect(await promise).toMatchObject({ sent: 0, noAddress: 1 });
+    expect(send).not.toHaveBeenCalled();
+    expect(tables.notification_digests[0]).toMatchObject({ channel: "email", status: "skipped", reason: "no_address" });
+  });
+
+  it("honours the email switch independently of the Telegram one", async () => {
+    const tables = emailTables();
+    tables.user_notification_preferences[1].email_digest_enabled = false;
+    const { send, promise } = runEmail(tables);
+    expect(await promise).toMatchObject({ sent: 0, notDue: 1 });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("does not email twice on the same day", async () => {
+    const tables = emailTables();
+    await runEmail(tables).promise;
+    const second = runEmail(tables);
+    expect(await second.promise).toMatchObject({ sent: 0, notDue: 1 });
+    expect(second.send).not.toHaveBeenCalled();
   });
 });

@@ -65,8 +65,9 @@ subscription 6), so forwarding each one to a messenger would be spam.
 - **Idempotent**: `notification_digests` is UNIQUE per
   `(organization, user, channel, local_date)`; at most three attempts a day.
 - **Opt-out** per channel in Settings → Notifications
-  (`telegram_digest_enabled`, default on — the user already chose the bot by
-  linking it). Category toggles keep governing per-event reminders; the digest
+  (`telegram_digest_enabled` and `email_digest_enabled`, both default on — the
+  Telegram one only reaches users who linked the bot; the email one only users
+  who did not). Category toggles keep governing per-event reminders; the digest
   is a summary of the Action Center, governed by its own switch.
 
 ### Unchanged rules
@@ -95,8 +96,13 @@ a Netlify Scheduled Function, the digest composer in
 Notifications. Code tolerates the migration being absent (the cron answers
 `migration_pending`, settings save without the new fields).
 
-**Step 2 — Email digest** for members without an active Telegram link, through
-Resend, with a preferences link in every message.
+**Step 2 — Email digest.** *Done 2026-09-30.* The same digest by email (Resend)
+for active members **without** an active Telegram link in that organization — a
+user never gets both. Same schedule, claim and retry rules (the sweep is shared,
+`modules/notifications/digest/send-digests.ts`, with one adapter per channel);
+HTML + plain text in the user's language; a link to Settings → Notifications in
+every message and as `List-Unsubscribe`. Switch `email_digest_enabled`
+(migration `127`, default on). The address comes from Auth (service role).
 
 **Step 3 — Escalation** for `high`/`critical` items still unresolved 24 h after
 the in-app notification: one message on the user's outside channel.

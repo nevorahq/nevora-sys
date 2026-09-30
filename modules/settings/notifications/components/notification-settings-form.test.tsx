@@ -47,7 +47,7 @@ describe("NotificationSettingsForm", () => {
     vi.unstubAllGlobals();
   });
 
-  it("saves the daily Telegram digest switch and hour with the other preferences", async () => {
+  it("saves the daily digest switches and hour with the other preferences", async () => {
     const user = userEvent.setup();
     render(<NotificationSettingsForm initialPreferences={DEFAULT_NOTIFICATION_PREFERENCES} vapidPublicKey="AQIDBA" t={en.settings} />);
     expect(screen.getByRole("heading", { name: en.settings.notifications.digestTitle })).toBeTruthy();
@@ -56,10 +56,15 @@ describe("NotificationSettingsForm", () => {
 
     await user.selectOptions(hour, "7");
     await user.click(screen.getByLabelText(en.settings.notifications.digestEnable));
+    // Email still on: the hour stays editable.
+    expect(hour.disabled).toBe(false);
+    await user.click(screen.getByLabelText(en.settings.notifications.digestEmailEnable));
     expect(hour.disabled).toBe(true);
 
     await user.click(screen.getByRole("button", { name: en.settings.notifications.savePreferences }));
-    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ telegramDigestEnabled: false, digestHour: 7 })));
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ telegramDigestEnabled: false, emailDigestEnabled: false, digestHour: 7 })),
+    );
   });
 
   it("unlocks audio before persisting the enabled preference", async () => {

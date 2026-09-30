@@ -150,7 +150,7 @@ supabase migration new <name>   # create the next NNN_*.sql file
 ```
 
 - **Never edit an already-applied migration.** New schema changes are a new file
-  with the next number (next free: `127`) — numeric prefix, not date prefix.
+  with the next number (next free: `128`) — numeric prefix, not date prefix.
 - Migrations reach the remote project only when the owner applies them by hand;
   don't assume one is live until that is confirmed.
 - One migration carries table + indexes + RLS policies + grants together.

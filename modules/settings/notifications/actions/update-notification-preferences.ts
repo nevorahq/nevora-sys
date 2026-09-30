@@ -39,9 +39,12 @@ export async function updateNotificationPreferences(input: unknown): Promise<Not
   };
   const upsert = (row: Record<string, unknown>) =>
     supabase.from("user_notification_preferences").upsert(row, { onConflict: "organization_id,user_id" });
-  let { error } = await upsert({ ...base, telegram_digest_enabled: value.telegramDigestEnabled, digest_hour: value.digestHour });
-  // Migration 126 not applied yet: save everything else rather than nothing.
-  if (error && (error.code === "PGRST204" || error.code === "42703")) ({ error } = await upsert(base));
+  const digest = { telegram_digest_enabled: value.telegramDigestEnabled, digest_hour: value.digestHour };
+  const missingColumn = (code?: string) => code === "PGRST204" || code === "42703";
+  // Migrations 126/127 not applied yet: save everything else rather than nothing.
+  let { error } = await upsert({ ...base, ...digest, email_digest_enabled: value.emailDigestEnabled });
+  if (error && missingColumn(error.code)) ({ error } = await upsert({ ...base, ...digest }));
+  if (error && missingColumn(error.code)) ({ error } = await upsert(base));
 
   if (error) return { ok: false, error: "Could not save notification settings. Please try again." };
   revalidatePath(ROUTES.settingsNotifications);

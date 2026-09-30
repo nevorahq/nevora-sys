@@ -15,6 +15,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   documentReviewEnabled: true,
   actionCenterEnabled: true,
   telegramDigestEnabled: true,
+  emailDigestEnabled: true,
   digestHour: 9,
 };
 
