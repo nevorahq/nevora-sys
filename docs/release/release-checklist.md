@@ -1,6 +1,6 @@
 # Release Checklist — Nevora Business OS
 
-**Status:** Canonical · **Last updated:** 2026-09-30 (tree `000`–`126`; `126` pending apply; host Netlify)
+**Status:** Canonical · **Last updated:** 2026-09-30 (tree `000`–`127`; `127` pending apply; host Netlify)
 **Supersedes:** [`phase-7-release-checklist.md`](../archive/release/phase-7-release-checklist.md)
 (kept for history; its migration section stops at 077 and is stale)
 
@@ -31,9 +31,9 @@ rotation + I-09 interactive smoke still open).
 
 | | |
 |---|---|
-| **Current baseline (tree)** | `000` – `126` (no duplicate prefixes; `054` is a known, intentional gap) |
-| **Next free number** | **`127`** |
-| **Pending on remote** | `126` notification digests (ADR 003) — apply **before** relying on the digest; code tolerates its absence (cron → `migrationPending`, settings save without the digest fields). Confirm: table `notification_digests`, `user_notification_preferences.digest_hour`. |
+| **Current baseline (tree)** | `000` – `127` (no duplicate prefixes; `054` is a known, intentional gap) |
+| **Next free number** | **`128`** |
+| **Pending on remote** | `127` email digest switch (ADR 003 step 2) — until applied, the email sweep answers `migrationPending` and settings save without it. Confirm: `user_notification_preferences.email_digest_enabled`. `126` applied and verified 2026-09-30 (`notification_digests` 200, anon 42501). |
 | **Remote state** | `000`–`125` applied on `uimpykbnatzhykzpastd` (`125` confirmed 2026-09-29 by probing `capture_project_rules`; `114` confirmed 2026-09-23; `115`–`124` applied by the maintainer 2026-08-22 → 2026-09-29). Earlier: `000`–`105` confirmed 2026-07-13 (`105` = inbox universal-capture idempotency); `106`–`109` (multilingual + FX) applied 2026-07-16 (PR #46); `110`–`111` (job-health indexes + durable notification history) applied 2026-07-22 (PR #55); `112` (usage-discrepancy audit table) applied 2026-07-22. |
 | **`098` status** | Applied. Anon can no longer read booking tables or EXECUTE the public booking RPCs (verified with the public anon key). |
 | **`099` status** | Applied. `todos.source_suggestion_id` + the four exactly-once indexes are live; the migration went in before the app deploy that writes the column. |

@@ -6,8 +6,9 @@ import type { NotificationPreferences } from "@/modules/notifications/types";
 
 const BASE_COLUMNS =
   "browser_notifications_enabled, in_app_sound_enabled, sound_mode, sound_volume, quiet_hours_enabled, quiet_hours_start, quiet_hours_end, timezone, task_reminders_enabled, subscription_reminders_enabled, payment_reminders_enabled, document_review_enabled, action_center_enabled";
-/** Added by migration 126 (ADR 003); read separately so an unapplied migration degrades to defaults. */
+/** Added by migrations 126/127 (ADR 003); an unapplied migration degrades to defaults. */
 const DIGEST_COLUMNS = "telegram_digest_enabled, digest_hour";
+const EMAIL_DIGEST_COLUMN = "email_digest_enabled";
 const MISSING_COLUMN = new Set(["42703", "PGRST204"]);
 
 export async function getNotificationPreferences(): Promise<NotificationPreferences> {
@@ -21,10 +22,14 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
       .eq("user_id", context.user.id)
       .maybeSingle();
   const [first, { data: profile }] = await Promise.all([
-    load(`${BASE_COLUMNS}, ${DIGEST_COLUMNS}`),
+    load(`${BASE_COLUMNS}, ${DIGEST_COLUMNS}, ${EMAIL_DIGEST_COLUMN}`),
     supabase.from("profiles").select("timezone").eq("id", context.user.id).maybeSingle(),
   ]);
-  const { data: row, error } = first.error && MISSING_COLUMN.has(first.error.code ?? "") ? await load(BASE_COLUMNS) : first;
+  const missing = (result: { error: { code?: string } | null }) => Boolean(result.error && MISSING_COLUMN.has(result.error.code ?? ""));
+  let loaded = first;
+  if (missing(loaded)) loaded = await load(`${BASE_COLUMNS}, ${DIGEST_COLUMNS}`);
+  if (missing(loaded)) loaded = await load(BASE_COLUMNS);
+  const { data: row, error } = loaded;
   const data = row as Record<string, unknown> | null;
 
   if (error) throw new Error(`Unable to load notification preferences: ${error.message}`);
@@ -51,5 +56,6 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
     actionCenterEnabled: data.action_center_enabled as boolean,
     telegramDigestEnabled: (data.telegram_digest_enabled as boolean | undefined) ?? DEFAULT_NOTIFICATION_PREFERENCES.telegramDigestEnabled,
     digestHour: (data.digest_hour as number | undefined) ?? DEFAULT_NOTIFICATION_PREFERENCES.digestHour,
+    emailDigestEnabled: (data.email_digest_enabled as boolean | undefined) ?? DEFAULT_NOTIFICATION_PREFERENCES.emailDigestEnabled,
   };
 }

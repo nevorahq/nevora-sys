@@ -19,7 +19,7 @@ Schedules and owners: [`release/job-reliability-register.md`](../release/job-rel
 | `/api/cron/action-items-sweep` | reconciles Action Center items | stale or missing attention items |
 | `/api/cron/purge-deleted-accounts` | purges accounts past the 30-day window | deletion requests never complete |
 | `/api/cron/usage-reconcile` | compares usage counters with reality | limit drift goes unnoticed |
-| `/api/cron/notification-digest` | daily Telegram summary at each user's hour (ADR 003) | linked users stop getting their morning summary; the in-app Action Center is unaffected |
+| `/api/cron/notification-digest` | daily summary at each user's hour — Telegram when linked, otherwise email (ADR 003) | members stop getting their morning summary; the in-app Action Center is unaffected |
 
 All are **fail-closed**: no `CRON_SECRET` ⇒ 503; wrong secret ⇒ 401. They run
 cross-org and therefore use the service role — a sanctioned exception. Each must

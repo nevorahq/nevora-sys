@@ -9,8 +9,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 const sweepMock = vi.fn();
-vi.mock("@/modules/notifications/digest/send-telegram-digests", () => ({ sendTelegramDigests: sweepMock }));
+const emailSweepMock = vi.fn();
+vi.mock("@/modules/notifications/digest/send-digests", () => ({ sendTelegramDigests: sweepMock, sendEmailDigests: emailSweepMock }));
 vi.mock("@/lib/supabase/service-role", () => ({ getServiceRoleClient: () => ({}) }));
+vi.mock("@/modules/notifications/digest/digest-email-sender", () => ({
+  getDigestEmailConfig: () => (process.env.RESEND_API_KEY ? { apiKey: "k", from: "f" } : null),
+  sendDigestEmail: vi.fn(),
+  getAccountEmail: vi.fn(),
+}));
+
+const RESULT = { ok: true, candidates: 0, sent: 0, failed: 0, empty: 0, notDue: 0, notMember: 0, noAddress: 0 };
 
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
@@ -27,7 +35,9 @@ describe("cron/notification-digest: fail-closed auth", () => {
   beforeEach(() => {
     vi.resetModules();
     sweepMock.mockReset();
+    emailSweepMock.mockReset();
     process.env.TELEGRAM_BOT_TOKEN = "token";
+    delete process.env.RESEND_API_KEY;
     process.env.TELEGRAM_WEBHOOK_SECRET = "hook";
   });
   afterEach(() => {
@@ -47,26 +57,31 @@ describe("cron/notification-digest: fail-closed auth", () => {
     expect(sweepMock).not.toHaveBeenCalled();
   });
 
-  it("skips without error when Telegram is not configured", async () => {
+  it("skips a channel that is not configured", async () => {
     process.env.CRON_SECRET = "s3cret";
     delete process.env.TELEGRAM_BOT_TOKEN;
     const res = await callRoute("Bearer s3cret");
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ skipped: "telegram_unconfigured" });
+    expect(await res.json()).toMatchObject({ ok: true, telegram: "unconfigured", email: "unconfigured" });
     expect(sweepMock).not.toHaveBeenCalled();
+    expect(emailSweepMock).not.toHaveBeenCalled();
   });
 
-  it("returns the sweep result on a valid secret", async () => {
+  it("runs both channels and returns both results", async () => {
     process.env.CRON_SECRET = "s3cret";
-    sweepMock.mockResolvedValue({ ok: true, candidates: 2, sent: 1, failed: 0, empty: 1, notDue: 0, notMember: 0 });
+    process.env.RESEND_API_KEY = "re_x";
+    sweepMock.mockResolvedValue({ ...RESULT, candidates: 1, sent: 1 });
+    emailSweepMock.mockResolvedValue({ ...RESULT, candidates: 2, sent: 1, empty: 1 });
     const res = await callRoute("Bearer s3cret");
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ sent: 1, empty: 1 });
+    expect(await res.json()).toMatchObject({ ok: true, telegram: { sent: 1 }, email: { sent: 1, empty: 1 } });
   });
 
-  it("500 when the sweep reports failure", async () => {
+  it("500 when a sweep reports failure", async () => {
     process.env.CRON_SECRET = "s3cret";
-    sweepMock.mockResolvedValue({ ok: false, candidates: 0, sent: 0, failed: 0, empty: 0, notDue: 0, notMember: 0 });
+    process.env.RESEND_API_KEY = "re_x";
+    sweepMock.mockResolvedValue(RESULT);
+    emailSweepMock.mockResolvedValue({ ...RESULT, ok: false });
     expect((await callRoute("Bearer s3cret")).status).toBe(500);
   });
 });

@@ -130,8 +130,8 @@ npm run dev        # http://localhost:3000
 ## Миграции базы данных
 
 SQL-миграции лежат в `supabase/migrations/` и применяются по порядку номеров
-(`000_…` → `126_…`; `000`–`125` применены на remote, `126` (ежедневная сводка,
-ADR 003) ждёт применения; следующий свободный номер — `127`, номер `054` —
+(`000_…` → `127_…`; `000`–`126` применены на remote, `127` (email-сводка,
+ADR 003) ждёт применения; следующий свободный номер — `128`, номер `054` —
 известный пропуск). Они описывают схему, RLS-политики,
 SECURITY DEFINER RPC, индексы и модель грантов. К многим миграциям есть
 SQL-харнесс в `supabase/tests/`, который CI прогоняет на чистой БД.
@@ -198,7 +198,7 @@ pre-commit hook с gitleaks.
   Каждая — тонкий триггер, который вызывает `/api/cron/<name>` с `CRON_SECRET`:
   `reminders`, `extraction-sweep`, `action-items-sweep`, `subscription-sweep`,
   `suggestions-sweep`, `trial-sweep`, `purge-deleted-accounts`, `usage-reconcile`,
-  `notification-digest` (каждый час; ежедневная сводка в Telegram, ADR 003).
+  `notification-digest` (каждый час; ежедневная сводка в Telegram или на почту, ADR 003).
 - Переменные окружения Netlify доходят до функций только после нового деплоя.
 - Состояние задач для оператора: `/api/internal/job-health` (с `METRICS_SECRET`).
 

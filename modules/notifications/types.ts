@@ -50,6 +50,8 @@ export interface NotificationPreferences {
   actionCenterEnabled: boolean;
   /** ADR 003: the daily Action Center digest in the linked Telegram chat. */
   telegramDigestEnabled: boolean;
+  /** ADR 003 step 2: the same digest by email when Telegram isn't linked. */
+  emailDigestEnabled: boolean;
   /** Local hour (0–23) the daily digest goes out. */
   digestHour: number;
 }

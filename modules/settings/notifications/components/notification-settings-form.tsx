@@ -180,8 +180,11 @@ export function NotificationSettingsForm({ initialPreferences, vapidPublicKey, t
           </div>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 sm:items-end">
-          <Checkbox id="telegram-digest-enabled" label={n.digestEnable} checked={preferences.telegramDigestEnabled} onChange={(event) => update("telegramDigestEnabled", event.target.checked)} />
-          <Select id="digest-hour" label={n.digestHour} value={String(preferences.digestHour)} onChange={(event) => update("digestHour", Number(event.target.value))} disabled={!preferences.telegramDigestEnabled} options={DIGEST_HOURS.map((hour) => ({ value: String(hour), label: `${String(hour).padStart(2, "0")}:00` }))} />
+          <div className="space-y-3">
+            <Checkbox id="telegram-digest-enabled" label={n.digestEnable} checked={preferences.telegramDigestEnabled} onChange={(event) => update("telegramDigestEnabled", event.target.checked)} />
+            <Checkbox id="email-digest-enabled" label={n.digestEmailEnable} checked={preferences.emailDigestEnabled} onChange={(event) => update("emailDigestEnabled", event.target.checked)} />
+          </div>
+          <Select id="digest-hour" label={n.digestHour} value={String(preferences.digestHour)} onChange={(event) => update("digestHour", Number(event.target.value))} disabled={!preferences.telegramDigestEnabled && !preferences.emailDigestEnabled} options={DIGEST_HOURS.map((hour) => ({ value: String(hour), label: `${String(hour).padStart(2, "0")}:00` }))} />
         </div>
       </section>
 

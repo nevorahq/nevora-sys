@@ -25,6 +25,7 @@ export const notificationPreferencesSchema = z.object({
   documentReviewEnabled: z.boolean(),
   actionCenterEnabled: z.boolean(),
   telegramDigestEnabled: z.boolean(),
+  emailDigestEnabled: z.boolean(),
   digestHour: z.number().int().min(0).max(23),
 });
 

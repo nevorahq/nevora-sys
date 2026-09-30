@@ -100,10 +100,10 @@ current URL (`node scripts/telegram-set-webhook.mjs`).
 
 ## Database
 
-- **Baseline in the tree:** migrations `000`–`126` (`054` is a known,
-  intentional numbering gap). **Next free number: `127`.**
-- **Pending on remote: `126`** (notification digests, ADR 003).
-- **Applied on remote: `000`–`125`** (`125` confirmed 2026-09-29 by a read-only
+- **Baseline in the tree:** migrations `000`–`127` (`054` is a known,
+  intentional numbering gap). **Next free number: `128`.**
+- **Pending on remote: `127`** (email digest switch, ADR 003 step 2).
+- **Applied on remote: `000`–`126`** (`126` verified 2026-09-30; `125` confirmed 2026-09-29 by a read-only
   probe of `capture_project_rules`).
 - A migration must be applied to remote **before** the deploy whose code depends
   on it — the schema must never trail the code.

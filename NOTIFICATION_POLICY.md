@@ -41,12 +41,13 @@ backfill and sends no historical milestone storm.
 Outside the app, users get **one digest a day**, not one message per reminder
 milestone: a summary of their organization's Action Center (overdue, due today,
 everything that needs attention, up to five titles), computed with the same
-predicates as the in-app filter cards. It goes to the linked Telegram chat at the
+predicates as the in-app filter cards. It goes to the linked Telegram chat — or,
+for members who have not linked Telegram in that organization, by email — at the
 user's `digest_hour` (default 09:00) in their notification timezone — then the
 organization's, then UTC — within a three-hour window, never during quiet hours,
 and not at all on a day with nothing to show. `notification_digests` is unique
 per organization, user, channel and local date; a row is claimed before sending
 and a failed send is retried at most three times that morning. The digest is a
 delivery only: it changes no action item, notification or domain row. Users turn
-it off in Settings → Notifications. See
+each channel off in Settings → Notifications (every email also links there). See
 [`docs/adr/003-notification-channels.md`](docs/adr/003-notification-channels.md).

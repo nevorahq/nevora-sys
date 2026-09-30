@@ -189,6 +189,7 @@ function mapPreferences(row: Record<string, unknown>): NotificationPreferences {
     actionCenterEnabled: Boolean(row.action_center_enabled),
     // Push never reads the digest settings; they are not selected here.
     telegramDigestEnabled: DEFAULT_NOTIFICATION_PREFERENCES.telegramDigestEnabled,
+    emailDigestEnabled: DEFAULT_NOTIFICATION_PREFERENCES.emailDigestEnabled,
     digestHour: DEFAULT_NOTIFICATION_PREFERENCES.digestHour,
   };
 }

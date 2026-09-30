@@ -1553,9 +1553,10 @@ export const ro: Dictionary = {
       browserRegisterError: "Nevora nu a putut înregistra acest browser pentru notificări. Încearcă din nou.",
       browserDisabled: "Notificările browser au fost dezactivate pe acest dispozitiv.",
       browserDisableError: "Nu s-a putut dezactiva abonamentul acestui browser. Încearcă din nou.",
-      digestTitle: "Rezumat zilnic în Telegram",
-      digestHint: "O dată pe zi: ce a întârziat și ce e pentru azi — doar în zilele cu ceva de arătat. Necesită Telegram conectat în Setări → Integrări.",
-      digestEnable: "Trimite rezumatul zilnic",
+      digestTitle: "Rezumat zilnic",
+      digestHint: "O dată pe zi: ce a întârziat și ce e pentru azi — doar în zilele cu ceva de arătat. Vine în Telegram dacă e conectat în Setări → Integrări, altfel pe e-mail.",
+      digestEnable: "Trimite în Telegram",
+      digestEmailEnable: "Trimite pe e-mail când Telegram nu e conectat",
       digestHour: "Ora trimiterii",
     },
     members: {
@@ -1857,6 +1858,13 @@ export const ro: Dictionary = {
       deleteFailed: "Regula nu a putut fi ștearsă. Încearcă din nou.",
     },
     email: {
+      digest: {
+        subject: "Nevora — necesită atenția ta azi: {count}",
+        preheader: "Ce a întârziat, ce e pentru azi și restul din Centrul de acțiuni.",
+        intro: "Iată ce necesită atenție azi în {org}.",
+        why: "Primești rezumatul pe e-mail pentru că Telegram nu este conectat. Conectează-l în Setări → Integrări ca să-l primești acolo sau oprește e-mailurile din",
+        settingsLink: "Setări notificări",
+      },
       settings: {
         title: "E-mail",
         description: "Redirecționează orice e-mail la adresa ta personală: textul devine o ciornă de sarcină, facturile și bonurile — ciorne de cheltuieli.",

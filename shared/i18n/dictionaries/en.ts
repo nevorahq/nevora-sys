@@ -1602,9 +1602,10 @@ export const en = {
       browserRegisterError: "Nevora could not register this browser for notifications. Please try again.",
       browserDisabled: "Browser notifications disabled on this device.",
       browserDisableError: "Could not disable this browser subscription. Please try again.",
-      digestTitle: "Daily summary in Telegram",
-      digestHint: "Once a day: what is overdue and what is due today — only on days with something to show. Needs Telegram connected in Settings → Integrations.",
-      digestEnable: "Send the daily summary",
+      digestTitle: "Daily summary",
+      digestHint: "Once a day: what is overdue and what is due today — only on days with something to show. It goes to Telegram if it is connected in Settings → Integrations, otherwise by email.",
+      digestEnable: "Send it to Telegram",
+      digestEmailEnable: "Send it by email when Telegram isn't connected",
       digestHour: "Send at",
     },
     members: {
@@ -1935,6 +1936,15 @@ export const en = {
       deleteFailed: "Couldn't delete the rule. Try again.",
     },
     email: {
+      digest: {
+        /** {count} is how many items need attention. */
+        subject: "Nevora — {count} need your attention today",
+        preheader: "Overdue, due today and everything else waiting in your Action Center.",
+        /** {org} is the organization name. */
+        intro: "Here is what needs attention in {org} today.",
+        why: "You get this summary by email because Telegram isn't connected. Connect it in Settings → Integrations to get it there instead, or turn the email off in",
+        settingsLink: "Notification settings",
+      },
       settings: {
         title: "Email",
         description: "Forward any email to your personal address: its text becomes a task draft, invoices and receipts become expense drafts.",

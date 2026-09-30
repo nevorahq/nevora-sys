@@ -67,6 +67,7 @@ const preferences = {
   documentReviewEnabled: true,
   actionCenterEnabled: true,
   telegramDigestEnabled: true,
+  emailDigestEnabled: true,
   digestHour: 9,
 };
 
