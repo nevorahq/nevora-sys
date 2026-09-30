@@ -18,7 +18,7 @@ history. When a change makes a doc here untrue, fix the doc in the same PR.
 
 ## Decisions and contracts
 
-- [`adr/`](./adr/) — product module boundaries (001), multichannel capture (002).
+- [`adr/`](./adr/) — product module boundaries (001), multichannel capture (002), notification channels (003).
 - [`contracts/`](./contracts/) — normative, several pinned by tests:
   financial workflows and states, attention model, notifications, AI governance,
   analytics privacy, billing lifecycle, domain events, the Tasks server API.

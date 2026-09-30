@@ -48,6 +48,10 @@ export interface NotificationPreferences {
   paymentRemindersEnabled: boolean;
   documentReviewEnabled: boolean;
   actionCenterEnabled: boolean;
+  /** ADR 003: the daily Action Center digest in the linked Telegram chat. */
+  telegramDigestEnabled: boolean;
+  /** Local hour (0–23) the daily digest goes out. */
+  digestHour: number;
 }
 
 export interface UserNotification {

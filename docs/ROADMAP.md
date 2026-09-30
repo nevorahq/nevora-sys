@@ -32,6 +32,11 @@ next step is product evidence, not code:
 3. Decide Overview / Analytics / AI pages: relink in the navigation or retire.
 4. Decide when (if ever) Tasks moves past `shadow` — see ADR 001.
 
+**Engineering — notifications (ADR 003)**
+- Apply migration `126`, then watch the first `notification-digest` runs.
+- Step 2: email digest for users without Telegram; step 3: escalation of
+  unresolved critical items; step 4: measure "action within 24 h of a digest".
+
 **Engineering, before paid beta**
 - Paddle end to end in sandbox: checkout → webhook → portal, then
   `BILLING_MODE=paid_beta` ([`release/paid-beta-cutover-checklist.md`](./release/paid-beta-cutover-checklist.md)).

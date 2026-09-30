@@ -130,8 +130,9 @@ npm run dev        # http://localhost:3000
 ## Миграции базы данных
 
 SQL-миграции лежат в `supabase/migrations/` и применяются по порядку номеров
-(`000_…` → `125_…`; все применены на remote, следующий свободный номер —
-`126`, номер `054` — известный пропуск). Они описывают схему, RLS-политики,
+(`000_…` → `126_…`; `000`–`125` применены на remote, `126` (ежедневная сводка,
+ADR 003) ждёт применения; следующий свободный номер — `127`, номер `054` —
+известный пропуск). Они описывают схему, RLS-политики,
 SECURITY DEFINER RPC, индексы и модель грантов. К многим миграциям есть
 SQL-харнесс в `supabase/tests/`, который CI прогоняет на чистой БД.
 
@@ -196,7 +197,8 @@ pre-commit hook с gitleaks.
 - Фоновые задачи — **Netlify Scheduled Functions** в `netlify/functions/*.mts`.
   Каждая — тонкий триггер, который вызывает `/api/cron/<name>` с `CRON_SECRET`:
   `reminders`, `extraction-sweep`, `action-items-sweep`, `subscription-sweep`,
-  `suggestions-sweep`, `trial-sweep`, `purge-deleted-accounts`, `usage-reconcile`.
+  `suggestions-sweep`, `trial-sweep`, `purge-deleted-accounts`, `usage-reconcile`,
+  `notification-digest` (каждый час; ежедневная сводка в Telegram, ADR 003).
 - Переменные окружения Netlify доходят до функций только после нового деплоя.
 - Состояние задач для оператора: `/api/internal/job-health` (с `METRICS_SECRET`).
 
@@ -277,7 +279,7 @@ schemas / components / types), экспортирующая публичный A
 - [`docs/README.md`](docs/README.md) — оглавление всей документации.
 - [`docs/MODULE_STATUS.md`](docs/MODULE_STATUS.md) — честный статус каждого модуля.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — целевая архитектура и жёсткие правила.
-- [`docs/adr/`](docs/adr/) — архитектурные решения: границы модулей (001), приём дел из каналов (002).
+- [`docs/adr/`](docs/adr/) — архитектурные решения: границы модулей (001), приём дел из каналов (002), каналы оповещений (003).
 - [`docs/contracts/`](docs/contracts/) — контракты: финансовые состояния, внимание, уведомления, ИИ, биллинг.
 - [`docs/release/`](docs/release/) — реестр P0/P1, launch gate, чек-лист перехода на платную бету.
 - [`docs/runbooks/`](docs/runbooks/) — действия при инцидентах и переключении сервисов.

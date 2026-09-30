@@ -236,6 +236,7 @@ export const MACHINE_ROUTES = [
   "/api/cron/usage-reconcile",
   "/api/cron/trial-sweep",
   "/api/cron/purge-deleted-accounts",
+  "/api/cron/notification-digest",
   "/api/internal/activation-funnel",
   "/api/internal/job-health",
   "/api/billing/webhook",

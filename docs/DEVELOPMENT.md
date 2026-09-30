@@ -150,7 +150,7 @@ supabase migration new <name>   # create the next NNN_*.sql file
 ```
 
 - **Never edit an already-applied migration.** New schema changes are a new file
-  with the next number (next free: `126`) — numeric prefix, not date prefix.
+  with the next number (next free: `127`) — numeric prefix, not date prefix.
 - Migrations reach the remote project only when the owner applies them by hand;
   don't assume one is live until that is confirmed.
 - One migration carries table + indexes + RLS policies + grants together.
@@ -287,7 +287,7 @@ no service role in app logic, no client-trusted ids, no raw SQL interpolation.
 
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — target architecture and hard rules.
 - [`MODULE_STATUS.md`](./MODULE_STATUS.md) — honest per-module status.
-- [`adr/`](./adr/) — product module boundaries (001), multichannel capture (002).
+- [`adr/`](./adr/) — product module boundaries (001), multichannel capture (002), notification channels (003).
 - [`ROADMAP.md`](./ROADMAP.md) — phases and their status.
 - [`PRODUCT_COPY.md`](./PRODUCT_COPY.md) — positioning and copy rules.
 - [`SECURITY.md`](./SECURITY.md) — security checklist and tenant isolation.

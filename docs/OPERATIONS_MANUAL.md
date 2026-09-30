@@ -100,8 +100,9 @@ current URL (`node scripts/telegram-set-webhook.mjs`).
 
 ## Database
 
-- **Baseline in the tree:** migrations `000`–`125` (`054` is a known,
-  intentional numbering gap). **Next free number: `126`.**
+- **Baseline in the tree:** migrations `000`–`126` (`054` is a known,
+  intentional numbering gap). **Next free number: `127`.**
+- **Pending on remote: `126`** (notification digests, ADR 003).
 - **Applied on remote: `000`–`125`** (`125` confirmed 2026-09-29 by a read-only
   probe of `capture_project_rules`).
 - A migration must be applied to remote **before** the deploy whose code depends
@@ -119,10 +120,10 @@ current URL (`node scripts/telegram-set-webhook.mjs`).
 
 ## Cron
 
-Eight fail-closed routes under `/api/cron/*`, each triggered by a Netlify
+Nine fail-closed routes under `/api/cron/*`, each triggered by a Netlify
 Scheduled Function in `netlify/functions/`: `reminders`, `extraction-sweep`,
 `action-items-sweep`, `subscription-sweep`, `suggestions-sweep`, `trial-sweep`,
-`purge-deleted-accounts`, `usage-reconcile`. No `CRON_SECRET` ⇒ 503; wrong
+`purge-deleted-accounts`, `usage-reconcile`, `notification-digest` (hourly; the daily Telegram summary, ADR 003). No `CRON_SECRET` ⇒ 503; wrong
 secret ⇒ 401. An unauthenticated 200 from any of them is a **P0**. Schedules,
 owners and recovery: [`release/job-reliability-register.md`](./release/job-reliability-register.md).
 

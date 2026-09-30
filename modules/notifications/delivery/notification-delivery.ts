@@ -187,5 +187,8 @@ function mapPreferences(row: Record<string, unknown>): NotificationPreferences {
     paymentRemindersEnabled: Boolean(row.payment_reminders_enabled),
     documentReviewEnabled: Boolean(row.document_review_enabled),
     actionCenterEnabled: Boolean(row.action_center_enabled),
+    // Push never reads the digest settings; they are not selected here.
+    telegramDigestEnabled: DEFAULT_NOTIFICATION_PREFERENCES.telegramDigestEnabled,
+    digestHour: DEFAULT_NOTIFICATION_PREFERENCES.digestHour,
   };
 }

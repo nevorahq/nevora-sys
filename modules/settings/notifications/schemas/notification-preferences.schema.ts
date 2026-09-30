@@ -24,6 +24,8 @@ export const notificationPreferencesSchema = z.object({
   paymentRemindersEnabled: z.boolean(),
   documentReviewEnabled: z.boolean(),
   actionCenterEnabled: z.boolean(),
+  telegramDigestEnabled: z.boolean(),
+  digestHour: z.number().int().min(0).max(23),
 });
 
 export const pushSubscriptionSchema = z.object({

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { BellRingIcon, Volume2Icon } from "lucide-react";
+import { BellRingIcon, SendIcon, Volume2Icon } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
@@ -15,6 +15,8 @@ import { getBrowserNotificationState, subscribeBrowser, type BrowserNotification
 import { isNotificationAudioUnlocked, playNotificationSound, unlockNotificationAudio } from "../services/notification-sound";
 import type { Dictionary } from "@/shared/i18n/dictionaries/en";
 
+/** The local hours a daily digest can be sent at (ADR 003). */
+const DIGEST_HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 const TIMEZONES = ["UTC", "Europe/Chisinau", "Europe/Bucharest", "Europe/London", "Europe/Berlin", "America/New_York", "America/Los_Angeles", "Asia/Dubai"];
 
 export function NotificationSettingsForm({ initialPreferences, vapidPublicKey, t }: { initialPreferences: NotificationPreferences; vapidPublicKey: string | null; t: Dictionary["settings"] }) {
@@ -166,6 +168,20 @@ export function NotificationSettingsForm({ initialPreferences, vapidPublicKey, t
             <div className="mt-4"><Button type="button" variant="secondary" onClick={browserEnabled ? disableBrowserNotifications : enableBrowserNotifications} isLoading={pending} disabled={permission === "unsupported"}>{browserEnabled ? n.disableBrowser : n.enableBrowser}</Button></div>
             {permission === "denied" && <p className="mt-3 text-xs text-danger">{n.deniedHint}</p>}
           </div>
+        </div>
+      </section>
+
+      <section className="soft-card space-y-4 p-5 sm:p-6" aria-labelledby="telegram-digest">
+        <div className="flex items-start gap-3">
+          <SendIcon className="mt-0.5 text-accent-green" size={20} />
+          <div>
+            <h2 id="telegram-digest" className="text-lg font-semibold text-text-primary">{n.digestTitle}</h2>
+            <p className="mt-1 text-sm text-text-muted">{n.digestHint}</p>
+          </div>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2 sm:items-end">
+          <Checkbox id="telegram-digest-enabled" label={n.digestEnable} checked={preferences.telegramDigestEnabled} onChange={(event) => update("telegramDigestEnabled", event.target.checked)} />
+          <Select id="digest-hour" label={n.digestHour} value={String(preferences.digestHour)} onChange={(event) => update("digestHour", Number(event.target.value))} disabled={!preferences.telegramDigestEnabled} options={DIGEST_HOURS.map((hour) => ({ value: String(hour), label: `${String(hour).padStart(2, "0")}:00` }))} />
         </div>
       </section>
 

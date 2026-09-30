@@ -20,7 +20,7 @@ export async function updateNotificationPreferences(input: unknown): Promise<Not
   const context = await requireOrg();
   const supabase = await createClient();
   const value = parsed.data;
-  const { error } = await supabase.from("user_notification_preferences").upsert({
+  const base = {
     organization_id: context.org.id,
     user_id: context.user.id,
     browser_notifications_enabled: value.browserNotificationsEnabled,
@@ -36,7 +36,12 @@ export async function updateNotificationPreferences(input: unknown): Promise<Not
     payment_reminders_enabled: value.paymentRemindersEnabled,
     document_review_enabled: value.documentReviewEnabled,
     action_center_enabled: value.actionCenterEnabled,
-  }, { onConflict: "organization_id,user_id" });
+  };
+  const upsert = (row: Record<string, unknown>) =>
+    supabase.from("user_notification_preferences").upsert(row, { onConflict: "organization_id,user_id" });
+  let { error } = await upsert({ ...base, telegram_digest_enabled: value.telegramDigestEnabled, digest_hour: value.digestHour });
+  // Migration 126 not applied yet: save everything else rather than nothing.
+  if (error && (error.code === "PGRST204" || error.code === "42703")) ({ error } = await upsert(base));
 
   if (error) return { ok: false, error: "Could not save notification settings. Please try again." };
   revalidatePath(ROUTES.settingsNotifications);

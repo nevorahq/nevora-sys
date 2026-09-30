@@ -35,3 +35,18 @@ Production backfill is explicit: call `backfill_reminder_schedules(org_id,
 batch_size, true)` using the service role for a dry run, inspect counts, then
 repeat with `false` in bounded batches. The migration itself performs no bulk
 backfill and sends no historical milestone storm.
+
+## Daily digest (ADR 003)
+
+Outside the app, users get **one digest a day**, not one message per reminder
+milestone: a summary of their organization's Action Center (overdue, due today,
+everything that needs attention, up to five titles), computed with the same
+predicates as the in-app filter cards. It goes to the linked Telegram chat at the
+user's `digest_hour` (default 09:00) in their notification timezone — then the
+organization's, then UTC — within a three-hour window, never during quiet hours,
+and not at all on a day with nothing to show. `notification_digests` is unique
+per organization, user, channel and local date; a row is claimed before sending
+and a failed send is retried at most three times that morning. The digest is a
+delivery only: it changes no action item, notification or domain row. Users turn
+it off in Settings → Notifications. See
+[`docs/adr/003-notification-channels.md`](docs/adr/003-notification-channels.md).
