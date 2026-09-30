@@ -3,7 +3,7 @@ import type { Dictionary } from "./en";
 export const ru: Dictionary = {
   common: {
     loading: "Загрузка…",
-    appName: "nevora-sys",
+    appName: "Nevora Business OS",
     close: "Закрыть",
     cancel: "Отмена",
     createRecord: "Создать запись",
@@ -413,7 +413,7 @@ export const ru: Dictionary = {
   },
   auth: {
     login: {
-      title: "Вход в nevora-sys",
+      title: "Вход в Nevora Business OS",
       subtitle: "Введите email и пароль",
       emailLabel: "Email",
       emailPlaceholder: "your@email.com",
@@ -425,7 +425,7 @@ export const ru: Dictionary = {
     },
     register: {
       title: "Регистрация",
-      subtitle: "Создайте аккаунт в nevora-sys",
+      subtitle: "Создайте аккаунт в Nevora Business OS",
       nameLabel: "Имя",
       namePlaceholder: "Как вас зовут?",
       emailLabel: "Email",

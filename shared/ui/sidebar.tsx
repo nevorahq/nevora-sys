@@ -88,7 +88,7 @@ export function Sidebar({ dict }: SidebarProps) {
         </div>
         {/* Текст: скрыт на mobile, виден на desktop */}
         <span className="hidden md:inline text-sm font-semibold text-text-primary tracking-tight">
-          nevora-sys
+          Business OS
         </span>
       </div>
 
