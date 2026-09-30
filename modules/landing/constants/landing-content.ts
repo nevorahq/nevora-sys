@@ -386,6 +386,7 @@ const en = {
   footer: {
     tagline: "Capture anything. Confirm what matters.",
     note: "Built for clarity, productivity and real daily use.",
+    copyright: "© 2026 NEVORA. All Rights Reserved.",
     productHeading: "Product",
     legalHeading: "Legal",
     terms: "Terms",
@@ -709,6 +710,7 @@ const ru: LandingContent = {
   footer: {
     tagline: "Добавляйте что угодно. Подтверждайте главное.",
     note: "Создано для ясности, продуктивности и реального ежедневного использования.",
+    copyright: "© 2026 NEVORA. Все права защищены.",
     productHeading: "Продукт",
     legalHeading: "Правовое",
     terms: "Условия",
@@ -1029,6 +1031,7 @@ const ro: LandingContent = {
   footer: {
     tagline: "Adaugă orice. Confirmă ce contează.",
     note: "Construit pentru claritate, productivitate și utilizare zilnică reală.",
+    copyright: "© 2026 NEVORA. Toate drepturile rezervate.",
     productHeading: "Produs",
     legalHeading: "Legal",
     terms: "Termeni",
