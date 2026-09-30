@@ -57,8 +57,9 @@ export function LandingFooter({ nav, footer, locale }: LandingFooterProps) {
         </nav>
       </div>
 
-      <div className="mx-auto max-w-6xl border-t border-border-soft px-4 py-6 sm:px-6">
-        <p className="text-xs text-text-tertiary">{footer.note}</p>
+      <div className="mx-auto flex max-w-6xl flex-col gap-2 border-t border-border-soft px-4 py-6 text-xs text-text-tertiary sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <p>{footer.copyright}</p>
+        <p>{footer.note}</p>
       </div>
     </footer>
   );
