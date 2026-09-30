@@ -1,7 +1,7 @@
 export const en = {
   common: {
     loading: "Loading…",
-    appName: "nevora-sys",
+    appName: "Nevora Business OS",
     close: "Close",
     cancel: "Cancel",
     createRecord: "Create Record",
@@ -468,7 +468,7 @@ export const en = {
     },
     register: {
       title: "Create account",
-      subtitle: "Join nevora-sys today",
+      subtitle: "Join Nevora Business OS today",
       nameLabel: "Name",
       namePlaceholder: "Your name",
       emailLabel: "Email",

@@ -9,7 +9,7 @@ import { resolveProductEntryRoute, ROUTES } from "@/shared/config/routes";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Create organization — nevora-sys",
+  title: "Create organization",
 };
 
 /**

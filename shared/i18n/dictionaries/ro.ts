@@ -12,7 +12,7 @@ import type { Dictionary } from "./en";
 export const ro: Dictionary = {
   common: {
     loading: "Se încarcă…",
-    appName: "nevora-sys",
+    appName: "Nevora Business OS",
     close: "Închide",
     cancel: "Anulează",
     createRecord: "Creează înregistrare",
@@ -434,7 +434,7 @@ export const ro: Dictionary = {
     },
     register: {
       title: "Creează cont",
-      subtitle: "Alătură-te nevora-sys astăzi",
+      subtitle: "Alătură-te Nevora Business OS astăzi",
       nameLabel: "Nume",
       namePlaceholder: "Numele tău",
       emailLabel: "Email",
