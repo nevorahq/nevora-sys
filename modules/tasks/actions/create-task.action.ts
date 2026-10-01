@@ -8,6 +8,7 @@ import { emitDomainEvent, emitAuditLog } from "@/lib/events";
 import { releaseOrganizationUsage, reserveOrganizationUsage } from "@/platform/access/server";
 import { createTaskSchema } from "../schemas/task.schema";
 import { ROUTES } from "@/shared/config/routes";
+import { trackServerEvent } from "@/modules/cookie-consent/server";
 import type { ActionResult } from "@/lib/validators/common";
 
 export async function createTaskAction(
@@ -137,6 +138,13 @@ export async function createTaskAction(
     if (reserved) await releaseOrganizationUsage(org.id, "tasks.count", 1);
     return { error: "Server error" };
   }
+
+  await trackServerEvent(user.id, "task_created", {
+    organization_id: org.id,
+    priority: parsed.data.priority,
+    has_extra_assignees: parsed.data.assignee_ids.length > 0,
+    source: "dashboard",
+  });
 
   revalidatePath(ROUTES.dashboard);
   revalidatePath(ROUTES.tasks);

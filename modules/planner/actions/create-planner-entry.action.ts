@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireOrg } from "@/lib/auth/require-org";
 import { canDo } from "@/lib/context/current-context";
 import { ROUTES } from "@/shared/config/routes";
+import { trackServerEvent } from "@/modules/cookie-consent/server";
 import type { ActionResult } from "@/lib/validators/common";
 import { createPlannerEntrySchema } from "../schemas/planner-entry.schema";
 import { createPlannerEntry } from "../services/create-planner-entry";
@@ -46,6 +47,11 @@ export async function createPlannerEntryAction(
   // Synchronous processing keeps the MVP simple; detection degrades gracefully
   // and never throws, so a capture is never lost even if the AI is unavailable.
   await processPlannerEntry(supabase, ctx, result.entry);
+  await trackServerEvent(ctx.user.id, "inbox_entry_captured", {
+    organization_id: ctx.org.id,
+    entry_type: parsed.data.entryType,
+    source: "web",
+  });
 
   revalidatePath(ROUTES.inbox);
   return {};

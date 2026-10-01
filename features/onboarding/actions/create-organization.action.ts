@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { seedDefaultMoneyAccount } from "@/modules/moneyflow/server";
 import { getOnboardingSchema } from "../schemas/onboarding.schema";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
+import { trackServerEvent } from "@/modules/cookie-consent/server";
 import { resolveProductEntryRoute, ROUTES } from "@/shared/config/routes";
 import type { ActionResult } from "@/lib/validators/common";
 
@@ -105,6 +106,10 @@ export async function createOrganizationAction(
         userId: user.id,
         currency,
         name: dict.money.inlineAccount.defaultName.replaceAll("{currency}", currency),
+      });
+      await trackServerEvent(user.id, "organization_created", {
+        organization_id: organizationId,
+        base_currency: currency,
       });
     }
 

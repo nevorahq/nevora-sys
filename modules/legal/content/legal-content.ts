@@ -1294,7 +1294,7 @@ const termsRu: LegalDocument = {
 const privacyEn: LegalDocument = {
   title: "Privacy Policy",
   lastUpdatedLabel: "Last updated",
-  lastUpdated: "September 30, 2026",
+  lastUpdated: "October 1, 2026",
   intro: [
     {
       type: "paragraph",
@@ -1480,7 +1480,7 @@ const privacyEn: LegalDocument = {
         },
         {
           type: "paragraph",
-          text: "We use PostHog (EU region) for product analytics. Analytics cookies and similar storage are set only after you accept them in the cookie banner. Session recording is disabled and analytics events do not include the text of what you see or type. You can withdraw or change your choice at any time via \"Cookie settings\" in the website footer or in your profile settings.",
+          text: "We use PostHog (EU region) for product analytics. Analytics cookies and similar storage are set only after you accept them in the cookie banner. Session recording is disabled and analytics events do not include the text of what you see or type. When you are signed in, these events are linked to your internal account identifier (never your name or email address) so we can understand which features are used. You can withdraw or change your choice at any time via \"Cookie settings\" in the website footer or in your profile settings.",
         },
       ],
     },
@@ -1774,7 +1774,7 @@ const privacyEn: LegalDocument = {
 const privacyRo: LegalDocument = {
   title: "Politica de confidentialitate",
   lastUpdatedLabel: "Ultima actualizare",
-  lastUpdated: "30 septembrie 2026",
+  lastUpdated: "1 octombrie 2026",
   intro: [
     {
       type: "paragraph",
@@ -1960,7 +1960,7 @@ const privacyRo: LegalDocument = {
         },
         {
           type: "paragraph",
-          text: "Folosim PostHog (regiunea UE) pentru analiza produsului. Cookie-urile de analiza si stocarea similara sunt setate doar dupa ce le acceptati in bannerul de cookie-uri. Inregistrarea sesiunilor este dezactivata, iar evenimentele de analiza nu includ textul pe care il vedeti sau il introduceti. Va puteti retrage sau modifica alegerea oricand prin \"Setări cookie-uri\" din subsolul website-ului sau din setarile profilului.",
+          text: "Folosim PostHog (regiunea UE) pentru analiza produsului. Cookie-urile de analiza si stocarea similara sunt setate doar dupa ce le acceptati in bannerul de cookie-uri. Inregistrarea sesiunilor este dezactivata, iar evenimentele de analiza nu includ textul pe care il vedeti sau il introduceti. Cand sunteti autentificat, aceste evenimente sunt asociate identificatorului intern al contului (niciodata numelui sau adresei de e-mail), ca sa intelegem ce functii sunt folosite. Va puteti retrage sau modifica alegerea oricand prin \"Setări cookie-uri\" din subsolul website-ului sau din setarile profilului.",
         },
       ],
     },
@@ -2260,7 +2260,7 @@ const privacyRo: LegalDocument = {
 const privacyRu: LegalDocument = {
   title: "Политика конфиденциальности",
   lastUpdatedLabel: "Последнее обновление",
-  lastUpdated: "30 сентября 2026 г.",
+  lastUpdated: "1 октября 2026 г.",
   intro: [
     {
       type: "paragraph",
@@ -2446,7 +2446,7 @@ const privacyRu: LegalDocument = {
         },
         {
           type: "paragraph",
-          text: "Для продуктовой аналитики мы используем PostHog (регион ЕС). Аналитические cookie и аналогичное хранилище устанавливаются только после того, как вы примете их в баннере cookie. Запись сессий отключена, а события аналитики не содержат текст, который вы видите или вводите. Вы можете отозвать или изменить своё решение в любой момент через «Настройки cookie» в подвале сайта или в настройках профиля.",
+          text: "Для продуктовой аналитики мы используем PostHog (регион ЕС). Аналитические cookie и аналогичное хранилище устанавливаются только после того, как вы примете их в баннере cookie. Запись сессий отключена, а события аналитики не содержат текст, который вы видите или вводите. Когда вы вошли в аккаунт, эти события привязываются к внутреннему идентификатору аккаунта (но не к имени или адресу электронной почты), чтобы мы понимали, какими функциями пользуются. Вы можете отозвать или изменить своё решение в любой момент через «Настройки cookie» в подвале сайта или в настройках профиля.",
         },
       ],
     },
