@@ -10,6 +10,7 @@ import {
   ROUTES,
 } from "@/shared/config/routes";
 import { getDictionary } from "@/shared/i18n/get-dictionary";
+import { trackServerEvent } from "@/modules/cookie-consent/server";
 import type { ActionResult } from "@/lib/validators/common";
 
 export async function registerAction(
@@ -68,6 +69,12 @@ export async function registerAction(
 
     if (error) {
       return { error: error.message };
+    }
+
+    if (data.user) {
+      await trackServerEvent(data.user.id, "user_signed_up", {
+        email_confirmation_required: !data.session,
+      });
     }
 
     // Если проект требует подтверждения email, signUp НЕ создаёт сессию.

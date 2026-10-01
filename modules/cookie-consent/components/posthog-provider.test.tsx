@@ -3,11 +3,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 
-const posthog = vi.hoisted(() => ({
-  init: vi.fn(),
-  opt_in_capturing: vi.fn(),
-  opt_out_capturing: vi.fn(),
-}));
+const posthog = vi.hoisted(() => {
+  const state = { optedOut: true, distinctId: "anon-1" };
+  return {
+    state,
+    init: vi.fn(),
+    opt_in_capturing: vi.fn(() => {
+      state.optedOut = false;
+    }),
+    opt_out_capturing: vi.fn(() => {
+      state.optedOut = true;
+    }),
+    has_opted_out_capturing: vi.fn(() => state.optedOut),
+    get_distinct_id: vi.fn(() => state.distinctId),
+    identify: vi.fn((id: string) => {
+      state.distinctId = id;
+    }),
+    reset: vi.fn(() => {
+      state.distinctId = "anon-2";
+    }),
+  };
+});
 
 vi.mock("posthog-js", () => ({ default: posthog }));
 
@@ -18,8 +34,8 @@ const config = { key: "phc_test", host: "https://eu.i.posthog.com", uiHost: "htt
 async function loadModules() {
   vi.resetModules();
   const consent = await import("../cookie-consent");
-  const { PostHogProvider } = await import("./posthog-provider");
-  return { consent, PostHogProvider };
+  const { PostHogIdentify, PostHogProvider, resetPostHogIdentity } = await import("./posthog-provider");
+  return { consent, PostHogIdentify, PostHogProvider, resetPostHogIdentity };
 }
 
 /** Lets the dynamic `import("posthog-js")` and its `.then` chain settle. */
@@ -29,6 +45,8 @@ async function settle() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  posthog.state.optedOut = true;
+  posthog.state.distinctId = "anon-1";
 });
 
 afterEach(async () => {
@@ -108,5 +126,55 @@ describe("PostHogProvider", () => {
     expect(posthog.opt_out_capturing.mock.invocationCallOrder[0]).toBeGreaterThan(
       posthog.opt_in_capturing.mock.invocationCallOrder[0],
     );
+  });
+
+  it("identifies a signed-in user by internal id only after acceptance", async () => {
+    const { consent, PostHogIdentify, PostHogProvider } = await loadModules();
+    render(
+      <>
+        <PostHogProvider config={config} />
+        <PostHogIdentify userId="user-123" />
+      </>,
+    );
+    await settle();
+    expect(posthog.identify).not.toHaveBeenCalled();
+
+    consent.saveConsent(true);
+    await settle();
+
+    expect(posthog.identify).toHaveBeenCalledTimes(1);
+    expect(posthog.identify).toHaveBeenCalledWith("user-123");
+  });
+
+  it("does not identify while analytics is declined", async () => {
+    const { consent, PostHogIdentify, PostHogProvider } = await loadModules();
+    render(<PostHogProvider config={config} />);
+    consent.saveConsent(true);
+    await settle();
+    consent.saveConsent(false);
+    await settle();
+
+    render(<PostHogIdentify userId="user-123" />);
+    await settle();
+
+    expect(posthog.identify).not.toHaveBeenCalled();
+  });
+
+  it("resets the identity on sign-out", async () => {
+    const { consent, PostHogIdentify, PostHogProvider, resetPostHogIdentity } = await loadModules();
+    consent.saveConsent(true);
+    render(
+      <>
+        <PostHogProvider config={config} />
+        <PostHogIdentify userId="user-123" />
+      </>,
+    );
+    await settle();
+    expect(posthog.identify).toHaveBeenCalledWith("user-123");
+
+    resetPostHogIdentity();
+    await settle();
+
+    expect(posthog.reset).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAppAccess, isAccessError } from "@/lib/security";
+import { trackServerEvent } from "@/modules/cookie-consent/server";
 import { createClient } from "@/lib/supabase/server";
 import { reportError } from "@/lib/observability/report-error";
 import { ROUTES } from "@/shared/config/routes";
@@ -49,6 +50,15 @@ export async function POST(request: Request) {
         result.diagnosticId ? { error: result.error, diagnosticId: result.diagnosticId } : { error: result.error },
         { status: result.status },
       );
+    }
+
+    if (!result.reused) {
+      await trackServerEvent(ctx.user.id, "document_uploaded", {
+        organization_id: ctx.org.id,
+        doc_type: input.data.doc_type,
+        files_count: files.length,
+        source: "dashboard",
+      });
     }
 
     revalidatePath(ROUTES.documents);

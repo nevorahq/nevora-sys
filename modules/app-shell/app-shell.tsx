@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/shared/ui/theme-toggle";
 import { Notifications } from "@/shared/ui/notifications";
 import { HeaderActions } from "@/shared/ui/header-actions";
 import { LogoutButton } from "@/features/auth/components/logout-button";
+import { PostHogIdentify } from "@/modules/cookie-consent";
 import { requireUser } from "@/lib/auth/require-user";
 import { requireOrg } from "@/lib/auth/require-org";
 import { getOrganizationAccessState, getTrialState } from "@/modules/billing";
@@ -72,6 +73,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           initialCounters={initialNotificationCounters}
           initialNotifications={initialNotifications}
         >
+          <PostHogIdentify userId={user.id} />
           <div className="flex min-h-dvh">
             <Sidebar dict={dict} />
 

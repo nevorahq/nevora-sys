@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireAppAccess, isAccessError } from "@/lib/security";
 import { ROUTES } from "@/shared/config/routes";
+import { trackServerEvent } from "@/modules/cookie-consent/server";
 import { getTelegramConfig } from "../telegram/telegram-api";
 import { issueLinkCode, LINK_CODE_TTL_MINUTES } from "../services/link-codes";
 
@@ -31,6 +32,7 @@ export async function issueTelegramLinkCodeAction(): Promise<IssueTelegramCodeRe
 
   const issued = await issueLinkCode(await createClient(), ctx, "telegram");
   if (!issued.ok) return { ok: false, code: "failed" };
+  await trackServerEvent(ctx.user.id, "telegram_link_started", { organization_id: ctx.org.id });
   return {
     ok: true,
     code: issued.code,
